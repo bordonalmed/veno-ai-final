@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Assinatura</title>
+</head>
+<body>
+    <h1>Teste de Assinatura</h1>
+    
+    <input type="file" id="assinatura" accept="image/*">
+    <button onclick="testarAssinatura()">Testar Assinatura</button>
+    
+    <div id="resultado"></div>
+    
+    <script>
+        function testarAssinatura() {
+            const file = document.getElementById('assinatura').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = e.target.result;
+                    localStorage.setItem('assinaturaMedico', data);
+                    
+                    const resultado = document.getElementById('resultado');
+                    resultado.innerHTML = `
+                        <h3>Assinatura salva:</h3>
+                        <p>Tamanho: ${data.length} caracteres</p>
+                        <p>Formato: ${data.substring(0, 50)}...</p>
+                        <img src="${data}" style="max-width: 200px; border: 1px solid #ccc;">
+                    `;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // Verificar se já existe uma assinatura salva
+        const assinaturaSalva = localStorage.getItem('assinaturaMedico');
+        if (assinaturaSalva) {
+            document.getElementById('resultado').innerHTML = `
+                <h3>Assinatura já salva:</h3>
+                <p>Tamanho: ${assinaturaSalva.length} caracteres</p>
+                <img src="${assinaturaSalva}" style="max-width: 200px; border: 1px solid #ccc;">
+            `;
+        }
+    </script>
+</body>
+</html> 
