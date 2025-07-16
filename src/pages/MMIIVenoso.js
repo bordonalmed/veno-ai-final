@@ -183,8 +183,8 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
               min={0} 
               step={0.1} 
               placeholder="Diâmetro (mm)" 
-              value={jsfDiametro[lado] || ""} 
-              onChange={e => setJsfDiametro(prev => ({ ...prev, [lado]: e.target.value }))} 
+              value={jsfDiametro || ""} 
+              onChange={e => setJsfDiametro(e.target.value)} 
               style={{ 
                 width: 'clamp(80px, 15vw, 100px)', 
                 marginLeft: 'clamp(4px, 1.5vw, 6px)', 
@@ -201,8 +201,8 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
               min={0} 
               step={0.1} 
               placeholder="Diâmetro (mm)" 
-              value={jspDiametro[lado] || ""} 
-              onChange={e => setJspDiametro(prev => ({ ...prev, [lado]: e.target.value }))} 
+              value={jspDiametro || ""} 
+              onChange={e => setJspDiametro(e.target.value)} 
               style={{ 
                 width: 'clamp(80px, 15vw, 100px)', 
                 marginLeft: 'clamp(4px, 1.5vw, 6px)', 
@@ -644,7 +644,7 @@ function SafenaParvaExtra({ status, valores, onChange }) {
 }
 
 // Função que monta o laudo e mostra legendas por extenso
-function gerarConclusaoPorLado({ profundas, superficiais, magna, parva }) {
+function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfurantes }) {
   const conclusoes = [];
   if (Object.values(profundas).some(v => v.includes("não compressível"))) {
     conclusoes.push("Trombose venosa profunda");
@@ -717,6 +717,9 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva }) {
   if (superficiais["JSP"] === "pérvia e incompetente") {
     conclusoes.push("Incompetência da junção safeno-poplítea (JSP)");
   }
+  if (perfurantes && perfurantes.status === "pérvia e incompetente") {
+    conclusoes.push("Insuficiência de veia perfurante");
+  }
   if (!conclusoes.length) return "- Ausência de refluxo venoso nos territórios estudados.";
   return "- " + conclusoes.join("\n- ");
 }
@@ -737,8 +740,8 @@ function montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, 
     linhas.push("Sistema Venoso Superficial:");
     veiasSuperficiais.forEach(v => {
       let extra = "";
-      if (v === "JSF" && jsfDiametro && jsfDiametro[l]) extra = ` (diâmetro: ${jsfDiametro[l]} mm)`;
-      if (v === "JSP" && jspDiametro && jspDiametro[l]) extra = ` (diâmetro: ${jspDiametro[l]} mm)`;
+      if (v === "JSF" && jsfDiametro && jsfDiametro[l] && jsfDiametro[l] !== "") extra = ` (diâmetro: ${jsfDiametro[l]} mm)`;
+      if (v === "JSP" && jspDiametro && jspDiametro[l] && jspDiametro[l] !== "") extra = ` (diâmetro: ${jspDiametro[l]} mm)`;
       linhas.push(`- ${v}: ${superficiais[l][v]}${extra}`);
       if (v === "Safena Magna" && superficiais[l][v] === "pérvia e incompetente") {
         if (magna[l].coxa) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
@@ -767,16 +770,17 @@ function montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, 
     linhas.push("");
     linhas.push("Veias Perfurantes:");
     if (perfurantes[l] && perfurantes[l].status) {
-      linhas.push(`- Status: ${perfurantes[l].status}`);
+      let linhaPerf = `- ${perfurantes[l].status}`;
       if (perfurantes[l].segmento && perfurantes[l].valor) {
-        linhas.push(`- Localização: ${perfurantes[l].valor} ${perfurantes[l].segmento}`);
+        linhaPerf += ` (${perfurantes[l].valor} ${perfurantes[l].segmento})`;
       }
+      linhas.push(linhaPerf);
     } else {
       linhas.push("- Não especificado");
     }
     linhas.push("");
     linhas.push("CONCLUSÃO:");
-    linhas.push(gerarConclusaoPorLado({ profundas: profundas[l], superficiais: superficiais[l], magna: magna[l], parva: parva[l] }));
+    linhas.push(gerarConclusaoPorLado({ profundas: profundas[l], superficiais: superficiais[l], magna: magna[l], parva: parva[l], perfurantes: perfurantes[l] }));
     if (observacoes && observacoes[l]) {
       linhas.push("");
       linhas.push("OBSERVAÇÕES:");
@@ -1203,9 +1207,9 @@ function MMIIVenoso() {
                   onMagna={val => setMagna(prev => ({ ...prev, [lado]: val }))}
                   onParva={val => setParva(prev => ({ ...prev, [lado]: val }))}
                   onPerfurantes={val => setPerfurantes(prev => ({ ...prev, [lado]: val }))}
-                  jsfDiametro={jsfDiametro[lado]}
+                  jsfDiametro={typeof jsfDiametro[lado] === 'string' ? jsfDiametro[lado] : ''}
                   setJsfDiametro={v => setJsfDiametro(prev => ({ ...prev, [lado]: v }))}
-                  jspDiametro={jspDiametro[lado]}
+                  jspDiametro={typeof jspDiametro[lado] === 'string' ? jspDiametro[lado] : ''}
                   setJspDiametro={v => setJspDiametro(prev => ({ ...prev, [lado]: v }))}
                   observacao={observacoes[lado]}
                   onObservacao={val => setObservacoes(prev => ({ ...prev, [lado]: val }))}
@@ -1245,22 +1249,133 @@ function MMIIVenoso() {
                       fontSize: 'clamp(10px, 2vw, 12px)', 
                       padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
                     }} onClick={() => {
-                      // Salvar PDF
+                      // Buscar dados do localStorage
+                      const nomeMedico = localStorage.getItem("nomeMedico") || "";
+                      const crm = localStorage.getItem("crm") || "";
+                      const especialidade = localStorage.getItem("especialidadeLaudo") || "";
+                      const nomeClinica = localStorage.getItem("nomeClinica") || "";
+                      const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
+                      const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
+                      const emailClinica = localStorage.getItem("emailClinica") || "";
+                      const logoClinica = localStorage.getItem("logoClinica") || null;
+                      const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
+
                       const doc = new jsPDF();
-                      const lines = laudoTexto.split("\n");
-                      let y = 15;
-                      doc.setFont("courier", "normal");
-                      lines.forEach(line => {
-                        if (line.startsWith("PACIENTE:") || line.startsWith("DOPPLER") || line.startsWith("Sistema") || line.startsWith("CONCLUSÃO")) {
-                          doc.setFont(undefined, "bold");
-                        } else {
-                          doc.setFont(undefined, "normal");
+                      const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
+                      const blocos = laudoTexto.split("=".repeat(80));
+
+                      function addCabecalho(y) {
+                        let yLogo = 14; // topo do logo
+                        let yAtual = yLogo;
+                        if (logoClinica) {
+                          try {
+                            doc.addImage(logoClinica, 'PNG', 95, yLogo, 20, 20); // quadrado 20x20
+                          } catch (e) {}
                         }
-                        doc.text(line, 10, y);
-                        y += 8;
-                        if (y > 280) { doc.addPage(); y = 15; }
+                        doc.setFontSize(9);
+                        let cabecalho = [];
+                        if (nomeClinica) cabecalho.push(nomeClinica);
+                        if (enderecoClinica) cabecalho.push(enderecoClinica);
+                        if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
+                        if (emailClinica) cabecalho.push(emailClinica);
+                        // Alinhar o cabeçalho à direita, na mesma altura do logo
+                        cabecalho.forEach((txt, idx) => {
+                          doc.setFont(undefined, "bold");
+                          doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+                        });
+                        doc.setFont(undefined, "normal");
+                        doc.setFontSize(11);
+                        return yLogo + 22;
+                      }
+
+                      function addRodape() {
+                        const yRodape = 280; // margem inferior de 1cm
+                        doc.setFontSize(8);
+                        if (assinaturaMedico) {
+                          try {
+                            doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
+                          } catch (e) {}
+                        }
+                        doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
+                        let yInfo = yRodape + 5;
+                        if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
+                        if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
+                        if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
+                        doc.setFontSize(11);
+                      }
+
+                      let pagina = 0;
+                      lados.forEach((ladoAtual, idx) => {
+                        if (pagina > 0) doc.addPage();
+                        let y = addCabecalho(12);
+                        const bloco = blocos[idx].trim().split("\n");
+                        let inConclusao = false;
+                        for (let i = 0; i < bloco.length; i++) {
+                          let line = bloco[i];
+                          // Negrito para nome do paciente e nome do exame
+                          if (line.startsWith("PACIENTE:")) {
+                            doc.setFont(undefined, "bold");
+                            doc.text(line, 15, y);
+                            doc.setFont(undefined, "normal");
+                          } else if (line.startsWith("DOPPLER VENOSO DE MEMBRO INFERIOR")) {
+                            doc.setFont(undefined, "bold");
+                            doc.text(line, 15, y);
+                            doc.setFont(undefined, "normal");
+                          } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Venoso Profundo") || line.startsWith("Sistema Venoso Superficial")) {
+                            doc.setFont(undefined, "bold");
+                            doc.text(line, 15, y);
+                            if (line.startsWith("CONCLUSÃO")) inConclusao = true;
+                            doc.setFont(undefined, "normal");
+                          } else if (inConclusao && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
+                            doc.setFont(undefined, "bold");
+                            doc.text(line, 15, y);
+                            doc.setFont(undefined, "normal");
+                          } else {
+                            doc.setFont(undefined, "normal");
+                            doc.text(line, 15, y);
+                            if (inConclusao && line.trim() === "") inConclusao = false;
+                          }
+                          y += 8;
+                          if (y > 265) {
+                            addRodape();
+                            doc.addPage();
+                            y = addCabecalho(12);
+                          }
+                        }
+                        addRodape();
+                        pagina++;
                       });
                       doc.save(`Laudo_${nome}_${data}.pdf`);
+                      // Limpar formulário para novo laudo
+                      setNome("");
+                      setIdade("");
+                      setData("");
+                      setLado("");
+                      setProfundas({
+                        Direito: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+                        Esquerdo: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+                      });
+                      setSuperficiais({
+                        Direito: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+                        Esquerdo: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+                      });
+                      setMagna({
+                        Direito: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+                        Esquerdo: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+                      });
+                      setParva({
+                        Direito: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+                        Esquerdo: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+                      });
+                      setPerfurantes({
+                        Direito: { status: "pérvia e competente", segmento: "", valor: "" },
+                        Esquerdo: { status: "pérvia e competente", segmento: "", valor: "" }
+                      });
+                      setObservacoes({ Direito: '', Esquerdo: '' });
+                      setLaudoTexto("");
+                      setJsfDiametro({ Direito: "", Esquerdo: "" });
+                      setJspDiametro({ Direito: "", Esquerdo: "" });
+                      setErro("");
                     }}>Salvar PDF</button>
                   </div>
                   {laudoTexto}
@@ -1294,9 +1409,9 @@ function MMIIVenoso() {
                   onMagna={val => setMagna(prev => ({ ...prev, Direito: val }))}
                   onParva={val => setParva(prev => ({ ...prev, Direito: val }))}
                   onPerfurantes={val => setPerfurantes(prev => ({ ...prev, Direito: val }))}
-                  jsfDiametro={jsfDiametro.Direito}
+                  jsfDiametro={typeof jsfDiametro.Direito === 'string' ? jsfDiametro.Direito : ''}
                   setJsfDiametro={v => setJsfDiametro(prev => ({ ...prev, Direito: v }))}
-                  jspDiametro={jspDiametro.Direito}
+                  jspDiametro={typeof jspDiametro.Direito === 'string' ? jspDiametro.Direito : ''}
                   setJspDiametro={v => setJspDiametro(prev => ({ ...prev, Direito: v }))}
                   observacao={observacoes.Direito}
                   onObservacao={val => setObservacoes(prev => ({ ...prev, Direito: val }))}
@@ -1324,9 +1439,9 @@ function MMIIVenoso() {
                   onMagna={val => setMagna(prev => ({ ...prev, Esquerdo: val }))}
                   onParva={val => setParva(prev => ({ ...prev, Esquerdo: val }))}
                   onPerfurantes={val => setPerfurantes(prev => ({ ...prev, Esquerdo: val }))}
-                  jsfDiametro={jsfDiametro.Esquerdo}
+                  jsfDiametro={typeof jsfDiametro.Esquerdo === 'string' ? jsfDiametro.Esquerdo : ''}
                   setJsfDiametro={v => setJsfDiametro(prev => ({ ...prev, Esquerdo: v }))}
-                  jspDiametro={jspDiametro.Esquerdo}
+                  jspDiametro={typeof jspDiametro.Esquerdo === 'string' ? jspDiametro.Esquerdo : ''}
                   setJspDiametro={v => setJspDiametro(prev => ({ ...prev, Esquerdo: v }))}
                   observacao={observacoes.Esquerdo}
                   onObservacao={val => setObservacoes(prev => ({ ...prev, Esquerdo: val }))}
@@ -1409,22 +1524,133 @@ function MMIIVenoso() {
               fontSize: 'clamp(10px, 2vw, 12px)', 
               padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
             }} onClick={() => {
-              // Salvar PDF
+              // Buscar dados do localStorage
+              const nomeMedico = localStorage.getItem("nomeMedico") || "";
+              const crm = localStorage.getItem("crm") || "";
+              const especialidade = localStorage.getItem("especialidadeLaudo") || "";
+              const nomeClinica = localStorage.getItem("nomeClinica") || "";
+              const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
+              const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
+              const emailClinica = localStorage.getItem("emailClinica") || "";
+              const logoClinica = localStorage.getItem("logoClinica") || null;
+              const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
+
               const doc = new jsPDF();
-              const lines = laudoTexto.split("\n");
-              let y = 15;
-              doc.setFont("courier", "normal");
-              lines.forEach(line => {
-                if (line.startsWith("PACIENTE:") || line.startsWith("DOPPLER") || line.startsWith("Sistema") || line.startsWith("CONCLUSÃO")) {
-                  doc.setFont(undefined, "bold");
-                } else {
-                  doc.setFont(undefined, "normal");
+              const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
+              const blocos = laudoTexto.split("=".repeat(80));
+
+              function addCabecalho(y) {
+                let yLogo = 14; // topo do logo
+                let yAtual = yLogo;
+                if (logoClinica) {
+                  try {
+                    doc.addImage(logoClinica, 'PNG', 95, yLogo, 20, 20); // quadrado 20x20
+                  } catch (e) {}
                 }
-                doc.text(line, 10, y);
-                y += 8;
-                if (y > 280) { doc.addPage(); y = 15; }
+                doc.setFontSize(9);
+                let cabecalho = [];
+                if (nomeClinica) cabecalho.push(nomeClinica);
+                if (enderecoClinica) cabecalho.push(enderecoClinica);
+                if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
+                if (emailClinica) cabecalho.push(emailClinica);
+                // Alinhar o cabeçalho à direita, na mesma altura do logo
+                cabecalho.forEach((txt, idx) => {
+                  doc.setFont(undefined, "bold");
+                  doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+                });
+                doc.setFont(undefined, "normal");
+                doc.setFontSize(11);
+                return yLogo + 22;
+              }
+
+              function addRodape() {
+                const yRodape = 280; // margem inferior de 1cm
+                doc.setFontSize(8);
+                if (assinaturaMedico) {
+                  try {
+                    doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
+                  } catch (e) {}
+                }
+                doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
+                let yInfo = yRodape + 5;
+                if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
+                if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
+                if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
+                doc.setFontSize(11);
+              }
+
+              let pagina = 0;
+              lados.forEach((ladoAtual, idx) => {
+                if (pagina > 0) doc.addPage();
+                let y = addCabecalho(12);
+                const bloco = blocos[idx].trim().split("\n");
+                let inConclusao = false;
+                for (let i = 0; i < bloco.length; i++) {
+                  let line = bloco[i];
+                  // Negrito para nome do paciente e nome do exame
+                  if (line.startsWith("PACIENTE:")) {
+                    doc.setFont(undefined, "bold");
+                    doc.text(line, 15, y);
+                    doc.setFont(undefined, "normal");
+                  } else if (line.startsWith("DOPPLER VENOSO DE MEMBRO INFERIOR")) {
+                    doc.setFont(undefined, "bold");
+                    doc.text(line, 15, y);
+                    doc.setFont(undefined, "normal");
+                  } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Venoso Profundo") || line.startsWith("Sistema Venoso Superficial")) {
+                    doc.setFont(undefined, "bold");
+                    doc.text(line, 15, y);
+                    if (line.startsWith("CONCLUSÃO")) inConclusao = true;
+                    doc.setFont(undefined, "normal");
+                  } else if (inConclusao && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
+                    doc.setFont(undefined, "bold");
+                    doc.text(line, 15, y);
+                    doc.setFont(undefined, "normal");
+                  } else {
+                    doc.setFont(undefined, "normal");
+                    doc.text(line, 15, y);
+                    if (inConclusao && line.trim() === "") inConclusao = false;
+                  }
+                  y += 8;
+                  if (y > 265) {
+                    addRodape();
+                    doc.addPage();
+                    y = addCabecalho(12);
+                  }
+                }
+                addRodape();
+                pagina++;
               });
               doc.save(`Laudo_${nome}_${data}.pdf`);
+              // Limpar formulário para novo laudo
+              setNome("");
+              setIdade("");
+              setData("");
+              setLado("");
+              setProfundas({
+                Direito: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+                Esquerdo: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+              });
+              setSuperficiais({
+                Direito: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+                Esquerdo: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+              });
+              setMagna({
+                Direito: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+                Esquerdo: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+              });
+              setParva({
+                Direito: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+                Esquerdo: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+              });
+              setPerfurantes({
+                Direito: { status: "pérvia e competente", segmento: "", valor: "" },
+                Esquerdo: { status: "pérvia e competente", segmento: "", valor: "" }
+              });
+              setObservacoes({ Direito: '', Esquerdo: '' });
+              setLaudoTexto("");
+              setJsfDiametro({ Direito: "", Esquerdo: "" });
+              setJspDiametro({ Direito: "", Esquerdo: "" });
+              setErro("");
             }}>Salvar PDF</button>
           </div>
           {laudoTexto}
