@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Gerador de Laudos Doppler Vascular Inteligente",
   "main": "index.js",
-  "homepage": "https://bordonalmed.github.io/veno-ai-final",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
