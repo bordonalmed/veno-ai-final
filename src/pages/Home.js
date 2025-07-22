@@ -105,7 +105,7 @@ export default function Home({ onLogout }) {
       </div>
       
       <img 
-        src="/venoai-logo.png" 
+        src={process.env.PUBLIC_URL + "/venoai-logo.png"} 
         alt="VENO.AI" 
         style={{ 
           width: 120, 

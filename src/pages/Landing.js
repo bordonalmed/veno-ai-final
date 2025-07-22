@@ -17,7 +17,7 @@ export default function Landing() {
       padding: 20
     }}>
       <img
-        src="/venoai-logo.png"
+        src={process.env.PUBLIC_URL + "/venoai-logo.png"}
         alt="VENO.AI"
         style={{
           width: 400,

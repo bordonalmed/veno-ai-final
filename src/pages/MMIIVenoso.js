@@ -91,7 +91,7 @@ const perfurantesSegmentoOptions = [
 ];
 
 // Bloco de campos por lado
-function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes, onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes, jsfDiametro, setJsfDiametro, jspDiametro, setJspDiametro, observacao, onObservacao }) {
+function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes, onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes, jsfDiametro, setJsfDiametro, jspDiametro, setJspDiametro, observacao, onObservacao, varizes, onVarizes }) {
   return (
     <div style={{
       marginBottom: 'clamp(12px, 2vw, 16px)', 
@@ -225,6 +225,52 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
           )}
         </div>
       ))}
+      {/* Linha para seleção de varizes */}
+      <div style={{
+        marginTop: 'clamp(12px, 2.5vw, 16px)',
+        marginBottom: 'clamp(8px, 2vw, 12px)',
+        fontWeight: 700,
+        fontSize: 'clamp(12px, 2.5vw, 14px)'
+      }}>
+        Varizes
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(4px, 1vw, 8px)', flexWrap: 'wrap', marginBottom: 'clamp(6px, 1vw, 10px)' }}>
+        {["varizes reticulares", "varizes superficiais", "microvarizes", "nenhuma"].map(tipo => (
+          <label key={tipo} style={{ marginRight: 'clamp(4px, 1vw, 8px)', textTransform: 'capitalize', fontSize: 'clamp(10px, 1.5vw, 12px)' }}>
+            <input
+              type="radio"
+              name={`tipoVariz_${lado}`}
+              value={tipo === "nenhuma" ? "" : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+              checked={varizes.tipo === (tipo === "nenhuma" ? "" : tipo.charAt(0).toUpperCase() + tipo.slice(1))}
+              onChange={e => onVarizes({ ...varizes, tipo: e.target.value, localizacao: e.target.value ? varizes.localizacao : [] })}
+              style={{ marginRight: 4 }}
+            />
+            {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+          </label>
+        ))}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 12px)', flexWrap: 'wrap', marginBottom: 'clamp(6px, 1vw, 10px)' }}>
+        <span style={{ fontWeight: 500, fontSize: 'clamp(11px, 2.2vw, 13px)', marginRight: 8 }}>Localização:</span>
+        {["coxa", "perna", "tornozelo", "pé"].map(loc => (
+          <label key={loc} style={{ marginRight: 'clamp(8px, 2vw, 12px)' }}>
+            <input
+              type="checkbox"
+              name={`localVariz_${lado}_${loc}`}
+              checked={varizes.localizacao.includes(loc)}
+              disabled={!varizes.tipo}
+              onChange={e => {
+                if (e.target.checked) {
+                  onVarizes({ ...varizes, localizacao: [...varizes.localizacao, loc] });
+                } else {
+                  onVarizes({ ...varizes, localizacao: varizes.localizacao.filter(l => l !== loc) });
+                }
+              }}
+              style={{ marginRight: 4 }}
+            />
+            {loc}
+          </label>
+        ))}
+      </div>
       {/* Bloco de veias perfurantes */}
       <div style={{
         marginTop: 'clamp(12px, 2.5vw, 16px)', 
@@ -644,7 +690,7 @@ function SafenaParvaExtra({ status, valores, onChange }) {
 }
 
 // Função que monta o laudo e mostra legendas por extenso
-function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfurantes }) {
+function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfurantes, varizes }) {
   const conclusoes = [];
   if (Object.values(profundas).some(v => v.includes("não compressível"))) {
     conclusoes.push("Trombose venosa profunda");
@@ -720,11 +766,14 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
   if (perfurantes && perfurantes.status === "pérvia e incompetente") {
     conclusoes.push("Insuficiência de veia perfurante");
   }
+  if (varizes && varizes.tipo) {
+    conclusoes.push(varizes.tipo + ".");
+  }
   if (!conclusoes.length) return "- Ausência de refluxo venoso nos territórios estudados.";
   return "- " + conclusoes.join("\n- ");
 }
 
-function montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes }) {
+function montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes }) {
   const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
   const blocos = lados.map(l => {
     let linhas = [];
@@ -778,9 +827,20 @@ function montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, 
     } else {
       linhas.push("- Não especificado");
     }
+    // Adicione aqui a linha detalhada das varizes
+    if (varizes && varizes[l] && varizes[l].tipo) {
+      linhas.push(""); // Adiciona espaço em branco
+      let linhaVariz = `${varizes[l].tipo}`;
+      if (varizes[l].localizacao && varizes[l].localizacao.length > 0) {
+        linhaVariz += ` em ${varizes[l].localizacao.map(loc => loc.charAt(0).toUpperCase() + loc.slice(1)).join(', ')}`;
+      }
+      linhaVariz += ".";
+      linhas.push(linhaVariz);
+      linhas.push("");
+    }
     linhas.push("");
     linhas.push("CONCLUSÃO:");
-    linhas.push(gerarConclusaoPorLado({ profundas: profundas[l], superficiais: superficiais[l], magna: magna[l], parva: parva[l], perfurantes: perfurantes[l] }));
+    linhas.push(gerarConclusaoPorLado({ profundas: profundas[l], superficiais: superficiais[l], magna: magna[l], parva: parva[l], perfurantes: perfurantes[l], varizes: varizes[l] }));
     if (observacoes && observacoes[l]) {
       linhas.push("");
       linhas.push("OBSERVAÇÕES:");
@@ -823,6 +883,10 @@ function MMIIVenoso() {
   const [jsfDiametro, setJsfDiametro] = useState({ Direito: "", Esquerdo: "" });
   const [jspDiametro, setJspDiametro] = useState({ Direito: "", Esquerdo: "" });
   const [erro, setErro] = useState("");
+  const [varizes, setVarizes] = useState({
+    Direito: { tipo: '', localizacao: [] },
+    Esquerdo: { tipo: '', localizacao: [] }
+  });
 
   // Hook para detectar mudanças no tamanho da tela
   useEffect(() => {
@@ -875,7 +939,7 @@ function MMIIVenoso() {
       setErro("Preencha nome, data e lado antes de visualizar o laudo!");
       return;
     }
-    const laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes });
+    const laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes });
     setLaudoTexto(laudo);
   }
 
@@ -889,7 +953,7 @@ function MMIIVenoso() {
     // Gerar laudo se ainda não foi gerado
     let laudo = laudoTexto;
     if (!laudo) {
-      laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes });
+      laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes });
     }
     
     const dadosExame = {
@@ -1070,7 +1134,7 @@ function MMIIVenoso() {
       </div>
 
       <img
-        src="/venoai-logo.png"
+        src={process.env.PUBLIC_URL + "/venoai-logo.png"}
         alt="VENO.AI"
         style={{
           width: "clamp(100px, 15vw, 140px)",
@@ -1213,6 +1277,8 @@ function MMIIVenoso() {
                   setJspDiametro={v => setJspDiametro(prev => ({ ...prev, [lado]: v }))}
                   observacao={observacoes[lado]}
                   onObservacao={val => setObservacoes(prev => ({ ...prev, [lado]: val }))}
+                  varizes={varizes[lado]}
+                  onVarizes={val => setVarizes(prev => ({ ...prev, [lado]: val }))}
                 />
               </div>
               {/* Laudo ao lado direito para lado único */}
@@ -1415,6 +1481,8 @@ function MMIIVenoso() {
                   setJspDiametro={v => setJspDiametro(prev => ({ ...prev, Direito: v }))}
                   observacao={observacoes.Direito}
                   onObservacao={val => setObservacoes(prev => ({ ...prev, Direito: val }))}
+                  varizes={varizes.Direito}
+                  onVarizes={val => setVarizes(prev => ({ ...prev, Direito: val }))}
                 />
               </div>
               <div style={{
@@ -1445,6 +1513,8 @@ function MMIIVenoso() {
                   setJspDiametro={v => setJspDiametro(prev => ({ ...prev, Esquerdo: v }))}
                   observacao={observacoes.Esquerdo}
                   onObservacao={val => setObservacoes(prev => ({ ...prev, Esquerdo: val }))}
+                  varizes={varizes.Esquerdo}
+                  onVarizes={val => setVarizes(prev => ({ ...prev, Esquerdo: val }))}
                 />
               </div>
             </>
