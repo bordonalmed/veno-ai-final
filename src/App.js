@@ -4,6 +4,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import MMIIVenoso from "./pages/MMIIVenoso";
+import MMSSVenoso from "./pages/MMSSVenoso";
 import EmConstrucao from "./pages/EmConstrucao";
 import Configuracoes from "./pages/Configuracoes";
 import ExamesRealizados from "./pages/ExamesRealizados";
@@ -103,7 +104,7 @@ export default function App() {
         <Route path="/home" element={logado ? <Home onLogout={logout}/> : <Navigate to="/login" />} />
         <Route path="/mmii-venoso" element={logado ? <MMIIVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmii-arterial" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
-        <Route path="/mmss-venoso" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
+        <Route path="/mmss-venoso" element={logado ? <MMSSVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmss-arterial" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
         <Route path="/carotidas-vertebrais" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
         <Route path="/aorta-iliacas" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
