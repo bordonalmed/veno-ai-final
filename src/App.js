@@ -4,6 +4,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import MMIIVenoso from "./pages/MMIIVenoso";
+import MMIIArterial from "./pages/MMIIArterial";
 import MMSSVenoso from "./pages/MMSSVenoso";
 import CarotidasVertebrais from "./pages/CarotidasVertebrais";
 import EmConstrucao from "./pages/EmConstrucao";
@@ -104,7 +105,7 @@ export default function App() {
         <Route path="/login" element={<Login onLogin={login} />} />
         <Route path="/home" element={logado ? <Home onLogout={logout}/> : <Navigate to="/login" />} />
         <Route path="/mmii-venoso" element={logado ? <MMIIVenoso /> : <Navigate to="/login" />} />
-        <Route path="/mmii-arterial" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
+        <Route path="/mmii-arterial" element={logado ? <MMIIArterial /> : <Navigate to="/login" />} />
         <Route path="/mmss-venoso" element={logado ? <MMSSVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmss-arterial" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
         <Route path="/carotidas-vertebrais" element={logado ? <CarotidasVertebrais /> : <Navigate to="/login" />} />

@@ -6,6 +6,19 @@ import { FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
 // Constantes para localStorage
 const STORAGE_KEY = "examesCarotidasVertebrais";
 
+// Funções de validação
+function isIdadeValida(idade) {
+  if (!idade || idade.toString().trim() === "") return false;
+  const idadeNum = parseInt(idade);
+  return !isNaN(idadeNum) && idadeNum >= 0 && idadeNum <= 120;
+}
+
+function isDataValida(data) {
+  if (!data || data.toString().trim() === "") return false;
+  const dataObj = new Date(data);
+  return dataObj instanceof Date && !isNaN(dataObj.getTime());
+}
+
 // Funções para gerenciar exames salvos
 function salvarExame(dadosExame) {
   try {
