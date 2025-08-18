@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import MMIIVenoso from "./pages/MMIIVenoso";
 import MMIIArterial from "./pages/MMIIArterial";
 import MMSSVenoso from "./pages/MMSSVenoso";
+import MMSSArterial from "./pages/MMSSArterial";
 import CarotidasVertebrais from "./pages/CarotidasVertebrais";
 import EmConstrucao from "./pages/EmConstrucao";
 import Configuracoes from "./pages/Configuracoes";
@@ -107,7 +108,7 @@ export default function App() {
         <Route path="/mmii-venoso" element={logado ? <MMIIVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmii-arterial" element={logado ? <MMIIArterial /> : <Navigate to="/login" />} />
         <Route path="/mmss-venoso" element={logado ? <MMSSVenoso /> : <Navigate to="/login" />} />
-        <Route path="/mmss-arterial" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
+        <Route path="/mmss-arterial" element={logado ? <MMSSArterial /> : <Navigate to="/login" />} />
         <Route path="/carotidas-vertebrais" element={logado ? <CarotidasVertebrais /> : <Navigate to="/login" />} />
         <Route path="/aorta-iliacas" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
         <Route path="/arterias-renais" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />

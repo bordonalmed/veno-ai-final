@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
+import ExamHeader from "../components/ExamHeader";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIVenoso";
@@ -998,7 +998,7 @@ function MMIIVenoso() {
     window.location.href = '/';
   }
 
-  return (
+    return (
     <div style={{
       minHeight: "100vh",
       background: "linear-gradient(120deg,#101824 0%,#1c2740 100%)",
@@ -1011,228 +1011,22 @@ function MMIIVenoso() {
       boxSizing: "border-box",
       position: "relative"
     }}>
-      {/* Botão Casa - Canto superior esquerdo */}
-      <button
-        onClick={handleVoltarMenu}
-        style={{
-          position: "absolute",
-          left: "clamp(8px, 2vw, 12px)",
-          top: "clamp(8px, 2vw, 12px)",
-          background: "rgba(18, 30, 56, 0.7)",
-          border: "1px solid rgba(14, 184, 208, 0.3)",
-          borderRadius: "clamp(4px, 1vw, 6px)",
-          padding: "clamp(4px, 1vw, 6px)",
-          color: "#0eb8d0",
-          fontSize: "clamp(14px, 2.5vw, 18px)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 10,
-          opacity: 0.8,
-          transition: "all 0.2s ease"
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.opacity = "1";
-          e.target.style.background = "rgba(18, 30, 56, 0.9)";
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.opacity = "0.8";
-          e.target.style.background = "rgba(18, 30, 56, 0.7)";
-        }}
-        title="Menu de Exames"
-      >
-        <FiHome />
-      </button>
-
-      {/* Botões - Canto superior direito */}
-      <div style={{ position: "absolute", right: "clamp(8px, 2vw, 12px)", top: "clamp(8px, 2vw, 12px)", display: "flex", gap: "clamp(6px, 1.5vw, 8px)", zIndex: 10 }}>
-        <button
-          onClick={handleVisualizarExamesSalvos}
-          style={{
-            background: "rgba(18, 30, 56, 0.7)",
-            border: "1px solid rgba(111, 66, 193, 0.3)",
-            borderRadius: "clamp(4px, 1vw, 6px)",
-            padding: "clamp(4px, 1vw, 6px)",
-            color: "#6f42c1",
-            fontSize: "clamp(14px, 2.5vw, 18px)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: 0.8,
-            transition: "all 0.2s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.opacity = "1";
-            e.target.style.background = "rgba(18, 30, 56, 0.9)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = "0.8";
-            e.target.style.background = "rgba(18, 30, 56, 0.7)";
-          }}
-          title="Visualizar Exames Salvos"
-        >
-          <FiList />
-        </button>
-        <button
-          onClick={handleConfiguracao}
-          style={{
-            background: "rgba(18, 30, 56, 0.7)",
-            border: "1px solid rgba(14, 184, 208, 0.3)",
-            borderRadius: "clamp(4px, 1vw, 6px)",
-            padding: "clamp(4px, 1vw, 6px)",
-            color: "#0eb8d0",
-            fontSize: "clamp(14px, 2.5vw, 18px)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: 0.8,
-            transition: "all 0.2s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.opacity = "1";
-            e.target.style.background = "rgba(18, 30, 56, 0.9)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = "0.8";
-            e.target.style.background = "rgba(18, 30, 56, 0.7)";
-          }}
-          title="Configurações"
-        >
-          <FiSettings />
-        </button>
-        <button
-          onClick={handleLogout}
-          style={{
-            background: "rgba(18, 30, 56, 0.7)",
-            border: "1px solid rgba(255, 124, 124, 0.3)",
-            borderRadius: "clamp(4px, 1vw, 6px)",
-            padding: "clamp(4px, 1vw, 6px)",
-            color: "#ff7c7c",
-            fontSize: "clamp(14px, 2.5vw, 18px)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: 0.8,
-            transition: "all 0.2s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.opacity = "1";
-            e.target.style.background = "rgba(18, 30, 56, 0.9)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = "0.8";
-            e.target.style.background = "rgba(18, 30, 56, 0.7)";
-          }}
-          title="Sair"
-        >
-          <FiLogOut />
-        </button>
-      </div>
-
-      <img
-        src={process.env.PUBLIC_URL + "/venoai-logo.png"}
-        alt="VENO.AI"
-        style={{
-          width: "clamp(100px, 15vw, 140px)",
-          marginTop: "clamp(8px, 2vw, 16px)",
-          marginBottom: "clamp(6px, 1.5vw, 10px)",
-          filter: "drop-shadow(0 10px 32px #00e0ff90)",
-          animation: "logoGlow 3s ease-in-out infinite alternate"
-        }}
+      <ExamHeader
+        examTitle="MMII Venoso"
+        nome={nome}
+        idade={idade}
+        data={data}
+        lado={lado}
+        onInputChange={handleChange}
+        onVisualizar={handleVisualizar}
+        onSalvar={handleSalvarExame}
+        onVoltarMenu={handleVoltarMenu}
+        onConfiguracao={handleConfiguracao}
+        onVisualizarExamesSalvos={handleVisualizarExamesSalvos}
+        onLogout={handleLogout}
+        erro={erro}
       />
-
-      <div style={{
-        width: "100%",
-        maxWidth: "min(1100px, 95vw)",
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "clamp(8px, 1.5vw, 12px)",
-        margin: "0 auto clamp(12px, 2vw, 16px) auto",
-        background: "#18243a",
-        borderRadius: "clamp(8px, 1.5vw, 12px)",
-        boxShadow: "0 2px 18px #00e0ff18, 0 1.5px 8px #00e0ff10",
-        padding: "clamp(8px, 1.5vw, 10px) clamp(12px, 2vw, 16px) clamp(4px, 1vw, 6px) clamp(12px, 2vw, 16px)",
-        flexWrap: "wrap"
-      }}>
-        <input
-          type="text"
-          name="nome"
-          placeholder="Nome do Paciente"
-          value={nome}
-          onChange={handleChange}
-          required
-          style={{ 
-            ...inputStyle, 
-            width: "clamp(250px, 35vw, 500px)", 
-            fontSize: "clamp(12px, 2.5vw, 14px)", 
-            height: "clamp(28px, 4vw, 32px)", 
-            padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-            boxShadow: "0 1.5px 6px #00e0ff08" 
-          }}
-          autoComplete="off"
-        />
-        <input
-          type="number"
-          name="idade"
-          placeholder="Idade"
-          value={idade}
-          onChange={handleChange}
-          min={0}
-          max={120}
-          required
-          style={{ 
-            ...inputStyle, 
-            width: "clamp(80px, 12vw, 120px)", 
-            fontSize: "clamp(12px, 2.5vw, 14px)", 
-            height: "clamp(28px, 4vw, 32px)", 
-            padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-            boxShadow: "0 1.5px 6px #00e0ff08" 
-          }}
-        />
-        <input
-          type="date"
-          name="data"
-          placeholder="Data do Exame"
-          value={data}
-          onChange={handleChange}
-          required
-          style={{ 
-            ...inputStyle, 
-            width: "clamp(120px, 15vw, 150px)", 
-            fontSize: "clamp(12px, 2.5vw, 14px)", 
-            height: "clamp(28px, 4vw, 32px)", 
-            padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-            boxShadow: "0 1.5px 6px #00e0ff08" 
-          }}
-        />
-        <select
-          name="lado"
-          value={lado}
-          onChange={handleChange}
-          style={{ 
-            ...inputStyle, 
-            width: "clamp(140px, 18vw, 200px)", 
-            fontSize: "clamp(12px, 2.5vw, 14px)", 
-            height: "clamp(28px, 4vw, 32px)", 
-            color: lado ? "#222" : "#888", 
-            padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-            boxShadow: "0 1.5px 6px #00e0ff08" 
-          }}
-          required
-        >
-          <option value="">Selecione o Lado</option>
-          <option value="Direito">Direito</option>
-          <option value="Esquerdo">Esquerdo</option>
-          <option value="Ambos">Ambos</option>
-        </select>
-      </div>
-      <div style={{ color: "#ff6565", marginTop: 12, fontWeight: 600 }}>{erro && erro}</div>
+      
       <div style={{ 
         width: '100%', 
         maxWidth: 'min(1200px, 98vw)', 
@@ -1520,37 +1314,7 @@ function MMIIVenoso() {
             </>
           )}
         </div>
-        {/* Botões Visualizar Laudo e Salvar Exame - sempre abaixo */}
-        <div style={{
-          display: 'flex',
-          gap: 'clamp(8px, 2vw, 12px)',
-          marginTop: 'clamp(8px, 2vw, 12px)',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
-        }}>
-          <button
-            style={{ 
-              ...buttonStyle, 
-              background: '#0eb8d0', 
-              color: '#fff', 
-              minWidth: 'clamp(140px, 25vw, 160px)', 
-              fontSize: 'clamp(12px, 2.5vw, 14px)', 
-              padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)" 
-            }}
-            onClick={handleVisualizar}
-          >Visualizar Laudo</button>
-          <button
-            style={{ 
-              ...buttonStyle, 
-              background: '#28a745', 
-              color: '#fff', 
-              minWidth: 'clamp(140px, 25vw, 160px)', 
-              fontSize: 'clamp(12px, 2.5vw, 14px)', 
-              padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)" 
-            }}
-            onClick={handleSalvarExame}
-          >Salvar Exame</button>
-        </div>
+
       </div>
       {/* Exibição do laudo ao lado (lado único) ou embaixo (ambos) */}
       {laudoTexto && lado === "Ambos" && (

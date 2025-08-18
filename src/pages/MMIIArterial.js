@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
+import ExamHeader from "../components/ExamHeader";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIArterial";
@@ -808,6 +808,10 @@ function MMIIArterial() {
     window.location.href = '/configuracoes';
   }
 
+  function handleLogout() {
+    window.location.href = '/';
+  }
+
   // Função para gerar o texto do laudo
   function gerarTextoLaudo() {
     if (!deveMostrarCampos) return "";
@@ -1199,6 +1203,12 @@ function MMIIArterial() {
   const deveMostrarCampos = nomeValido && idadeValida && dataValida && ladoValido;
 
   // Função para salvar o exame atual
+  // Função para visualizar o laudo
+  function handleVisualizar() {
+    if (!deveMostrarCampos) return;
+    setMostrarLaudo(!mostrarLaudo);
+  }
+
   function handleSalvarExame() {
     if (!deveMostrarCampos) return;
 
@@ -1232,8 +1242,8 @@ function MMIIArterial() {
       // setIdade("");
       // setData("");
       // setLado("");
-      // setArteriasDireito(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
-      // setArteriasEsquerdo(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
+      // setArteriasDireito(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArterial }])));
+      // setArteriasEsquerdo(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArterial }])));
     } else {
       alert('Erro ao salvar o exame. Tente novamente.');
     }
@@ -1385,226 +1395,23 @@ function MMIIArterial() {
       boxSizing: "border-box",
       position: "relative"
     }}>
-      {/* Botão Casa - Canto superior esquerdo */}
-      <button
-        onClick={handleVoltarMenu}
-        style={{
-          position: "absolute",
-          left: "clamp(8px, 2vw, 12px)",
-          top: "clamp(8px, 2vw, 12px)",
-          background: "rgba(18, 30, 56, 0.7)",
-          border: "1px solid rgba(14, 184, 208, 0.3)",
-          borderRadius: "clamp(4px, 1vw, 6px)",
-          padding: "clamp(4px, 1vw, 6px)",
-          color: "#0eb8d0",
-          fontSize: "clamp(14px, 2.5vw, 18px)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 10,
-          opacity: 0.8,
-          transition: "all 0.2s ease"
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.opacity = "1";
-          e.target.style.background = "rgba(18, 30, 56, 0.9)";
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.opacity = "0.8";
-          e.target.style.background = "rgba(18, 30, 56, 0.7)";
-        }}
-        title="Menu de Exames"
-      >
-        <FiHome />
-      </button>
-
-      {/* Botões - Canto superior direito */}
-      <div style={{ position: "absolute", right: "clamp(8px, 2vw, 12px)", top: "clamp(8px, 2vw, 12px)", display: "flex", gap: "clamp(6px, 1.5vw, 8px)", zIndex: 10 }}>
-        <button
-          onClick={handleVisualizarExamesSalvos}
-          style={{
-            background: "rgba(18, 30, 56, 0.7)",
-            border: "1px solid rgba(111, 66, 193, 0.3)",
-            borderRadius: "clamp(4px, 1vw, 6px)",
-            padding: "clamp(4px, 1vw, 6px)",
-            color: "#6f42c1",
-            fontSize: "clamp(14px, 2.5vw, 18px)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: 0.8,
-            transition: "all 0.2s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.opacity = "1";
-            e.target.style.background = "rgba(18, 30, 56, 0.9)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = "0.8";
-            e.target.style.background = "rgba(18, 30, 56, 0.7)";
-          }}
-          title="Visualizar Exames Salvos"
-        >
-          <FiList />
-        </button>
-        <button
-          onClick={handleConfiguracao}
-          style={{
-            background: "rgba(18, 30, 56, 0.7)",
-            border: "1px solid rgba(14, 184, 208, 0.3)",
-            borderRadius: "clamp(4px, 1vw, 6px)",
-            padding: "clamp(4px, 1vw, 6px)",
-            color: "#0eb8d0",
-            fontSize: "clamp(14px, 2.5vw, 18px)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: 0.8,
-            transition: "all 0.2s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.opacity = "1";
-            e.target.style.background = "rgba(18, 30, 56, 0.9)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = "0.8";
-            e.target.style.background = "rgba(18, 30, 56, 0.7)";
-          }}
-          title="Configurações"
-        >
-          <FiSettings />
-        </button>
-      </div>
-
-      <img
-        src={process.env.PUBLIC_URL + "/venoai-logo.png"}
-        alt="VENO.AI"
-        style={{
-          width: "clamp(100px, 15vw, 140px)",
-          marginTop: "clamp(8px, 2vw, 16px)",
-          marginBottom: "clamp(6px, 1.5vw, 10px)",
-          filter: "drop-shadow(0 10px 32px #00e0ff90)",
-          animation: "logoGlow 3s ease-in-out infinite alternate"
-        }}
+      <ExamHeader
+        examTitle="MMII Arterial"
+        nome={nome}
+        idade={idade}
+        data={data}
+        lado={lado}
+        onInputChange={handleChange}
+        onVisualizar={handleVisualizar}
+        onSalvar={handleSalvarExame}
+        onVoltarMenu={handleVoltarMenu}
+        onConfiguracao={handleConfiguracao}
+        onVisualizarExamesSalvos={handleVisualizarExamesSalvos}
+        onLogout={handleLogout}
+        erro={erro}
       />
 
-      {/* Campos de identificação */}
-      <div style={{
-        width: "100%",
-        maxWidth: "min(1100px, 95vw)",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "clamp(8px, 1.5vw, 12px)",
-        margin: "0 auto clamp(12px, 2vw, 16px) auto",
-        background: "#18243a",
-        borderRadius: "clamp(8px, 1.5vw, 12px)",
-        boxShadow: "0 2px 18px #00e0ff18, 0 1.5px 8px #00e0ff10",
-        padding: "clamp(12px, 2vw, 16px)"
-      }}>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <input
-            type="text"
-            name="nome"
-            placeholder="Nome do Paciente"
-            value={nome}
-            onChange={handleChange}
-            required
-            style={{ 
-              ...inputStyle, 
-              width: "100%", 
-              fontSize: "clamp(12px, 2.5vw, 14px)", 
-              height: "clamp(28px, 4vw, 32px)", 
-              padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-              boxShadow: "0 1.5px 6px #00e0ff08",
-              borderColor: nomeValido ? "#0eb8d0" : "#ff6565"
-            }}
-            autoComplete="off"
-          />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <input
-            type="number"
-            name="idade"
-            placeholder="Idade"
-            value={idade}
-            onChange={handleChange}
-            min={0}
-            max={120}
-            required
-            style={{ 
-              ...inputStyle, 
-              width: "100%", 
-              fontSize: "clamp(12px, 2.5vw, 14px)", 
-              height: "clamp(28px, 4vw, 32px)", 
-              padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-              boxShadow: "0 1.5px 6px #00e0ff08",
-              borderColor: idadeValida ? "#0eb8d0" : "#ff6565"
-            }}
-          />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <input
-            type="date"
-            name="data"
-            placeholder="Data do Exame"
-            value={data}
-            onChange={handleChange}
-            required
-            style={{ 
-              ...inputStyle, 
-              width: "100%", 
-              fontSize: "clamp(12px, 2.5vw, 14px)", 
-              height: "clamp(28px, 4vw, 32px)", 
-              padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-              boxShadow: "0 1.5px 6px #00e0ff08",
-              borderColor: dataValida ? "#0eb8d0" : "#ff6565"
-            }}
-          />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <select
-            name="lado"
-            value={lado}
-            onChange={handleChange}
-            style={{ 
-              ...inputStyle, 
-              width: "100%", 
-              fontSize: "clamp(12px, 2.5vw, 14px)", 
-              height: "clamp(28px, 4vw, 32px)", 
-              color: lado ? "#222" : "#888", 
-              padding: "clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)", 
-              boxShadow: "0 1.5px 6px #00e0ff08",
-              borderColor: ladoValido ? "#0eb8d0" : "#ff6565"
-            }}
-            required
-          >
-            <option value="">Selecione o Lado</option>
-            <option value="Direito">Direito</option>
-            <option value="Esquerdo">Esquerdo</option>
-            <option value="Ambos">Ambos</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Aviso de campos obrigatórios */}
-      {!deveMostrarCampos && (
-        <div style={{
-          color: "#ffa500",
-          marginTop: "clamp(8px, 2vw, 12px)",
-          fontSize: "clamp(12px, 2.2vw, 14px)",
-          textAlign: "center",
-          padding: "clamp(8px, 2vw, 12px)",
-          background: "rgba(255, 165, 0, 0.1)",
-          borderRadius: "clamp(6px, 1.5vw, 8px)",
-          border: "1px solid rgba(255, 165, 0, 0.3)",
-          maxWidth: "min(600px, 90vw)"
-        }}>
-          ⚠️ Preencha Nome, Idade, Data e selecione o Lado para liberar o exame.
-        </div>
-      )}
+      {/* Aviso de campos obrigatórios removido - validação apenas pelos botões desabilitados */}
 
       {/* Campos das artérias - só aparecem após preencher dados básicos */}
       {deveMostrarCampos && (
@@ -1673,91 +1480,7 @@ function MMIIArterial() {
             )}
           </div>
 
-          {/* Botões de ação - só aparecem quando os campos estão liberados */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "clamp(12px, 2vw, 16px)",
-            marginTop: "clamp(16px, 3vw, 24px)",
-            width: "100%",
-            maxWidth: "min(800px, 90vw)"
-          }}>
-            {/* Botão Visualizar Laudo */}
-            <button
-              onClick={() => setMostrarLaudo(!mostrarLaudo)}
-              style={{
-                background: "linear-gradient(135deg, #0eb8d0 0%, #00e0ff 100%)",
-                border: "none",
-                borderRadius: "clamp(8px, 1.5vw, 12px)",
-                padding: "clamp(12px, 2.5vw, 16px) clamp(24px, 4vw, 32px)",
-                color: "#fff",
-                fontSize: "clamp(14px, 2.5vw, 16px)",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow: "0 4px 20px rgba(14, 184, 208, 0.4)",
-                transition: "all 0.3s ease",
-                width: "100%"
-              }}
-              title="Visualizar Laudo do Exame"
-            >
-              {mostrarLaudo ? "Ocultar Laudo" : "Visualizar Laudo"}
-            </button>
 
-            {/* Botão Salvar Exame */}
-            <button
-              id="btnSalvarExame"
-              onClick={handleSalvarExame}
-              disabled={!deveMostrarCampos}
-              style={{
-                background: deveMostrarCampos 
-                  ? "linear-gradient(135deg, #28a745 0%, #20c997 100%)" 
-                  : "linear-gradient(135deg, #6c757d 0%, #495057 100%)",
-                border: "none",
-                borderRadius: "clamp(8px, 1.5vw, 12px)",
-                padding: "clamp(12px, 2.5vw, 16px) clamp(24px, 4vw, 32px)",
-                color: "#fff",
-                fontSize: "clamp(14px, 2.5vw, 16px)",
-                fontWeight: 600,
-                cursor: deveMostrarCampos ? "pointer" : "not-allowed",
-                boxShadow: deveMostrarCampos 
-                  ? "0 4px 20px rgba(40, 167, 69, 0.4)" 
-                  : "0 2px 8px rgba(108, 117, 125, 0.3)",
-                transition: "all 0.3s ease",
-                width: "100%",
-                opacity: deveMostrarCampos ? 1 : 0.7
-              }}
-              title={deveMostrarCampos ? "Salvar Exame" : "Complete Nome, Idade, Data e Lado"}
-            >
-              Salvar Exame
-            </button>
-
-            {/* Botão Gerar PDF */}
-            <button
-              onClick={gerarPDF}
-              disabled={!deveMostrarCampos}
-              style={{
-                background: deveMostrarCampos 
-                  ? "linear-gradient(135deg, #dc3545 0%, #c82333 100%)" 
-                  : "linear-gradient(135deg, #6c757d 0%, #495057 100%)",
-                border: "none",
-                borderRadius: "clamp(8px, 1.5vw, 12px)",
-                padding: "clamp(12px, 2.5vw, 16px) clamp(24px, 4vw, 32px)",
-                color: "#fff",
-                fontSize: "clamp(14px, 2.5vw, 16px)",
-                fontWeight: 600,
-                cursor: deveMostrarCampos ? "pointer" : "not-allowed",
-                boxShadow: deveMostrarCampos 
-                  ? "0 4px 20px rgba(220, 53, 69, 0.4)" 
-                  : "0 2px 8px rgba(108, 117, 125, 0.3)",
-                transition: "all 0.3s ease",
-                width: "100%",
-                opacity: deveMostrarCampos ? 1 : 0.7
-              }}
-              title={deveMostrarCampos ? "Gerar PDF do Laudo" : "Complete Nome, Idade, Data e Lado"}
-            >
-              Gerar PDF
-            </button>
-          </div>
 
           {/* Preview do Laudo */}
           {mostrarLaudo && (
