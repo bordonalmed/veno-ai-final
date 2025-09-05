@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import ExamHeader from "../components/ExamHeader";
+import { appendImagesToPdf } from "../utils/pdfImages";
+import "../styles/pdf.css";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMSSArterial";
@@ -188,7 +190,7 @@ function CamposArteria({ arteria, valores, onChange, lado }) {
     }
     
     // Se % Estenose foi limpa, limpar característica da placa
-    if (field === "estenosePercentual" && (!value || value.trim() === "")) {
+    if (field === "estenosePercentual" && (!value || !value.trim || value.trim() === "")) {
       newValores.caracteristicaPlaca = "";
     }
     
@@ -477,6 +479,7 @@ function MMSSArterial() {
   const [isMobile, setIsMobile] = useState(false);
   const [erro, setErro] = useState("");
   const [mostrarLaudo, setMostrarLaudo] = useState(false);
+  const [anexos, setAnexos] = useState([]);
   
   // Estado para as artérias de cada lado
   const [arteriasDireito, setArteriasDireito] = useState(
@@ -546,6 +549,112 @@ function MMSSArterial() {
 
   function handleLogout() {
     window.location.href = '/';
+  }
+
+  // Funções para gerenciar anexos de imagens
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function validateFile(file) {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    const maxSize = 15 * 1024 * 1024; // 15MB
+
+    if (!validTypes.includes(file.type)) {
+      setErro('Apenas arquivos PNG e JPG são permitidos.');
+      return false;
+    }
+
+    if (file.size > maxSize) {
+      setErro('O arquivo deve ter no máximo 15MB.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function handleFileUpload(event) {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+      if (validateFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Criar thumbnail (100x100)
+            const thumbnailSize = 100;
+            canvas.width = thumbnailSize;
+            canvas.height = thumbnailSize;
+            ctx.drawImage(img, 0, 0, thumbnailSize, thumbnailSize);
+            
+            const newAnexo = {
+              id: Date.now() + Math.random(),
+              file: file,
+              name: file.name,
+              size: file.size,
+              thumbnail: e.target.result
+            };
+            
+            setAnexos(prev => [...prev, newAnexo]);
+            setErro('');
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    event.target.value = '';
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files);
+    files.forEach(file => {
+      if (validateFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Criar thumbnail (100x100)
+            const thumbnailSize = 100;
+            canvas.width = thumbnailSize;
+            canvas.height = thumbnailSize;
+            ctx.drawImage(img, 0, 0, thumbnailSize, thumbnailSize);
+            
+            const newAnexo = {
+              id: Date.now() + Math.random(),
+              file: file,
+              name: file.name,
+              size: file.size,
+              thumbnail: e.target.result
+            };
+            
+            setAnexos(prev => [...prev, newAnexo]);
+            setErro('');
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  function handleDragOver(event) {
+    event.preventDefault();
+  }
+
+  function removeAnexo(id) {
+    setAnexos(prev => prev.filter(anexo => anexo.id !== id));
   }
 
   // Função para gerar o texto do laudo
@@ -620,12 +729,12 @@ function MMSSArterial() {
 
     // Membro Superior Direito
     if (lado === "Direito" || lado === "Ambos") {
-      laudo += "MEMBRO SUPERIOR DIREITO\n";
+      laudo += "DOPPLER ARTERIAL DE MEMBRO SUPERIOR DIREITO\n";
       arterias.forEach(arteria => {
         laudo += gerarTextoArteria(arteria, arteriasDireito[arteria], "Direito") + "\n";
         
         // Observação (se houver)
-        if (arteriasDireito[arteria].observacao && arteriasDireito[arteria].observacao.trim()) {
+        if (arteriasDireito[arteria].observacao && arteriasDireito[arteria].observacao.trim && arteriasDireito[arteria].observacao.trim()) {
           laudo += `  ${arteriasDireito[arteria].observacao}\n`;
         }
       });
@@ -636,14 +745,19 @@ function MMSSArterial() {
       laudo += conclusaoDireito + "\n\n";
     }
 
+    // Separador entre membros (apenas quando ambos são selecionados)
+    if (lado === "Ambos") {
+      laudo += "=".repeat(80) + "\n";
+    }
+
     // Membro Superior Esquerdo
     if (lado === "Esquerdo" || lado === "Ambos") {
-      laudo += "MEMBRO SUPERIOR ESQUERDO\n";
+      laudo += "DOPPLER ARTERIAL DE MEMBRO SUPERIOR ESQUERDO\n";
       arterias.forEach(arteria => {
         laudo += gerarTextoArteria(arteria, arteriasEsquerdo[arteria], "Esquerdo") + "\n";
         
         // Observação (se houver)
-        if (arteriasEsquerdo[arteria].observacao && arteriasEsquerdo[arteria].observacao.trim()) {
+        if (arteriasEsquerdo[arteria].observacao && arteriasEsquerdo[arteria].observacao.trim && arteriasEsquerdo[arteria].observacao.trim()) {
           laudo += `  ${arteriasEsquerdo[arteria].observacao}\n`;
         }
       });
@@ -680,9 +794,9 @@ function MMSSArterial() {
   }
 
   // Validação dos campos obrigatórios
-  const nomeValido = nome.trim().length > 0;
+  const nomeValido = nome && nome.trim && nome.trim().length > 0;
   const idadeValida = idade && !isNaN(idade) && parseInt(idade) > 0 && parseInt(idade) <= 120;
-  const dataValida = data && data.trim().length > 0;
+  const dataValida = data && data.trim && data.trim().length > 0;
   const ladoValido = lado && ["Direito", "Esquerdo", "Ambos"].includes(lado);
   
   // Verificar se deve mostrar os campos das artérias
@@ -902,67 +1016,298 @@ function MMSSArterial() {
           {/* Preview do Laudo */}
           {mostrarLaudo && (
             <div style={{
-              width: '100%',
-              maxWidth: 'min(1000px, 95vw)',
-              margin: 'clamp(16px, 3vw, 24px) auto 0 auto',
-              background: '#ffffff',
+              background: "#fff",
+              color: "#222",
               borderRadius: 'clamp(8px, 1.5vw, 12px)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-              padding: 'clamp(16px, 3vw, 24px)',
-              color: '#333',
-              fontFamily: 'monospace',
-              fontSize: 'clamp(12px, 2.2vw, 14px)',
-              lineHeight: '1.6',
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word'
+              padding: 'clamp(12px, 2.5vw, 20px)',
+              boxShadow: "0 8px 32px #00e0ff33",
+              fontFamily: "monospace",
+              fontSize: 'clamp(11px, 2.2vw, 13px)',
+              lineHeight: 1.5,
+              whiteSpace: "pre-wrap",
+              width: '100%',
+              maxWidth: 'min(1200px, 98vw)',
+              maxHeight: "75vh",
+              overflowY: "auto",
+              marginTop: 'clamp(12px, 2vw, 16px)'
+            }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
+                <button style={{ 
+                  ...buttonStyle, 
+                  background: "#0eb8d0", 
+                  color: "#fff", 
+                  fontSize: 'clamp(10px, 2vw, 12px)', 
+                  padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
+                }} onClick={() => {
+                  const blob = new Blob([gerarTextoLaudo()], { type: "text/plain;charset=utf-8" });
+                  saveAs(blob, `Laudo_${nome}_${data}.txt`);
+                }}>Salvar TXT</button>
+                <button style={{ 
+                  ...buttonStyle, 
+                  background: "#0eb8d0", 
+                  color: "#fff", 
+                  fontSize: 'clamp(10px, 2vw, 12px)', 
+                  padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
+                }} onClick={() => {
+                  // Buscar dados do localStorage
+                  const nomeMedico = localStorage.getItem("nomeMedico") || "";
+                  const crm = localStorage.getItem("crm") || "";
+                  const especialidade = localStorage.getItem("especialidadeLaudo") || "";
+                  const nomeClinica = localStorage.getItem("nomeClinica") || "";
+                  const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
+                  const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
+                  const emailClinica = localStorage.getItem("emailClinica") || "";
+                  const logoClinica = localStorage.getItem("logoClinica") || null;
+                  const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
+
+                  const doc = new jsPDF();
+                  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
+                  const blocos = gerarTextoLaudo().split("=".repeat(80));
+
+                  function addCabecalho(y) {
+                    let yLogo = 14; // topo do logo
+                    let yAtual = yLogo;
+                    if (logoClinica) {
+                      try {
+                        doc.addImage(logoClinica, 'PNG', 95, yLogo, 20, 20); // quadrado 20x20
+                      } catch (e) {}
+                    }
+                    doc.setFontSize(9);
+                    let cabecalho = [];
+                    if (nomeClinica) cabecalho.push(nomeClinica);
+                    if (enderecoClinica) cabecalho.push(enderecoClinica);
+                    if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
+                    if (emailClinica) cabecalho.push(emailClinica);
+                    // Alinhar o cabeçalho à direita, na mesma altura do logo
+                    cabecalho.forEach((txt, idx) => {
+                      doc.setFont(undefined, "bold");
+                      doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+                    });
+                    doc.setFont(undefined, "normal");
+                    doc.setFontSize(11);
+                    return yLogo + 22;
+                  }
+
+                  function addRodape() {
+                    const yRodape = 280; // margem inferior de 1cm
+                    doc.setFontSize(8);
+                    if (assinaturaMedico) {
+                      try {
+                        doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
+                      } catch (e) {}
+                    }
+                    doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
+                    let yInfo = yRodape + 5;
+                    if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
+                    if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
+                    if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
+                    doc.setFontSize(11);
+                  }
+
+                  let pagina = 0;
+                  lados.forEach((ladoAtual, idx) => {
+                    if (pagina > 0) doc.addPage();
+                    let y = addCabecalho(12);
+                    const bloco = blocos[idx] ? blocos[idx].trim().split("\n") : [];
+                    let inConclusao = false;
+                    for (let i = 0; i < bloco.length; i++) {
+                      let line = bloco[i];
+                      // Negrito para nome do paciente e nome do exame
+                      if (line.startsWith("PACIENTE:")) {
+                        doc.setFont(undefined, "bold");
+                        doc.text(line, 15, y);
+                        doc.setFont(undefined, "normal");
+                      } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO SUPERIOR")) {
+                        doc.setFont(undefined, "bold");
+                        doc.text(line, 15, y);
+                        doc.setFont(undefined, "normal");
+                      } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Arterial")) {
+                        doc.setFont(undefined, "bold");
+                        doc.text(line, 15, y);
+                        if (line.startsWith("CONCLUSÃO")) inConclusao = true;
+                        doc.setFont(undefined, "normal");
+                      } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
+                        doc.setFont(undefined, "bold");
+                        doc.text(line, 15, y);
+                        doc.setFont(undefined, "normal");
+                      } else {
+                        doc.setFont(undefined, "normal");
+                        doc.text(line, 15, y);
+                        if (inConclusao && line && line.trim() === "") inConclusao = false;
+                      }
+                      y += 8;
+                      if (y > 265) {
+                        addRodape();
+                        doc.addPage();
+                        y = addCabecalho(12);
+                      }
+                    }
+                    addRodape();
+                    pagina++;
+                  });
+                  
+                  // Adicionar anexos como páginas no final do PDF
+                  appendImagesToPdf(doc, anexos);
+                  
+                  doc.save(`Laudo_${nome}_${data}.pdf`);
+                  
+                  // RESET APÓS SALVAR PDF
+                  setNome("");
+                  setIdade("");
+                  setData("");
+                  setLado("");
+                  setArteriasDireito(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
+                  setArteriasEsquerdo(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
+                  setMostrarLaudo(false);
+                  setErro("");
+                  setAnexos([]);
+                }}>Salvar PDF</button>
+              </div>
+              {gerarTextoLaudo()}
+            </div>
+          )}
+
+          {/* Caixa de Anexos Compacta - aparece apenas quando o preview está visível */}
+          {mostrarLaudo && (
+            <div style={{
+              width: '100%',
+              maxWidth: 'min(1200px, 98vw)',
+              margin: 'clamp(8px, 1.5vw, 12px) auto 0 auto',
+              background: '#18243a',
+              borderRadius: 'clamp(6px, 1.2vw, 8px)',
+              padding: 'clamp(8px, 1.5vw, 12px)',
+              boxShadow: '0 2px 8px #00e0ff15',
+              border: '1px solid #0eb8d0'
             }}>
               <div style={{
                 display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: 'clamp(12px, 2.5vw, 16px)',
-                paddingBottom: 'clamp(8px, 2vw, 12px)',
-                borderBottom: '2px solid #0eb8d0'
+                justifyContent: 'space-between',
+                marginBottom: 'clamp(6px, 1.2vw, 8px)'
               }}>
                 <h3 style={{
                   margin: 0,
                   color: '#0eb8d0',
-                  fontSize: 'clamp(16px, 3vw, 18px)',
-                  fontWeight: 700
+                  fontSize: 'clamp(12px, 2vw, 14px)',
+                  fontWeight: 600
                 }}>
-                  Preview do Laudo
+                  📎 Anexos
                 </h3>
-                <button
-                  id="btnCopiarLaudo"
-                  onClick={copiarLaudo}
-                  style={{
-                    background: "linear-gradient(135deg, #6c757d 0%, #495057 100%)",
-                    border: "none",
-                    borderRadius: "clamp(6px, 1.5vw, 8px)",
-                    padding: "clamp(8px, 2vw, 12px) clamp(16px, 3vw, 20px)",
-                    color: "#fff",
-                    fontSize: "clamp(12px, 2.2vw, 14px)",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.3s ease"
-                  }}
-                  title="Copiar Laudo para Área de Transferência"
-                >
-                  Copiar
-                </button>
+                <span style={{
+                  color: '#888',
+                  fontSize: 'clamp(10px, 1.6vw, 12px)'
+                }}>
+                  {anexos.length} arquivo(s)
+                </span>
               </div>
               
-              <div style={{
-                maxHeight: 'clamp(300px, 50vh, 500px)',
-                overflowY: 'auto',
-                padding: 'clamp(8px, 2vw, 12px)',
-                background: '#f8f9fa',
-                borderRadius: 'clamp(4px, 1vw, 6px)',
-                border: '1px solid #e9ecef',
-                whiteSpace: 'pre-line'
-              }}>
-                {gerarTextoLaudo()}
+              {/* Área de Upload Compacta */}
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                style={{
+                  border: '1px dashed #0eb8d0',
+                  borderRadius: 'clamp(4px, 1vw, 6px)',
+                  padding: 'clamp(8px, 1.5vw, 12px)',
+                  textAlign: 'center',
+                  background: 'rgba(14, 184, 208, 0.03)',
+                  marginBottom: 'clamp(6px, 1.2vw, 8px)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onClick={() => document.getElementById('fileInput').click()}
+              >
+                <input
+                  id="fileInput"
+                  type="file"
+                  accept=".png,.jpg,.jpeg"
+                  multiple
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <div style={{ color: '#0eb8d0', fontSize: 'clamp(11px, 1.8vw, 13px)' }}>
+                  Clique ou arraste para anexar (PNG/JPG até 15MB)
+                </div>
               </div>
+              
+              {/* Lista de Anexos Compacta */}
+              {anexos.length > 0 && (
+                <div style={{
+                  maxHeight: 'clamp(80px, 15vh, 120px)',
+                  overflowY: 'auto',
+                  border: '1px solid #333',
+                  borderRadius: 'clamp(3px, 0.8vw, 4px)',
+                  background: '#1a1a1a',
+                  padding: 'clamp(4px, 1vw, 6px)'
+                }}>
+                  {anexos.map(anexo => (
+                    <div key={anexo.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'clamp(6px, 1.5vw, 8px)',
+                      padding: 'clamp(4px, 1vw, 6px)',
+                      background: '#222',
+                      borderRadius: 'clamp(3px, 0.8vw, 4px)',
+                      marginBottom: 'clamp(2px, 0.8vw, 3px)',
+                      border: '1px solid #444'
+                    }}>
+                      {/* Thumbnail Menor */}
+                      <img
+                        src={anexo.thumbnail}
+                        alt={anexo.name}
+                        style={{
+                          width: 'clamp(30px, 6vw, 35px)',
+                          height: 'clamp(30px, 6vw, 35px)',
+                          objectFit: 'cover',
+                          borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                          border: '1px solid #666'
+                        }}
+                      />
+                      
+                      {/* Info do arquivo Compacta */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          color: '#fff',
+                          fontSize: 'clamp(10px, 1.6vw, 12px)',
+                          fontWeight: 500,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          marginBottom: 'clamp(1px, 0.3vw, 2px)'
+                        }}>
+                          {anexo.name}
+                        </div>
+                        <div style={{
+                          color: '#888',
+                          fontSize: 'clamp(9px, 1.4vw, 11px)'
+                        }}>
+                          {formatFileSize(anexo.size)}
+                        </div>
+                      </div>
+                      
+                      {/* Botão remover Menor */}
+                      <button
+                        onClick={() => removeAnexo(anexo.id)}
+                        style={{
+                          background: '#ff4444',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                          padding: 'clamp(3px, 0.8vw, 4px) clamp(6px, 1.5vw, 8px)',
+                          fontSize: 'clamp(9px, 1.4vw, 11px)',
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                          transition: 'background 0.2s ease'
+                        }}
+                        onMouseOver={(e) => e.target.style.background = '#cc3333'}
+                        onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

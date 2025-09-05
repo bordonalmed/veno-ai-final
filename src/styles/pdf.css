@@ -1,0 +1,26 @@
+/* Estilos para geração de PDF */
+@media print {
+  .pdf-title { 
+    font-weight: 700 !important; 
+    font-size: 16px !important;
+    margin-bottom: 10px !important;
+  }
+  
+  .pdf-conclusion-title { 
+    font-weight: 700 !important; 
+    font-size: 14px !important;
+    margin-top: 15px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .pdf-conclusion-text { 
+    font-weight: 700 !important; 
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+  
+  .page-break { 
+    page-break-before: always; 
+    break-before: page; 
+  }
+}

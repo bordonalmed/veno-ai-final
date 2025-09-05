@@ -132,8 +132,8 @@ export default function Home({ onLogout }) {
         <MenuButton label="MMSS Venoso" onClick={() => navigate("/mmss-venoso")} />
         <MenuButton label="MMSS Arterial" onClick={() => navigate("/mmss-arterial")} />
         <MenuButton label="Carótidas e Vertebrais" onClick={() => navigate("/carotidas-vertebrais")} />
-        <MenuButton label="Aorta e Ilíacas" onClick={() => navigate("/aorta-iliacas")} />
-        <MenuButton label="Artérias Renais" onClick={() => navigate("/arterias-renais")} />
+        {/* <MenuButton label="Aorta e Ilíacas" onClick={() => navigate("/aorta-iliacas")} /> */}
+        {/* <MenuButton label="Artérias Renais" onClick={() => navigate("/arterias-renais")} /> */}
       </div>
       
 

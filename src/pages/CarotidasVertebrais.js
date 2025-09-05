@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
+import { appendImagesToPdf } from "../utils/pdfImages";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesCarotidasVertebrais";
@@ -108,7 +109,7 @@ function gerarConclusaoCarotidas(data) {
     } else {
       if (vessel.estenose === "presente" && vessel.estenosePercentual && vessel.estenosePercentual.toString().trim() !== "") {
         let estenoseDesc = `Estenose de ${vessel.estenosePercentual}% em ${vesselName}`;
-        if (vessel.tipoPlaca && vessel.tipoPlaca.trim() !== "") {
+        if (vessel.tipoPlaca && vessel.tipoPlaca.trim && vessel.tipoPlaca.trim() !== "") {
           estenoseDesc += ` com placa ${vessel.tipoPlaca}`;
         }
         descriptions.push(estenoseDesc);
@@ -182,7 +183,7 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
     
     if (vessel.estenose === "presente" && vessel.estenosePercentual && vessel.estenosePercentual.toString().trim() !== "") {
       let estenoseDesc = `estenose ${vessel.estenosePercentual}%`;
-      if (vessel.tipoPlaca && vessel.tipoPlaca.trim() !== "") {
+      if (vessel.tipoPlaca && vessel.tipoPlaca.trim && vessel.tipoPlaca.trim() !== "") {
         estenoseDesc += ` com placa ${vessel.tipoPlaca}`;
       }
       descricoes.push(estenoseDesc);
@@ -193,7 +194,7 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
       descricoes.push(`IMT ${vessel.imt} mm`);
     }
 
-    const observacao = vessel.observacao.trim();
+    const observacao = vessel.observacao ? vessel.observacao.trim() : "";
     if (observacao) {
       return `${vesselName}: ${descricoes.join(", ")}.\nObservação: ${observacao}`;
     }
@@ -492,6 +493,8 @@ function CarotidasVertebrais() {
   const [isMobile, setIsMobile] = useState(false);
   const [laudoTexto, setLaudoTexto] = useState("");
   const [erro, setErro] = useState("");
+  const [formReady, setFormReady] = useState(false); // Flag para controlar a visibilidade dos campos
+  const [anexos, setAnexos] = useState([]);
 
   const [carotidasDireitas, setCarotidasDireitas] = useState({
     ACD: { ...initialVesselData },
@@ -538,6 +541,11 @@ function CarotidasVertebrais() {
     }
   }, []);
 
+  useEffect(() => {
+    // Define formReady como true quando nome, idade e data são preenchidos
+    setFormReady(nome && idade && data);
+  }, [nome, idade, data]);
+
   function handleChange(e) {
     const { name, value } = e.target;
     if (name === "nome") setNome(value);
@@ -556,11 +564,11 @@ function CarotidasVertebrais() {
     const todosVasos = { ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais };
     for (const [vesselKey, vessel] of Object.entries(todosVasos)) {
       if (vessel.estenose === "presente") {
-        if (!vessel.estenosePercentual || vessel.estenosePercentual.toString().trim() === "") {
+        if (!vessel.estenosePercentual || !vessel.estenosePercentual.toString || vessel.estenosePercentual.toString().trim() === "") {
           setErro(`Campo "% Estenose" é obrigatório para ${vesselKey} quando estenose é presente (primeira validação)!`);
           return;
         }
-        if (!vessel.tipoPlaca || vessel.tipoPlaca.trim() === "") {
+        if (!vessel.tipoPlaca || !vessel.tipoPlaca.trim || vessel.tipoPlaca.trim() === "") {
           setErro(`Campo "Tipo Placa" é obrigatório para ${vesselKey} quando estenose é presente (primeira validação)!`);
           return;
         }
@@ -588,11 +596,11 @@ function CarotidasVertebrais() {
     const todosVasos = { ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais };
     for (const [vesselKey, vessel] of Object.entries(todosVasos)) {
       if (vessel.estenose === "presente") {
-        if (!vessel.estenosePercentual || vessel.estenosePercentual.toString().trim() === "") {
+        if (!vessel.estenosePercentual || !vessel.estenosePercentual.toString || vessel.estenosePercentual.toString().trim() === "") {
           setErro(`Campo "% Estenose" é obrigatório para ${vesselKey} quando estenose é presente (segunda validação)!`);
           return;
         }
-        if (!vessel.tipoPlaca || vessel.tipoPlaca.trim() === "") {
+        if (!vessel.tipoPlaca || !vessel.tipoPlaca.trim || vessel.tipoPlaca.trim() === "") {
           setErro(`Campo "Tipo Placa" é obrigatório para ${vesselKey} quando estenose é presente (segunda validação)!`);
           return;
         }
@@ -643,6 +651,112 @@ function CarotidasVertebrais() {
 
   function handleLogout() {
     window.location.href = '/';
+  }
+
+  // Funções para gerenciar anexos de imagens
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function validateFile(file) {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    const maxSize = 15 * 1024 * 1024; // 15MB
+
+    if (!validTypes.includes(file.type)) {
+      setErro('Apenas arquivos PNG e JPG são permitidos.');
+      return false;
+    }
+
+    if (file.size > maxSize) {
+      setErro('O arquivo deve ter no máximo 15MB.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function handleFileUpload(event) {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+      if (validateFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Criar thumbnail (100x100)
+            const thumbnailSize = 100;
+            canvas.width = thumbnailSize;
+            canvas.height = thumbnailSize;
+            ctx.drawImage(img, 0, 0, thumbnailSize, thumbnailSize);
+            
+            const newAnexo = {
+              id: Date.now() + Math.random(),
+              file: file,
+              name: file.name,
+              size: file.size,
+              thumbnail: e.target.result
+            };
+            
+            setAnexos(prev => [...prev, newAnexo]);
+            setErro('');
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    event.target.value = '';
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files);
+    files.forEach(file => {
+      if (validateFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Criar thumbnail (100x100)
+            const thumbnailSize = 100;
+            canvas.width = thumbnailSize;
+            canvas.height = thumbnailSize;
+            ctx.drawImage(img, 0, 0, thumbnailSize, thumbnailSize);
+            
+            const newAnexo = {
+              id: Date.now() + Math.random(),
+              file: file,
+              name: file.name,
+              size: file.size,
+              thumbnail: e.target.result
+            };
+            
+            setAnexos(prev => [...prev, newAnexo]);
+            setErro('');
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  function handleDragOver(event) {
+    event.preventDefault();
+  }
+
+  function removeAnexo(id) {
+    setAnexos(prev => prev.filter(anexo => anexo.id !== id));
   }
 
   return (
@@ -790,6 +904,19 @@ function CarotidasVertebrais() {
         }}
       />
 
+      {/* Título do Exame */}
+      <h1 style={{
+        fontSize: "clamp(18px, 3vw, 24px)",
+        fontWeight: "600",
+        color: "#0eb8d0",
+        textAlign: "center",
+        margin: "0 0 clamp(12px, 2vw, 16px) 0",
+        textShadow: "0 2px 8px #00e0ff40",
+        letterSpacing: "0.5px"
+      }}>
+        Carótidas e Vertebrais
+      </h1>
+
       <div style={{
         width: "100%",
         maxWidth: "min(1100px, 95vw)",
@@ -859,333 +986,491 @@ function CarotidasVertebrais() {
       </div>
       <div style={{ color: "#ff6565", marginTop: 12, fontWeight: 600 }}>{erro && erro}</div>
       
-      <div style={{ 
-        width: '100%', 
-        maxWidth: 'min(1200px, 98vw)', 
-        margin: 'clamp(16px, 3vw, 24px) auto 0 auto', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        gap: 'clamp(12px, 2vw, 16px)' 
+      {/* Segunda linha: botões centralizados */}
+      <div style={{
+        display: 'flex',
+        gap: 'clamp(8px, 2vw, 12px)',
+        marginTop: 'clamp(8px, 2vw, 12px)',
+        flexWrap: 'wrap',
+        justifyContent: 'center'
       }}>
+        <button
+          style={{ 
+            ...buttonStyle, 
+            background: formReady ? '#0eb8d0' : '#666', 
+            color: '#fff', 
+            minWidth: 'clamp(140px, 25vw, 160px)', 
+            fontSize: 'clamp(12px, 2.5vw, 14px)', 
+            padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)",
+            cursor: formReady ? 'pointer' : 'not-allowed',
+            opacity: formReady ? 1 : 0.6
+          }}
+          onClick={handleVisualizar}
+          disabled={!formReady}
+        >Visualizar Laudo</button>
+        <button
+          style={{ 
+            ...buttonStyle, 
+            background: formReady ? '#28a745' : '#666', 
+            color: '#fff', 
+            minWidth: 'clamp(140px, 25vw, 160px)', 
+            fontSize: 'clamp(12px, 2.5vw, 14px)', 
+            padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)",
+            cursor: formReady ? 'pointer' : 'not-allowed',
+            opacity: formReady ? 1 : 0.6
+          }}
+          onClick={handleSalvarExame}
+          disabled={!formReady}
+        >Salvar Exame</button>
+      </div>
+      
+      {/* Campos do exame - só aparecem após preencher dados básicos */}
+      {formReady && (
         <div style={{ 
           width: '100%', 
+          maxWidth: 'min(1200px, 98vw)', 
+          margin: 'clamp(16px, 3vw, 24px) auto 0 auto', 
           display: 'flex', 
-          flexDirection: 'column',
-          gap: 'clamp(12px, 2vw, 20px)'
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          gap: 'clamp(12px, 2vw, 16px)' 
         }}>
-          {/* Sistema Carotídeo Direito */}
-          <div style={{
-            marginBottom: 'clamp(16px, 3vw, 20px)',
-            padding: 'clamp(16px, 3vw, 20px) clamp(18px, 4vw, 24px)',
-            background: 'transparent',
-            borderRadius: 'clamp(8px, 1.5vw, 12px)',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
-            border: '1px solid rgba(14, 184, 208, 0.2)',
-            display: 'flex',
+          <div style={{ 
+            width: '100%', 
+            display: 'flex', 
             flexDirection: 'column',
-            gap: 'clamp(12px, 2.5vw, 16px)'
+            gap: 'clamp(12px, 2vw, 20px)'
           }}>
+            {/* Sistema Carotídeo Direito */}
             <div style={{
-              marginTop: 'clamp(8px, 1.5vw, 10px)',
-              marginBottom: 'clamp(8px, 1.5vw, 10px)',
-              fontSize: 'clamp(14px, 2.8vw, 16px)',
-              fontWeight: 'bold',
-              color: '#0eb8d0',
-              paddingBottom: 'clamp(6px, 1.5vw, 8px)',
-              borderBottom: '2px solid #0eb8d0'
+              marginBottom: 'clamp(16px, 3vw, 20px)',
+              padding: 'clamp(16px, 3vw, 20px) clamp(18px, 4vw, 24px)',
+              background: 'transparent',
+              borderRadius: 'clamp(8px, 1.5vw, 12px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+              border: '1px solid rgba(14, 184, 208, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'clamp(12px, 2.5vw, 16px)'
             }}>
-              SISTEMA CAROTÍDEO DIREITO
+              <div style={{
+                marginTop: 'clamp(8px, 1.5vw, 10px)',
+                marginBottom: 'clamp(8px, 1.5vw, 10px)',
+                fontSize: 'clamp(14px, 2.8vw, 16px)',
+                fontWeight: 'bold',
+                color: '#0eb8d0',
+                paddingBottom: 'clamp(6px, 1.5vw, 8px)',
+                borderBottom: '2px solid #0eb8d0'
+              }}>
+                SISTEMA CAROTÍDEO DIREITO
+              </div>
+              <VesselField 
+                vessel={carotidasDireitas.ACD}
+                vesselKey="ACD"
+                onChange={(key, field, value) => setCarotidasDireitas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria carótida comum direita"
+                showIMT={true}
+              />
+              <VesselField 
+                vessel={carotidasDireitas.ACID}
+                vesselKey="ACID"
+                onChange={(key, field, value) => setCarotidasDireitas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria carótida interna direita"
+                showIMT={false}
+              />
+              <VesselField 
+                vessel={carotidasDireitas.ACED}
+                vesselKey="ACED"
+                onChange={(key, field, value) => setCarotidasDireitas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria carótida externa direita"
+                showIMT={false}
+              />
             </div>
-            <VesselField 
-              vessel={carotidasDireitas.ACD}
-              vesselKey="ACD"
-              onChange={(key, field, value) => setCarotidasDireitas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria carótida comum direita"
-              showIMT={true}
-            />
-            <VesselField 
-              vessel={carotidasDireitas.ACID}
-              vesselKey="ACID"
-              onChange={(key, field, value) => setCarotidasDireitas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria carótida interna direita"
-              showIMT={false}
-            />
-            <VesselField 
-              vessel={carotidasDireitas.ACED}
-              vesselKey="ACED"
-              onChange={(key, field, value) => setCarotidasDireitas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria carótida externa direita"
-              showIMT={false}
-            />
-          </div>
 
-          {/* Sistema Carotídeo Esquerdo */}
-          <div style={{
-            marginBottom: 'clamp(16px, 3vw, 20px)',
-            padding: 'clamp(16px, 3vw, 20px) clamp(18px, 4vw, 24px)',
-            background: 'transparent',
-            borderRadius: 'clamp(8px, 1.5vw, 12px)',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
-            border: '1px solid rgba(14, 184, 208, 0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(12px, 2.5vw, 16px)'
-          }}>
+            {/* Sistema Carotídeo Esquerdo */}
             <div style={{
-              marginTop: 'clamp(8px, 1.5vw, 10px)',
-              marginBottom: 'clamp(8px, 1.5vw, 10px)',
-              fontSize: 'clamp(14px, 2.8vw, 16px)',
-              fontWeight: 'bold',
-              color: '#0eb8d0',
-              paddingBottom: 'clamp(6px, 1.5vw, 8px)',
-              borderBottom: '2px solid #0eb8d0'
+              marginBottom: 'clamp(16px, 3vw, 20px)',
+              padding: 'clamp(16px, 3vw, 20px) clamp(18px, 4vw, 24px)',
+              background: 'transparent',
+              borderRadius: 'clamp(8px, 1.5vw, 12px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+              border: '1px solid rgba(14, 184, 208, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'clamp(12px, 2.5vw, 16px)'
             }}>
-              SISTEMA CAROTÍDEO ESQUERDO
+              <div style={{
+                marginTop: 'clamp(8px, 1.5vw, 10px)',
+                marginBottom: 'clamp(8px, 1.5vw, 10px)',
+                fontSize: 'clamp(14px, 2.8vw, 16px)',
+                fontWeight: 'bold',
+                color: '#0eb8d0',
+                paddingBottom: 'clamp(6px, 1.5vw, 8px)',
+                borderBottom: '2px solid #0eb8d0'
+              }}>
+                SISTEMA CAROTÍDEO ESQUERDO
+              </div>
+              <VesselField 
+                vessel={carotidasEsquerdas.ACE}
+                vesselKey="ACE"
+                onChange={(key, field, value) => setCarotidasEsquerdas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria carótida comum esquerda"
+                showIMT={true}
+              />
+              <VesselField 
+                vessel={carotidasEsquerdas.ACIE}
+                vesselKey="ACIE"
+                onChange={(key, field, value) => setCarotidasEsquerdas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria carótida interna esquerda"
+                showIMT={false}
+              />
+              <VesselField 
+                vessel={carotidasEsquerdas.ACEE}
+                vesselKey="ACEE"
+                onChange={(key, field, value) => setCarotidasEsquerdas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria carótida externa esquerda"
+                showIMT={false}
+              />
             </div>
-            <VesselField 
-              vessel={carotidasEsquerdas.ACE}
-              vesselKey="ACE"
-              onChange={(key, field, value) => setCarotidasEsquerdas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria carótida comum esquerda"
-              showIMT={true}
-            />
-            <VesselField 
-              vessel={carotidasEsquerdas.ACIE}
-              vesselKey="ACIE"
-              onChange={(key, field, value) => setCarotidasEsquerdas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria carótida interna esquerda"
-              showIMT={false}
-            />
-            <VesselField 
-              vessel={carotidasEsquerdas.ACEE}
-              vesselKey="ACEE"
-              onChange={(key, field, value) => setCarotidasEsquerdas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria carótida externa esquerda"
-              showIMT={false}
-            />
-          </div>
 
-          {/* Sistema Vertebral */}
-          <div style={{
-            marginBottom: 'clamp(16px, 3vw, 20px)',
-            padding: 'clamp(16px, 3vw, 20px) clamp(18px, 4vw, 24px)',
-            background: 'transparent',
-            borderRadius: 'clamp(8px, 1.5vw, 12px)',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
-            border: '1px solid rgba(14, 184, 208, 0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(12px, 2.5vw, 16px)'
-          }}>
+            {/* Sistema Vertebral */}
             <div style={{
-              marginTop: 'clamp(8px, 1.5vw, 10px)',
-              marginBottom: 'clamp(8px, 1.5vw, 10px)',
-              fontSize: 'clamp(14px, 2.8vw, 16px)',
-              fontWeight: 'bold',
-              color: '#0eb8d0',
-              paddingBottom: 'clamp(6px, 1.5vw, 8px)',
-              borderBottom: '2px solid #0eb8d0'
+              marginBottom: 'clamp(16px, 3vw, 20px)',
+              padding: 'clamp(16px, 3vw, 20px) clamp(18px, 4vw, 24px)',
+              background: 'transparent',
+              borderRadius: 'clamp(8px, 1.5vw, 12px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+              border: '1px solid rgba(14, 184, 208, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'clamp(12px, 2.5vw, 16px)'
             }}>
-              SISTEMA VERTEBRAL
+              <div style={{
+                marginTop: 'clamp(8px, 1.5vw, 10px)',
+                marginBottom: 'clamp(8px, 1.5vw, 10px)',
+                fontSize: 'clamp(14px, 2.8vw, 16px)',
+                fontWeight: 'bold',
+                color: '#0eb8d0',
+                paddingBottom: 'clamp(6px, 1.5vw, 8px)',
+                borderBottom: '2px solid #0eb8d0'
+              }}>
+                SISTEMA VERTEBRAL
+              </div>
+              <VesselField 
+                vessel={vertebrais.AVD}
+                vesselKey="AVD"
+                onChange={(key, field, value) => setVertebrais(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria vertebral direita"
+                showIMT={false}
+              />
+              <VesselField 
+                vessel={vertebrais.AVE}
+                vesselKey="AVE"
+                onChange={(key, field, value) => setVertebrais(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
+                title="Artéria vertebral esquerda"
+                showIMT={false}
+              />
             </div>
-            <VesselField 
-              vessel={vertebrais.AVD}
-              vesselKey="AVD"
-              onChange={(key, field, value) => setVertebrais(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria vertebral direita"
-              showIMT={false}
-            />
-            <VesselField 
-              vessel={vertebrais.AVE}
-              vesselKey="AVE"
-              onChange={(key, field, value) => setVertebrais(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
-              title="Artéria vertebral esquerda"
-              showIMT={false}
-            />
           </div>
-
-
         </div>
-        
+      )}
+      
+      {/* Laudo - sempre visível quando existe */}
+      {laudoTexto && (
         <div style={{
-          display: 'flex',
-          gap: 'clamp(8px, 2vw, 12px)',
-          marginTop: 'clamp(8px, 2vw, 12px)',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
+          background: "#fff",
+          color: "#222",
+          borderRadius: 'clamp(8px, 1.5vw, 12px)',
+          padding: 'clamp(12px, 2.5vw, 20px)',
+          boxShadow: "0 8px 32px #00e0ff33",
+          fontFamily: "monospace",
+          fontSize: 'clamp(11px, 2.2vw, 13px)',
+          lineHeight: 1.5,
+          whiteSpace: "pre-wrap",
+          width: '100%',
+          maxWidth: 'min(1200px, 98vw)',
+          maxHeight: "75vh",
+          overflowY: "auto",
+          marginTop: 'clamp(12px, 2vw, 16px)'
         }}>
-          <button
-            style={{ 
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
+            <button style={{ 
               ...buttonStyle, 
-              background: '#0eb8d0', 
-              color: '#fff', 
-              minWidth: 'clamp(140px, 25vw, 160px)', 
-              fontSize: 'clamp(12px, 2.5vw, 14px)', 
-              padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)" 
-            }}
-            onClick={handleVisualizar}
-          >Visualizar Laudo</button>
-          <button
-            style={{ 
+              background: "#0eb8d0", 
+              color: "#fff", 
+              fontSize: 'clamp(10px, 2vw, 12px)', 
+              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
+            }} onClick={() => {
+              const blob = new Blob([laudoTexto], { type: "text/plain;charset=utf-8" });
+              saveAs(blob, `Laudo_${nome}_${data}.txt`);
+            }}>Salvar TXT</button>
+            <button style={{ 
               ...buttonStyle, 
-              background: '#28a745', 
-              color: '#fff', 
-              minWidth: 'clamp(140px, 25vw, 160px)', 
-              fontSize: 'clamp(12px, 2.5vw, 14px)', 
-              padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)" 
-            }}
-            onClick={handleSalvarExame}
-          >Salvar Exame</button>
-        </div>
-        
-        {laudoTexto && (
-          <div style={{
-            background: "#fff",
-            color: "#222",
-            borderRadius: 'clamp(8px, 1.5vw, 12px)',
-            padding: 'clamp(12px, 2.5vw, 20px)',
-            boxShadow: "0 8px 32px #00e0ff33",
-            fontFamily: "monospace",
-            fontSize: 'clamp(11px, 2.2vw, 13px)',
-            lineHeight: 1.5,
-            whiteSpace: "pre-wrap",
-            width: '100%',
-            maxHeight: "75vh",
-            overflowY: "auto",
-            marginTop: 'clamp(12px, 2vw, 16px)'
-          }}>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
-              <button style={{ 
-                ...buttonStyle, 
-                background: "#0eb8d0", 
-                color: "#fff", 
-                fontSize: 'clamp(10px, 2vw, 12px)', 
-                padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-              }} onClick={() => {
-                const blob = new Blob([laudoTexto], { type: "text/plain;charset=utf-8" });
-                saveAs(blob, `Laudo_${nome}_${data}.txt`);
-              }}>Salvar TXT</button>
-              <button style={{ 
-                ...buttonStyle, 
-                background: "#0eb8d0", 
-                color: "#fff", 
-                fontSize: 'clamp(10px, 2vw, 12px)', 
-                padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-              }} onClick={() => {
-                const nomeMedico = localStorage.getItem("nomeMedico") || "";
-                const crm = localStorage.getItem("crm") || "";
-                const especialidade = localStorage.getItem("especialidadeLaudo") || "";
-                const nomeClinica = localStorage.getItem("nomeClinica") || "";
-                const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
-                const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
-                const emailClinica = localStorage.getItem("emailClinica") || "";
-                const logoClinica = localStorage.getItem("logoClinica") || null;
-                const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
+              background: "#0eb8d0", 
+              color: "#fff", 
+              fontSize: 'clamp(10px, 2vw, 12px)', 
+              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
+            }} onClick={() => {
+              const nomeMedico = localStorage.getItem("nomeMedico") || "";
+              const crm = localStorage.getItem("crm") || "";
+              const especialidade = localStorage.getItem("especialidadeLaudo") || "";
+              const nomeClinica = localStorage.getItem("nomeClinica") || "";
+              const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
+              const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
+              const emailClinica = localStorage.getItem("emailClinica") || "";
+              const logoClinica = localStorage.getItem("logoClinica") || null;
+              const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
 
-                const doc = new jsPDF();
+              const doc = new jsPDF();
 
-                function addCabecalho(y) {
-                  let yLogo = 14;
-                  if (logoClinica) {
-                    try {
-                      doc.addImage(logoClinica, 'PNG', 95, yLogo, 20, 20);
-                    } catch (e) {}
-                  }
-                  doc.setFontSize(9);
-                  let cabecalho = [];
-                  if (nomeClinica) cabecalho.push(nomeClinica);
-                  if (enderecoClinica) cabecalho.push(enderecoClinica);
-                  if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
-                  if (emailClinica) cabecalho.push(emailClinica);
-                  cabecalho.forEach((txt, idx) => {
-                    doc.setFont(undefined, "bold");
-                    doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
-                  });
+              function addCabecalho(y) {
+                let yLogo = 14;
+                if (logoClinica) {
+                  try {
+                    doc.addImage(logoClinica, 'PNG', 95, yLogo, 20, 20);
+                  } catch (e) {}
+                }
+                doc.setFontSize(9);
+                let cabecalho = [];
+                if (nomeClinica) cabecalho.push(nomeClinica);
+                if (enderecoClinica) cabecalho.push(enderecoClinica);
+                if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
+                if (emailClinica) cabecalho.push(emailClinica);
+                cabecalho.forEach((txt, idx) => {
+                  doc.setFont(undefined, "bold");
+                  doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+                });
+                doc.setFont(undefined, "normal");
+                doc.setFontSize(11);
+                return yLogo + 22;
+              }
+
+              function addRodape() {
+                const yRodape = 280;
+                doc.setFontSize(8);
+                if (assinaturaMedico) {
+                  try {
+                    doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
+                  } catch (e) {}
+                }
+                doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
+                let yInfo = yRodape + 5;
+                if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
+                if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
+                if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
+                doc.setFontSize(11);
+              }
+
+              let y = addCabecalho(12);
+              const linhas = laudoTexto.split("\n");
+              let inConclusao = false;
+              
+              for (let i = 0; i < linhas.length; i++) {
+                let line = linhas[i];
+                if (line.startsWith("PACIENTE:") || line.startsWith("DOPPLER DE CARÓTIDAS")) {
+                  doc.setFont(undefined, "bold");
+                  doc.text(line, 15, y);
                   doc.setFont(undefined, "normal");
-                  doc.setFontSize(11);
-                  return yLogo + 22;
+                } else if (line.startsWith("**") && line.endsWith("**")) {
+                  doc.setFont(undefined, "bold");
+                  doc.text(line.replace(/\*\*/g, ""), 15, y);
+                  doc.setFont(undefined, "normal");
+                } else if (line.startsWith("**CONCLUSÃO:**")) {
+                  doc.setFont(undefined, "bold");
+                  doc.text("CONCLUSÃO:", 15, y);
+                  doc.setFont(undefined, "normal");
+                  inConclusao = true;
+                } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("**")) {
+                  doc.setFont(undefined, "bold");
+                  doc.text(line, 15, y);
+                  doc.setFont(undefined, "normal");
+                } else {
+                  doc.setFont(undefined, "normal");
+                  doc.text(line, 15, y);
+                  if (inConclusao && line && line.trim() === "") inConclusao = false;
                 }
-
-                function addRodape() {
-                  const yRodape = 280;
-                  doc.setFontSize(8);
-                  if (assinaturaMedico) {
-                    try {
-                      doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
-                    } catch (e) {}
-                  }
-                  doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
-                  let yInfo = yRodape + 5;
-                  if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
-                  if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
-                  if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
-                  doc.setFontSize(11);
+                y += 8;
+                if (y > 265) {
+                  addRodape();
+                  doc.addPage();
+                  y = addCabecalho(12);
                 }
-
-                let y = addCabecalho(12);
-                const linhas = laudoTexto.split("\n");
-                let inConclusao = false;
-                
-                for (let i = 0; i < linhas.length; i++) {
-                  let line = linhas[i];
-                  if (line.startsWith("PACIENTE:") || line.startsWith("DOPPLER DE CARÓTIDAS")) {
-                    doc.setFont(undefined, "bold");
-                    doc.text(line, 15, y);
-                    doc.setFont(undefined, "normal");
-                  } else if (line.startsWith("**") && line.endsWith("**")) {
-                    doc.setFont(undefined, "bold");
-                    doc.text(line.replace(/\*\*/g, ""), 15, y);
-                    doc.setFont(undefined, "normal");
-                  } else if (line.startsWith("**CONCLUSÃO:**")) {
-                    doc.setFont(undefined, "bold");
-                    doc.text("CONCLUSÃO:", 15, y);
-                    doc.setFont(undefined, "normal");
-                    inConclusao = true;
-                  } else if (inConclusao && line.trim() !== "" && !line.startsWith("**")) {
-                    doc.setFont(undefined, "bold");
-                    doc.text(line, 15, y);
-                    doc.setFont(undefined, "normal");
-                  } else {
-                    doc.setFont(undefined, "normal");
-                    doc.text(line, 15, y);
-                    if (inConclusao && line.trim() === "") inConclusao = false;
-                  }
-                  y += 8;
-                  if (y > 265) {
-                    addRodape();
-                    doc.addPage();
-                    y = addCabecalho(12);
-                  }
-                }
-                addRodape();
-                doc.save(`Laudo_${nome}_${data}.pdf`);
-                
-                setNome("");
-                setIdade("");
-                setData("");
-                setCarotidasDireitas({
-                  ACD: { ...initialVesselData },
-                  ACID: { ...initialVesselData },
-                  ACED: { ...initialVesselData }
-                });
-                setCarotidasEsquerdas({
-                  ACE: { ...initialVesselData },
-                  ACIE: { ...initialVesselData },
-                  ACEE: { ...initialVesselData }
-                });
-                setVertebrais({
-                  AVD: { ...initialVesselData },
-                  AVE: { ...initialVesselData }
-                });
-                setLaudoTexto("");
-                setErro("");
-              }}>Salvar PDF</button>
-            </div>
-            {laudoTexto}
+              }
+              addRodape();
+              // Adicionar anexos como páginas no final do PDF
+              appendImagesToPdf(doc, anexos);
+              
+              doc.save(`Laudo_${nome}_${data}.pdf`);
+              
+              setNome("");
+              setIdade("");
+              setData("");
+              setCarotidasDireitas({
+                ACD: { ...initialVesselData },
+                ACID: { ...initialVesselData },
+                ACED: { ...initialVesselData }
+              });
+              setCarotidasEsquerdas({
+                ACE: { ...initialVesselData },
+                ACIE: { ...initialVesselData },
+                ACEE: { ...initialVesselData }
+              });
+              setVertebrais({
+                AVD: { ...initialVesselData },
+                AVE: { ...initialVesselData }
+              });
+              setLaudoTexto("");
+              setErro("");
+              setAnexos([]);
+            }}>Salvar PDF</button>
           </div>
-        )}
-      </div>
+          {laudoTexto}
+        </div>
+      )}
+
+      {/* Caixa de Anexos Compacta - aparece apenas quando o preview está visível */}
+      {laudoTexto && (
+        <div style={{
+          width: '100%',
+          maxWidth: 'min(1200px, 98vw)',
+          margin: 'clamp(8px, 1.5vw, 12px) auto 0 auto',
+          background: '#18243a',
+          borderRadius: 'clamp(6px, 1.2vw, 8px)',
+          padding: 'clamp(8px, 1.5vw, 12px)',
+          boxShadow: '0 2px 8px #00e0ff15',
+          border: '1px solid #0eb8d0'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 'clamp(6px, 1.2vw, 8px)'
+          }}>
+            <h3 style={{
+              margin: 0,
+              color: '#0eb8d0',
+              fontSize: 'clamp(12px, 2vw, 14px)',
+              fontWeight: 600
+            }}>
+              📎 Anexos
+            </h3>
+            <span style={{
+              color: '#888',
+              fontSize: 'clamp(10px, 1.6vw, 12px)'
+            }}>
+              {anexos.length} arquivo(s)
+            </span>
+          </div>
+          
+          {/* Área de Upload Compacta */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            style={{
+              border: '1px dashed #0eb8d0',
+              borderRadius: 'clamp(4px, 1vw, 6px)',
+              padding: 'clamp(8px, 1.5vw, 12px)',
+              textAlign: 'center',
+              background: 'rgba(14, 184, 208, 0.03)',
+              marginBottom: 'clamp(6px, 1.2vw, 8px)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onClick={() => document.getElementById('fileInput').click()}
+          >
+            <input
+              id="fileInput"
+              type="file"
+              accept=".png,.jpg,.jpeg"
+              multiple
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+            <div style={{ color: '#0eb8d0', fontSize: 'clamp(11px, 1.8vw, 13px)' }}>
+              Clique ou arraste para anexar (PNG/JPG até 15MB)
+            </div>
+          </div>
+          
+          {/* Lista de Anexos Compacta */}
+          {anexos.length > 0 && (
+            <div style={{
+              maxHeight: 'clamp(80px, 15vh, 120px)',
+              overflowY: 'auto',
+              border: '1px solid #333',
+              borderRadius: 'clamp(3px, 0.8vw, 4px)',
+              background: '#1a1a1a',
+              padding: 'clamp(4px, 1vw, 6px)'
+            }}>
+              {anexos.map(anexo => (
+                <div key={anexo.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'clamp(6px, 1.5vw, 8px)',
+                  padding: 'clamp(4px, 1vw, 6px)',
+                  background: '#222',
+                  borderRadius: 'clamp(3px, 0.8vw, 4px)',
+                  marginBottom: 'clamp(2px, 0.8vw, 3px)',
+                  border: '1px solid #444'
+                }}>
+                  {/* Thumbnail Menor */}
+                  <img
+                    src={anexo.thumbnail}
+                    alt={anexo.name}
+                    style={{
+                      width: 'clamp(30px, 6vw, 35px)',
+                      height: 'clamp(30px, 6vw, 35px)',
+                      objectFit: 'cover',
+                      borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                      border: '1px solid #666'
+                    }}
+                  />
+                  
+                  {/* Info do arquivo Compacta */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      color: '#fff',
+                      fontSize: 'clamp(10px, 1.6vw, 12px)',
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      marginBottom: 'clamp(1px, 0.3vw, 2px)'
+                    }}>
+                      {anexo.name}
+                    </div>
+                    <div style={{
+                      color: '#888',
+                      fontSize: 'clamp(9px, 1.4vw, 11px)'
+                    }}>
+                      {formatFileSize(anexo.size)}
+                    </div>
+                  </div>
+                  
+                  {/* Botão remover Menor */}
+                  <button
+                    onClick={() => removeAnexo(anexo.id)}
+                    style={{
+                      background: '#ff4444',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                      padding: 'clamp(3px, 0.8vw, 4px) clamp(6px, 1.5vw, 8px)',
+                      fontSize: 'clamp(9px, 1.4vw, 11px)',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      transition: 'background 0.2s ease'
+                    }}
+                    onMouseOver={(e) => e.target.style.background = '#cc3333'}
+                    onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <style>{`
         @keyframes logoGlow {
           0% {

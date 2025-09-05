@@ -267,6 +267,7 @@ function MMSSVenoso() {
   const [observacoes, setObservacoes] = useState({ Direito: '', Esquerdo: '' });
   const [laudoTexto, setLaudoTexto] = useState("");
   const [erro, setErro] = useState("");
+  const [anexos, setAnexos] = useState([]);
   
   // Estados para cada lado
   const [profundas, setProfundas] = useState({
@@ -375,6 +376,88 @@ function MMSSVenoso() {
 
   function handleLogout() {
     window.location.href = '/';
+  }
+
+  // Funções para gerenciar anexos de imagens
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function validateFile(file) {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    const maxSize = 15 * 1024 * 1024; // 15MB
+
+    if (!validTypes.includes(file.type)) {
+      setErro('Apenas arquivos PNG e JPG são permitidos.');
+      return false;
+    }
+
+    if (file.size > maxSize) {
+      setErro('O arquivo deve ter no máximo 15MB.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function handleFileUpload(event) {
+    const files = Array.from(event.target.files);
+    setErro('');
+    
+    files.forEach(file => {
+      if (validateFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const newAnexo = {
+            id: Date.now() + Math.random(),
+            file: file,
+            name: file.name,
+            size: file.size,
+            thumbnail: e.target.result
+          };
+          setAnexos(prev => [...prev, newAnexo]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Limpar o input
+    event.target.value = '';
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files);
+    setErro('');
+    
+    files.forEach(file => {
+      if (validateFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const newAnexo = {
+            id: Date.now() + Math.random(),
+            file: file,
+            name: file.name,
+            size: file.size,
+            thumbnail: e.target.result
+          };
+          setAnexos(prev => [...prev, newAnexo]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  function handleDragOver(event) {
+    event.preventDefault();
+  }
+
+  function removeAnexo(id) {
+    setAnexos(prev => prev.filter(anexo => anexo.id !== id));
   }
 
   return (
@@ -572,10 +655,198 @@ function MMSSVenoso() {
                         addRodape();
                         pagina++;
                       });
+                      
+                      // Adicionar anexos como páginas no final do PDF
+                      anexos.forEach((anexo, index) => {
+                        try {
+                          doc.addPage();
+                          // Adicionar título da imagem
+                          doc.setFontSize(14);
+                          doc.setFont(undefined, "bold");
+                          doc.text(`Anexo ${index + 1}: ${anexo.name}`, 15, 20);
+                          
+                          // Adicionar a imagem aproveitando melhor a página
+                          const pageWidth = doc.internal.pageSize.getWidth();
+                          const pageHeight = doc.internal.pageSize.getHeight();
+                          const margin = 15; // margem de 15mm
+                          const titleSpace = 25; // espaço para o título
+                          
+                          // Calcular dimensões disponíveis
+                          const availableWidth = pageWidth - (margin * 2);
+                          const availableHeight = pageHeight - titleSpace - (margin * 2);
+                          
+                          // Adicionar a imagem centralizada e redimensionada para aproveitar toda a página
+                          doc.addImage(anexo.thumbnail, 'PNG', margin, titleSpace, availableWidth, availableHeight);
+                        } catch (e) {
+                          console.error('Erro ao adicionar anexo ao PDF:', e);
+                        }
+                      });
+                      
                       doc.save(`Laudo_${nome}_${data}.pdf`);
+                      // Limpar formulário para novo laudo
+                      setNome("");
+                      setIdade("");
+                      setData("");
+                      setLado("");
+                      setProfundas({
+                        Direito: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+                        Esquerdo: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+                      });
+                      setSuperficiais({
+                        Direito: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+                        Esquerdo: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+                      });
+                      setObservacoes({ Direito: '', Esquerdo: '' });
+                      setLaudoTexto("");
+                      setAnexos([]);
+                      setErro("");
                     }}>Salvar PDF</button>
                   </div>
                   {laudoTexto}
+                </div>
+              )}
+              
+              {/* Caixa de Anexos Compacta - aparece apenas quando o preview está visível */}
+              {laudoTexto && (
+                <div style={{
+                  width: '100%',
+                  maxWidth: 'min(1200px, 98vw)',
+                  margin: 'clamp(8px, 1.5vw, 12px) auto 0 auto',
+                  background: '#18243a',
+                  borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                  padding: 'clamp(8px, 1.5vw, 12px)',
+                  boxShadow: '0 2px 8px #00e0ff15',
+                  border: '1px solid #0eb8d0'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 'clamp(6px, 1.2vw, 8px)'
+                  }}>
+                    <h3 style={{
+                      margin: 0,
+                      color: '#0eb8d0',
+                      fontSize: 'clamp(12px, 2vw, 14px)',
+                      fontWeight: 600
+                    }}>
+                      📎 Anexos
+                    </h3>
+                    <span style={{
+                      color: '#888',
+                      fontSize: 'clamp(10px, 1.6vw, 12px)'
+                    }}>
+                      {anexos.length} arquivo(s)
+                    </span>
+                  </div>
+                  
+                  {/* Área de Upload Compacta */}
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    style={{
+                      border: '1px dashed #0eb8d0',
+                      borderRadius: 'clamp(4px, 1vw, 6px)',
+                      padding: 'clamp(8px, 1.5vw, 12px)',
+                      textAlign: 'center',
+                      background: 'rgba(14, 184, 208, 0.03)',
+                      marginBottom: 'clamp(6px, 1.2vw, 8px)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onClick={() => document.getElementById('fileInput').click()}
+                  >
+                    <input
+                      id="fileInput"
+                      type="file"
+                      accept=".png,.jpg,.jpeg"
+                      multiple
+                      onChange={handleFileUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <div style={{ color: '#0eb8d0', fontSize: 'clamp(11px, 1.8vw, 13px)' }}>
+                      Clique ou arraste para anexar (PNG/JPG até 15MB)
+                    </div>
+                  </div>
+                  
+                  {/* Lista de Anexos Compacta */}
+                  {anexos.length > 0 && (
+                    <div style={{
+                      maxHeight: 'clamp(80px, 15vh, 120px)',
+                      overflowY: 'auto',
+                      border: '1px solid #333',
+                      borderRadius: 'clamp(3px, 0.8vw, 4px)',
+                      background: '#1a1a1a',
+                      padding: 'clamp(4px, 1vw, 6px)'
+                    }}>
+                      {anexos.map(anexo => (
+                        <div key={anexo.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 'clamp(6px, 1.5vw, 8px)',
+                          padding: 'clamp(4px, 1vw, 6px)',
+                          background: '#222',
+                          borderRadius: 'clamp(3px, 0.8vw, 4px)',
+                          marginBottom: 'clamp(2px, 0.8vw, 3px)',
+                          border: '1px solid #444'
+                        }}>
+                          {/* Thumbnail Menor */}
+                          <img
+                            src={anexo.thumbnail}
+                            alt={anexo.name}
+                            style={{
+                              width: 'clamp(30px, 6vw, 35px)',
+                              height: 'clamp(30px, 6vw, 35px)',
+                              objectFit: 'cover',
+                              borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                              border: '1px solid #666'
+                            }}
+                          />
+                          
+                          {/* Info do arquivo Compacta */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              color: '#fff',
+                              fontSize: 'clamp(10px, 1.6vw, 12px)',
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              marginBottom: 'clamp(1px, 0.3vw, 2px)'
+                            }}>
+                              {anexo.name}
+                            </div>
+                            <div style={{
+                              color: '#888',
+                              fontSize: 'clamp(9px, 1.4vw, 11px)'
+                            }}>
+                              {formatFileSize(anexo.size)}
+                            </div>
+                          </div>
+                          
+                          {/* Botão remover Menor */}
+                          <button
+                            onClick={() => removeAnexo(anexo.id)}
+                            style={{
+                              background: '#ff4444',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                              padding: 'clamp(3px, 0.8vw, 4px) clamp(6px, 1.5vw, 8px)',
+                              fontSize: 'clamp(9px, 1.4vw, 11px)',
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                              transition: 'background 0.2s ease'
+                            }}
+                            onMouseOver={(e) => e.target.style.background = '#cc3333'}
+                            onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -754,13 +1025,200 @@ function MMSSVenoso() {
                   addRodape();
                   pagina++;
                 });
+                
+                // Adicionar anexos como páginas no final do PDF
+                anexos.forEach((anexo, index) => {
+                  try {
+                    doc.addPage();
+                    // Adicionar título da imagem
+                    doc.setFontSize(14);
+                    doc.setFont(undefined, "bold");
+                    doc.text(`Anexo ${index + 1}: ${anexo.name}`, 15, 20);
+                    
+                    // Adicionar a imagem aproveitando melhor a página
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const margin = 15; // margem de 15mm
+                    const titleSpace = 25; // espaço para o título
+                    
+                    // Calcular dimensões disponíveis
+                    const availableWidth = pageWidth - (margin * 2);
+                    const availableHeight = pageHeight - titleSpace - (margin * 2);
+                    
+                    // Adicionar a imagem centralizada e redimensionada para aproveitar toda a página
+                    doc.addImage(anexo.thumbnail, 'PNG', margin, titleSpace, availableWidth, availableHeight);
+                  } catch (e) {
+                    console.error('Erro ao adicionar anexo ao PDF:', e);
+                  }
+                });
+                
                 doc.save(`Laudo_${nome}_${data}.pdf`);
+                // Limpar formulário para novo laudo
+                setNome("");
+                setIdade("");
+                setData("");
+                setLado("");
+                setProfundas({
+                  Direito: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+                  Esquerdo: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+                });
+                setSuperficiais({
+                  Direito: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+                  Esquerdo: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+                });
+                setObservacoes({ Direito: '', Esquerdo: '' });
+                setLaudoTexto("");
+                setAnexos([]);
+                setErro("");
               }}>Salvar PDF</button>
             </div>
             {laudoTexto}
           </div>
         )}
 
+        {/* Caixa de Anexos Compacta para layout "Ambos" - aparece apenas quando o preview está visível */}
+        {laudoTexto && lado === "Ambos" && (
+          <div style={{
+            width: '100%',
+            maxWidth: 'min(1200px, 98vw)',
+            margin: 'clamp(8px, 1.5vw, 12px) auto 0 auto',
+            background: '#18243a',
+            borderRadius: 'clamp(6px, 1.2vw, 8px)',
+            padding: 'clamp(8px, 1.5vw, 12px)',
+            boxShadow: '0 2px 8px #00e0ff15',
+            border: '1px solid #0eb8d0'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 'clamp(6px, 1.2vw, 8px)'
+            }}>
+              <h3 style={{
+                margin: 0,
+                color: '#0eb8d0',
+                fontSize: 'clamp(12px, 2vw, 14px)',
+                fontWeight: 600
+              }}>
+                📎 Anexos
+              </h3>
+              <span style={{
+                color: '#888',
+                fontSize: 'clamp(10px, 1.6vw, 12px)'
+              }}>
+                {anexos.length} arquivo(s)
+              </span>
+            </div>
+            
+            {/* Área de Upload Compacta */}
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              style={{
+                border: '1px dashed #0eb8d0',
+                borderRadius: 'clamp(4px, 1vw, 6px)',
+                padding: 'clamp(8px, 1.5vw, 12px)',
+                textAlign: 'center',
+                background: 'rgba(14, 184, 208, 0.03)',
+                marginBottom: 'clamp(6px, 1.2vw, 8px)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => document.getElementById('fileInputAmbos').click()}
+            >
+              <input
+                id="fileInputAmbos"
+                type="file"
+                accept=".png,.jpg,.jpeg"
+                multiple
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+              <div style={{ color: '#0eb8d0', fontSize: 'clamp(11px, 1.8vw, 13px)' }}>
+                Clique ou arraste para anexar (PNG/JPG até 15MB)
+              </div>
+            </div>
+            
+            {/* Lista de Anexos Compacta */}
+            {anexos.length > 0 && (
+              <div style={{
+                maxHeight: 'clamp(80px, 15vh, 120px)',
+                overflowY: 'auto',
+                border: '1px solid #333',
+                borderRadius: 'clamp(3px, 0.8vw, 4px)',
+                background: '#1a1a1a',
+                padding: 'clamp(4px, 1vw, 6px)'
+              }}>
+                {anexos.map(anexo => (
+                  <div key={anexo.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'clamp(6px, 1.5vw, 8px)',
+                    padding: 'clamp(4px, 1vw, 6px)',
+                    background: '#222',
+                    borderRadius: 'clamp(3px, 0.8vw, 4px)',
+                    marginBottom: 'clamp(2px, 0.8vw, 3px)',
+                    border: '1px solid #444'
+                  }}>
+                    {/* Thumbnail Menor */}
+                    <img
+                      src={anexo.thumbnail}
+                      alt={anexo.name}
+                      style={{
+                        width: 'clamp(30px, 6vw, 35px)',
+                        height: 'clamp(30px, 6vw, 35px)',
+                        objectFit: 'cover',
+                        borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                        border: '1px solid #666'
+                      }}
+                    />
+                    
+                    {/* Info do arquivo Compacta */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        color: '#fff',
+                        fontSize: 'clamp(10px, 1.6vw, 12px)',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        marginBottom: 'clamp(1px, 0.3vw, 2px)'
+                      }}>
+                        {anexo.name}
+                      </div>
+                      <div style={{
+                        color: '#888',
+                        fontSize: 'clamp(9px, 1.4vw, 11px)'
+                      }}>
+                        {formatFileSize(anexo.size)}
+                      </div>
+                    </div>
+                    
+                    {/* Botão remover Menor */}
+                    <button
+                      onClick={() => removeAnexo(anexo.id)}
+                      style={{
+                        background: '#ff4444',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 'clamp(2px, 0.6vw, 3px)',
+                        padding: 'clamp(3px, 0.8vw, 4px) clamp(6px, 1.5vw, 8px)',
+                        fontSize: 'clamp(9px, 1.4vw, 11px)',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        transition: 'background 0.2s ease'
+                      }}
+                      onMouseOver={(e) => e.target.style.background = '#cc3333'}
+                      onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
       <style>{`
