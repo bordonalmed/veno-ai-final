@@ -1,29 +1,39 @@
 // Serviço de email para produção
-import { EMAIL_CONFIG, EMAIL_TEMPLATE } from './emailConfig';
+import emailjs from '@emailjs/browser';
 
 export const enviarCodigoVerificacao = async (email, codigo) => {
   try {
-    console.log('📧 CONFIGURAÇÃO DE EMAIL:');
-    console.log('De:', EMAIL_CONFIG.fromEmail);
+    console.log('📧 ENVIANDO EMAIL REAL:');
     console.log('Para:', email);
     console.log('Código:', codigo);
     
-    // Verificar se está configurado
-    if (EMAIL_CONFIG.fromEmail === 'seuemail@gmail.com') {
-      console.log('⚠️ EMAIL NÃO CONFIGURADO!');
-      console.log('📝 Configure seu email em: src/services/emailConfig.js');
-      console.log('📋 Instruções:', EMAIL_TEMPLATE('123456'));
+    // Configurações do EmailJS (substitua pelos seus valores)
+    const serviceId = 'service_venoai'; // Substitua pelo seu Service ID
+    const templateId = 'template_verificacao'; // Substitua pelo seu Template ID
+    const publicKey = 'sua_public_key_aqui'; // Substitua pela sua Public Key
+    
+    // Verificar se as configurações estão definidas
+    if (publicKey === 'sua_public_key_aqui') {
+      console.log('⚠️ EMAILJS NÃO CONFIGURADO!');
+      console.log('📝 Configure o EmailJS em: src/services/emailService.js');
       
       // Simular envio para teste
       await new Promise(resolve => setTimeout(resolve, 1000));
-      return { sucesso: true, aviso: 'Email não configurado - modo simulação' };
+      return { sucesso: true, aviso: 'EmailJS não configurado - modo simulação' };
     }
     
-    // Aqui seria a integração real com backend/API
-    // Por enquanto, vamos simular o sucesso
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
+    // Dados do template
+    const templateParams = {
+      to_email: email,
+      verification_code: codigo,
+      from_name: 'VENO.AI',
+      message: `Seu código de verificação é: ${codigo}. Válido por 5 minutos.`
+    };
     
-    console.log('✅ Email enviado com sucesso!');
+    // Enviar email via EmailJS
+    const result = await emailjs.send(serviceId, templateId, templateParams, publicKey);
+    
+    console.log('✅ Email enviado com sucesso!', result);
     return { sucesso: true };
     
   } catch (error) {

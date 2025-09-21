@@ -23,7 +23,7 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
     localStorage.setItem('tempoExpiracao', Date.now() + 300000); // 5 minutos
     
     // Verificar se está em modo produção ou desenvolvimento
-    const isProducao = process.env.NODE_ENV === 'production';
+    const isProducao = process.env.NODE_ENV === 'production' || window.location.hostname === 'venoai.xyz';
     
     if (isProducao) {
       // Modo produção - enviar email real
@@ -34,7 +34,8 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
         setCodigoEnviado(true);
         setTempoRestante(300);
         setErro("");
-        // Não mostrar código em produção
+        // Mostrar mensagem de sucesso em produção
+        alert('Código de verificação enviado para seu email!');
       } else {
         setErro(`Erro ao enviar email: ${resultado.erro}`);
       }
