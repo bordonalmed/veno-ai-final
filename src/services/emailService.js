@@ -38,9 +38,11 @@ export const enviarCodigoDesenvolvimento = (email, codigo) => {
   console.log(`Email: ${email}`);
   console.log(`Código: ${codigo}`);
   
-  // Mostrar no alert para teste
-  const mensagem = `📧 CÓDIGO DE VERIFICAÇÃO\n\nEmail: ${email}\nCódigo: ${codigo}\n\n⏰ Válido por 5 minutos\n\n(Modo Desenvolvimento - Em produção seria enviado por email)`;
-  alert(mensagem);
+  // Mostrar no alert apenas em desenvolvimento e se permitido
+  if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_SHOW_TEST_CODE !== 'false') {
+    const mensagem = `📧 CÓDIGO DE VERIFICAÇÃO\n\nEmail: ${email}\nCódigo: ${codigo}\n\n⏰ Válido por 5 minutos\n\n(Modo Desenvolvimento - Em produção seria enviado por email)`;
+    alert(mensagem);
+  }
   
   return { sucesso: true };
 };

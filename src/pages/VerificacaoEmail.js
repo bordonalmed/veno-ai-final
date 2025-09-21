@@ -23,7 +23,7 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
     localStorage.setItem('tempoExpiracao', Date.now() + 300000); // 5 minutos
     
     // Verificar se está em modo produção ou desenvolvimento
-    const isProducao = process.env.NODE_ENV === 'production' && process.env.REACT_APP_SENDGRID_API_KEY;
+    const isProducao = process.env.NODE_ENV === 'production';
     
     if (isProducao) {
       // Modo produção - enviar email real
@@ -31,11 +31,10 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
       const resultado = await enviarCodigoVerificacao(email, codigoVerificacao);
       
       if (resultado.sucesso) {
-        setCodigoGerado(codigoVerificacao);
         setCodigoEnviado(true);
         setTempoRestante(300);
         setErro("");
-        alert('Código de verificação enviado para seu email!');
+        // Não mostrar código em produção
       } else {
         setErro(`Erro ao enviar email: ${resultado.erro}`);
       }
@@ -190,7 +189,7 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
           </button>
         ) : (
           <div>
-            {codigoGerado && (
+            {process.env.NODE_ENV === 'development' && process.env.REACT_APP_SHOW_TEST_CODE !== 'false' && codigoGerado && (
               <div style={{
                 background: "#0eb8d020",
                 border: "2px solid #0eb8d0",

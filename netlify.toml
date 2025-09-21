@@ -5,6 +5,8 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+  NODE_ENV = "production"
+  REACT_APP_SHOW_TEST_CODE = "false"
 
 [[redirects]]
   from = "/*"
