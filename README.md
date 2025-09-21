@@ -1,133 +1,157 @@
-# VENO.AI - Gerador de Laudos Doppler Vascular Inteligente
+# 🩺 VENO.AI - Gerador de Laudos Doppler Vascular Inteligente
 
-Um aplicativo web moderno para criação, edição e gerenciamento de laudos Doppler venoso e arterial de forma prática, organizada e segura.
+![VENO.AI Logo](https://via.placeholder.com/400x100/0eb8d0/ffffff?text=VENO.AI)
 
-## 🚀 Funcionalidades
+## 🎯 **Sobre o Projeto**
 
-- **Interface moderna e responsiva** - Funciona em desktop, tablet e celular
-- **Sistema de autenticação** - Login simples e seguro
-- **Gerador de laudos inteligente** - Cria laudos automaticamente baseado nos dados inseridos
-- **Exportação para PDF** - Gera laudos em formato PDF profissional
-- **Armazenamento local** - Salva exames no navegador
-- **Múltiplos tipos de exame** - Suporte para diferentes modalidades Doppler
+O VENO.AI é um sistema inteligente para geração de laudos de exames Doppler Vascular, desenvolvido com React e tecnologias modernas.
 
-## 📋 Tipos de Exame Disponíveis
+## ✨ **Funcionalidades**
 
-- ✅ **MMII Venoso** - Membros Inferiores Venoso (Completo)
-- 🚧 **MMII Arterial** - Membros Inferiores Arterial (Em desenvolvimento)
-- 🚧 **MMSS Venoso** - Membros Superiores Venoso (Em desenvolvimento)
-- 🚧 **MMSS Arterial** - Membros Superiores Arterial (Em desenvolvimento)
-- 🚧 **Carótidas e Vertebrais** - Artérias do Pescoço (Em desenvolvimento)
-- 🚧 **Aorta e Ilíacas** - Artérias Abdominais (Em desenvolvimento)
-- 🚧 **Artérias Renais** - Artérias Renais (Em desenvolvimento)
+- 🔐 **Sistema de Login Seguro** com verificação de email
+- 📧 **Verificação de Email** com códigos de 6 dígitos
+- 🩺 **Geração de Laudos** Doppler Vascular
+- 📄 **Exportação em PDF** com imagens
+- 🎨 **Interface Moderna** e responsiva
+- 🔒 **Autenticação Robusta** com validação de email
 
-## 🛠️ Tecnologias Utilizadas
+## 🚀 **Tecnologias Utilizadas**
 
-- **React 18** - Biblioteca JavaScript para interfaces
-- **React Router** - Navegação entre páginas
-- **PDF-lib** - Geração de PDFs
+- **React 18** - Framework principal
+- **React Router** - Navegação
+- **React Icons** - Ícones
+- **jsPDF** - Geração de PDFs
+- **PDF-lib** - Manipulação de PDFs
 - **File-saver** - Download de arquivos
-- **React Icons** - Ícones modernos
-- **CSS-in-JS** - Estilização inline
 
-## 📦 Instalação
+## 📦 **Instalação**
 
-1. **Clone o repositório:**
+### **Pré-requisitos:**
+- Node.js 16+ 
+- npm ou yarn
+
+### **Instalação:**
 ```bash
-git clone [url-do-repositorio]
+# Clone o repositório
+git clone https://github.com/SEU_USUARIO/veno-ai.git
+
+# Entre na pasta
 cd veno-ai
-```
 
-2. **Instale as dependências:**
-```bash
+# Instale as dependências
 npm install
-```
 
-3. **Execute o projeto:**
-```bash
+# Execute o projeto
 npm start
 ```
 
-4. **Acesse no navegador:**
-```
-http://localhost:3000
-```
+## 🌐 **Deploy**
 
-## 🏗️ Estrutura do Projeto
-
-```
-veno-ai/
-├── public/
-│   ├── index.html
-│   ├── manifest.json
-│   └── venoai-logo.png
-├── src/
-│   └── index.js
-├── pages/
-│   ├── Landing.js
-│   ├── Login.js
-│   ├── Home.js
-│   ├── MMIIVenoso.js
-│   ├── EmConstrucao.js
-│   └── Configuracoes.js
-├── App.js
-├── package.json
-└── README.md
+### **GitHub Pages:**
+```bash
+npm run deploy
 ```
 
-## 🎯 Como Usar
+### **Netlify/Vercel:**
+- Conecte o repositório
+- Deploy automático
 
-1. **Acesse a aplicação** e clique em "Entrar / Cadastrar"
-2. **Faça login** com qualquer email e senha (sistema simplificado)
-3. **Selecione o tipo de exame** desejado no menu principal
-4. **Preencha os dados** do paciente e do exame
-5. **Visualize o laudo** gerado automaticamente
-6. **Salve e exporte** o laudo em PDF
+### **Domínio Personalizado:**
+- Configure `venoai.xyz`
+- SSL automático
 
-## 🔧 Scripts Disponíveis
+## 📧 **Configuração de Email**
 
-- `npm start` - Inicia o servidor de desenvolvimento
-- `npm build` - Cria a versão de produção
-- `npm test` - Executa os testes
-- `npm eject` - Ejeta a configuração do Create React App
+### **Desenvolvimento:**
+- Códigos aparecem na tela
+- Perfeito para testes
 
-## 📱 Compatibilidade
+### **Produção:**
+- Configure em `src/services/emailConfig.js`
+- Use `admin@venoai.xyz`
+- Gere senha de app do Gmail
 
-- ✅ Chrome 90+
-- ✅ Firefox 88+
-- ✅ Safari 14+
-- ✅ Edge 90+
-- ✅ Mobile browsers
+## 🔧 **Estrutura do Projeto**
 
-## 🤝 Contribuição
+```
+src/
+├── components/          # Componentes reutilizáveis
+├── pages/              # Páginas da aplicação
+│   ├── Login.js        # Tela de login
+│   ├── Home.js         # Página principal
+│   └── VerificacaoEmail.js # Verificação de email
+├── services/           # Serviços
+│   ├── emailService.js # Serviço de email
+│   └── emailConfig.js  # Configuração de email
+├── styles/             # Estilos CSS
+└── utils/              # Utilitários
+```
 
-Para contribuir com o projeto:
+## 🎨 **Interface**
 
-1. Faça um fork do repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+### **Tela de Login:**
+- Validação de email em tempo real
+- Verificação de senha
+- Design moderno e responsivo
 
-## 📄 Licença
+### **Verificação de Email:**
+- Código de 6 dígitos
+- Timer de 5 minutos
+- Reenvio de código
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+### **Página Principal:**
+- Geração de laudos
+- Exportação em PDF
+- Interface intuitiva
 
-## 👨‍💻 Autor
+## 🔒 **Segurança**
+
+- Validação robusta de email
+- Códigos de verificação temporários
+- Autenticação por sessão
+- Dados armazenados localmente
+
+## 📱 **Responsividade**
+
+- Design adaptável para mobile
+- Interface otimizada para tablets
+- Compatível com todos os dispositivos
+
+## 🚀 **Deploy em Produção**
+
+### **URL:**
+- **Desenvolvimento:** http://localhost:3000
+- **Produção:** https://venoai.xyz
+
+### **Email:**
+- **Desenvolvimento:** Códigos na tela
+- **Produção:** admin@venoai.xyz
+
+## 📄 **Licença**
+
+MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
+
+## 👨‍💻 **Autor**
 
 **Gabriel Bordonal**
 - Desenvolvedor Full Stack
-- Especialista em aplicações médicas
-- Contato: [seu-email@exemplo.com]
+- Especialista em React
+- Criador do VENO.AI
 
-## 🆘 Suporte
+## 🤝 **Contribuição**
 
-Se você encontrar algum problema ou tiver sugestões, por favor:
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
 
-1. Verifique se o problema já foi reportado nas [Issues](../../issues)
-2. Crie uma nova issue com detalhes do problema
-3. Inclua informações sobre seu navegador e sistema operacional
+## 📞 **Suporte**
+
+Para suporte, entre em contato:
+- **Email:** admin@venoai.xyz
+- **GitHub:** [Issues](https://github.com/SEU_USUARIO/veno-ai/issues)
 
 ---
 
-**VENO.AI** - Seu consultório digital, com tecnologia e segurança. 🏥💻 
+**Desenvolvido com ❤️ para a medicina vascular** 🩺

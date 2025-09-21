@@ -2,6 +2,7 @@
   "name": "veno-ai",
   "version": "1.0.0",
   "description": "Gerador de Laudos Doppler Vascular Inteligente",
+  "homepage": "https://venoai.xyz",
   "main": "index.js",
   "scripts": {
     "start": "react-scripts start",
@@ -12,6 +13,7 @@
     "deploy": "gh-pages -d build"
   },
   "dependencies": {
+    "ajv": "^8.17.1",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
     "pdf-lib": "^1.17.1",

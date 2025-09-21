@@ -1,7 +1,8 @@
 import React, { useState, Component } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import VerificacaoEmail from "./pages/VerificacaoEmail";
 import Home from "./pages/Home";
 import MMIIVenoso from "./pages/MMIIVenoso";
 import MMIIArterial from "./pages/MMIIArterial";
@@ -88,22 +89,78 @@ class ErrorBoundary extends Component {
   }
 }
 
-export default function App() {
+function AppContent() {
   const [logado, setLogado] = useState(!!localStorage.getItem("userEmail"));
-  function login(email) {
+  const [emailParaVerificacao, setEmailParaVerificacao] = useState("");
+  const navigate = useNavigate();
+  
+  // Verificar se usuário já está cadastrado
+  function isUsuarioCadastrado(email) {
+    const usuariosCadastrados = JSON.parse(localStorage.getItem("usuariosCadastrados") || "[]");
+    return usuariosCadastrados.includes(email);
+  }
+  
+  // Cadastrar novo usuário
+  function cadastrarUsuario(email) {
+    const usuariosCadastrados = JSON.parse(localStorage.getItem("usuariosCadastrados") || "[]");
+    if (!usuariosCadastrados.includes(email)) {
+      usuariosCadastrados.push(email);
+      localStorage.setItem("usuariosCadastrados", JSON.stringify(usuariosCadastrados));
+      console.log('Usuário cadastrado:', email);
+    }
+  }
+  
+  function login(email, senha) {
+    console.log('Tentativa de login para:', email);
+    
+    // Verificar se usuário já está cadastrado
+    if (isUsuarioCadastrado(email)) {
+      console.log('Usuário já cadastrado - login direto');
+      // Usuário já cadastrado - login direto
+      localStorage.setItem("userEmail", email);
+      setLogado(true);
+      navigate('/home');
+    } else {
+      console.log('Novo usuário - precisa verificar email');
+      // Novo usuário - precisa verificar email
+      setEmailParaVerificacao(email);
+      navigate('/verificar-email');
+    }
+  }
+  
+  function verificarEmailCompleto(email) {
+    console.log('Verificação completa para email:', email);
+    
+    // Cadastrar usuário após verificação
+    cadastrarUsuario(email);
+    
+    // Fazer login
     localStorage.setItem("userEmail", email);
     setLogado(true);
+    setEmailParaVerificacao("");
+    console.log('Usuário logado com sucesso!');
+    
+    // Navegar para home
+    navigate('/home');
   }
+  
   function logout() {
     localStorage.removeItem("userEmail");
     setLogado(false);
   }
   return (
     <ErrorBoundary>
-    <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login onLogin={login} />} />
+        <Route path="/verificar-email" element={
+          emailParaVerificacao ? 
+            <VerificacaoEmail 
+              email={emailParaVerificacao} 
+              onVerificacaoCompleta={verificarEmailCompleto} 
+            /> : 
+            <Navigate to="/login" replace />
+        } />
         <Route path="/home" element={logado ? <Home onLogout={logout}/> : <Navigate to="/login" />} />
         <Route path="/mmii-venoso" element={logado ? <MMIIVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmii-arterial" element={logado ? <MMIIArterial /> : <Navigate to="/login" />} />
@@ -116,7 +173,14 @@ export default function App() {
         <Route path="/configuracoes" element={logado ? <Configuracoes /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-    </BrowserRouter>
     </ErrorBoundary>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 } 
