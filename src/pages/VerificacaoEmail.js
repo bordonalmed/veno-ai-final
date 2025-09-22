@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { enviarCodigoDesenvolvimento, enviarCodigoVerificacao } from "../services/emailService";
 
+// Inicializar EmailJS
+import emailjs from '@emailjs/browser';
+
 export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
   const [codigo, setCodigo] = useState("");
   const [erro, setErro] = useState("");
@@ -9,6 +12,12 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
   const [codigoEnviado, setCodigoEnviado] = useState(false);
   const [codigoGerado, setCodigoGerado] = useState("");
   const navigate = useNavigate();
+
+  // Inicializar EmailJS
+  useEffect(() => {
+    emailjs.init("hgeWbU3HYilvDzJVL");
+    console.log('📧 EmailJS inicializado');
+  }, []);
 
   // Gerar código de verificação de 6 dígitos
   function gerarCodigo() {
@@ -27,17 +36,27 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
     
     if (isProducao) {
       // Modo produção - enviar email real
-      console.log('Enviando email real para:', email);
-      const resultado = await enviarCodigoVerificacao(email, codigoVerificacao);
+      console.log('🔍 DEBUG - Modo produção detectado');
+      console.log('📧 Email:', email);
+      console.log('🔢 Código:', codigoVerificacao);
       
-      if (resultado.sucesso) {
-        setCodigoEnviado(true);
-        setTempoRestante(300);
-        setErro("");
-        // Mostrar mensagem de sucesso em produção
-        alert('Código de verificação enviado para seu email!');
-      } else {
-        setErro(`Erro ao enviar email: ${resultado.erro}`);
+      try {
+        const resultado = await enviarCodigoVerificacao(email, codigoVerificacao);
+        console.log('📤 Resultado do envio:', resultado);
+        
+        if (resultado.sucesso) {
+          setCodigoEnviado(true);
+          setTempoRestante(300);
+          setErro("");
+          console.log('✅ Email enviado com sucesso!');
+          alert('Código de verificação enviado para seu email!');
+        } else {
+          console.error('❌ Erro no envio:', resultado.erro);
+          setErro(`Erro ao enviar email: ${resultado.erro}`);
+        }
+      } catch (error) {
+        console.error('❌ Erro na função de envio:', error);
+        setErro(`Erro ao enviar email: ${error.message}`);
       }
     } else {
       // Modo desenvolvimento - mostrar na tela
