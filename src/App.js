@@ -2,7 +2,6 @@ import React, { useState, Component } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import VerificacaoEmail from "./pages/VerificacaoEmail";
 import Home from "./pages/Home";
 import MMIIVenoso from "./pages/MMIIVenoso";
 import MMIIArterial from "./pages/MMIIArterial";
@@ -91,7 +90,6 @@ class ErrorBoundary extends Component {
 
 function AppContent() {
   const [logado, setLogado] = useState(!!localStorage.getItem("userEmail"));
-  const [emailParaVerificacao, setEmailParaVerificacao] = useState("");
   const navigate = useNavigate();
   
   // Verificar se usuário já está cadastrado
@@ -114,41 +112,20 @@ function AppContent() {
     console.log('🔍 LOGIN - Tentativa de login para:', email);
     console.log('🔍 LOGIN - Senha:', senha);
     
-    // Verificar se usuário já está cadastrado
-    const isCadastrado = isUsuarioCadastrado(email);
-    console.log('🔍 LOGIN - Usuário cadastrado?', isCadastrado);
+    // Sistema simplificado - login direto para todos
+    console.log('✅ LOGIN - Acesso direto liberado');
     
-    if (isCadastrado) {
-      console.log('✅ LOGIN - Usuário já cadastrado - login direto');
-      // Usuário já cadastrado - login direto
-      localStorage.setItem("userEmail", email);
-      setLogado(true);
-      navigate('/home');
-    } else {
-      console.log('📧 LOGIN - Novo usuário - precisa verificar email');
-      // Novo usuário - precisa verificar email
-      setEmailParaVerificacao(email);
-      console.log('🔍 LOGIN - Email para verificação definido:', email);
-      navigate('/verificar-email');
-    }
-  }
-  
-  function verificarEmailCompleto(email) {
-    console.log('Verificação completa para email:', email);
-    
-    // Cadastrar usuário após verificação
+    // Cadastrar usuário automaticamente se for novo
     cadastrarUsuario(email);
     
-    // Fazer login
+    // Fazer login direto
     localStorage.setItem("userEmail", email);
     setLogado(true);
-    setEmailParaVerificacao("");
-    console.log('Usuário logado com sucesso!');
-    
-    // Navegar para home
     navigate('/home');
   }
   
+  
+
   function logout() {
     localStorage.removeItem("userEmail");
     setLogado(false);
@@ -158,14 +135,6 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login onLogin={login} />} />
-        <Route path="/verificar-email" element={
-          emailParaVerificacao ? 
-            <VerificacaoEmail 
-              email={emailParaVerificacao} 
-              onVerificacaoCompleta={verificarEmailCompleto} 
-            /> : 
-            <Navigate to="/login" replace />
-        } />
         <Route path="/home" element={logado ? <Home onLogout={logout}/> : <Navigate to="/login" />} />
         <Route path="/mmii-venoso" element={logado ? <MMIIVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmii-arterial" element={logado ? <MMIIArterial /> : <Navigate to="/login" />} />
