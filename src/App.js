@@ -111,19 +111,24 @@ function AppContent() {
   }
   
   function login(email, senha) {
-    console.log('Tentativa de login para:', email);
+    console.log('🔍 LOGIN - Tentativa de login para:', email);
+    console.log('🔍 LOGIN - Senha:', senha);
     
     // Verificar se usuário já está cadastrado
-    if (isUsuarioCadastrado(email)) {
-      console.log('Usuário já cadastrado - login direto');
+    const isCadastrado = isUsuarioCadastrado(email);
+    console.log('🔍 LOGIN - Usuário cadastrado?', isCadastrado);
+    
+    if (isCadastrado) {
+      console.log('✅ LOGIN - Usuário já cadastrado - login direto');
       // Usuário já cadastrado - login direto
       localStorage.setItem("userEmail", email);
       setLogado(true);
       navigate('/home');
     } else {
-      console.log('Novo usuário - precisa verificar email');
+      console.log('📧 LOGIN - Novo usuário - precisa verificar email');
       // Novo usuário - precisa verificar email
       setEmailParaVerificacao(email);
+      console.log('🔍 LOGIN - Email para verificação definido:', email);
       navigate('/verificar-email');
     }
   }

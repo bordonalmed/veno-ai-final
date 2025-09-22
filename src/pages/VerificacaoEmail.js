@@ -49,7 +49,11 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
           setTempoRestante(300);
           setErro("");
           console.log('✅ Email enviado com sucesso!');
-          alert('Código de verificação enviado para seu email!');
+          
+          // Mostrar código na tela em produção também (solução temporária)
+          setCodigoGerado(codigoVerificacao);
+          
+          alert('Código de verificação enviado para seu email! (Verifique também na tela)');
         } else {
           console.error('❌ Erro no envio:', resultado.erro);
           setErro(`Erro ao enviar email: ${resultado.erro}`);
@@ -209,7 +213,7 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
           </button>
         ) : (
           <div>
-            {process.env.NODE_ENV === 'development' && process.env.REACT_APP_SHOW_TEST_CODE !== 'false' && codigoGerado && (
+            {codigoGerado && (
               <div style={{
                 background: "#0eb8d020",
                 border: "2px solid #0eb8d0",
