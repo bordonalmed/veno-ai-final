@@ -50,8 +50,10 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
           setErro("");
           console.log('✅ Email enviado com sucesso!');
           
-          // NÃO mostrar código na tela - apenas no email
-          alert('Código de verificação enviado para seu email! Verifique sua caixa de entrada.');
+          // Mostrar código na tela temporariamente (até configurar email real)
+          setCodigoGerado(codigoVerificacao);
+          
+          alert('Código de verificação enviado para seu email! (Verifique também na tela abaixo)');
         } else {
           console.error('❌ Erro no envio:', resultado.erro);
           setErro(`Erro ao enviar email: ${resultado.erro}`);
@@ -211,6 +213,32 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
           </button>
         ) : (
           <div>
+            {codigoGerado && (
+              <div style={{
+                background: "#fff3cd",
+                border: "2px solid #ffc107",
+                borderRadius: 8,
+                padding: "15px",
+                marginBottom: "20px",
+                textAlign: "center"
+              }}>
+                <p style={{ margin: 0, fontSize: 14, color: "#856404", fontWeight: 600 }}>
+                  ⚠️ TEMPORÁRIO: Código de verificação (até configurar email real):
+                </p>
+                <p style={{ 
+                  margin: "10px 0 0 0", 
+                  fontSize: 24, 
+                  fontWeight: 800, 
+                  color: "#0eb8d0",
+                  letterSpacing: "0.2em"
+                }}>
+                  {codigoGerado}
+                </p>
+                <p style={{ margin: "10px 0 0 0", fontSize: 12, color: "#856404" }}>
+                  Em breve, este código será enviado apenas por email
+                </p>
+              </div>
+            )}
             
             <form onSubmit={verificarCodigo}>
               <div style={{ marginBottom: 20 }}>
