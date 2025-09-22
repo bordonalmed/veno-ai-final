@@ -12,7 +12,7 @@ export const enviarCodigoVerificacao = async (email, codigo) => {
     const templateId = 'contact_us';
     const publicKey = 'hgeWbU3HYilvDzJVL';
     
-    // Dados do template
+    // Dados do template - formato correto para EmailJS
     const templateParams = {
       to_email: email,
       verification_code: codigo,
@@ -20,7 +20,9 @@ export const enviarCodigoVerificacao = async (email, codigo) => {
       email: email,
       message: `Seu código de verificação VENO.AI é: ${codigo}\n\nEste código é válido por 5 minutos.\n\nSe você não solicitou este código, ignore este email.`,
       title: 'Código de Verificação VENO.AI',
-      time: new Date().toLocaleString('pt-BR')
+      time: new Date().toLocaleString('pt-BR'),
+      from_name: 'VENO.AI',
+      reply_to: 'admin@venoai.xyz'
     };
     
     console.log('📧 Enviando via EmailJS...');
