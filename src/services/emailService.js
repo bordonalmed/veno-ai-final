@@ -31,13 +31,24 @@ export const enviarCodigoVerificacao = async (email, codigo) => {
     console.log('Template ID:', templateId);
     console.log('Template Params:', templateParams);
     
-    const result = await emailjs.send(serviceId, templateId, templateParams, publicKey);
+    // Usar a API correta do EmailJS
+    const result = await emailjs.send(
+      serviceId, 
+      templateId, 
+      templateParams, 
+      publicKey
+    );
     
     console.log('✅ Email enviado com sucesso!', result);
     console.log('Status:', result.status);
     console.log('Text:', result.text);
     
-    return { sucesso: true };
+    // Verificar se realmente foi enviado
+    if (result.status === 200) {
+      return { sucesso: true };
+    } else {
+      return { sucesso: false, erro: `Status: ${result.status}` };
+    }
     
   } catch (error) {
     console.error('❌ Erro ao enviar email:', error);
