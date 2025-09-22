@@ -50,10 +50,18 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
           setErro("");
           console.log('✅ Email enviado com sucesso!');
           
-          // Mostrar código na tela temporariamente (até configurar email real)
-          setCodigoGerado(codigoVerificacao);
+          // Verificar se é modo de desenvolvimento ou se email falhou
+          const isDesenvolvimento = process.env.NODE_ENV === 'development';
+          const emailFalhou = resultado.aviso && resultado.aviso.includes('problema');
           
-          alert('Código de verificação enviado para seu email! (Verifique também na tela abaixo)');
+          if (isDesenvolvimento || emailFalhou) {
+            // Mostrar código na tela apenas em desenvolvimento ou se email falhar
+            setCodigoGerado(codigoVerificacao);
+            alert('Código de verificação enviado para seu email! (Verifique também na tela abaixo)');
+          } else {
+            // Em produção com email funcionando, não mostrar na tela
+            alert('Código de verificação enviado para seu email! Verifique sua caixa de entrada.');
+          }
         } else {
           console.error('❌ Erro no envio:', resultado.erro);
           setErro(`Erro ao enviar email: ${resultado.erro}`);
