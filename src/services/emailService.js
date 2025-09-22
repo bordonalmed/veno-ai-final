@@ -7,27 +7,21 @@ export const enviarCodigoVerificacao = async (email, codigo) => {
     console.log('Para:', email);
     console.log('Código:', codigo);
     
-    // Configurações do EmailJS (substitua pelos seus valores)
-    const serviceId = 'service_venoai'; // Substitua pelo seu Service ID
-    const templateId = 'template_verificacao'; // Substitua pelo seu Template ID
-    const publicKey = 'sua_public_key_aqui'; // Substitua pela sua Public Key
+    // Configurações do EmailJS (configurado com seus IDs)
+    const serviceId = 'service_d4yzpvb'; // Seu Service ID
+    const templateId = 'contact_us'; // Template ID (Contact Us)
+    const publicKey = 'hgeWbU3HYilvDzJVL'; // Sua Public Key
     
-    // Verificar se as configurações estão definidas
-    if (publicKey === 'sua_public_key_aqui') {
-      console.log('⚠️ EMAILJS NÃO CONFIGURADO!');
-      console.log('📝 Configure o EmailJS em: src/services/emailService.js');
-      
-      // Simular envio para teste
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { sucesso: true, aviso: 'EmailJS não configurado - modo simulação' };
-    }
+    // Configurações do EmailJS configuradas com sucesso
     
     // Dados do template
     const templateParams = {
       to_email: email,
       verification_code: codigo,
       from_name: 'VENO.AI',
-      message: `Seu código de verificação é: ${codigo}. Válido por 5 minutos.`
+      from_email: 'admin@venoai.xyz',
+      message: `Seu código de verificação é: ${codigo}. Válido por 5 minutos.`,
+      site_url: 'https://venoai.xyz'
     };
     
     // Enviar email via EmailJS
