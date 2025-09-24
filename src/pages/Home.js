@@ -1,9 +1,17 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiSettings, FiList } from "react-icons/fi";
+import TrialStatus from "../components/TrialStatus";
+import { TrialManager } from "../utils/trialManager";
 
 export default function Home({ onLogout }) {
   const navigate = useNavigate();
+  const userEmail = localStorage.getItem("userEmail");
+  
+  const handleUpgrade = () => {
+    navigate("/planos");
+  };
+  
   return (
     <div style={{
       minHeight: "100vh",
@@ -114,6 +122,51 @@ export default function Home({ onLogout }) {
           animation: "logoGlow 3s ease-in-out infinite alternate"
         }}
       />
+      
+      {/* Status do Trial */}
+      <TrialStatus userEmail={userEmail} onUpgrade={handleUpgrade} />
+      
+      {/* Botão de Upgrade Promocional */}
+      {userEmail && TrialManager.verificarPlanoUsuario(userEmail) === "trial" && (
+        <div style={{
+          background: "rgba(255, 149, 0, 0.1)",
+          border: "1px solid rgba(255, 149, 0, 0.3)",
+          color: "#ff9500",
+          padding: "10px 16px",
+          borderRadius: 8,
+          margin: "10px 20px",
+          textAlign: "center",
+          fontSize: 14
+        }}>
+          <span style={{ fontWeight: 600 }}>🚀 Upgrade para Premium</span>
+          <span style={{ opacity: 0.8, marginLeft: 8 }}>• Laudos ilimitados</span>
+          <button
+            onClick={handleUpgrade}
+            style={{
+              background: "transparent",
+              color: "#ff9500",
+              border: "1px solid #ff9500",
+              borderRadius: 6,
+              padding: "6px 12px",
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: "pointer",
+              marginLeft: 8,
+              transition: "all 0.3s ease"
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#ff9500";
+              e.target.style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "transparent";
+              e.target.style.color = "#ff9500";
+            }}
+          >
+            R$ 97/mês
+          </button>
+        </div>
+      )}
       
       <div style={{ margin: "10px 0 15px", fontSize: 14, color: "#abfaff" }}>
         Selecione o tipo de exame para continuar:

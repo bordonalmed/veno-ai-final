@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiSave, FiUser, FiFileText, FiSettings, FiShield, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2 } from "react-icons/fi";
+import { TrialManager } from "../utils/trialManager";
 
 export default function Configuracoes() {
   const navigate = useNavigate();
@@ -946,9 +947,30 @@ export default function Configuracoes() {
         {/* Plano */}
         {activeTab === "plano" && (
           <div>
-            <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20 }}>
-              💳 Plano e Assinatura
-            </h3>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <h3 style={{ color: "#0eb8d0", fontSize: 20, margin: 0 }}>
+                💳 Plano e Assinatura
+              </h3>
+              <button
+                onClick={() => navigate('/home')}
+                style={{
+                  background: "#1a2332",
+                  color: "#0eb8d0",
+                  border: "1px solid #0eb8d0",
+                  borderRadius: 6,
+                  padding: "8px 16px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 14
+                }}
+              >
+                <FiArrowLeft size={16} />
+                Voltar ao Menu
+              </button>
+            </div>
             
             <div style={{ display: "grid", gap: 20 }}>
               <div style={{

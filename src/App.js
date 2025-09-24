@@ -1,6 +1,6 @@
 import React, { useState, Component } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import Landing from "./pages/Landing";
+import Landing from "./pages/LandingNew";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import MMIIVenoso from "./pages/MMIIVenoso";
@@ -11,6 +11,8 @@ import CarotidasVertebrais from "./pages/CarotidasVertebrais";
 import EmConstrucao from "./pages/EmConstrucao";
 import Configuracoes from "./pages/Configuracoes";
 import ExamesRealizados from "./pages/ExamesRealizados";
+import Planos from "./pages/Planos";
+import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -112,16 +114,23 @@ function AppContent() {
     console.log('🔍 LOGIN - Tentativa de login para:', email);
     console.log('🔍 LOGIN - Senha:', senha);
     
-    // Sistema simplificado - login direto para todos
-    console.log('✅ LOGIN - Acesso direto liberado');
+    // Verificar se é usuário novo
+    const isNovoUsuario = !isUsuarioCadastrado(email);
     
     // Cadastrar usuário automaticamente se for novo
     cadastrarUsuario(email);
     
-    // Fazer login direto
+    // Fazer login
     localStorage.setItem("userEmail", email);
     setLogado(true);
-    navigate('/home');
+    
+    if (isNovoUsuario) {
+      console.log('🆕 LOGIN - Novo usuário detectado, redirecionando para planos');
+      navigate('/planos');
+    } else {
+      console.log('👤 LOGIN - Usuário existente, redirecionando para home');
+      navigate('/home');
+    }
   }
   
   
@@ -145,6 +154,8 @@ function AppContent() {
         <Route path="/arterias-renais" element={logado ? <EmConstrucao /> : <Navigate to="/login" />} />
         <Route path="/exames-realizados" element={logado ? <ExamesRealizados /> : <Navigate to="/login" />} />
         <Route path="/configuracoes" element={logado ? <Configuracoes /> : <Navigate to="/login" />} />
+        <Route path="/planos" element={<Planos />} />
+        <Route path="/confirmacao-pagamento" element={<ConfirmacaoPagamento />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </ErrorBoundary>

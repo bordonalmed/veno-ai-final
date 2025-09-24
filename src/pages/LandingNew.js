@@ -1,8 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function Landing() {
-  console.log("Landing component is rendering - updated");
+export default function LandingNew() {
+  console.log("LandingNew component is rendering - NO VER PLANOS BUTTON");
   const navigate = useNavigate();
   return (
     <div style={{
@@ -62,8 +62,8 @@ export default function Landing() {
         </p>
       </div>
 
-      {/* Botão único de entrada */}
-      <div style={{ marginBottom: 32 }}>
+      {/* Botões de ação */}
+      <div style={{ marginBottom: 32, display: "flex", gap: 12 }}>
         <button
           onClick={() => navigate("/login")}
           style={{
@@ -80,6 +80,36 @@ export default function Landing() {
           }}
         >
           Entrar / Cadastrar
+        </button>
+        
+        <button
+          onClick={() => navigate("/planos")}
+          style={{
+            background: "transparent",
+            color: "#0eb8d0",
+            border: "2px solid #0eb8d0",
+            borderRadius: 10,
+            fontWeight: 600,
+            fontSize: 19,
+            padding: "14px 38px",
+            cursor: "pointer",
+            letterSpacing: 1,
+            transition: "all 0.3s ease"
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = "#0eb8d0";
+            e.target.style.color = "#fff";
+            e.target.style.transform = "translateY(-2px)";
+            e.target.style.boxShadow = "0 4px 15px #00e0ff50";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = "transparent";
+            e.target.style.color = "#0eb8d0";
+            e.target.style.transform = "translateY(0)";
+            e.target.style.boxShadow = "none";
+          }}
+        >
+          Ver Planos
         </button>
       </div>
       
