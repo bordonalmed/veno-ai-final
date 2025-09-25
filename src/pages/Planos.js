@@ -135,58 +135,17 @@ export default function Planos() {
       padding: "20px",
       position: "relative"
     }}>
-      {/* Botão Voltar - Posição Fixa */}
-      <div style={{
-        position: "fixed",
-        top: 20,
-        left: 20,
-        zIndex: 9999
-      }}>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            background: "#ff6b35",
-            color: "#fff",
-            border: "none",
-            borderRadius: 10,
-            padding: "15px 25px",
-            fontWeight: 700,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            fontSize: 16,
-            boxShadow: "0 6px 20px rgba(255, 107, 53, 0.4)",
-            transition: "all 0.3s ease",
-            minWidth: "180px",
-            justifyContent: "center"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = "#e55a2b";
-            e.target.style.transform = "translateY(-3px)";
-            e.target.style.boxShadow = "0 8px 25px rgba(255, 107, 53, 0.6)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = "#ff6b35";
-            e.target.style.transform = "translateY(0)";
-            e.target.style.boxShadow = "0 6px 20px rgba(255, 107, 53, 0.4)";
-          }}
-        >
-          <FiArrowLeft size={18} />
-          ← VOLTAR AO INÍCIO
-        </button>
-      </div>
 
       {/* Conteúdo Principal */}
       <div style={{
         maxWidth: 1200,
         margin: "0 auto",
-        paddingTop: 60
+        paddingTop: 20
       }}>
         {/* Cabeçalho */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ textAlign: "center", marginBottom: 30, padding: "0 15px" }}>
           {/* Botão Voltar no Cabeçalho */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 15 }}>
             <button
               onClick={() => navigate('/')}
               style={{
@@ -194,13 +153,13 @@ export default function Planos() {
                 color: "#fff",
                 border: "none",
                 borderRadius: 8,
-                padding: "12px 24px",
+                padding: "10px 20px",
                 fontWeight: 600,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 8,
-                fontSize: 14,
+                gap: 6,
+                fontSize: "clamp(12px, 3vw, 14px)",
                 boxShadow: "0 4px 12px rgba(14, 184, 208, 0.3)",
                 transition: "all 0.3s ease"
               }}
@@ -213,24 +172,25 @@ export default function Planos() {
                 e.target.style.transform = "translateY(0)";
               }}
             >
-              <FiArrowLeft size={16} />
+              <FiArrowLeft size={14} />
               Voltar ao Início
             </button>
           </div>
           
           <h1 style={{
-            fontSize: 32,
+            fontSize: "clamp(24px, 6vw, 32px)",
             fontWeight: 700,
             color: "#0eb8d0",
-            marginBottom: 10
+            marginBottom: 8
           }}>
             💳 Escolha seu Plano
           </h1>
           <p style={{
-            fontSize: 18,
+            fontSize: "clamp(14px, 4vw, 18px)",
             opacity: 0.8,
-            maxWidth: 600,
-            margin: "0 auto"
+            maxWidth: "90vw",
+            margin: "0 auto",
+            lineHeight: 1.4
           }}>
             {isNovoUsuario 
               ? "🎉 Bem-vindo ao VENO.AI! Escolha seu plano para começar:"
@@ -244,11 +204,12 @@ export default function Planos() {
         {/* Cards dos Planos */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 24,
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: 20,
           marginBottom: 40,
-          maxWidth: 800,
-          margin: "0 auto 40px auto"
+          maxWidth: "90vw",
+          margin: "0 auto 40px auto",
+          padding: "0 15px"
         }}>
           {planos.map((plano) => (
             <div
@@ -368,7 +329,7 @@ export default function Planos() {
         </div>
 
         {/* Botão Contratar */}
-        <div style={{ textAlign: "center" }}>
+        <div style={{ textAlign: "center", padding: "0 15px" }}>
           <button
             onClick={handleContratar}
             style={{
@@ -376,15 +337,18 @@ export default function Planos() {
               color: "#fff",
               border: "none",
               borderRadius: 12,
-              padding: "16px 32px",
-              fontSize: 18,
+              padding: "14px 24px",
+              fontSize: "clamp(16px, 4vw, 18px)",
               fontWeight: 600,
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
-              gap: 12,
+              gap: 8,
               boxShadow: "0 4px 16px #0eb8d040",
-              transition: "all 0.3s ease"
+              transition: "all 0.3s ease",
+              width: "100%",
+              maxWidth: 400,
+              justifyContent: "center"
             }}
             onMouseEnter={(e) => {
               e.target.style.background = "#0ca8b8";

@@ -14,13 +14,14 @@ export default function LandingNew() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      padding: 20
+      padding: "20px 15px"
     }}>
       <img
         src={process.env.PUBLIC_URL + "/venoai-logo.png"}
         alt="VENO.AI"
         style={{
-          width: 400,
+          width: "min(300px, 80vw)",
+          maxWidth: 400,
           marginBottom: 10,
           filter: "drop-shadow(0 15px 40px #00e0ff90)",
           animation: "logoGlow 3s ease-in-out infinite alternate"
@@ -29,41 +30,53 @@ export default function LandingNew() {
       
       <div style={{ 
         textAlign: "center", 
-        marginBottom: 40,
-        maxWidth: 600
+        marginBottom: 30,
+        maxWidth: "90vw",
+        width: "100%"
       }}>
         <h2 style={{ 
-          fontSize: 28, 
+          fontSize: "clamp(20px, 5vw, 28px)", 
           fontWeight: 700, 
-          marginBottom: 20, 
+          marginBottom: 15, 
           color: "#0eb8d0",
-          lineHeight: 1.3
+          lineHeight: 1.3,
+          padding: "0 10px"
         }}>
           O padrão inteligente para laudos vasculares
         </h2>
         
         <p style={{ 
-          fontSize: 18, 
+          fontSize: "clamp(14px, 4vw, 18px)", 
           lineHeight: 1.6, 
           opacity: 0.9,
-          marginBottom: 10
+          marginBottom: 8,
+          padding: "0 10px"
         }}>
           Laudos doppler gerados com precisão, organizados com tecnologia.
         </p>
         
         <p style={{ 
-          fontSize: 18, 
+          fontSize: "clamp(14px, 4vw, 18px)", 
           lineHeight: 1.6, 
           opacity: 0.9,
           fontWeight: 600,
-          color: "#aaffee"
+          color: "#aaffee",
+          padding: "0 10px"
         }}>
           Profissionalize sua rotina com VENO.AI.
         </p>
       </div>
 
       {/* Botões de ação */}
-      <div style={{ marginBottom: 32, display: "flex", gap: 12 }}>
+      <div style={{ 
+        marginBottom: 25, 
+        display: "flex", 
+        flexDirection: "column",
+        gap: 12,
+        width: "100%",
+        maxWidth: 400,
+        padding: "0 15px"
+      }}>
         <button
           onClick={() => navigate("/login")}
           style={{
@@ -72,11 +85,13 @@ export default function LandingNew() {
             border: "none",
             borderRadius: 10,
             fontWeight: 600,
-            fontSize: 19,
-            padding: "14px 38px",
+            fontSize: "clamp(16px, 4vw, 19px)",
+            padding: "12px 20px",
             cursor: "pointer",
             boxShadow: "0 2px 12px #00e0ff45",
-            letterSpacing: 1
+            letterSpacing: 0.5,
+            width: "100%",
+            whiteSpace: "nowrap"
           }}
         >
           Entrar / Cadastrar
@@ -90,11 +105,13 @@ export default function LandingNew() {
             border: "2px solid #0eb8d0",
             borderRadius: 10,
             fontWeight: 600,
-            fontSize: 19,
-            padding: "14px 38px",
+            fontSize: "clamp(16px, 4vw, 19px)",
+            padding: "12px 20px",
             cursor: "pointer",
-            letterSpacing: 1,
-            transition: "all 0.3s ease"
+            letterSpacing: 0.5,
+            transition: "all 0.3s ease",
+            width: "100%",
+            whiteSpace: "nowrap"
           }}
           onMouseEnter={(e) => {
             e.target.style.background = "#0eb8d0";
