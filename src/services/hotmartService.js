@@ -24,6 +24,7 @@ export class HotmartService {
     }
   }
 
+
   static async processarWebhook(webhookData) {
     try {
       // Processar dados do webhook do Hotmart
