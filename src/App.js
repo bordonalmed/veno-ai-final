@@ -13,8 +13,6 @@ import Configuracoes from "./pages/Configuracoes";
 import ExamesRealizados from "./pages/ExamesRealizados";
 import Planos from "./pages/Planos";
 import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
-import { SyncService } from "./services/syncService";
-import { TrialManager } from "./utils/trialManager";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -125,39 +123,6 @@ function AppContent() {
     // Fazer login
     localStorage.setItem("userEmail", email);
     setLogado(true);
-    
-    // Sincronizar dados do usuário (versão simplificada)
-    try {
-      console.log('🔄 Sincronizando dados do usuário...');
-      
-      // Obter dados locais
-      const localData = {
-        plano: TrialManager.verificarPlanoUsuario(email),
-        trialStatus: TrialManager.obterStatusTrial(email),
-        transacao: localStorage.getItem(`transacao_${email}`)
-      };
-      
-      // Sincronizar com servidor
-      const syncedData = SyncService.syncUserData(email, localData);
-      
-      // Aplicar dados sincronizados
-      if (syncedData.plano) {
-        localStorage.setItem(`plano_${email}`, syncedData.plano);
-      }
-      
-      if (syncedData.trialStatus) {
-        localStorage.setItem(`trial_${email}`, JSON.stringify(syncedData.trialStatus));
-      }
-      
-      if (syncedData.transacao) {
-        localStorage.setItem(`transacao_${email}`, syncedData.transacao);
-      }
-      
-      console.log('✅ Dados sincronizados com sucesso!');
-      
-    } catch (error) {
-      console.error('Erro ao sincronizar dados:', error);
-    }
     
     if (isNovoUsuario) {
       console.log('🆕 LOGIN - Novo usuário detectado, redirecionando para planos');

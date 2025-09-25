@@ -1,6 +1,4 @@
 // Sistema de controle de trial - 7 dias + 5 laudos
-import { SyncService } from '../services/syncService';
-
 export class TrialManager {
   static iniciarTrial(userEmail) {
     const trialData = {
@@ -9,12 +7,7 @@ export class TrialManager {
       status: 'ativo'
     };
     
-    // Salvar localmente
     localStorage.setItem(`trial_${userEmail}`, JSON.stringify(trialData));
-    
-    // Sincronizar com servidor
-    SyncService.activateTrialOnServer(userEmail, trialData);
-    
     console.log('🎯 Trial iniciado para:', userEmail);
     return trialData;
   }
@@ -133,35 +126,12 @@ export class TrialManager {
   }
 
   static verificarPlanoUsuario(userEmail) {
-    try {
-      // Primeiro verificar no servidor
-      const serverData = SyncService.getUserDataFromServer(userEmail);
-      if (serverData && serverData.plano) {
-        // Sincronizar com dados locais
-        localStorage.setItem(`plano_${userEmail}`, serverData.plano);
-        return serverData.plano;
-      }
-    } catch (error) {
-      console.error('Erro ao verificar plano no servidor:', error);
-    }
-    
-    // Se não tem no servidor, usar dados locais
     const plano = localStorage.getItem(`plano_${userEmail}`) || 'trial';
     return plano;
   }
 
   static definirPlanoUsuario(userEmail, plano) {
-    // Salvar localmente
     localStorage.setItem(`plano_${userEmail}`, plano);
-    
-    // Sincronizar com servidor
-    if (plano === 'premium') {
-      SyncService.activatePremiumOnServer(userEmail);
-    } else if (plano === 'trial') {
-      const trialData = this.verificarTrial(userEmail);
-      SyncService.activateTrialOnServer(userEmail, trialData);
-    }
-    
     console.log('💎 Plano definido:', plano, 'para:', userEmail);
   }
 }
