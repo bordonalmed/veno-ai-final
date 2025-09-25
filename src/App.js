@@ -110,7 +110,7 @@ function AppContent() {
     }
   }
   
-  function login(email, senha) {
+  async function login(email, senha) {
     console.log('🔍 LOGIN - Tentativa de login para:', email);
     console.log('🔍 LOGIN - Senha:', senha);
     
@@ -123,6 +123,41 @@ function AppContent() {
     // Fazer login
     localStorage.setItem("userEmail", email);
     setLogado(true);
+    
+    // Sincronizar dados do usuário
+    try {
+      console.log('🔄 Sincronizando dados do usuário...');
+      const { SyncService } = await import('./services/syncService');
+      const { TrialManager } = await import('./utils/trialManager');
+      
+      // Obter dados locais
+      const localData = {
+        plano: TrialManager.verificarPlanoUsuario(email),
+        trialStatus: TrialManager.obterStatusTrial(email),
+        transacao: localStorage.getItem(`transacao_${email}`)
+      };
+      
+      // Sincronizar com servidor
+      const syncedData = SyncService.syncUserData(email, localData);
+      
+      // Aplicar dados sincronizados
+      if (syncedData.plano) {
+        localStorage.setItem(`plano_${email}`, syncedData.plano);
+      }
+      
+      if (syncedData.trialStatus) {
+        localStorage.setItem(`trial_${email}`, JSON.stringify(syncedData.trialStatus));
+      }
+      
+      if (syncedData.transacao) {
+        localStorage.setItem(`transacao_${email}`, syncedData.transacao);
+      }
+      
+      console.log('✅ Dados sincronizados com sucesso!');
+      
+    } catch (error) {
+      console.error('Erro ao sincronizar dados:', error);
+    }
     
     if (isNovoUsuario) {
       console.log('🆕 LOGIN - Novo usuário detectado, redirecionando para planos');

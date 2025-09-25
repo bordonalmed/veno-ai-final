@@ -1105,6 +1105,45 @@ export default function Configuracoes() {
         >
           🔍 Testar Dados
         </button>
+        
+        <button
+          onClick={async () => {
+            const userEmail = localStorage.getItem("userEmail");
+            if (!userEmail) {
+              alert("❌ Nenhum usuário logado!");
+              return;
+            }
+            
+            // Simular Premium ativo
+            const { SyncService } = await import('../services/syncService');
+            const { TrialManager } = await import('../utils/trialManager');
+            
+            // Ativar Premium no servidor
+            SyncService.activatePremiumOnServer(userEmail, {
+              transactionId: `SYNC_TEST_${Date.now()}`,
+              dataAtivacao: new Date().toISOString(),
+              status: 'active'
+            });
+            
+            // Ativar Premium localmente
+            TrialManager.definirPlanoUsuario(userEmail, 'premium');
+            
+            alert(`✅ Premium ativado com sincronização para: ${userEmail}\n\nAgora teste em outro dispositivo!`);
+          }}
+          style={{
+            background: "#11b581",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "8px 16px",
+            fontWeight: 600,
+            fontSize: 14,
+            cursor: "pointer",
+            marginLeft: 10
+          }}
+        >
+          🔄 Testar Sincronização Premium
+        </button>
       </div>
     </div>
   );
