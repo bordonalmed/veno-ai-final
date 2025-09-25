@@ -110,12 +110,16 @@ export class TrialManager {
   }
 
   static verificarPlanoUsuario(userEmail) {
-    // Primeiro verificar no servidor
-    const serverData = SyncService.getUserDataFromServer(userEmail);
-    if (serverData && serverData.plano) {
-      // Sincronizar com dados locais
-      localStorage.setItem(`plano_${userEmail}`, serverData.plano);
-      return serverData.plano;
+    try {
+      // Primeiro verificar no servidor
+      const serverData = SyncService.getUserDataFromServer(userEmail);
+      if (serverData && serverData.plano) {
+        // Sincronizar com dados locais
+        localStorage.setItem(`plano_${userEmail}`, serverData.plano);
+        return serverData.plano;
+      }
+    } catch (error) {
+      console.error('Erro ao verificar plano no servidor:', error);
     }
     
     // Se não tem no servidor, usar dados locais

@@ -1107,28 +1107,33 @@ export default function Configuracoes() {
         </button>
         
         <button
-          onClick={async () => {
+          onClick={() => {
             const userEmail = localStorage.getItem("userEmail");
             if (!userEmail) {
               alert("❌ Nenhum usuário logado!");
               return;
             }
             
-            // Simular Premium ativo
-            const { SyncService } = await import('../services/syncService');
-            const { TrialManager } = await import('../utils/trialManager');
-            
-            // Ativar Premium no servidor
-            SyncService.activatePremiumOnServer(userEmail, {
-              transactionId: `SYNC_TEST_${Date.now()}`,
-              dataAtivacao: new Date().toISOString(),
-              status: 'active'
-            });
-            
-            // Ativar Premium localmente
-            TrialManager.definirPlanoUsuario(userEmail, 'premium');
-            
-            alert(`✅ Premium ativado com sincronização para: ${userEmail}\n\nAgora teste em outro dispositivo!`);
+            try {
+              // Importar serviços
+              const { SyncService } = require('../services/syncService');
+              const { TrialManager } = require('../utils/trialManager');
+              
+              // Ativar Premium no servidor
+              SyncService.activatePremiumOnServer(userEmail, {
+                transactionId: `SYNC_TEST_${Date.now()}`,
+                dataAtivacao: new Date().toISOString(),
+                status: 'active'
+              });
+              
+              // Ativar Premium localmente
+              TrialManager.definirPlanoUsuario(userEmail, 'premium');
+              
+              alert(`✅ Premium ativado com sincronização para: ${userEmail}\n\nAgora teste em outro dispositivo!`);
+            } catch (error) {
+              console.error('Erro ao ativar Premium:', error);
+              alert('❌ Erro ao ativar Premium. Verifique o console.');
+            }
           }}
           style={{
             background: "#11b581",

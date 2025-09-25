@@ -13,6 +13,8 @@ import Configuracoes from "./pages/Configuracoes";
 import ExamesRealizados from "./pages/ExamesRealizados";
 import Planos from "./pages/Planos";
 import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
+import { SyncService } from "./services/syncService";
+import { TrialManager } from "./utils/trialManager";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -110,7 +112,7 @@ function AppContent() {
     }
   }
   
-  async function login(email, senha) {
+  function login(email, senha) {
     console.log('🔍 LOGIN - Tentativa de login para:', email);
     console.log('🔍 LOGIN - Senha:', senha);
     
@@ -124,11 +126,9 @@ function AppContent() {
     localStorage.setItem("userEmail", email);
     setLogado(true);
     
-    // Sincronizar dados do usuário
+    // Sincronizar dados do usuário (versão simplificada)
     try {
       console.log('🔄 Sincronizando dados do usuário...');
-      const { SyncService } = await import('./services/syncService');
-      const { TrialManager } = await import('./utils/trialManager');
       
       // Obter dados locais
       const localData = {

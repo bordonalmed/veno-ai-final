@@ -5,7 +5,8 @@ export class SyncService {
   static getServerData() {
     try {
       const serverData = localStorage.getItem('venoai_server_data');
-      return serverData ? JSON.parse(serverData) : {};
+      if (!serverData) return {};
+      return JSON.parse(serverData);
     } catch (error) {
       console.error('Erro ao acessar dados do servidor:', error);
       return {};
