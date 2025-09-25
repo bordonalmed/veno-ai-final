@@ -20,84 +20,107 @@ export class TrialManager {
   }
 
   static verificarTrial(userEmail) {
-    const trialData = JSON.parse(localStorage.getItem(`trial_${userEmail}`) || 'null');
-    
-    if (!trialData) {
+    try {
+      const trialData = JSON.parse(localStorage.getItem(`trial_${userEmail}`) || 'null');
+      
+      if (!trialData || !trialData.inicio) {
+        return { status: 'nao_iniciado', diasRestantes: 7, laudosRestantes: 5 };
+      }
+
+      const agora = new Date();
+      const inicio = new Date(trialData.inicio);
+      const diasPassados = Math.floor((agora - inicio) / (1000 * 60 * 60 * 24));
+      
+      // Garantir que laudosGerados existe e é um array
+      const laudosGerados = trialData.laudosGerados || [];
+      const laudosUsados = laudosGerados.length;
+
+      const diasRestantes = Math.max(0, 7 - diasPassados);
+      const laudosRestantes = Math.max(0, 5 - laudosUsados);
+
+      // Verificar se trial expirou
+      if (diasPassados >= 7 || laudosUsados >= 5) {
+        return { 
+          status: 'expirado', 
+          diasRestantes: 0, 
+          laudosRestantes: 0,
+          motivo: diasPassados >= 7 ? 'tempo' : 'laudos'
+        };
+      }
+
+      return { 
+        status: 'ativo', 
+        diasRestantes, 
+        laudosRestantes,
+        trialData
+      };
+    } catch (error) {
+      console.error('Erro ao verificar trial:', error);
       return { status: 'nao_iniciado', diasRestantes: 7, laudosRestantes: 5 };
     }
-
-    const agora = new Date();
-    const inicio = new Date(trialData.inicio);
-    const diasPassados = Math.floor((agora - inicio) / (1000 * 60 * 60 * 24));
-    const laudosUsados = trialData.laudosGerados.length;
-
-    const diasRestantes = Math.max(0, 7 - diasPassados);
-    const laudosRestantes = Math.max(0, 5 - laudosUsados);
-
-    // Verificar se trial expirou
-    if (diasPassados >= 7 || laudosUsados >= 5) {
-      return { 
-        status: 'expirado', 
-        diasRestantes: 0, 
-        laudosRestantes: 0,
-        motivo: diasPassados >= 7 ? 'tempo' : 'laudos'
-      };
-    }
-
-    return { 
-      status: 'ativo', 
-      diasRestantes, 
-      laudosRestantes,
-      trialData
-    };
   }
 
   static registrarLaudo(userEmail, tipoLaudo) {
-    const trialData = JSON.parse(localStorage.getItem(`trial_${userEmail}`) || 'null');
-    
-    if (!trialData) {
-      console.log('❌ Trial não encontrado para:', userEmail);
+    try {
+      const trialData = JSON.parse(localStorage.getItem(`trial_${userEmail}`) || 'null');
+      
+      if (!trialData || !trialData.inicio) {
+        console.log('❌ Trial não encontrado para:', userEmail);
+        return false;
+      }
+
+      const novoLaudo = {
+        data: new Date().toISOString(),
+        tipo: tipoLaudo
+      };
+
+      // Garantir que laudosGerados existe e é um array
+      if (!trialData.laudosGerados) {
+        trialData.laudosGerados = [];
+      }
+
+      trialData.laudosGerados.push(novoLaudo);
+      localStorage.setItem(`trial_${userEmail}`, JSON.stringify(trialData));
+      
+      console.log('📄 Laudo registrado:', novoLaudo);
+      console.log('📊 Laudos restantes:', 5 - trialData.laudosGerados.length);
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao registrar laudo:', error);
       return false;
     }
-
-    const novoLaudo = {
-      data: new Date().toISOString(),
-      tipo: tipoLaudo
-    };
-
-    trialData.laudosGerados.push(novoLaudo);
-    localStorage.setItem(`trial_${userEmail}`, JSON.stringify(trialData));
-    
-    console.log('📄 Laudo registrado:', novoLaudo);
-    console.log('📊 Laudos restantes:', 5 - trialData.laudosGerados.length);
-    
-    return true;
   }
 
   static verificarLimiteAntesDeGerar(userEmail) {
-    const trial = this.verificarTrial(userEmail);
-    
-    if (trial.status === 'nao_iniciado') {
-      // Iniciar trial automaticamente
-      this.iniciarTrial(userEmail);
-      return { permitido: true, trial: this.verificarTrial(userEmail) };
-    }
+    try {
+      const trial = this.verificarTrial(userEmail);
+      
+      if (trial.status === 'nao_iniciado') {
+        // Iniciar trial automaticamente
+        this.iniciarTrial(userEmail);
+        return { permitido: true, trial: this.verificarTrial(userEmail) };
+      }
 
-    if (trial.status === 'expirado') {
-      return { 
-        permitido: false, 
-        motivo: trial.motivo,
-        mensagem: trial.motivo === 'tempo' 
-          ? 'Seu trial de 7 dias expirou. Upgrade para Premium para continuar!'
-          : 'Você atingiu o limite de 5 laudos. Upgrade para Premium para continuar!'
-      };
-    }
+      if (trial.status === 'expirado') {
+        return { 
+          permitido: false, 
+          motivo: trial.motivo,
+          mensagem: trial.motivo === 'tempo' 
+            ? 'Seu trial de 7 dias expirou. Upgrade para Premium para continuar!'
+            : 'Você atingiu o limite de 5 laudos. Upgrade para Premium para continuar!'
+        };
+      }
 
-    if (trial.status === 'ativo') {
-      return { permitido: true, trial };
-    }
+      if (trial.status === 'ativo') {
+        return { permitido: true, trial };
+      }
 
-    return { permitido: false, motivo: 'erro' };
+      return { permitido: false, motivo: 'erro' };
+    } catch (error) {
+      console.error('Erro ao verificar limite:', error);
+      return { permitido: false, motivo: 'erro', mensagem: 'Erro ao verificar limite de trial' };
+    }
   }
 
   static obterStatusTrial(userEmail) {
