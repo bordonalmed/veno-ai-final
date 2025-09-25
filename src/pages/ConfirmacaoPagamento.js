@@ -219,8 +219,11 @@ export default function ConfirmacaoPagamento() {
           
           <div style={{
             display: "flex",
+            flexDirection: "column",
             gap: 12,
-            justifyContent: "center"
+            alignItems: "center",
+            maxWidth: 300,
+            margin: "0 auto"
           }}>
             <button
               onClick={tentarNovamente}
@@ -234,36 +237,13 @@ export default function ConfirmacaoPagamento() {
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 8
+                gap: 8,
+                width: "100%",
+                justifyContent: "center"
               }}
             >
               <FiRefreshCw size={16} />
               Verificar Novamente
-            </button>
-            
-            {/* Botão para simular webhook (apenas em desenvolvimento) */}
-            <button
-              onClick={() => {
-                const email = userEmail || emailCompraPendente;
-                if (window.HotmartWebhook) {
-                  window.HotmartWebhook.simularWebhookHotmart();
-                }
-              }}
-              style={{
-                background: "#11b581",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                padding: "12px 24px",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8
-              }}
-            >
-              <FiCheck size={16} />
-              Simular Pagamento (Teste)
             </button>
             
             <button
@@ -275,7 +255,8 @@ export default function ConfirmacaoPagamento() {
                 borderRadius: 8,
                 padding: "12px 24px",
                 fontWeight: 600,
-                cursor: "pointer"
+                cursor: "pointer",
+                width: "100%"
               }}
             >
               Voltar aos Planos
