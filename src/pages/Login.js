@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLoader, FiCheck, FiX, FiAlertCircle } from "react-icons/fi";
 import { AuthService } from "../services/authService";
-import QuickSyncLogin from "../components/QuickSyncLogin";
 
 export default function Login({ onLogin, onCadastrar }) {
   const [email, setEmail] = useState("");
@@ -497,9 +496,6 @@ export default function Login({ onLogin, onCadastrar }) {
             {carregando ? "Entrando..." : "Fazer Login"}
           </button>
         </div>
-        
-        {/* Componente de Sincronização Rápida */}
-        <QuickSyncLogin />
         
         <button
           type="button"
