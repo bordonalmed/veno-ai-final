@@ -1,4 +1,4 @@
-// Função Netlify para verificar usuários Premium com integração Hotmart
+// Função Netlify para verificar usuários Premium com verificação de senha
 exports.handler = async (event, context) => {
   // Permitir CORS
   if (event.httpMethod === 'OPTIONS') {
@@ -14,6 +14,7 @@ exports.handler = async (event, context) => {
   }
   
   const email = event.queryStringParameters?.email;
+  const senha = event.queryStringParameters?.senha;
   
   if (!email) {
     return {
@@ -33,41 +34,99 @@ exports.handler = async (event, context) => {
   try {
     console.log(`🔍 Verificando usuário: ${email}`);
     
-    // LISTA DE EMAILS PREMIUM CONFIRMADOS
-    const emailsPremiumConfirmados = [
-      'vasculargabriel@gmail.com',
-      // ADICIONAR AQUI OS EMAILS DOS CLIENTES QUE PAGARAM
-      // Exemplo: 'cliente@email.com',
-      // Exemplo: 'outro@email.com',
+    // LISTA DE USUÁRIOS PREMIUM COM SENHAS
+    const usuariosPremium = [
+      {
+        email: 'vasculargabriel@gmail.com',
+        senha: '123456', // Senha padrão - você pode alterar
+        nome: 'Gabriel',
+        plano: 'premium'
+      },
+      // ADICIONAR AQUI OS OUTROS USUÁRIOS QUE PAGARAM NO HOTMART
+      // Exemplo:
+      // {
+      //   email: 'cliente@email.com',
+      //   senha: 'senha123',
+      //   nome: 'Cliente',
+      //   plano: 'premium'
+      // },
     ];
     
-    // Verificar se está na lista de Premium confirmados primeiro
-    if (emailsPremiumConfirmados.includes(email.toLowerCase())) {
-      console.log(`✅ Email confirmado na lista Premium: ${email}`);
+    // Verificar se email existe na lista Premium
+    const usuarioPremium = usuariosPremium.find(user => 
+      user.email.toLowerCase() === email.toLowerCase()
+    );
+    
+    if (usuarioPremium) {
+      console.log(`✅ Email Premium encontrado: ${email}`);
       
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          email: email,
-          premium: true,
-          plano: 'premium',
-          status: 'success',
-          fonte: 'lista-confirmada',
-          timestamp: new Date().toISOString(),
-          mensagem: 'Usuário Premium confirmado!'
-        })
-      };
+      // Se senha foi fornecida, verificar senha
+      if (senha) {
+        if (usuarioPremium.senha === senha) {
+          console.log(`🔐 Senha correta para: ${email}`);
+          
+          return {
+            statusCode: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              email: email,
+              premium: true,
+              plano: 'premium',
+              status: 'success',
+              fonte: 'premium-confirmado',
+              nome: usuarioPremium.nome,
+              timestamp: new Date().toISOString(),
+              mensagem: 'Usuário Premium confirmado! Senha correta!'
+            })
+          };
+        } else {
+          console.log(`❌ Senha incorreta para: ${email}`);
+          
+          return {
+            statusCode: 401,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              email: email,
+              premium: false,
+              plano: 'trial',
+              status: 'error',
+              fonte: 'senha-incorreta',
+              timestamp: new Date().toISOString(),
+              mensagem: 'Senha incorreta! Tente novamente.'
+            })
+          };
+        }
+      } else {
+        // Senha não fornecida, mas email é Premium
+        console.log(`⚠️ Email Premium sem senha: ${email}`);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            email: email,
+            premium: true,
+            plano: 'premium',
+            status: 'success',
+            fonte: 'premium-sem-senha',
+            nome: usuarioPremium.nome,
+            timestamp: new Date().toISOString(),
+            mensagem: 'Email Premium encontrado! Forneça a senha para confirmar.'
+          })
+        };
+      }
     }
     
-    // VERIFICAÇÃO COM HOTMART
-    console.log(`🌐 Verificando pagamento Hotmart para: ${email}`);
-    
-    // Lista de emails que pagaram no Hotmart
-    // Você deve manter esta lista atualizada com os emails dos clientes que pagaram
+    // LISTA DE EMAILS QUE PAGARAM NO HOTMART (sem senha específica)
     const emailsHotmartPagaram = [
       // ADICIONAR AQUI OS EMAILS DOS CLIENTES QUE PAGARAM NO HOTMART
       // Exemplo: 'cliente1@email.com',
@@ -97,7 +156,7 @@ exports.handler = async (event, context) => {
       };
     }
     
-    // Se não pagou, retornar como Trial
+    // Se não é Premium, retornar como Trial
     console.log(`📝 Usuário Trial: ${email}`);
     
     return {

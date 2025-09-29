@@ -75,24 +75,36 @@ function AppContent() {
       
       // Verificar se é usuário Premium conhecido localmente primeiro
       if (email.toLowerCase() === 'vasculargabriel@gmail.com') {
-        console.log('💎 Usuário Premium detectado localmente!');
-        localStorage.setItem("userEmail", email);
-        localStorage.setItem("userPlano", "premium");
-        localStorage.setItem("userPremium", "true");
-        setLogado(true);
-        alert("🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!");
-        navigate('/home');
-        return;
+        // Verificar senha localmente também
+        if (senha === '123456') {
+          console.log('💎 Usuário Premium detectado localmente com senha correta!');
+          localStorage.setItem("userEmail", email);
+          localStorage.setItem("userPlano", "premium");
+          localStorage.setItem("userPremium", "true");
+          setLogado(true);
+          alert("🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!");
+          navigate('/home');
+          return;
+        } else {
+          alert("❌ Senha incorreta!\n\nTente novamente com a senha correta.");
+          return;
+        }
       }
       
       // Tentar verificar via API Netlify (se estiver rodando)
       try {
         console.log('🌐 Tentando verificar via API Netlify...');
-        const response = await fetch(`/.netlify/functions/verificar-usuario?email=${email}`);
+        const response = await fetch(`/.netlify/functions/verificar-usuario?email=${email}&senha=${senha}`);
         
         if (response.ok) {
           const data = await response.json();
           console.log('📊 Resposta da API:', data);
+          
+          // Verificar se houve erro de senha
+          if (data.status === 'error' && data.fonte === 'senha-incorreta') {
+            alert(`❌ Senha incorreta!\n\nTente novamente com a senha correta.`);
+            return;
+          }
           
           // Salvar dados do usuário
           localStorage.setItem("userEmail", email);
