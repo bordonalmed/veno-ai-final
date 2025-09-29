@@ -13,7 +13,7 @@ import Configuracoes from "./pages/Configuracoes";
 import ExamesRealizados from "./pages/ExamesRealizados";
 import Planos from "./pages/Planos";
 import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
-import { AuthService } from "./services/authService";
+import { AuthService } from "./services/firebaseAuthService";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -73,8 +73,8 @@ function AppContent() {
     try {
       console.log('Iniciando cadastro para:', email);
       
-      // Usar o novo sistema de autenticação
-      const { user, profile } = AuthService.createUser(email, senha, {
+      // Usar o novo sistema de autenticação Firebase
+      const result = await AuthService.createUser(email, senha, {
         plano: 'trial',
         premium: false,
         trialStatus: {
@@ -84,7 +84,11 @@ function AppContent() {
         }
       });
       
-      console.log('Usuário cadastrado com sucesso:', user.email);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      console.log('Usuário cadastrado com sucesso:', result.user.email);
       alert('🎉 Cadastro realizado com sucesso!\n\nBem-vindo ao VenoAI!\n\nVocê tem 7 dias de trial gratuito para testar todos os recursos.');
       
       // Navegar para home
@@ -102,15 +106,19 @@ function AppContent() {
     try {
       console.log('🔐 Verificando usuário:', email);
       
-      // Usar o novo sistema de autenticação
-      const { user, profile, session } = AuthService.login(email, senha);
+      // Usar o novo sistema de autenticação Firebase
+      const result = await AuthService.login(email, senha);
       
-      console.log('✅ Login realizado com sucesso:', user.email);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      console.log('✅ Login realizado com sucesso:', result.user.email);
       
       // Salvar dados no localStorage para compatibilidade com sistema antigo
-      localStorage.setItem("userEmail", user.email);
-      localStorage.setItem("userPlano", profile.plano);
-      localStorage.setItem("userPremium", profile.premium.toString());
+      localStorage.setItem("userEmail", result.user.email);
+      localStorage.setItem("userUID", result.user.uid);
+      localStorage.setItem("isLoggedIn", "true");
       
       // Marcar como logado
       setLogado(true);

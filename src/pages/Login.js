@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLoader, FiCheck, FiX, FiAlertCircle } from "react-icons/fi";
-import { AuthService } from "../services/authService";
+import { AuthService } from "../services/firebaseAuthService";
 
 export default function Login({ onLogin, onCadastrar }) {
   const [email, setEmail] = useState("");
@@ -61,12 +61,38 @@ export default function Login({ onLogin, onCadastrar }) {
   function validarSenha(senha) {
     if (!senha) return { valido: false, mensagem: "Senha é obrigatória", score: 0 };
     
+    // Validação mais simples para teste
+    if (senha.length < 6) {
+      return { 
+        valido: false, 
+        mensagem: "Senha deve ter pelo menos 6 caracteres", 
+        score: 0 
+      };
+    }
+    
     const validation = AuthService.validatePasswordStrength(senha);
     const score = AuthService.calculatePasswordScore(senha);
     
+    // Aceitar senha se tiver pelo menos 6 caracteres
+    const isValid = senha.length >= 6;
+    
+    // Criar mensagem de erro baseada nos requisitos
+    let mensagem = "Senha válida";
+    if (!isValid) {
+      mensagem = "Senha deve ter pelo menos 6 caracteres";
+    } else if (!validation.isValid) {
+      const errors = [];
+      if (!validation.requirements.minLength) errors.push("Mínimo 8 caracteres");
+      if (!validation.requirements.hasUpperCase) errors.push("Uma letra maiúscula");
+      if (!validation.requirements.hasLowerCase) errors.push("Uma letra minúscula");
+      if (!validation.requirements.hasNumbers) errors.push("Um número");
+      if (!validation.requirements.hasSpecialChar) errors.push("Um caractere especial");
+      mensagem = errors.join(", ");
+    }
+    
     return {
-      valido: validation.isValid,
-      mensagem: validation.isValid ? "Senha válida" : validation.errors.join(", "),
+      valido: isValid,
+      mensagem: mensagem,
       score: score
     };
   }
