@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiSave, FiUser, FiFileText, FiSettings, FiShield, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2 } from "react-icons/fi";
 import { TrialManager } from "../utils/trialManager";
-import SyncTestButton from "../components/SyncTestButton";
 
 export default function Configuracoes() {
   const navigate = useNavigate();
@@ -1106,8 +1105,6 @@ export default function Configuracoes() {
         >
           🔍 Testar Dados
         </button>
-        
-        <SyncTestButton />
       </div>
     </div>
   );

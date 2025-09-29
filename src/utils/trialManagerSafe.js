@@ -1,5 +1,5 @@
 // Sistema de controle de trial SEGURO - 7 dias + 5 laudos
-import { SyncServiceSafe } from '../services/syncServiceSafe';
+import { SyncServiceUnified } from '../services/syncServiceUnified';
 
 export class TrialManagerSafe {
   
@@ -32,8 +32,13 @@ export class TrialManagerSafe {
         localStorage.setItem(`trial_${userEmail}`, JSON.stringify(trialData));
       }
       
-      // Sincronizar com servidor de forma segura
-      SyncServiceSafe.activateTrialOnServer(userEmail, trialData);
+      // Sincronizar com servidor automaticamente
+      const localData = {
+        plano: 'trial',
+        trialStatus: trialData,
+        transacao: null
+      };
+      SyncServiceUnified.syncUserData(userEmail, localData);
       
       console.log('🎯 Trial iniciado para:', userEmail);
       return trialData;
@@ -61,7 +66,7 @@ export class TrialManagerSafe {
       
       // Se não tem dados locais, tentar obter do servidor
       if (!trialData) {
-        const serverData = SyncServiceSafe.getUserDataFromServer(userEmail);
+        const serverData = SyncServiceUnified.getUserData(userEmail);
         if (serverData && serverData.trialStatus) {
           trialData = serverData.trialStatus;
         }
@@ -150,8 +155,13 @@ export class TrialManagerSafe {
         localStorage.setItem(`trial_${userEmail}`, JSON.stringify(trialData));
       }
       
-      // Sincronizar com servidor
-      SyncServiceSafe.saveUserDataToServer(userEmail, { trialStatus: trialData });
+      // Sincronizar com servidor automaticamente
+      const localData = {
+        plano: this.verificarPlanoUsuario(userEmail),
+        trialStatus: trialData,
+        transacao: localStorage.getItem(`transacao_${userEmail}`)
+      };
+      SyncServiceUnified.syncUserData(userEmail, localData);
       
       console.log('📄 Laudo registrado:', novoLaudo);
       console.log('📊 Laudos restantes:', 5 - trialData.laudosGerados.length);
@@ -213,10 +223,10 @@ export class TrialManagerSafe {
       }
       
       // Remover do servidor também
-      const serverData = SyncServiceSafe.getServerData();
+      const serverData = SyncServiceUnified.getAllSyncData();
       if (serverData[userEmail]) {
         delete serverData[userEmail];
-        SyncServiceSafe.saveServerData(serverData);
+        localStorage.setItem('venoai_sync_data', JSON.stringify(serverData));
       }
       
       console.log('🔄 Trial resetado para:', userEmail);
@@ -232,7 +242,7 @@ export class TrialManagerSafe {
 
     try {
       // Primeiro verificar no servidor
-      const serverData = SyncServiceSafe.getUserDataFromServer(userEmail);
+      const serverData = SyncServiceUnified.getUserData(userEmail);
       if (serverData && serverData.plano) {
         // Sincronizar com dados locais
         if (this.isLocalStorageAvailable()) {
@@ -271,13 +281,13 @@ export class TrialManagerSafe {
         localStorage.setItem(`plano_${userEmail}`, plano);
       }
       
-      // Sincronizar com servidor
-      if (plano === 'premium') {
-        SyncServiceSafe.activatePremiumOnServer(userEmail);
-      } else if (plano === 'trial') {
-        const trialData = this.verificarTrial(userEmail);
-        SyncServiceSafe.activateTrialOnServer(userEmail, trialData);
-      }
+      // Sincronizar com servidor automaticamente
+      const localData = {
+        plano: plano,
+        trialStatus: this.verificarTrial(userEmail),
+        transacao: localStorage.getItem(`transacao_${userEmail}`)
+      };
+      SyncServiceUnified.syncUserData(userEmail, localData);
       
       console.log('💎 Plano definido:', plano, 'para:', userEmail);
     } catch (error) {

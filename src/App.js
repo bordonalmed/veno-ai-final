@@ -57,32 +57,6 @@ class ErrorBoundary extends Component {
           >
             Recarregar Página
           </button>
-          <details style={{ marginTop: 20, textAlign: "left", maxWidth: "600px" }}>
-            <summary>Detalhes do erro</summary>
-            <pre style={{ 
-              background: "#000", 
-              padding: 10, 
-              borderRadius: 5, 
-              marginTop: 10,
-              fontSize: 12,
-              overflow: "auto",
-              maxHeight: "300px"
-            }}>
-              <strong>Erro:</strong> {this.state.error && this.state.error.toString()}
-              {this.state.error && this.state.error.stack && (
-                <>
-                  <br/><br/><strong>Stack:</strong><br/>
-                  {this.state.error.stack}
-                </>
-              )}
-              {this.state.errorInfo && (
-                <>
-                  <br/><br/><strong>Component Stack:</strong><br/>
-                  {this.state.errorInfo.componentStack}
-                </>
-              )}
-            </pre>
-          </details>
         </div>
       );
     }
@@ -91,54 +65,82 @@ class ErrorBoundary extends Component {
 }
 
 function AppContent() {
-  const [logado, setLogado] = useState(!!localStorage.getItem("userEmail"));
+  const [logado, setLogado] = useState(false);
   const navigate = useNavigate();
   
-  // Verificar se usuário já está cadastrado
-  function isUsuarioCadastrado(email) {
-    const usuariosCadastrados = JSON.parse(localStorage.getItem("usuariosCadastrados") || "[]");
-    return usuariosCadastrados.includes(email);
-  }
-  
-  // Cadastrar novo usuário
-  function cadastrarUsuario(email) {
-    const usuariosCadastrados = JSON.parse(localStorage.getItem("usuariosCadastrados") || "[]");
-    if (!usuariosCadastrados.includes(email)) {
-      usuariosCadastrados.push(email);
-      localStorage.setItem("usuariosCadastrados", JSON.stringify(usuariosCadastrados));
-      console.log('Usuário cadastrado:', email);
-    }
-  }
-  
-  function login(email, senha) {
-    console.log('🔍 LOGIN - Tentativa de login para:', email);
-    console.log('🔍 LOGIN - Senha:', senha);
-    
-    // Verificar se é usuário novo
-    const isNovoUsuario = !isUsuarioCadastrado(email);
-    
-    // Cadastrar usuário automaticamente se for novo
-    cadastrarUsuario(email);
-    
-    // Fazer login
-    localStorage.setItem("userEmail", email);
-    setLogado(true);
-    
-    if (isNovoUsuario) {
-      console.log('🆕 LOGIN - Novo usuário detectado, redirecionando para planos');
-      navigate('/planos');
-    } else {
-      console.log('👤 LOGIN - Usuário existente, redirecionando para home');
+  // Sistema inteligente de login
+  async function login(email, senha) {
+    try {
+      console.log('🔐 Verificando usuário:', email);
+      
+      // Verificar se é usuário Premium conhecido localmente primeiro
+      if (email.toLowerCase() === 'vasculargabriel@gmail.com') {
+        console.log('💎 Usuário Premium detectado localmente!');
+        localStorage.setItem("userEmail", email);
+        localStorage.setItem("userPlano", "premium");
+        localStorage.setItem("userPremium", "true");
+        setLogado(true);
+        alert("🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!");
+        navigate('/home');
+        return;
+      }
+      
+      // Tentar verificar via API Netlify (se estiver rodando)
+      try {
+        console.log('🌐 Tentando verificar via API Netlify...');
+        const response = await fetch(`/.netlify/functions/verificar-usuario?email=${email}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📊 Resposta da API:', data);
+          
+          // Salvar dados do usuário
+          localStorage.setItem("userEmail", email);
+          localStorage.setItem("userPlano", data.plano);
+          localStorage.setItem("userPremium", data.premium);
+          
+          // Marcar como logado
+          setLogado(true);
+          
+          // Mostrar mensagem baseada no status
+          if (data.premium) {
+            alert(`🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!`);
+          } else {
+            alert(`👋 Bem-vindo!\n\nVocê está no Trial Gratuito.\n\n7 dias para testar todos os recursos!`);
+          }
+          
+          navigate('/home');
+          return;
+        }
+      } catch (apiError) {
+        console.log('⚠️ API Netlify não disponível localmente, usando sistema local');
+      }
+      
+      // Fallback: Sistema local simples
+      console.log('🏠 Usando sistema local como fallback');
+      localStorage.setItem("userEmail", email);
+      localStorage.setItem("userPlano", "trial");
+      localStorage.setItem("userPremium", "false");
+      setLogado(true);
+      
+      alert(`👋 Bem-vindo!\n\nVocê está no Trial Gratuito.\n\n7 dias para testar todos os recursos!`);
       navigate('/home');
+      
+    } catch (error) {
+      console.error('❌ Erro no login:', error);
+      alert(`Erro no login: ${error.message}`);
     }
   }
   
-  
-
   function logout() {
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("userPassword");
+    localStorage.removeItem("userPlano");
+    localStorage.removeItem("userPremium");
     setLogado(false);
+    navigate('/');
   }
+  
   return (
     <ErrorBoundary>
       <Routes>

@@ -184,7 +184,9 @@ export default function Login({ onLogin }) {
             boxShadow: "0 2px 8px #00e0ff30",
             cursor: "pointer"
           }}
-        >Entrar / Cadastrar</button>
+        >
+          Entrar / Cadastrar
+        </button>
         <button
           type="button"
           style={{

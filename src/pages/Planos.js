@@ -1,20 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiStar, FiZap, FiAward } from "react-icons/fi";
-import { TrialManager } from "../utils/trialManager";
 
 export default function Planos() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
-  const planoAtual = userEmail ? TrialManager.verificarPlanoUsuario(userEmail) : null;
-  const trialAtual = userEmail ? TrialManager.obterStatusTrial(userEmail) : null;
   
-  // Se usuário já tem trial ativo, selecionar Premium por padrão
-  const planoInicial = (planoAtual === "trial" && trialAtual?.status === "ativo") ? "premium" : "trial";
-  const [planoSelecionado, setPlanoSelecionado] = useState(planoInicial);
-  
-  const isNovoUsuario = userEmail && !planoAtual;
-  const isUpgrade = planoAtual === "trial" && trialAtual?.status === "ativo";
+  const [planoSelecionado, setPlanoSelecionado] = useState("trial");
 
   const planos = [
     {
@@ -82,29 +74,20 @@ export default function Planos() {
     }
   }
 
-  // Função para ativar Premium imediatamente (para teste)
-  function ativarPremiumImediatamente(userEmail) {
-    const planoAnterior = TrialManager.verificarPlanoUsuario(userEmail);
-    TrialManager.definirPlanoUsuario(userEmail, "premium");
-    
-    if (planoAnterior === "trial") {
-      alert("🚀 Upgrade realizado! Seu trial foi convertido para Premium com sucesso!");
-    } else {
-      alert("💎 Plano Premium ativado com sucesso!");
-    }
-    
-    navigate("/home");
-  }
-
   function handleContratar() {
     const plano = planos.find(p => p.id === planoSelecionado);
     const userEmail = localStorage.getItem("userEmail");
     
     if (planoSelecionado === "trial") {
       if (userEmail) {
-        // Usuário já logado - iniciar trial e ir para home
-        TrialManager.iniciarTrial(userEmail);
-        TrialManager.definirPlanoUsuario(userEmail, "trial");
+        // Salvar plano trial
+        localStorage.setItem(`plano_${userEmail}`, "trial");
+        localStorage.setItem(`trial_${userEmail}`, JSON.stringify({
+          inicio: new Date().toISOString(),
+          laudosGerados: [],
+          status: "ativo"
+        }));
+        
         alert("🎯 Trial Gratuito iniciado! Você tem 7 dias e 5 laudos para testar todos os recursos.");
         navigate("/home");
       } else {
@@ -192,12 +175,7 @@ export default function Planos() {
             margin: "0 auto",
             lineHeight: 1.4
           }}>
-            {isNovoUsuario 
-              ? "🎉 Bem-vindo ao VENO.AI! Escolha seu plano para começar:"
-              : isUpgrade
-              ? "🚀 Faça upgrade do seu trial para Premium e tenha acesso ilimitado!"
-              : "Teste gratuitamente por 7 dias ou aproveite todos os recursos com o plano Premium"
-            }
+            Teste gratuitamente por 7 dias ou aproveite todos os recursos com o plano Premium
           </p>
         </div>
 
@@ -363,6 +341,7 @@ export default function Planos() {
             {planoSelecionado === "trial" ? "Começar Trial Gratuito" : "Contratar Premium"}
           </button>
         </div>
+
 
       </div>
     </div>
