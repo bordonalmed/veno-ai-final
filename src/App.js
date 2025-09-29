@@ -13,6 +13,7 @@ import Configuracoes from "./pages/Configuracoes";
 import ExamesRealizados from "./pages/ExamesRealizados";
 import Planos from "./pages/Planos";
 import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
+import { AuthService } from "./services/authService";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -68,87 +69,77 @@ function AppContent() {
   const [logado, setLogado] = useState(false);
   const navigate = useNavigate();
   
+  const cadastrarUsuario = async (email, senha) => {
+    try {
+      console.log('Iniciando cadastro para:', email);
+      
+      // Usar o novo sistema de autenticação
+      const { user, profile } = AuthService.createUser(email, senha, {
+        plano: 'trial',
+        premium: false,
+        trialStatus: {
+          inicio: new Date().toISOString(),
+          laudosGerados: [],
+          status: 'active'
+        }
+      });
+      
+      console.log('Usuário cadastrado com sucesso:', user.email);
+      alert('🎉 Cadastro realizado com sucesso!\n\nBem-vindo ao VenoAI!\n\nVocê tem 7 dias de trial gratuito para testar todos os recursos.');
+      
+      // Navegar para home
+      setLogado(true);
+      navigate('/home');
+      
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      throw error; // Re-throw para ser capturado pelo componente Login
+    }
+  };
+
   // Sistema inteligente de login
   async function login(email, senha) {
     try {
       console.log('🔐 Verificando usuário:', email);
       
-      // Verificar se é usuário Premium conhecido localmente primeiro
-      if (email.toLowerCase() === 'vasculargabriel@gmail.com') {
-        // Verificar senha localmente também
-        if (senha === '123456') {
-          console.log('💎 Usuário Premium detectado localmente com senha correta!');
-          localStorage.setItem("userEmail", email);
-          localStorage.setItem("userPlano", "premium");
-          localStorage.setItem("userPremium", "true");
-          setLogado(true);
-          alert("🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!");
-          navigate('/home');
-          return;
-        } else {
-          alert("❌ Senha incorreta!\n\nTente novamente com a senha correta.");
-          return;
-        }
-      }
+      // Usar o novo sistema de autenticação
+      const { user, profile, session } = AuthService.login(email, senha);
       
-      // Tentar verificar via API Netlify (se estiver rodando)
-      try {
-        console.log('🌐 Tentando verificar via API Netlify...');
-        const response = await fetch(`/.netlify/functions/verificar-usuario?email=${email}&senha=${senha}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('📊 Resposta da API:', data);
-          
-          // Verificar se houve erro de senha
-          if (data.status === 'error' && data.fonte === 'senha-incorreta') {
-            alert(`❌ Senha incorreta!\n\nTente novamente com a senha correta.`);
-            return;
-          }
-          
-          // Salvar dados do usuário
-          localStorage.setItem("userEmail", email);
-          localStorage.setItem("userPlano", data.plano);
-          localStorage.setItem("userPremium", data.premium);
-          
-          // Marcar como logado
-          setLogado(true);
-          
-          // Mostrar mensagem baseada no status
-          if (data.premium) {
-            alert(`🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!`);
-          } else {
-            alert(`👋 Bem-vindo!\n\nVocê está no Trial Gratuito.\n\n7 dias para testar todos os recursos!`);
-          }
-          
-          navigate('/home');
-          return;
-        }
-      } catch (apiError) {
-        console.log('⚠️ API Netlify não disponível localmente, usando sistema local');
-      }
+      console.log('✅ Login realizado com sucesso:', user.email);
       
-      // Fallback: Sistema local simples
-      console.log('🏠 Usando sistema local como fallback');
-      localStorage.setItem("userEmail", email);
-      localStorage.setItem("userPlano", "trial");
-      localStorage.setItem("userPremium", "false");
+      // Salvar dados no localStorage para compatibilidade com sistema antigo
+      localStorage.setItem("userEmail", user.email);
+      localStorage.setItem("userPlano", profile.plano);
+      localStorage.setItem("userPremium", profile.premium.toString());
+      
+      // Marcar como logado
       setLogado(true);
       
-      alert(`👋 Bem-vindo!\n\nVocê está no Trial Gratuito.\n\n7 dias para testar todos os recursos!`);
+      // Mostrar mensagem baseada no status
+      if (profile.premium) {
+        alert(`🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!`);
+      } else {
+        alert(`👋 Bem-vindo!\n\nVocê está no Trial Gratuito.\n\n7 dias para testar todos os recursos!`);
+      }
+      
       navigate('/home');
       
     } catch (error) {
       console.error('❌ Erro no login:', error);
-      alert(`Erro no login: ${error.message}`);
+      throw error; // Re-throw para ser capturado pelo componente Login
     }
   }
   
   function logout() {
+    // Usar o novo sistema de autenticação
+    AuthService.logout();
+    
+    // Limpar dados antigos para compatibilidade
     localStorage.removeItem("userEmail");
     localStorage.removeItem("userPassword");
     localStorage.removeItem("userPlano");
     localStorage.removeItem("userPremium");
+    
     setLogado(false);
     navigate('/');
   }
@@ -157,7 +148,7 @@ function AppContent() {
     <ErrorBoundary>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login onLogin={login} />} />
+        <Route path="/login" element={<Login onLogin={login} onCadastrar={cadastrarUsuario} />} />
         <Route path="/home" element={logado ? <Home onLogout={logout}/> : <Navigate to="/login" />} />
         <Route path="/mmii-venoso" element={logado ? <MMIIVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmii-arterial" element={logado ? <MMIIArterial /> : <Navigate to="/login" />} />

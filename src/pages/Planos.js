@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiStar, FiZap, FiAward } from "react-icons/fi";
+import LoginTestComponent from "../components/LoginTestComponent";
+import SyncBetweenBrowsers from "../components/SyncBetweenBrowsers";
+import TestSyncCode from "../components/TestSyncCode";
 
 export default function Planos() {
   const navigate = useNavigate();
@@ -344,6 +347,15 @@ export default function Planos() {
 
 
       </div>
+      
+      {/* Componente de Teste do Sistema de Login */}
+      <LoginTestComponent />
+      
+      {/* Componente de Teste de Código de Sincronização */}
+      <TestSyncCode />
+      
+      {/* Componente de Sincronização Entre Navegadores */}
+      <SyncBetweenBrowsers />
     </div>
   );
 }
