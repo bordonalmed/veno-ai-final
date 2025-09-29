@@ -1,4 +1,4 @@
-import React, { useState, Component } from "react";
+import React, { useState, Component, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Landing from "./pages/LandingNew";
 import Login from "./pages/Login";
@@ -67,7 +67,70 @@ class ErrorBoundary extends Component {
 
 function AppContent() {
   const [logado, setLogado] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const navigate = useNavigate();
+  
+  // Verificar se usuário está logado ao carregar a página
+  useEffect(() => {
+    const verificarLogin = () => {
+      try {
+        const userEmail = localStorage.getItem('userEmail');
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const userUID = localStorage.getItem('userUID');
+        
+        console.log('Verificando login:', { userEmail, isLoggedIn, userUID });
+        
+        if (userEmail && isLoggedIn === 'true' && userUID) {
+          setLogado(true);
+          console.log('Usuário logado detectado:', userEmail);
+        } else {
+          setLogado(false);
+          console.log('Usuário não logado');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar login:', error);
+        setLogado(false);
+      } finally {
+        setCarregando(false);
+      }
+    };
+
+    verificarLogin();
+  }, []);
+  
+  // Se ainda está carregando, mostrar loading
+  if (carregando) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(120deg,#101824 0%,#1c2740 100%)",
+        color: "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Segoe UI, Inter, Arial, sans-serif"
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: 50,
+            height: 50,
+            border: "3px solid #0eb8d0",
+            borderTop: "3px solid transparent",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            margin: "0 auto 20px auto"
+          }}></div>
+          <p>Carregando...</p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
   
   const cadastrarUsuario = async (email, senha) => {
     try {
@@ -123,12 +186,8 @@ function AppContent() {
       // Marcar como logado
       setLogado(true);
       
-      // Mostrar mensagem baseada no status
-      if (profile.premium) {
-        alert(`🎉 Bem-vindo de volta!\n\nSeu plano Premium está ativo!\n\nAcesso completo liberado!`);
-      } else {
-        alert(`👋 Bem-vindo!\n\nVocê está no Trial Gratuito.\n\n7 dias para testar todos os recursos!`);
-      }
+      // Mostrar mensagem de boas-vindas
+      alert(`👋 Bem-vindo de volta!\n\nLogin realizado com sucesso!`);
       
       navigate('/home');
       

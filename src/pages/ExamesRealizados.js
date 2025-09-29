@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { saveAs } from "file-saver";
 import { FiArrowLeft, FiEye, FiEdit, FiPrinter, FiTrash2, FiX } from "react-icons/fi";
+import laudoSyncService from "../services/laudoSyncService";
 
 // Helpers para exames salvos (localStorage)
 const STORAGE_KEYS = {
@@ -15,7 +16,39 @@ const STORAGE_KEYS = {
   RENAIS: "examesRenais"
 };
 
-function getTodosExames() {
+// Função para buscar todos os exames do Firebase
+async function getTodosExames() {
+  try {
+    console.log('🔍 ExamesRealizados: Buscando exames do Firebase...');
+    
+    const resultado = await laudoSyncService.buscarLaudos();
+    
+    if (resultado.success) {
+      console.log('✅ ExamesRealizados: Exames carregados do Firebase:', resultado.laudos.length);
+      
+      // Converter para o formato esperado pela página
+      const examesFormatados = resultado.laudos.map(laudo => ({
+        ...laudo,
+        tipo: laudo.tipo || 'examesLaudo',
+        tipoNome: laudo.tipoNome || 'Exame',
+        timestamp: laudo.dataCriacao || laudo.timestamp,
+        criadoEm: laudo.dataCriacao || laudo.timestamp
+      }));
+      
+      // Ordenar por data de criação (mais recente primeiro)
+      return examesFormatados.sort((a, b) => new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0));
+    } else {
+      console.warn('⚠️ ExamesRealizados: Erro ao carregar do Firebase, usando localStorage:', resultado.error);
+      return getTodosExamesLocais();
+    }
+  } catch (error) {
+    console.error('❌ ExamesRealizados: Erro ao carregar exames:', error);
+    return getTodosExamesLocais();
+  }
+}
+
+// Função de fallback para buscar do localStorage
+function getTodosExamesLocais() {
   const todosExames = [];
   
   Object.values(STORAGE_KEYS).forEach(key => {
@@ -116,10 +149,30 @@ async function gerarPDFExame(exame) {
 
 export default function ExamesRealizados() {
   const navigate = useNavigate();
-  const [exames] = useState(getTodosExames());
+  const [exames, setExames] = useState([]);
+  const [carregando, setCarregando] = useState(true);
   const [exameVisualizando, setExameVisualizando] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [busca, setBusca] = useState("");
+
+  // Carregar exames quando o componente monta
+  useEffect(() => {
+    const carregarExames = async () => {
+      try {
+        setCarregando(true);
+        const examesCarregados = await getTodosExames();
+        setExames(examesCarregados);
+        console.log('✅ ExamesRealizados: Exames carregados:', examesCarregados.length);
+      } catch (error) {
+        console.error('❌ ExamesRealizados: Erro ao carregar exames:', error);
+        setExames([]);
+      } finally {
+        setCarregando(false);
+      }
+    };
+
+    carregarExames();
+  }, []);
 
   const examesFiltrados = exames.filter(exame => {
     const matchTipo = filtroTipo === "todos" || exame.tipoNome === filtroTipo;
