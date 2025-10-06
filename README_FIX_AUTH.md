@@ -207,3 +207,4 @@ localStorage.clear(); // ⚠️ CUIDADO: Remove todos os dados
 
 
 
+

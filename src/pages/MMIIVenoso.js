@@ -3,6 +3,7 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import ExamHeader from "../components/ExamHeader";
 import laudoSyncService from '../services/laudoSyncService';
+import examesRealtimeService from '../services/examesRealtimeService';
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIVenoso";
@@ -10,14 +11,14 @@ const STORAGE_KEY = "examesMMIIVenoso";
 // Funções para gerenciar exames salvos
 async function salvarExame(dadosExame) {
   try {
-    // Salvar no Firebase (sincronização automática)
-    const resultado = await laudoSyncService.salvarLaudo({
+    // Salvar usando o serviço em tempo real
+    const resultado = await examesRealtimeService.criarExame({
       ...dadosExame,
       tipoNome: "MMII Venoso"
     });
     
     if (resultado.success) {
-      console.log("Exame salvo com sucesso no Firebase!");
+      console.log("Exame salvo com sucesso no Firebase (tempo real)!");
       return true;
     } else {
       console.warn("Erro ao salvar no Firebase, salvando localmente:", resultado.error);

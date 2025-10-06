@@ -4,12 +4,38 @@ import jsPDF from "jspdf";
 import ExamHeader from "../components/ExamHeader";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
+import laudoSyncService from '../services/laudoSyncService';
+import examesRealtimeService from '../services/examesRealtimeService';
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIArterial";
 
 // Funções para gerenciar exames salvos
-function salvarExame(dadosExame) {
+async function salvarExame(dadosExame) {
+  try {
+    // Salvar usando o serviço em tempo real
+    const resultado = await examesRealtimeService.criarExame({
+      ...dadosExame,
+      tipoNome: "MMII Arterial"
+    });
+    
+    if (resultado.success) {
+      console.log("Exame salvo com sucesso no Firebase (tempo real)!");
+      return true;
+    } else {
+      console.warn("Erro ao salvar no Firebase, salvando localmente:", resultado.error);
+      // Fallback: salvar localmente
+      return salvarExameLocal(dadosExame);
+    }
+  } catch (error) {
+    console.error("Erro ao salvar exame:", error);
+    // Fallback: salvar localmente
+    return salvarExameLocal(dadosExame);
+  }
+}
+
+// Função de fallback para salvar localmente
+function salvarExameLocal(dadosExame) {
   try {
     const examesExistentes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     const novoExame = {
@@ -23,7 +49,7 @@ function salvarExame(dadosExame) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(examesExistentes));
     return true;
   } catch (error) {
-    console.error("Erro ao salvar exame:", error);
+    console.error("Erro ao salvar exame localmente:", error);
     return false;
   }
 }
@@ -742,7 +768,6 @@ function MMIIArterial() {
   const [isMobile, setIsMobile] = useState(false);
   const [erro, setErro] = useState("");
   const [mostrarLaudo, setMostrarLaudo] = useState(false);
-  const [mostrarExamesSalvos, setMostrarExamesSalvos] = useState(false);
   const [anexos, setAnexos] = useState([]);
   
   // Estado para as artérias de cada lado
@@ -804,7 +829,7 @@ function MMIIArterial() {
   }
 
   function handleVisualizarExamesSalvos() {
-    setMostrarExamesSalvos(!mostrarExamesSalvos);
+    window.location.href = '/exames-realizados';
   }
 
   function handleConfiguracao() {
@@ -1217,8 +1242,16 @@ function MMIIArterial() {
     setMostrarLaudo(!mostrarLaudo);
   }
 
-  function handleSalvarExame() {
-    if (!deveMostrarCampos) return;
+  async function handleSalvarExame() {
+    console.log('🔍 MMIIArterial: handleSalvarExame chamado');
+    console.log('📋 MMIIArterial: deveMostrarCampos:', deveMostrarCampos);
+    console.log('📋 MMIIArterial: nome:', nome, 'idade:', idade, 'data:', data, 'lado:', lado);
+    
+    if (!deveMostrarCampos) {
+      console.log('❌ MMIIArterial: Campos não preenchidos, não salvando');
+      alert('Preencha todos os campos obrigatórios antes de salvar!');
+      return;
+    }
 
     const dadosExame = {
       nome,
@@ -1227,32 +1260,24 @@ function MMIIArterial() {
       lado,
       arteriasDireito,
       arteriasEsquerdo,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      tipoNome: "MMII Arterial"
     };
 
-    const sucesso = salvarExame(dadosExame);
-    
-    if (sucesso) {
-      // Feedback visual temporário
-      const btn = document.getElementById('btnSalvarExame');
-      if (btn) {
-        const textoOriginal = btn.textContent;
-        btn.textContent = "Salvo!";
-        btn.style.background = "linear-gradient(135deg, #28a745 0%, #20c997 100%)";
-        setTimeout(() => {
-          btn.textContent = textoOriginal;
-          btn.style.background = "linear-gradient(135deg, #28a745 0%, #20c997 100%)";
-        }, 2000);
-      }
+    console.log('📝 MMIIArterial: Dados do exame:', dadosExame);
+
+    try {
+      console.log('🔄 MMIIArterial: Chamando salvarExame...');
+      const sucesso = await salvarExame(dadosExame);
+      console.log('✅ MMIIArterial: Resultado do salvamento:', sucesso);
       
-      // Limpar campos após salvar (opcional)
-      // setNome("");
-      // setIdade("");
-      // setData("");
-      // setLado("");
-      // setArteriasDireito(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArterial }])));
-      // setArteriasEsquerdo(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArterial }])));
-    } else {
+      if (sucesso) {
+        alert("Exame salvo com sucesso!");
+      } else {
+        alert('Erro ao salvar o exame. Tente novamente.');
+      }
+    } catch (error) {
+      console.error("❌ MMIIArterial: Erro ao salvar exame:", error);
       alert('Erro ao salvar o exame. Tente novamente.');
     }
   }
@@ -1870,83 +1895,6 @@ function MMIIArterial() {
             </div>
           )}
 
-          {/* Modal de Exames Salvos */}
-          {mostrarExamesSalvos && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: 'clamp(16px, 3vw, 24px)'
-            }}>
-              <div style={{
-                background: '#ffffff',
-                borderRadius: 'clamp(12px, 2.5vw, 16px)',
-                padding: 'clamp(20px, 4vw, 32px)',
-                maxWidth: 'min(800px, 95vw)',
-                maxHeight: 'min(600px, 90vh)',
-                overflow: 'auto',
-                position: 'relative'
-              }}>
-                {/* Botão fechar */}
-                <button
-                  onClick={() => setMostrarExamesSalvos(false)}
-                  style={{
-                    position: 'absolute',
-                    top: 'clamp(12px, 2.5vw, 16px)',
-                    right: 'clamp(12px, 2.5vw, 16px)',
-                    background: 'none',
-                    border: 'none',
-                    fontSize: 'clamp(20px, 4vw, 24px)',
-                    cursor: 'pointer',
-                    color: '#666',
-                    padding: 'clamp(4px, 1vw, 8px)',
-                    borderRadius: '50%',
-                    width: 'clamp(32px, 6vw, 40px)',
-                    height: 'clamp(32px, 6vw, 40px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = '#f0f0f0';
-                    e.target.style.color = '#333';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'none';
-                    e.target.style.color = '#666';
-                  }}
-                  title="Fechar"
-                >
-                  ×
-                </button>
-
-                <h2 style={{
-                  margin: '0 0 clamp(20px, 4vw, 32px) 0',
-                  color: '#0eb8d0',
-                  fontSize: 'clamp(20px, 4vw, 24px)',
-                  fontWeight: 700,
-                  textAlign: 'center'
-                }}>
-                  Exames Salvos - MMII Arterial
-                </h2>
-
-                <ExamesSalvosList 
-                  onCarregar={handleCarregarExame}
-                  onEditar={handleEditarExame}
-                  onExcluir={handleExcluirExame}
-                  onFechar={() => setMostrarExamesSalvos(false)}
-                />
-              </div>
-            </div>
-          )}
         </div>
       )}
 

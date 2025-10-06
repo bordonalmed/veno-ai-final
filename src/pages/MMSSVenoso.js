@@ -2,12 +2,38 @@ import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import ExamHeader from "../components/ExamHeader";
+import laudoSyncService from '../services/laudoSyncService';
+import examesRealtimeService from '../services/examesRealtimeService';
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMSSVenoso";
 
 // Funções para gerenciar exames salvos
-function salvarExame(dadosExame) {
+async function salvarExame(dadosExame) {
+  try {
+    // Salvar usando o serviço em tempo real
+    const resultado = await examesRealtimeService.criarExame({
+      ...dadosExame,
+      tipoNome: "MMSS Venoso"
+    });
+    
+    if (resultado.success) {
+      console.log("Exame salvo com sucesso no Firebase (tempo real)!");
+      return true;
+    } else {
+      console.warn("Erro ao salvar no Firebase, salvando localmente:", resultado.error);
+      // Fallback: salvar localmente
+      return salvarExameLocal(dadosExame);
+    }
+  } catch (error) {
+    console.error("Erro ao salvar exame:", error);
+    // Fallback: salvar localmente
+    return salvarExameLocal(dadosExame);
+  }
+}
+
+// Função de fallback para salvar localmente
+function salvarExameLocal(dadosExame) {
   try {
     const examesExistentes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     const novoExame = {
@@ -21,7 +47,7 @@ function salvarExame(dadosExame) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(examesExistentes));
     return true;
   } catch (error) {
-    console.error("Erro ao salvar exame:", error);
+    console.error("Erro ao salvar exame localmente:", error);
     return false;
   }
 }
@@ -329,7 +355,7 @@ function MMSSVenoso() {
     setLaudoTexto(laudo);
   }
 
-  function handleSalvarExame() {
+  async function handleSalvarExame() {
     setErro("");
     if (!nome || !data || !lado) {
       setErro("Preencha nome, data e lado antes de salvar o exame!");
@@ -354,10 +380,15 @@ function MMSSVenoso() {
       tipoNome: "MMSS Venoso"
     };
     
-    const sucesso = salvarExame(dadosExame);
-    if (sucesso) {
-      alert("Exame salvo com sucesso!");
-    } else {
+    try {
+      const sucesso = await salvarExame(dadosExame);
+      if (sucesso) {
+        alert("Exame salvo com sucesso!");
+      } else {
+        setErro("Erro ao salvar o exame. Tente novamente.");
+      }
+    } catch (error) {
+      console.error("Erro ao salvar exame:", error);
       setErro("Erro ao salvar o exame. Tente novamente.");
     }
   }

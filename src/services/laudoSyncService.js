@@ -8,7 +8,8 @@ import {
   orderBy,
   doc,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 
@@ -39,8 +40,11 @@ class LaudoSyncService {
         ...laudoData,
         userId: user.uid,
         userEmail: user.email,
-        dataCriacao: new Date().toISOString(),
-        dataModificacao: new Date().toISOString()
+        dataCriacao: serverTimestamp(),
+        dataModificacao: serverTimestamp(),
+        origem: 'firebase',
+        // Adicionar hash único para evitar duplicatas
+        hashUnico: `${user.uid}_${laudoData.nome}_${laudoData.data}_${laudoData.tipoNome}_${Date.now()}`
       };
 
       console.log('📝 LaudoSyncService: Salvando no Firebase...', laudoCompleto);
@@ -49,13 +53,12 @@ class LaudoSyncService {
       const docRef = await addDoc(collection(db, 'laudos'), laudoCompleto);
       
       console.log('✅ LaudoSyncService: Laudo salvo no Firebase com ID:', docRef.id);
-      
-      // Também salvar localmente para compatibilidade
-      this.salvarLocalmente(laudoData);
+      console.log('✅ LaudoSyncService: Salvamento no Firebase concluído, não salvando localmente');
       
       return { success: true, id: docRef.id };
     } catch (error) {
       console.error('❌ LaudoSyncService: Erro ao salvar laudo no Firebase:', error);
+      console.log('🔄 LaudoSyncService: Usando fallback - salvando apenas localmente');
       // Fallback: salvar apenas localmente
       this.salvarLocalmente(laudoData);
       return { success: false, error: error.message };
@@ -86,7 +89,7 @@ class LaudoSyncService {
   // Buscar laudos do usuário
   async buscarLaudos() {
     try {
-      console.log('🔍 LaudoSyncService: Buscando laudos...');
+      console.log('🔍 LaudoSyncService: Buscando laudos APENAS do Firebase...');
       
       const user = this.getCurrentUser();
       if (!user) {
@@ -117,8 +120,8 @@ class LaudoSyncService {
       return { success: true, laudos };
     } catch (error) {
       console.error('❌ LaudoSyncService: Erro ao buscar laudos:', error);
-      // Fallback: buscar localmente
-      return this.buscarLaudosLocais();
+      console.log('📝 LaudoSyncService: Retornando lista vazia (não usando localStorage)');
+      return { success: false, laudos: [], error: error.message }; // NÃO usar fallback
     }
   }
 
@@ -184,8 +187,8 @@ class LaudoSyncService {
             userEmail: user.email,
             tipo: tipo,
             origem: 'sincronizado',
-            dataCriacao: laudo.timestamp || new Date().toISOString(),
-            dataModificacao: new Date().toISOString()
+            dataCriacao: serverTimestamp(),
+            dataModificacao: serverTimestamp()
           };
 
           await addDoc(collection(db, 'laudos'), laudoCompleto);
@@ -204,17 +207,29 @@ class LaudoSyncService {
   // Deletar laudo
   async deletarLaudo(laudoId) {
     try {
+      console.log('🗑️ LaudoSyncService: Iniciando exclusão do laudo:', laudoId);
+      
       const user = this.getCurrentUser();
       if (!user) {
+        console.error('❌ LaudoSyncService: Usuário não logado');
         throw new Error('Usuário não logado');
       }
 
-      await deleteDoc(doc(db, 'laudos', laudoId));
-      console.log('Laudo deletado do Firebase:', laudoId);
+      console.log('✅ LaudoSyncService: Usuário logado:', user.email, user.uid);
+
+      // Verificar se o documento existe antes de deletar
+      const laudoRef = doc(db, 'laudos', laudoId);
       
-      return { success: true };
+      console.log('🔍 LaudoSyncService: Verificando documento:', laudoId);
+      
+      // Deletar o documento
+      await deleteDoc(laudoRef);
+      
+      console.log('✅ LaudoSyncService: Laudo deletado com sucesso do Firebase:', laudoId);
+      
+      return { success: true, message: 'Laudo deletado com sucesso' };
     } catch (error) {
-      console.error('Erro ao deletar laudo:', error);
+      console.error('❌ LaudoSyncService: Erro ao deletar laudo:', error);
       return { success: false, error: error.message };
     }
   }

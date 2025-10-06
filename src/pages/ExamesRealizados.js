@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { saveAs } from "file-saver";
-import { FiArrowLeft, FiEye, FiEdit, FiPrinter, FiTrash2, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiEye, FiEdit, FiPrinter, FiTrash2, FiX, FiWifi, FiWifiOff } from "react-icons/fi";
 import laudoSyncService from "../services/laudoSyncService";
+import examesRealtimeService from "../services/examesRealtimeService";
 
 // Helpers para exames salvos (localStorage)
 const STORAGE_KEYS = {
@@ -19,7 +20,7 @@ const STORAGE_KEYS = {
 // Função para buscar todos os exames do Firebase
 async function getTodosExames() {
   try {
-    console.log('🔍 ExamesRealizados: Buscando exames do Firebase...');
+    console.log('🔍 ExamesRealizados: Buscando exames APENAS do Firebase...');
     
     const resultado = await laudoSyncService.buscarLaudos();
     
@@ -32,18 +33,21 @@ async function getTodosExames() {
         tipo: laudo.tipo || 'examesLaudo',
         tipoNome: laudo.tipoNome || 'Exame',
         timestamp: laudo.dataCriacao || laudo.timestamp,
-        criadoEm: laudo.dataCriacao || laudo.timestamp
+        criadoEm: laudo.dataCriacao || laudo.timestamp,
+        origem: 'firebase' // Marcar origem
       }));
       
       // Ordenar por data de criação (mais recente primeiro)
       return examesFormatados.sort((a, b) => new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0));
     } else {
-      console.warn('⚠️ ExamesRealizados: Erro ao carregar do Firebase, usando localStorage:', resultado.error);
-      return getTodosExamesLocais();
+      console.warn('⚠️ ExamesRealizados: Erro ao carregar do Firebase:', resultado.error);
+      console.log('📝 ExamesRealizados: Retornando lista vazia (não usando localStorage)');
+      return []; // NÃO usar localStorage como fallback
     }
   } catch (error) {
     console.error('❌ ExamesRealizados: Erro ao carregar exames:', error);
-    return getTodosExamesLocais();
+    console.log('📝 ExamesRealizados: Retornando lista vazia (não usando localStorage)');
+    return []; // NÃO usar localStorage como fallback
   }
 }
 
@@ -151,27 +155,91 @@ export default function ExamesRealizados() {
   const navigate = useNavigate();
   const [exames, setExames] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [exameVisualizando, setExameVisualizando] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [busca, setBusca] = useState("");
+  const [examesSelecionados, setExamesSelecionados] = useState([]);
+  const [modoSelecao, setModoSelecao] = useState(false);
+  
+  // Ref para armazenar o ID do listener
+  const listenerIdRef = useRef(null);
 
-  // Carregar exames quando o componente monta
+  // Configurar sincronização em tempo real
   useEffect(() => {
-    const carregarExames = async () => {
+    const configurarSincronizacao = () => {
       try {
-        setCarregando(true);
-        const examesCarregados = await getTodosExames();
-        setExames(examesCarregados);
-        console.log('✅ ExamesRealizados: Exames carregados:', examesCarregados.length);
+        console.log('🔄 ExamesRealizados: Configurando sincronização em tempo real...');
+        
+        // Cancelar listener anterior se existir
+        if (listenerIdRef.current) {
+          examesRealtimeService.unsubscribeExames(listenerIdRef.current);
+        }
+
+        // Criar novo listener em tempo real
+        const listenerId = examesRealtimeService.subscribeExames(
+          (examesAtualizados, metadata) => {
+            console.log('📡 ExamesRealizados: Recebida atualização em tempo real:', examesAtualizados.length, 'exames');
+            
+            // Atualizar estado dos exames
+            setExames(examesAtualizados);
+            
+            // Atualizar status de sincronização
+            setSincronizando(metadata.hasPendingWrites);
+            setIsOffline(metadata.isOffline);
+            
+            // Parar loading após primeira carga
+            if (carregando) {
+              setCarregando(false);
+            }
+          },
+          (error) => {
+            console.error('❌ ExamesRealizados: Erro no listener:', error);
+            setCarregando(false);
+          }
+        );
+
+        listenerIdRef.current = listenerId;
+        console.log('✅ ExamesRealizados: Sincronização em tempo real ativa');
+
       } catch (error) {
-        console.error('❌ ExamesRealizados: Erro ao carregar exames:', error);
-        setExames([]);
-      } finally {
+        console.error('❌ ExamesRealizados: Erro ao configurar sincronização:', error);
         setCarregando(false);
       }
     };
 
-    carregarExames();
+    configurarSincronizacao();
+
+    // Cleanup: cancelar listener quando componente desmontar
+    return () => {
+      if (listenerIdRef.current) {
+        console.log('🔇 ExamesRealizados: Cancelando listener...');
+        examesRealtimeService.unsubscribeExames(listenerIdRef.current);
+        listenerIdRef.current = null;
+      }
+    };
+  }, []); // Executar apenas uma vez no mount
+
+  // Monitorar status de conexão
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('🌐 ExamesRealizados: Conexão restaurada');
+      setIsOffline(false);
+    };
+
+    const handleOffline = () => {
+      console.log('📴 ExamesRealizados: Conexão perdida');
+      setIsOffline(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const examesFiltrados = exames.filter(exame => {
@@ -204,12 +272,161 @@ export default function ExamesRealizados() {
     }
   }
 
-  function handleExcluirExame(exame) {
-    if (window.confirm(`Tem certeza que deseja excluir o exame de ${exame.nome}?`)) {
-      excluirExame(exame);
-      window.location.reload(); // Recarregar para atualizar a lista
+  // Função para limpar todos os dados locais
+  const limparDadosLocais = () => {
+    try {
+      console.log('🧹 ExamesRealizados: Limpando todos os dados locais...');
+      
+      // Limpar todas as chaves de exames do localStorage
+      Object.values(STORAGE_KEYS).forEach(key => {
+        localStorage.removeItem(key);
+        console.log('🗑️ ExamesRealizados: Removido:', key);
+      });
+      
+      console.log('✅ ExamesRealizados: Dados locais limpos com sucesso');
+    } catch (error) {
+      console.error('❌ ExamesRealizados: Erro ao limpar dados locais:', error);
     }
-  }
+  };
+
+  // Função para LIMPAR TODOS os exames do Firebase
+  const limparTodosExamesFirebase = async () => {
+    try {
+      const confirmacao = window.confirm(
+        '⚠️ ATENÇÃO: Isso irá DELETAR TODOS os exames do Firebase!\n\n' +
+        'Tem certeza que deseja continuar?\n\n' +
+        'Esta ação NÃO pode ser desfeita!'
+      );
+      
+      if (!confirmacao) return;
+      
+      console.log('🗑️ ExamesRealizados: LIMPANDO TODOS os exames do Firebase...');
+      
+      if (exames.length === 0) {
+        alert('Nenhum exame encontrado!');
+        return;
+      }
+      
+      console.log('🔥 ExamesRealizados: Deletando', exames.length, 'exames do Firebase...');
+      
+      let deletados = 0;
+      let erros = 0;
+      
+      for (const exame of exames) {
+        if (exame.id) {
+          const resultado = await examesRealtimeService.excluirExame(exame.id);
+          if (resultado.success) {
+            deletados++;
+            console.log('✅ ExamesRealizados: Exame deletado:', exame.id);
+          } else {
+            erros++;
+            console.warn('⚠️ ExamesRealizados: Erro ao deletar:', exame.id);
+          }
+        }
+      }
+      
+      // Limpar dados locais também
+      limparDadosLocais();
+      
+      alert(`🧹 LIMPEZA CONCLUÍDA!\n\n` +
+            `✅ Exames deletados: ${deletados}\n` +
+            `❌ Erros: ${erros}\n\n` +
+            `Sistema limpo e pronto para uso!`);
+      
+      console.log('🎉 ExamesRealizados: Sistema limpo com sucesso!');
+      // NÃO limpar lista manualmente - o listener em tempo real fará isso
+      
+    } catch (error) {
+      console.error('❌ ExamesRealizados: Erro ao limpar Firebase:', error);
+      alert('Erro ao limpar Firebase: ' + error.message);
+    }
+  };
+
+
+  const handleExcluirExame = async (exame) => {
+    if (window.confirm(`Tem certeza que deseja excluir o exame de ${exame.nome}?`)) {
+      try {
+        console.log('🗑️ ExamesRealizados: Excluindo exame:', exame.id);
+        
+        // Excluir usando o serviço em tempo real
+        const resultado = await examesRealtimeService.excluirExame(exame.id);
+        
+        if (resultado.success) {
+          console.log('✅ ExamesRealizados: Exame excluído com sucesso');
+          // NÃO atualizar estado local - o listener em tempo real fará isso
+        } else {
+          console.error('❌ ExamesRealizados: Erro ao excluir exame:', resultado.error);
+          alert('Erro ao excluir exame: ' + resultado.error);
+        }
+      } catch (error) {
+        console.error('❌ ExamesRealizados: Erro ao excluir exame:', error);
+        alert('Erro ao excluir exame: ' + error.message);
+      }
+    }
+  };
+
+  // Funções para seleção múltipla
+  const toggleSelecaoExame = (exame) => {
+    setExamesSelecionados(prev => {
+      const jaSelecionado = prev.find(e => e.id === exame.id);
+      if (jaSelecionado) {
+        return prev.filter(e => e.id !== exame.id);
+      } else {
+        return [...prev, exame];
+      }
+    });
+  };
+
+  const selecionarTodos = () => {
+    setExamesSelecionados(examesFiltrados);
+  };
+
+  const deselecionarTodos = () => {
+    setExamesSelecionados([]);
+  };
+
+  const excluirSelecionados = async () => {
+    if (examesSelecionados.length === 0) return;
+    
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir ${examesSelecionados.length} exame(s) selecionado(s)?`
+    );
+    
+    if (!confirmacao) return;
+
+    try {
+      setCarregando(true);
+      
+      // Excluir cada exame selecionado
+      for (const exame of examesSelecionados) {
+        console.log('🗑️ ExamesRealizados: Excluindo exame selecionado:', exame.id);
+        
+        // Excluir usando o serviço em tempo real
+        const resultado = await examesRealtimeService.excluirExame(exame.id);
+        
+        if (resultado.success) {
+          console.log('✅ ExamesRealizados: Exame excluído com sucesso');
+        } else {
+          console.error('❌ ExamesRealizados: Erro ao excluir exame:', resultado.error);
+          alert('Erro ao excluir exame: ' + resultado.error);
+          continue; // Continuar com o próximo se falhar
+        }
+      }
+      
+      // Limpar seleção
+      setExamesSelecionados([]);
+      setModoSelecao(false);
+      
+      console.log('✅ ExamesRealizados: Exames selecionados excluídos com sucesso');
+      alert(`${examesSelecionados.length} exame(s) excluído(s) com sucesso!`);
+      // NÃO atualizar estado local - o listener em tempo real fará isso
+    } catch (error) {
+      console.error('❌ ExamesRealizados: Erro ao excluir exames selecionados:', error);
+      alert('Erro ao excluir exames selecionados. Tente novamente.');
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   return (
     <div style={{
@@ -245,14 +462,294 @@ export default function ExamesRealizados() {
           <FiArrowLeft size={18}/> Voltar
         </button>
         
-        <h1 style={{ 
-          fontSize: 28, 
-          fontWeight: 800, 
-          color: "#0eb8d0",
-          margin: 0
-        }}>
-          📋 Exames Realizados ({examesFiltrados.length})
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          <h1 style={{ 
+            fontSize: 28, 
+            fontWeight: 800, 
+            color: "#0eb8d0",
+            margin: 0
+          }}>
+            📋 Exames Realizados ({examesFiltrados.length})
+          </h1>
+          
+          {/* Status de sincronização em tempo real */}
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "8px",
+            padding: "6px 12px",
+            borderRadius: "20px",
+            background: isOffline ? "#e74c3c" : sincronizando ? "#f39c12" : "#27ae60",
+            color: "white",
+            fontSize: "12px",
+            fontWeight: "bold"
+          }}>
+            {isOffline ? (
+              <>
+                <FiWifiOff size={14} />
+                Offline
+              </>
+            ) : sincronizando ? (
+              <>
+                <FiWifi size={14} />
+                Sincronizando...
+              </>
+            ) : (
+              <>
+                <FiWifi size={14} />
+                Sincronizado
+              </>
+            )}
+          </div>
+        </div>
+        
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <button
+            onClick={() => {
+              // Forçar re-assinatura (útil para debug)
+              if (listenerIdRef.current) {
+                examesRealtimeService.unsubscribeExames(listenerIdRef.current);
+                listenerIdRef.current = null;
+              }
+              // Reconfigurar sincronização
+              const configurarSincronizacao = () => {
+                try {
+                  const listenerId = examesRealtimeService.subscribeExames(
+                    (examesAtualizados, metadata) => {
+                      setExames(examesAtualizados);
+                      setSincronizando(metadata.hasPendingWrites);
+                      setIsOffline(metadata.isOffline);
+                      if (carregando) setCarregando(false);
+                    },
+                    (error) => {
+                      console.error('Erro no listener:', error);
+                      setCarregando(false);
+                    }
+                  );
+                  listenerIdRef.current = listenerId;
+                } catch (error) {
+                  console.error('Erro ao reconfigurar:', error);
+                }
+              };
+              configurarSincronizacao();
+              alert('Sincronização reiniciada!');
+            }}
+            disabled={carregando}
+            style={{
+              background: "linear-gradient(45deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: carregando ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              opacity: carregando ? 0.7 : 1,
+              transition: "all 0.3s ease"
+            }}
+          >
+            🔄 Reiniciar Sync
+          </button>
+          
+          <button
+            onClick={limparTodosExamesFirebase}
+            disabled={carregando}
+            style={{
+              background: "linear-gradient(45deg, #e67e22 0%, #f39c12 100%)",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: carregando ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              opacity: carregando ? 0.7 : 1,
+              transition: "all 0.3s ease"
+            }}
+          >
+            🗑️ LIMPAR TUDO
+          </button>
+          
+          <button
+            onClick={() => {
+              // Limpeza completa e rápida
+              const confirmacao = window.confirm(
+                '🧹 LIMPEZA COMPLETA PARA TESTE\n\n' +
+                'Isso irá:\n' +
+                '• Limpar TODOS os dados locais\n' +
+                '• Deletar TODOS os exames do Firebase\n' +
+                '• Recarregar a página\n\n' +
+                'Continuar?'
+              );
+              
+              if (!confirmacao) return;
+              
+              console.log('🧹 INICIANDO LIMPEZA COMPLETA...');
+              
+              // 1. Limpar localStorage
+              const storageKeys = [
+                'examesMMIIVenoso', 'examesMMIIArterial', 'examesMMSSVenoso', 
+                'examesMMSSArterial', 'examesCarotidasVertebrais', 'examesCarotidas',
+                'examesAorta', 'examesRenais', 'exameEmEdicao'
+              ];
+              
+              let limpos = 0;
+              storageKeys.forEach(key => {
+                if (localStorage.getItem(key)) {
+                  localStorage.removeItem(key);
+                  limpos++;
+                }
+              });
+              
+              // Limpar dados de trial
+              Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('trial_') || key.startsWith('transacao_')) {
+                  localStorage.removeItem(key);
+                  limpos++;
+                }
+              });
+              
+              console.log(`✅ ${limpos} itens locais removidos`);
+              
+              // 2. Limpar Firebase
+              limparTodosExamesFirebase().then(() => {
+                console.log('🎉 LIMPEZA COMPLETA! Recarregando página...');
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
+              });
+            }}
+            disabled={carregando}
+            style={{
+              background: "linear-gradient(45deg, #e74c3c 0%, #c0392b 100%)",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: carregando ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              opacity: carregando ? 0.7 : 1,
+              transition: "all 0.3s ease"
+            }}
+          >
+            🧹 LIMPEZA COMPLETA
+          </button>
+          
+          <button
+            onClick={() => {
+              if (window.confirm('Tem certeza que deseja limpar TODOS os dados locais? Isso irá forçar o uso apenas do Firebase.')) {
+                limparDadosLocais();
+                alert('Dados locais limpos! O sistema continuará usando apenas Firebase em tempo real.');
+              }
+            }}
+            disabled={carregando}
+            style={{
+              background: "linear-gradient(45deg, #e74c3c 0%, #c0392b 100%)",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: carregando ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              opacity: carregando ? 0.7 : 1,
+              transition: "all 0.3s ease"
+            }}
+          >
+            🗑️ Limpar Locais
+          </button>
+          
+          <button
+            onClick={() => setModoSelecao(!modoSelecao)}
+            style={{
+              background: modoSelecao ? "#e74c3c" : "#27ae60",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "all 0.3s ease"
+            }}
+          >
+            {modoSelecao ? "❌ Cancelar" : "☑️ Selecionar"}
+          </button>
+          
+          {modoSelecao && (
+            <>
+              <button
+                onClick={selecionarTodos}
+                disabled={examesFiltrados.length === 0}
+                style={{
+                  background: "#3498db",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  cursor: examesFiltrados.length === 0 ? "not-allowed" : "pointer",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  opacity: examesFiltrados.length === 0 ? 0.5 : 1
+                }}
+              >
+                ☑️ Todos
+              </button>
+              
+              <button
+                onClick={deselecionarTodos}
+                disabled={examesSelecionados.length === 0}
+                style={{
+                  background: "#95a5a6",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  cursor: examesSelecionados.length === 0 ? "not-allowed" : "pointer",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  opacity: examesSelecionados.length === 0 ? 0.5 : 1
+                }}
+              >
+                ☐ Nenhum
+              </button>
+              
+              <button
+                onClick={excluirSelecionados}
+                disabled={examesSelecionados.length === 0 || carregando}
+                style={{
+                  background: "#e74c3c",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  cursor: examesSelecionados.length === 0 || carregando ? "not-allowed" : "pointer",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  opacity: examesSelecionados.length === 0 || carregando ? 0.5 : 1
+                }}
+              >
+                🗑️ Excluir ({examesSelecionados.length})
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}
@@ -338,16 +835,40 @@ export default function ExamesRealizados() {
               padding: 20,
               border: "1px solid #0eb8d033",
               transition: "transform 0.2s",
-              cursor: "pointer"
+              cursor: "pointer",
+              position: "relative",
+              borderColor: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d033"
             }}
             onMouseEnter={(e) => e.target.style.transform = "translateY(-2px)"}
             onMouseLeave={(e) => e.target.style.transform = "translateY(0)"}
             >
+              {/* Checkbox para seleção múltipla */}
+              {modoSelecao && (
+                <div style={{
+                  position: "absolute",
+                  top: 10,
+                  left: 10,
+                  zIndex: 10
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={examesSelecionados.find(e => e.id === exame.id) ? true : false}
+                    onChange={() => toggleSelecaoExame(exame)}
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      cursor: "pointer"
+                    }}
+                  />
+                </div>
+              )}
+              
               <div style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                marginBottom: 15
+                marginBottom: 15,
+                marginLeft: modoSelecao ? "30px" : "0"
               }}>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ 
@@ -376,81 +897,97 @@ export default function ExamesRealizados() {
                   gap: 8,
                   flexDirection: "column"
                 }}>
-                  <button
-                    onClick={() => setExameVisualizando(exame)}
-                    style={{
-                      background: "#11b581",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4
-                    }}
-                    title="Visualizar"
-                  >
-                    <FiEye size={12} />
-                  </button>
+                  {!modoSelecao && (
+                    <>
+                      <button
+                        onClick={() => setExameVisualizando(exame)}
+                        style={{
+                          background: "#11b581",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                        title="Visualizar"
+                      >
+                        <FiEye size={12} />
+                      </button>
+                      
+                      <button
+                        onClick={() => handleEditarExame(exame)}
+                        style={{
+                          background: "#0eb8d0",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                        title="Editar"
+                      >
+                        <FiEdit size={12} />
+                      </button>
+                      
+                      <button
+                        onClick={() => gerarPDFExame(exame)}
+                        style={{
+                          background: "#ff9500",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                        title="Imprimir"
+                      >
+                        <FiPrinter size={12} />
+                      </button>
+                      
+                      <button
+                        onClick={() => handleExcluirExame(exame)}
+                        style={{
+                          background: "#e74c3c",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                        title="Excluir"
+                      >
+                        <FiTrash2 size={12} />
+                      </button>
+                    </>
+                  )}
                   
-                  <button
-                    onClick={() => handleEditarExame(exame)}
-                    style={{
-                      background: "#0eb8d0",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4
-                    }}
-                    title="Editar"
-                  >
-                    <FiEdit size={12} />
-                  </button>
-                  
-                  <button
-                    onClick={() => gerarPDFExame(exame)}
-                    style={{
-                      background: "#ff9500",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4
-                    }}
-                    title="Imprimir"
-                  >
-                    <FiPrinter size={12} />
-                  </button>
-                  
-                  <button
-                    onClick={() => handleExcluirExame(exame)}
-                    style={{
-                      background: "#e74c3c",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4
-                    }}
-                    title="Excluir"
-                  >
-                    <FiTrash2 size={12} />
-                  </button>
+                  {modoSelecao && (
+                    <div style={{
+                      color: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d0",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      padding: "5px"
+                    }}>
+                      {examesSelecionados.find(e => e.id === exame.id) ? "☑️ Selecionado" : "☐ Não selecionado"}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
