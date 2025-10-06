@@ -434,264 +434,138 @@ export default function ExamesRealizados() {
       background: "linear-gradient(120deg,#101824 0%,#1c2740 100%)",
       color: "#fff",
       fontFamily: "Segoe UI, Inter, Arial, sans-serif",
-      padding: 20
+      padding: "10px"
     }}>
-      {/* Header */}
+      {/* Header Mobile-First */}
       <div style={{ 
         display: "flex", 
-        alignItems: "center", 
-        marginBottom: 30,
-        gap: 20
+        flexDirection: "column",
+        gap: "15px",
+        marginBottom: "20px"
       }}>
-        <button 
-          onClick={() => navigate(-1)}
-          style={{
-            background: "#232f4e", 
-            color: "#0eb8d0", 
-            border: "2px solid #0eb8d0",
-            borderRadius: 8, 
-            fontSize: 16, 
-            padding: "8px 16px", 
-            fontWeight: 600, 
-            cursor: "pointer",
-            display: "flex", 
-            alignItems: "center", 
-            gap: 8
-          }}
-        >
-          <FiArrowLeft size={18}/> Voltar
-        </button>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <h1 style={{ 
-            fontSize: 28, 
-            fontWeight: 800, 
-            color: "#0eb8d0",
-            margin: 0
-          }}>
-            📋 Exames Realizados ({examesFiltrados.length})
-          </h1>
+        {/* Primeira linha: Botão voltar + Título */}
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "15px",
+          flexWrap: "wrap"
+        }}>
+          <button 
+            onClick={() => navigate(-1)}
+            style={{
+              background: "#232f4e", 
+              color: "#0eb8d0", 
+              border: "2px solid #0eb8d0",
+              borderRadius: "8px", 
+              fontSize: "14px", 
+              padding: "8px 12px", 
+              fontWeight: 600, 
+              cursor: "pointer",
+              display: "flex", 
+              alignItems: "center", 
+              gap: "6px",
+              minWidth: "auto"
+            }}
+          >
+            <FiArrowLeft size={16}/> Voltar
+          </button>
           
-          {/* Status de sincronização em tempo real */}
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "8px",
-            padding: "6px 12px",
-            borderRadius: "20px",
-            background: isOffline ? "#e74c3c" : sincronizando ? "#f39c12" : "#27ae60",
-            color: "white",
-            fontSize: "12px",
-            fontWeight: "bold"
-          }}>
-            {isOffline ? (
-              <>
-                <FiWifiOff size={14} />
-                Offline
-              </>
-            ) : sincronizando ? (
-              <>
-                <FiWifi size={14} />
-                Sincronizando...
-              </>
-            ) : (
-              <>
-                <FiWifi size={14} />
-                Sincronizado
-              </>
-            )}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1 }}>
+            <h1 style={{ 
+              fontSize: "clamp(18px, 4vw, 24px)", 
+              fontWeight: 800, 
+              color: "#0eb8d0",
+              margin: 0
+            }}>
+              📋 Exames Realizados ({examesFiltrados.length})
+            </h1>
+            
+            {/* Status de sincronização compacto */}
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "4px",
+              padding: "4px 8px",
+              borderRadius: "12px",
+              background: isOffline ? "#e74c3c" : sincronizando ? "#f39c12" : "#27ae60",
+              color: "white",
+              fontSize: "10px",
+              fontWeight: "bold"
+            }}>
+              {isOffline ? (
+                <>
+                  <FiWifiOff size={10} />
+                  Offline
+                </>
+              ) : sincronizando ? (
+                <>
+                  <FiWifi size={10} />
+                  Sync...
+                </>
+              ) : (
+                <>
+                  <FiWifi size={10} />
+                  OK
+                </>
+              )}
+            </div>
           </div>
         </div>
         
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <button
-            onClick={() => {
-              // Forçar re-assinatura (útil para debug)
-              if (listenerIdRef.current) {
-                examesRealtimeService.unsubscribeExames(listenerIdRef.current);
-                listenerIdRef.current = null;
-              }
-              // Reconfigurar sincronização
-              const configurarSincronizacao = () => {
-                try {
-                  const listenerId = examesRealtimeService.subscribeExames(
-                    (examesAtualizados, metadata) => {
-                      setExames(examesAtualizados);
-                      setSincronizando(metadata.hasPendingWrites);
-                      setIsOffline(metadata.isOffline);
-                      if (carregando) setCarregando(false);
-                    },
-                    (error) => {
-                      console.error('Erro no listener:', error);
-                      setCarregando(false);
-                    }
-                  );
-                  listenerIdRef.current = listenerId;
-                } catch (error) {
-                  console.error('Erro ao reconfigurar:', error);
-                }
-              };
-              configurarSincronizacao();
-              alert('Sincronização reiniciada!');
-            }}
-            disabled={carregando}
-            style={{
-              background: "linear-gradient(45deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "8px",
-              cursor: carregando ? "not-allowed" : "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              opacity: carregando ? 0.7 : 1,
-              transition: "all 0.3s ease"
-            }}
-          >
-            🔄 Reiniciar Sync
-          </button>
-          
-          <button
-            onClick={limparTodosExamesFirebase}
-            disabled={carregando}
-            style={{
-              background: "linear-gradient(45deg, #e67e22 0%, #f39c12 100%)",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "8px",
-              cursor: carregando ? "not-allowed" : "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              opacity: carregando ? 0.7 : 1,
-              transition: "all 0.3s ease"
-            }}
-          >
-            🗑️ LIMPAR TUDO
-          </button>
-          
-          <button
-            onClick={() => {
-              // Limpeza completa e rápida
-              const confirmacao = window.confirm(
-                '🧹 LIMPEZA COMPLETA PARA TESTE\n\n' +
-                'Isso irá:\n' +
-                '• Limpar TODOS os dados locais\n' +
-                '• Deletar TODOS os exames do Firebase\n' +
-                '• Recarregar a página\n\n' +
-                'Continuar?'
-              );
-              
-              if (!confirmacao) return;
-              
-              console.log('🧹 INICIANDO LIMPEZA COMPLETA...');
-              
-              // 1. Limpar localStorage
-              const storageKeys = [
-                'examesMMIIVenoso', 'examesMMIIArterial', 'examesMMSSVenoso', 
-                'examesMMSSArterial', 'examesCarotidasVertebrais', 'examesCarotidas',
-                'examesAorta', 'examesRenais', 'exameEmEdicao'
-              ];
-              
-              let limpos = 0;
-              storageKeys.forEach(key => {
-                if (localStorage.getItem(key)) {
-                  localStorage.removeItem(key);
-                  limpos++;
-                }
-              });
-              
-              // Limpar dados de trial
-              Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('trial_') || key.startsWith('transacao_')) {
-                  localStorage.removeItem(key);
-                  limpos++;
-                }
-              });
-              
-              console.log(`✅ ${limpos} itens locais removidos`);
-              
-              // 2. Limpar Firebase
-              limparTodosExamesFirebase().then(() => {
-                console.log('🎉 LIMPEZA COMPLETA! Recarregando página...');
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1000);
-              });
-            }}
-            disabled={carregando}
-            style={{
-              background: "linear-gradient(45deg, #e74c3c 0%, #c0392b 100%)",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "8px",
-              cursor: carregando ? "not-allowed" : "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              opacity: carregando ? 0.7 : 1,
-              transition: "all 0.3s ease"
-            }}
-          >
-            🧹 LIMPEZA COMPLETA
-          </button>
-          
-          <button
-            onClick={() => {
-              if (window.confirm('Tem certeza que deseja limpar TODOS os dados locais? Isso irá forçar o uso apenas do Firebase.')) {
-                limparDadosLocais();
-                alert('Dados locais limpos! O sistema continuará usando apenas Firebase em tempo real.');
-              }
-            }}
-            disabled={carregando}
-            style={{
-              background: "linear-gradient(45deg, #e74c3c 0%, #c0392b 100%)",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "8px",
-              cursor: carregando ? "not-allowed" : "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              opacity: carregando ? 0.7 : 1,
-              transition: "all 0.3s ease"
-            }}
-          >
-            🗑️ Limpar Locais
-          </button>
-          
+        {/* Segunda linha: Botões de ação simplificados */}
+        <div style={{ 
+          display: "flex", 
+          gap: "8px", 
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: "center"
+        }}>
+          {/* Botão principal: Selecionar */}
           <button
             onClick={() => setModoSelecao(!modoSelecao)}
             style={{
               background: modoSelecao ? "#e74c3c" : "#27ae60",
               color: "white",
               border: "none",
-              padding: "10px 20px",
-              borderRadius: "8px",
+              padding: "8px 16px",
+              borderRadius: "6px",
               cursor: "pointer",
-              fontSize: "14px",
+              fontSize: "12px",
               fontWeight: "bold",
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "6px",
               transition: "all 0.3s ease"
             }}
           >
             {modoSelecao ? "❌ Cancelar" : "☑️ Selecionar"}
           </button>
           
+          {/* Botão de limpeza (apenas se houver exames) */}
+          {exames.length > 0 && (
+            <button
+              onClick={limparTodosExamesFirebase}
+              disabled={carregando}
+              style={{
+                background: "#e67e22",
+                color: "white",
+                border: "none",
+                padding: "8px 12px",
+                borderRadius: "6px",
+                cursor: carregando ? "not-allowed" : "pointer",
+                fontSize: "12px",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: carregando ? 0.7 : 1
+              }}
+            >
+              🗑️ Limpar
+            </button>
+          )}
+          
+          {/* Botões de seleção (apenas no modo seleção) */}
           {modoSelecao && (
             <>
               <button
@@ -701,33 +575,15 @@ export default function ExamesRealizados() {
                   background: "#3498db",
                   color: "white",
                   border: "none",
-                  padding: "8px 16px",
-                  borderRadius: "6px",
+                  padding: "6px 12px",
+                  borderRadius: "4px",
                   cursor: examesFiltrados.length === 0 ? "not-allowed" : "pointer",
-                  fontSize: "12px",
+                  fontSize: "11px",
                   fontWeight: "bold",
                   opacity: examesFiltrados.length === 0 ? 0.5 : 1
                 }}
               >
                 ☑️ Todos
-              </button>
-              
-              <button
-                onClick={deselecionarTodos}
-                disabled={examesSelecionados.length === 0}
-                style={{
-                  background: "#95a5a6",
-                  color: "white",
-                  border: "none",
-                  padding: "8px 16px",
-                  borderRadius: "6px",
-                  cursor: examesSelecionados.length === 0 ? "not-allowed" : "pointer",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  opacity: examesSelecionados.length === 0 ? 0.5 : 1
-                }}
-              >
-                ☐ Nenhum
               </button>
               
               <button
@@ -737,10 +593,10 @@ export default function ExamesRealizados() {
                   background: "#e74c3c",
                   color: "white",
                   border: "none",
-                  padding: "8px 16px",
-                  borderRadius: "6px",
+                  padding: "6px 12px",
+                  borderRadius: "4px",
                   cursor: examesSelecionados.length === 0 || carregando ? "not-allowed" : "pointer",
-                  fontSize: "12px",
+                  fontSize: "11px",
                   fontWeight: "bold",
                   opacity: examesSelecionados.length === 0 || carregando ? 0.5 : 1
                 }}
@@ -752,102 +608,120 @@ export default function ExamesRealizados() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros Mobile-Optimized */}
       <div style={{
         background: "#242d43",
-        borderRadius: 12,
-        padding: 20,
-        marginBottom: 20,
-        display: "flex",
-        gap: 20,
-        flexWrap: "wrap",
-        alignItems: "center"
+        borderRadius: "8px",
+        padding: "12px",
+        marginBottom: "15px"
       }}>
-        <div>
-          <label style={{ display: "block", marginBottom: 5, fontSize: 14 }}>Buscar:</label>
-          <input
-            type="text"
-            placeholder="Nome, data ou tipo..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 6,
-              border: "none",
-              fontSize: 14,
-              minWidth: 200
-            }}
-          />
-        </div>
-        
-        <div>
-          <label style={{ display: "block", marginBottom: 5, fontSize: 14 }}>Tipo:</label>
-          <select
-            value={filtroTipo}
-            onChange={(e) => setFiltroTipo(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 6,
-              border: "none",
-              fontSize: 14,
-              minWidth: 150
-            }}
-          >
-            <option value="todos">Todos os tipos</option>
-            {tiposUnicos.map(tipo => (
-              <option key={tipo} value={tipo}>{tipo}</option>
-            ))}
-          </select>
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px"
+        }}>
+          {/* Busca */}
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "4px", 
+              fontSize: "12px",
+              color: "#aaa"
+            }}>
+              🔍 Buscar:
+            </label>
+            <input
+              type="text"
+              placeholder="Nome, data ou tipo..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "6px",
+                border: "none",
+                fontSize: "14px",
+                background: "#fff",
+                color: "#333"
+              }}
+            />
+          </div>
+          
+          {/* Filtro por tipo */}
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "4px", 
+              fontSize: "12px",
+              color: "#aaa"
+            }}>
+              📋 Tipo:
+            </label>
+            <select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "6px",
+                border: "none",
+                fontSize: "14px",
+                background: "#fff",
+                color: "#333"
+              }}
+            >
+              <option value="todos">Todos os tipos</option>
+              {tiposUnicos.map(tipo => (
+                <option key={tipo} value={tipo}>{tipo}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Lista de Exames */}
+      {/* Lista de Exames Mobile-Optimized */}
       {examesFiltrados.length === 0 ? (
         <div style={{
           textAlign: "center",
-          padding: 60,
+          padding: "40px 20px",
           background: "#242d43",
-          borderRadius: 12,
+          borderRadius: "8px",
           color: "#888"
         }}>
           {exames.length === 0 ? (
             <div>
-              <h3 style={{ marginBottom: 10 }}>Nenhum exame realizado ainda</h3>
-              <p>Comece criando seu primeiro exame!</p>
+              <h3 style={{ marginBottom: "10px", fontSize: "18px" }}>Nenhum exame realizado ainda</h3>
+              <p style={{ fontSize: "14px" }}>Comece criando seu primeiro exame!</p>
             </div>
           ) : (
             <div>
-              <h3 style={{ marginBottom: 10 }}>Nenhum exame encontrado</h3>
-              <p>Tente ajustar os filtros de busca</p>
+              <h3 style={{ marginBottom: "10px", fontSize: "18px" }}>Nenhum exame encontrado</h3>
+              <p style={{ fontSize: "14px" }}>Tente ajustar os filtros de busca</p>
             </div>
           )}
         </div>
       ) : (
         <div style={{
-          display: "grid",
-          gap: 15,
-          gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))"
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px"
         }}>
           {examesFiltrados.map((exame, index) => (
             <div key={exame.id} style={{
               background: "#242d43",
-              borderRadius: 12,
-              padding: 20,
+              borderRadius: "8px",
+              padding: "15px",
               border: "1px solid #0eb8d033",
-              transition: "transform 0.2s",
-              cursor: "pointer",
+              transition: "all 0.2s",
               position: "relative",
               borderColor: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d033"
-            }}
-            onMouseEnter={(e) => e.target.style.transform = "translateY(-2px)"}
-            onMouseLeave={(e) => e.target.style.transform = "translateY(0)"}
-            >
+            }}>
               {/* Checkbox para seleção múltipla */}
               {modoSelecao && (
                 <div style={{
                   position: "absolute",
-                  top: 10,
-                  left: 10,
+                  top: "10px",
+                  left: "10px",
                   zIndex: 10
                 }}>
                   <input
@@ -855,8 +729,8 @@ export default function ExamesRealizados() {
                     checked={examesSelecionados.find(e => e.id === exame.id) ? true : false}
                     onChange={() => toggleSelecaoExame(exame)}
                     style={{
-                      width: "20px",
-                      height: "20px",
+                      width: "18px",
+                      height: "18px",
                       cursor: "pointer"
                     }}
                   />
@@ -864,138 +738,133 @@ export default function ExamesRealizados() {
               )}
               
               <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                marginBottom: 15,
-                marginLeft: modoSelecao ? "30px" : "0"
+                marginLeft: modoSelecao ? "35px" : "0"
               }}>
-                <div style={{ flex: 1 }}>
+                {/* Informações do exame */}
+                <div style={{ marginBottom: "12px" }}>
                   <h3 style={{ 
                     color: "#0eb8d0", 
-                    margin: "0 0 8px 0",
-                    fontSize: 18,
+                    margin: "0 0 6px 0",
+                    fontSize: "16px",
                     fontWeight: 600
                   }}>
                     {exame.nome}
                   </h3>
-                  <div style={{ fontSize: 14, color: "#aaa", marginBottom: 5 }}>
-                    📅 {exame.data}
+                  <div style={{ 
+                    display: "flex", 
+                    flexWrap: "wrap", 
+                    gap: "8px",
+                    fontSize: "12px", 
+                    color: "#aaa" 
+                  }}>
+                    <span>📅 {exame.data}</span>
+                    <span>🏥 {exame.tipoNome}</span>
+                    {exame.lado && <span>🦵 {exame.lado}</span>}
                   </div>
-                  <div style={{ fontSize: 14, color: "#aaa", marginBottom: 5 }}>
-                    🏥 {exame.tipoNome}
-                  </div>
-                  {exame.lado && (
-                    <div style={{ fontSize: 14, color: "#aaa" }}>
-                      🦵 {exame.lado}
-                    </div>
-                  )}
                 </div>
                 
-                <div style={{
-                  display: "flex",
-                  gap: 8,
-                  flexDirection: "column"
-                }}>
-                  {!modoSelecao && (
-                    <>
-                      <button
-                        onClick={() => setExameVisualizando(exame)}
-                        style={{
-                          background: "#11b581",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4
-                        }}
-                        title="Visualizar"
-                      >
-                        <FiEye size={12} />
-                      </button>
-                      
-                      <button
-                        onClick={() => handleEditarExame(exame)}
-                        style={{
-                          background: "#0eb8d0",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4
-                        }}
-                        title="Editar"
-                      >
-                        <FiEdit size={12} />
-                      </button>
-                      
-                      <button
-                        onClick={() => gerarPDFExame(exame)}
-                        style={{
-                          background: "#ff9500",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4
-                        }}
-                        title="Imprimir"
-                      >
-                        <FiPrinter size={12} />
-                      </button>
-                      
-                      <button
-                        onClick={() => handleExcluirExame(exame)}
-                        style={{
-                          background: "#e74c3c",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4
-                        }}
-                        title="Excluir"
-                      >
-                        <FiTrash2 size={12} />
-                      </button>
-                    </>
-                  )}
-                  
-                  {modoSelecao && (
-                    <div style={{
-                      color: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d0",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      padding: "5px"
-                    }}>
-                      {examesSelecionados.find(e => e.id === exame.id) ? "☑️ Selecionado" : "☐ Não selecionado"}
-                    </div>
-                  )}
-                </div>
+                {/* Botões de ação */}
+                {!modoSelecao && (
+                  <div style={{
+                    display: "flex",
+                    gap: "6px",
+                    flexWrap: "wrap"
+                  }}>
+                    <button
+                      onClick={() => setExameVisualizando(exame)}
+                      style={{
+                        background: "#11b581",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "4px",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      👁️ Ver
+                    </button>
+                    
+                    <button
+                      onClick={() => handleEditarExame(exame)}
+                      style={{
+                        background: "#0eb8d0",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "4px",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      ✏️ Editar
+                    </button>
+                    
+                    <button
+                      onClick={() => gerarPDFExame(exame)}
+                      style={{
+                        background: "#ff9500",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "4px",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      🖨️ PDF
+                    </button>
+                    
+                    <button
+                      onClick={() => handleExcluirExame(exame)}
+                      style={{
+                        background: "#e74c3c",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "4px",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      🗑️ Excluir
+                    </button>
+                  </div>
+                )}
+                
+                {/* Status de seleção */}
+                {modoSelecao && (
+                  <div style={{
+                    color: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d0",
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    padding: "8px",
+                    background: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c20" : "#0eb8d020",
+                    borderRadius: "4px"
+                  }}>
+                    {examesSelecionados.find(e => e.id === exame.id) ? "☑️ Selecionado" : "☐ Não selecionado"}
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal Visualizar Exame */}
+      {/* Modal Visualizar Exame Mobile-Optimized */}
       {exameVisualizando && (
         <div style={{
           position: "fixed",
@@ -1003,19 +872,20 @@ export default function ExamesRealizados() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: "rgba(0,0,0,0.8)",
+          background: "rgba(0,0,0,0.9)",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
           zIndex: 1000,
-          padding: 20
+          padding: "10px"
         }}>
           <div style={{
             background: "#242d43",
-            borderRadius: 14,
-            padding: "24px 28px",
-            maxWidth: "90vw",
-            maxHeight: "90vh",
+            borderRadius: "8px",
+            padding: "15px",
+            width: "100%",
+            maxWidth: "95vw",
+            maxHeight: "95vh",
             overflow: "auto",
             position: "relative"
           }}>
@@ -1023,12 +893,16 @@ export default function ExamesRealizados() {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: 20,
+              marginBottom: "15px",
               borderBottom: "2px solid #0eb8d0",
-              paddingBottom: 10
+              paddingBottom: "8px"
             }}>
-              <h3 style={{ color: "#0eb8d0", margin: 0 }}>
-                Visualizando: {exameVisualizando.nome}
+              <h3 style={{ 
+                color: "#0eb8d0", 
+                margin: 0,
+                fontSize: "16px"
+              }}>
+                👁️ {exameVisualizando.nome}
               </h3>
               <button
                 onClick={() => setExameVisualizando(null)}
@@ -1036,9 +910,9 @@ export default function ExamesRealizados() {
                   background: "none",
                   border: "none",
                   color: "#fff",
-                  fontSize: 24,
+                  fontSize: "20px",
                   cursor: "pointer",
-                  padding: 5
+                  padding: "5px"
                 }}
               >
                 <FiX />
@@ -1048,23 +922,23 @@ export default function ExamesRealizados() {
             <div style={{
               background: "#fff",
               color: "#000",
-              padding: 20,
-              borderRadius: 8,
-              maxHeight: 500,
+              padding: "15px",
+              borderRadius: "6px",
+              maxHeight: "60vh",
               overflowY: "auto",
               whiteSpace: "pre-wrap",
               fontFamily: "monospace",
-              fontSize: 14,
-              lineHeight: 1.6
+              fontSize: "12px",
+              lineHeight: 1.5
             }}>
               {formatarLaudoParaVisualizacao(exameVisualizando.laudo)}
             </div>
 
             <div style={{
               display: "flex",
-              justifyContent: "center",
-              gap: 10,
-              marginTop: 20
+              flexDirection: "column",
+              gap: "8px",
+              marginTop: "15px"
             }}>
               <button
                 onClick={() => {
@@ -1075,13 +949,14 @@ export default function ExamesRealizados() {
                   background: "#0eb8d0",
                   color: "#fff",
                   border: "none",
-                  borderRadius: 8,
-                  padding: "10px 20px",
+                  borderRadius: "6px",
+                  padding: "10px 15px",
                   fontWeight: 600,
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  fontSize: "14px"
                 }}
               >
-                Editar Exame
+                ✏️ Editar Exame
               </button>
               <button
                 onClick={() => gerarPDFExame(exameVisualizando)}
@@ -1089,13 +964,14 @@ export default function ExamesRealizados() {
                   background: "#ff9500",
                   color: "#fff",
                   border: "none",
-                  borderRadius: 8,
-                  padding: "10px 20px",
+                  borderRadius: "6px",
+                  padding: "10px 15px",
                   fontWeight: 600,
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  fontSize: "14px"
                 }}
               >
-                Imprimir PDF
+                🖨️ Imprimir PDF
               </button>
             </div>
           </div>
