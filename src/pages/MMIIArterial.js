@@ -1253,6 +1253,10 @@ function MMIIArterial() {
       return;
     }
 
+    // Gerar o laudo antes de salvar
+    const laudo = gerarTextoLaudo();
+    console.log('📄 MMIIArterial: Laudo gerado:', laudo ? 'Sim' : 'Não');
+
     const dadosExame = {
       nome,
       idade,
@@ -1260,6 +1264,7 @@ function MMIIArterial() {
       lado,
       arteriasDireito,
       arteriasEsquerdo,
+      laudo, // Incluir o laudo gerado
       timestamp: new Date().toISOString(),
       tipoNome: "MMII Arterial"
     };

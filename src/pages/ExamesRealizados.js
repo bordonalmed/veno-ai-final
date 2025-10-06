@@ -520,6 +520,58 @@ export default function ExamesRealizados() {
           flexWrap: "wrap",
           justifyContent: "center"
         }}>
+          {/* Botão de Sync - Destaque */}
+          <button
+            onClick={() => {
+              // Forçar re-assinatura (útil para debug)
+              if (listenerIdRef.current) {
+                examesRealtimeService.unsubscribeExames(listenerIdRef.current);
+                listenerIdRef.current = null;
+              }
+              // Reconfigurar sincronização
+              const configurarSincronizacao = () => {
+                try {
+                  const listenerId = examesRealtimeService.subscribeExames(
+                    (examesAtualizados, metadata) => {
+                      setExames(examesAtualizados);
+                      setSincronizando(metadata.hasPendingWrites);
+                      setIsOffline(metadata.isOffline);
+                      if (carregando) setCarregando(false);
+                    },
+                    (error) => {
+                      console.error('Erro no listener:', error);
+                      setCarregando(false);
+                    }
+                  );
+                  listenerIdRef.current = listenerId;
+                } catch (error) {
+                  console.error('Erro ao reconfigurar:', error);
+                }
+              };
+              configurarSincronizacao();
+              alert('🔄 Sincronização reiniciada!');
+            }}
+            disabled={carregando}
+            style={{
+              background: "linear-gradient(45deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              border: "none",
+              padding: "10px 16px",
+              borderRadius: "8px",
+              cursor: carregando ? "not-allowed" : "pointer",
+              fontSize: "13px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              opacity: carregando ? 0.7 : 1,
+              transition: "all 0.3s ease",
+              boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)"
+            }}
+          >
+            🔄 Sync
+          </button>
+          
           {/* Botão principal: Selecionar */}
           <button
             onClick={() => setModoSelecao(!modoSelecao)}
