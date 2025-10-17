@@ -128,6 +128,7 @@ exports.handler = async (event, context) => {
     
     // LISTA DE EMAILS QUE PAGARAM NO HOTMART (sem senha específica)
     const emailsHotmartPagaram = [
+      'vasculargabriel@gmail.com', // Email do desenvolvedor
       // ADICIONAR AQUI OS EMAILS DOS CLIENTES QUE PAGARAM NO HOTMART
       // Exemplo: 'cliente1@email.com',
       // Exemplo: 'cliente2@email.com',
