@@ -1,12 +1,45 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiSettings, FiList } from "react-icons/fi";
 import TrialStatus from "../components/TrialStatus";
+import PremiumNotification from "../components/PremiumNotification";
 import { TrialManager } from "../utils/trialManager";
 
 export default function Home({ onLogout }) {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const [planoUsuario, setPlanoUsuario] = useState('trial');
+  const [carregandoPlano, setCarregandoPlano] = useState(true);
+  
+  useEffect(() => {
+    const verificarPlano = async () => {
+      if (!userEmail) {
+        setCarregandoPlano(false);
+        return;
+      }
+      
+      try {
+        // Primeiro tentar verificação local
+        const planoLocal = localStorage.getItem(`plano_${userEmail}`);
+        if (planoLocal) {
+          setPlanoUsuario(planoLocal);
+          setCarregandoPlano(false);
+          return;
+        }
+        
+        // Se não tem dados locais, verificar no servidor
+        const planoVerificado = await TrialManager.verificarPremiumNoServidor(userEmail);
+        setPlanoUsuario(planoVerificado);
+      } catch (error) {
+        console.error('Erro ao verificar plano:', error);
+        setPlanoUsuario('trial');
+      } finally {
+        setCarregandoPlano(false);
+      }
+    };
+    
+    verificarPlano();
+  }, [userEmail]);
   
   const handleUpgrade = () => {
     navigate("/planos");
@@ -24,6 +57,8 @@ export default function Home({ onLogout }) {
       paddingTop: 15,
       paddingBottom: 15,
     }}>
+      {/* Notificação de Status Premium */}
+      <PremiumNotification userEmail={userEmail} />
       {/* Botões - Canto superior direito */}
       <div style={{ position: "absolute", right: 25, top: 25, display: "flex", gap: 12 }}>
         <button
@@ -127,7 +162,7 @@ export default function Home({ onLogout }) {
       <TrialStatus userEmail={userEmail} onUpgrade={handleUpgrade} />
       
       {/* Botão de Upgrade Promocional */}
-      {userEmail && TrialManager.verificarPlanoUsuario(userEmail) === "trial" && (
+      {userEmail && !carregandoPlano && planoUsuario === "trial" && (
         <div style={{
           background: "rgba(255, 149, 0, 0.1)",
           border: "1px solid rgba(255, 149, 0, 0.3)",

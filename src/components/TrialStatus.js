@@ -1,9 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrialManager } from '../utils/trialManager';
 
 export default function TrialStatus({ userEmail, onUpgrade }) {
+  const [plano, setPlano] = useState('trial');
+  const [carregando, setCarregando] = useState(true);
+  
+  useEffect(() => {
+    const verificarPlano = async () => {
+      if (!userEmail) {
+        setCarregando(false);
+        return;
+      }
+      
+      try {
+        // Primeiro tentar verificação local
+        const planoLocal = localStorage.getItem(`plano_${userEmail}`);
+        if (planoLocal) {
+          setPlano(planoLocal);
+          setCarregando(false);
+          return;
+        }
+        
+        // Se não tem dados locais, verificar no servidor
+        const planoVerificado = await TrialManager.verificarPremiumNoServidor(userEmail);
+        setPlano(planoVerificado);
+      } catch (error) {
+        console.error('Erro ao verificar plano:', error);
+        setPlano('trial');
+      } finally {
+        setCarregando(false);
+      }
+    };
+    
+    verificarPlano();
+  }, [userEmail]);
+  
   const trial = TrialManager.obterStatusTrial(userEmail);
-  const plano = TrialManager.verificarPlanoUsuario(userEmail);
+
+  // Mostrar carregamento enquanto verifica plano
+  if (carregando) {
+    return (
+      <div style={{
+        background: "rgba(14, 184, 208, 0.1)",
+        border: "1px solid rgba(14, 184, 208, 0.3)",
+        color: "#0eb8d0",
+        padding: "8px 16px",
+        borderRadius: 8,
+        margin: "8px 20px",
+        textAlign: "center",
+        fontSize: 14
+      }}>
+        <span style={{ fontWeight: 600 }}>🔄 Verificando status...</span>
+      </div>
+    );
+  }
 
   // Se for Premium, mostrar status premium
   if (plano === 'premium') {

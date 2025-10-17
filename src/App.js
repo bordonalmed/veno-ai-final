@@ -183,6 +183,15 @@ function AppContent() {
       localStorage.setItem("userUID", result.user.uid);
       localStorage.setItem("isLoggedIn", "true");
       
+      // Verificar e sincronizar status Premium no servidor
+      try {
+        const { TrialManager } = await import('./utils/trialManager');
+        await TrialManager.verificarPremiumNoServidor(result.user.email);
+        console.log('✅ Status Premium verificado e sincronizado');
+      } catch (error) {
+        console.warn('Erro ao verificar Premium:', error);
+      }
+      
       // Marcar como logado
       setLogado(true);
       

@@ -126,8 +126,58 @@ export class TrialManager {
   }
 
   static verificarPlanoUsuario(userEmail) {
-    const plano = localStorage.getItem(`plano_${userEmail}`) || 'trial';
-    return plano;
+    // Primeiro verificar localStorage local
+    const planoLocal = localStorage.getItem(`plano_${userEmail}`);
+    
+    if (planoLocal) {
+      return planoLocal;
+    }
+    
+    // Se não tem dados locais, verificar no servidor
+    try {
+      // Importar SyncServiceUnified dinamicamente para evitar dependência circular
+      const { SyncServiceUnified } = require('../services/syncServiceUnified');
+      const userData = SyncServiceUnified.getUserData(userEmail);
+      
+      if (userData && userData.profile && userData.profile.plano) {
+        // Sincronizar dados locais com servidor
+        localStorage.setItem(`plano_${userEmail}`, userData.profile.plano);
+        console.log('🔄 Plano sincronizado do servidor:', userData.profile.plano);
+        return userData.profile.plano;
+      }
+    } catch (error) {
+      console.warn('Erro ao verificar plano no servidor:', error);
+    }
+    
+    // Verificar também na função Netlify de usuários Premium
+    return this.verificarPremiumNoServidor(userEmail);
+  }
+  
+  // Verificar se usuário é Premium no servidor
+  static async verificarPremiumNoServidor(userEmail) {
+    try {
+      const response = await fetch('/.netlify/functions/verificar-usuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: userEmail })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.premium) {
+          // Salvar status Premium localmente
+          localStorage.setItem(`plano_${userEmail}`, 'premium');
+          console.log('✅ Status Premium confirmado no servidor');
+          return 'premium';
+        }
+      }
+    } catch (error) {
+      console.warn('Erro ao verificar Premium no servidor:', error);
+    }
+    
+    return 'trial'; // Default para trial
   }
 
   static definirPlanoUsuario(userEmail, plano) {
