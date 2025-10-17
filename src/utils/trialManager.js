@@ -156,7 +156,7 @@ export class TrialManager {
   // Verificar se usuário é Premium no servidor
   static async verificarPremiumNoServidor(userEmail) {
     try {
-      const response = await fetch('/.netlify/functions/verificar-usuario', {
+      const response = await fetch('https://venoai.xyz/.netlify/functions/verificar-usuario', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
