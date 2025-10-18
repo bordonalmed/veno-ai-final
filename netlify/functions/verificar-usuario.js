@@ -13,8 +13,21 @@ exports.handler = async (event, context) => {
     };
   }
   
-  const email = event.queryStringParameters?.email;
-  const senha = event.queryStringParameters?.senha;
+  // Tentar obter email do body (POST) ou queryString (GET)
+  let email, senha;
+  
+  if (event.httpMethod === 'POST' && event.body) {
+    try {
+      const body = JSON.parse(event.body);
+      email = body.email;
+      senha = body.senha;
+    } catch (error) {
+      console.error('Erro ao parsear body:', error);
+    }
+  } else {
+    email = event.queryStringParameters?.email;
+    senha = event.queryStringParameters?.senha;
+  }
   
   if (!email) {
     return {
