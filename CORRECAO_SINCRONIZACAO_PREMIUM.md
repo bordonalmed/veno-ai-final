@@ -4,6 +4,13 @@
 
 Quando um usuário fazia upgrade para o plano Premium no notebook, o status premium não era reconhecido em outros dispositivos (celular ou outros computadores). O status estava sendo salvo apenas no `localStorage` do navegador, que é local por dispositivo.
 
+## Causa Raiz
+
+O problema tinha duas causas principais:
+
+1. **Busca por email inválida**: O código estava buscando usuários no Firebase por email, mas o documento é criado com o UID como ID.
+2. **Falta de autenticação**: O sistema usava localStorage, mas precisa usar o UID do Firebase que está armazenado em `localStorage.getItem('userUID')`.
+
 ## Solução Implementada
 
 ### 1. Sincronização com Firebase

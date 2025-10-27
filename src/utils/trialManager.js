@@ -194,17 +194,22 @@ export class TrialManager {
     try {
       // Importar dinamicamente para evitar dependência circular
       const { db } = await import('../config/firebase');
-      const { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc } = await import('firebase/firestore');
+      const { updateDoc, doc, setDoc, getDoc } = await import('firebase/firestore');
       
-      // Buscar usuário por email na coleção 'users'
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', userEmail));
-      const querySnapshot = await getDocs(q);
+      // Obter UID do usuário logado
+      const userUID = localStorage.getItem('userUID');
       
-      if (!querySnapshot.empty) {
-        // Usuário existe, atualizar plano
-        const userDoc = querySnapshot.docs[0];
-        const userRef = doc(db, 'users', userDoc.id);
+      if (!userUID) {
+        console.warn('Usuário não autenticado no Firebase. Não é possível salvar plano no Firebase.');
+        return;
+      }
+      
+      // Salvar/atualizar usando o UID
+      const userRef = doc(db, 'users', userUID);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        // Atualizar documento existente
         await updateDoc(userRef, {
           plano: plano,
           premium: plano === 'premium',
@@ -212,8 +217,15 @@ export class TrialManager {
         });
         console.log('✅ Plano atualizado no Firebase:', plano, 'para:', userEmail);
       } else {
-        // Usuário não existe, verificar se precisa criar (isso não deveria acontecer em uso normal)
-        console.warn('Usuário não encontrado no Firebase para atualizar plano');
+        // Criar novo documento se não existe
+        await setDoc(userRef, {
+          email: userEmail,
+          plano: plano,
+          premium: plano === 'premium',
+          dataCadastro: new Date().toISOString(),
+          ultimaAtualizacao: new Date().toISOString()
+        });
+        console.log('✅ Plano criado no Firebase:', plano, 'para:', userEmail);
       }
     } catch (error) {
       console.warn('Erro ao salvar plano no Firebase:', error);
@@ -226,15 +238,22 @@ export class TrialManager {
     try {
       // Importar dinamicamente para evitar dependência circular
       const { db } = await import('../config/firebase');
-      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { getDoc, doc } = await import('firebase/firestore');
       
-      // Buscar usuário por email na coleção 'users'
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', userEmail));
-      const querySnapshot = await getDocs(q);
+      // Obter UID do usuário logado
+      const userUID = localStorage.getItem('userUID');
       
-      if (!querySnapshot.empty) {
-        const userData = querySnapshot.docs[0].data();
+      if (!userUID) {
+        console.warn('Usuário não autenticado no Firebase. Não é possível ler plano do Firebase.');
+        return null;
+      }
+      
+      // Buscar documento do usuário usando UID
+      const userRef = doc(db, 'users', userUID);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
         const plano = userData.plano || 'trial';
         
         // Atualizar cache local
