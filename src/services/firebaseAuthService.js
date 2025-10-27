@@ -91,6 +91,39 @@ class FirebaseAuthService {
         localStorage.setItem('userEmail', user.email);
         localStorage.setItem('userUID', user.uid);
         localStorage.setItem('isLoggedIn', 'true');
+        
+        // ⭐ VERIFICAÇÃO AUTOMÁTICA DO PLANO PREMIUM
+        // Sincronizar plano do Firebase para localStorage
+        if (userData.plano) {
+          localStorage.setItem(`plano_${email}`, userData.plano);
+          console.log(`✅ Plano sincronizado no login: ${userData.plano} para ${email}`);
+          
+          // Se for premium, garantir que está marcado
+          if (userData.plano === 'premium') {
+            localStorage.setItem(`plano_${email}`, 'premium');
+            console.log(`👑 Status Premium confirmado no login!`);
+          }
+        }
+      } else {
+        // Se documento não existe, criar com plano trial
+        await setDoc(doc(db, 'users', user.uid), {
+          email: user.email,
+          nome: user.displayName || user.email.split('@')[0],
+          dataCadastro: new Date().toISOString(),
+          plano: 'trial',
+          premium: false,
+          trialAtivo: true,
+          trialInicio: new Date().toISOString(),
+          laudosGerados: []
+        });
+        
+        localStorage.setItem('userData', JSON.stringify({ plano: 'trial' }));
+        localStorage.setItem('userEmail', user.email);
+        localStorage.setItem('userUID', user.uid);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem(`plano_${email}`, 'trial');
+        
+        console.log('✅ Novo documento criado no Firebase para:', user.email);
       }
 
       console.log('Login realizado com sucesso:', user.email);
