@@ -17,6 +17,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import PremiumService from './premiumService';
 
 class FirebaseAuthService {
   constructor() {
@@ -132,7 +133,18 @@ class FirebaseAuthService {
         console.log('✅ Novo documento criado no Firebase para:', user.email);
       }
 
-      console.log('Login realizado com sucesso:', user.email);
+      console.log('✅ Login realizado com sucesso:', user.email);
+      
+      // ⭐ CRITICAL: Force refresh premium claims after login
+      // This ensures premium status is synced from server
+      try {
+        console.log('🔄 Refreshing premium status from claims...');
+        const premiumStatus = await PremiumService.refreshPremium();
+        console.log('✅ Premium status refreshed:', premiumStatus);
+      } catch (error) {
+        console.warn('⚠️ Could not refresh premium claims:', error);
+      }
+      
       return { success: true, user: user };
     } catch (error) {
       console.error('Erro no login:', error);
