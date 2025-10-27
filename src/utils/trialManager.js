@@ -1,10 +1,37 @@
 // Sistema de controle de trial - 7 dias + 5 laudos
 export class TrialManager {
   static iniciarTrial(userEmail) {
+    // CRÍTICO: Verificar se já teve um trial antes
+    // Se já teve trial que expirou, NÃO permitir reiniciar
+    const trialAnterior = localStorage.getItem(`trial_${userEmail}`);
+    
+    if (trialAnterior) {
+      try {
+        const dadosAnteriores = JSON.parse(trialAnterior);
+        const agora = new Date();
+        const inicioAnterior = new Date(dadosAnteriores.inicio);
+        const diasPassados = Math.floor((agora - inicioAnterior) / (1000 * 60 * 60 * 24));
+        
+        // Se passou mais de 7 dias OU já usou todos os laudos, NÃO permitir novo trial
+        if (diasPassados >= 7 || (dadosAnteriores.laudosGerados && dadosAnteriores.laudosGerados.length >= 5)) {
+          console.warn('❌ Trial não pode ser reiniciado. Usuário já usou trial completo:', userEmail);
+          throw new Error('Trial já foi usado completamente. Upgrade para Premium.');
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao verificar trial anterior:', error);
+        // Se der erro, não permitir iniciar (mais seguro)
+        if (error.message.includes('Trial já foi usado')) {
+          throw error;
+        }
+      }
+    }
+    
+    // Se chegou aqui, pode iniciar o trial
     const trialData = {
       inicio: new Date().toISOString(),
       laudosGerados: [],
-      status: 'ativo'
+      status: 'ativo',
+      unico: true // Marca que trial foi usado
     };
     
     localStorage.setItem(`trial_${userEmail}`, JSON.stringify(trialData));
@@ -90,12 +117,29 @@ export class TrialManager {
       const trial = this.verificarTrial(userEmail);
       
       if (trial.status === 'nao_iniciado') {
+        // Verificar se já teve trial antes (mesmo que não esteja no localStorage)
+        // Se sim, NÃO permitir iniciar novo trial
+        const trialUsado = localStorage.getItem(`trial_usado_${userEmail}`);
+        if (trialUsado === 'true') {
+          console.warn('❌ Trial já foi usado anteriormente por este usuário');
+          return { 
+            permitido: false, 
+            motivo: 'trial_ja_usado',
+            mensagem: 'Você já usou seu período de trial. Upgrade para Premium para continuar!'
+          };
+        }
+        
         // Iniciar trial automaticamente
         this.iniciarTrial(userEmail);
+        // Marcar que trial foi usado
+        localStorage.setItem(`trial_usado_${userEmail}`, 'true');
         return { permitido: true, trial: this.verificarTrial(userEmail) };
       }
 
       if (trial.status === 'expirado') {
+        // Marcar que trial foi usado/usado completamente
+        localStorage.setItem(`trial_usado_${userEmail}`, 'true');
+        
         return { 
           permitido: false, 
           motivo: trial.motivo,
@@ -112,6 +156,16 @@ export class TrialManager {
       return { permitido: false, motivo: 'erro' };
     } catch (error) {
       console.error('Erro ao verificar limite:', error);
+      
+      // Se o erro é sobre trial já usado, retornar mensagem apropriada
+      if (error.message && error.message.includes('Trial já foi usado')) {
+        return { 
+          permitido: false, 
+          motivo: 'trial_ja_usado',
+          mensagem: 'Você já usou seu período de trial. Upgrade para Premium para continuar!'
+        };
+      }
+      
       return { permitido: false, motivo: 'erro', mensagem: 'Erro ao verificar limite de trial' };
     }
   }
