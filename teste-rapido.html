@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Rápido - VENO.AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #101824;
+            color: white;
+            padding: 20px;
+        }
+        button {
+            background: #0eb8d0;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #00a8cc;
+        }
+        .result {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { border-left: 4px solid #11b581; }
+        .error { border-left: 4px solid #ff6363; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Teste de Verificação Premium</h1>
+    <p>Email: vasculargabriel@gmail.com</p>
+    
+    <button onclick="testar()">Testar Verificação</button>
+    
+    <div id="result" class="result"></div>
+
+    <script>
+        async function testar() {
+            const result = document.getElementById('result');
+            result.innerHTML = '🔄 Testando...';
+            
+            try {
+                const response = await fetch('https://venoai.xyz/.netlify/functions/verificar-usuario', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'vasculargabriel@gmail.com'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.premium) {
+                    result.innerHTML = `✅ PREMIUM CONFIRMADO!\n\n${JSON.stringify(data, null, 2)}`;
+                    result.className = 'result success';
+                } else {
+                    result.innerHTML = `❌ NÃO É PREMIUM\n\n${JSON.stringify(data, null, 2)}`;
+                    result.className = 'result error';
+                }
+            } catch (error) {
+                result.innerHTML = `❌ ERRO: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+    </script>
+</body>
+</html>
+

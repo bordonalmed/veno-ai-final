@@ -68,16 +68,16 @@ export default function ConfirmacaoPagamento() {
     return tentativas >= 2;
   }
 
-  function ativarPlanoPremium() {
+  async function ativarPlanoPremium() {
     const email = userEmail || emailCompraPendente;
     
     if (email) {
       // Verificar se usuário tinha trial ativo
       const trialAtual = TrialManager.obterStatusTrial(email);
-      const planoAnterior = TrialManager.verificarPlanoUsuario(email);
+      const planoAnterior = await TrialManager.verificarPlanoUsuario(email);
       
       // Definir plano premium
-      TrialManager.definirPlanoUsuario(email, "premium");
+      await TrialManager.definirPlanoUsuario(email, "premium");
       localStorage.removeItem("emailCompraPendente");
       
       // Se tinha trial ativo, mostrar mensagem de upgrade

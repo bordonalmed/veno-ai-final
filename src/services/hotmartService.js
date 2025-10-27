@@ -52,8 +52,8 @@ export class HotmartService {
       // Importar TrialManager dinamicamente para evitar dependência circular
       const { TrialManager } = await import('../utils/trialManager');
       
-      // Definir plano Premium
-      TrialManager.definirPlanoUsuario(email, 'premium');
+      // Definir plano Premium (agora salva no Firebase também)
+      await TrialManager.definirPlanoUsuario(email, 'premium');
       
       // Salvar dados da transação
       localStorage.setItem(`transacao_${email}`, JSON.stringify({

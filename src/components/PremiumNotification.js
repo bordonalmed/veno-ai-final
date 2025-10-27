@@ -10,19 +10,14 @@ export default function PremiumNotification({ userEmail }) {
       if (!userEmail) return;
 
       try {
-        // Verificar se já tem dados locais
+        // Verificar plano (agora verifica no Firebase também)
+        const planoVerificado = await TrialManager.verificarPlanoUsuario(userEmail);
         const planoLocal = localStorage.getItem(`plano_${userEmail}`);
-        if (planoLocal === 'premium') {
-          setPlano('premium');
-          return;
-        }
-
-        // Se não tem dados locais, verificar no servidor
-        const planoVerificado = await TrialManager.verificarPremiumNoServidor(userEmail);
+        
         setPlano(planoVerificado);
 
-        // Se detectou Premium no servidor mas não tinha localmente, mostrar notificação
-        if (planoVerificado === 'premium' && !planoLocal) {
+        // Se detectou Premium no Firebase mas não tinha localmente, mostrar notificação
+        if (planoVerificado === 'premium' && planoLocal !== 'premium') {
           setMostrarNotificacao(true);
           
           // Auto-esconder após 5 segundos

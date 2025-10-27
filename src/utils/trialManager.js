@@ -125,32 +125,41 @@ export class TrialManager {
     console.log('🔄 Trial resetado para:', userEmail);
   }
 
-  static verificarPlanoUsuario(userEmail) {
+  static async verificarPlanoUsuario(userEmail) {
     // Primeiro verificar localStorage local
     const planoLocal = localStorage.getItem(`plano_${userEmail}`);
     
+    // Sempre verificar no Firebase para garantir sincronização
+    try {
+      const planoFirebase = await this.lerPlanoDoFirebase(userEmail);
+      if (planoFirebase) {
+        // Se o Firebase tem um plano diferente do local, usar o Firebase
+        if (planoLocal !== planoFirebase) {
+          console.log('🔄 Plano no Firebase diferente do local, usando Firebase:', planoFirebase);
+          return planoFirebase;
+        }
+      }
+    } catch (error) {
+      console.warn('Erro ao verificar plano no Firebase:', error);
+    }
+    
+    // Se tem plano local e Firebase concordou (ou não há Firebase), retornar local
     if (planoLocal) {
       return planoLocal;
     }
     
-    // Se não tem dados locais, verificar no servidor
+    // Se não tem dados locais, verificar no servidor Netlify
     try {
-      // Importar SyncServiceUnified dinamicamente para evitar dependência circular
-      const { SyncServiceUnified } = require('../services/syncServiceUnified');
-      const userData = SyncServiceUnified.getUserData(userEmail);
-      
-      if (userData && userData.profile && userData.profile.plano) {
-        // Sincronizar dados locais com servidor
-        localStorage.setItem(`plano_${userEmail}`, userData.profile.plano);
-        console.log('🔄 Plano sincronizado do servidor:', userData.profile.plano);
-        return userData.profile.plano;
+      const planoServidor = await this.verificarPremiumNoServidor(userEmail);
+      if (planoServidor) {
+        return planoServidor;
       }
     } catch (error) {
       console.warn('Erro ao verificar plano no servidor:', error);
     }
     
-    // Verificar também na função Netlify de usuários Premium
-    return this.verificarPremiumNoServidor(userEmail);
+    // Se não encontrou nada, retornar trial
+    return 'trial';
   }
   
   // Verificar se usuário é Premium no servidor
@@ -180,8 +189,75 @@ export class TrialManager {
     return 'trial'; // Default para trial
   }
 
-  static definirPlanoUsuario(userEmail, plano) {
+  // Salvar plano no Firebase
+  static async salvarPlanoNoFirebase(userEmail, plano) {
+    try {
+      // Importar dinamicamente para evitar dependência circular
+      const { db } = await import('../config/firebase');
+      const { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc } = await import('firebase/firestore');
+      
+      // Buscar usuário por email na coleção 'users'
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', userEmail));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        // Usuário existe, atualizar plano
+        const userDoc = querySnapshot.docs[0];
+        const userRef = doc(db, 'users', userDoc.id);
+        await updateDoc(userRef, {
+          plano: plano,
+          premium: plano === 'premium',
+          ultimaAtualizacao: new Date().toISOString()
+        });
+        console.log('✅ Plano atualizado no Firebase:', plano, 'para:', userEmail);
+      } else {
+        // Usuário não existe, verificar se precisa criar (isso não deveria acontecer em uso normal)
+        console.warn('Usuário não encontrado no Firebase para atualizar plano');
+      }
+    } catch (error) {
+      console.warn('Erro ao salvar plano no Firebase:', error);
+      // Não lançar erro para não quebrar o fluxo
+    }
+  }
+
+  // Ler plano do Firebase
+  static async lerPlanoDoFirebase(userEmail) {
+    try {
+      // Importar dinamicamente para evitar dependência circular
+      const { db } = await import('../config/firebase');
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      
+      // Buscar usuário por email na coleção 'users'
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', userEmail));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const userData = querySnapshot.docs[0].data();
+        const plano = userData.plano || 'trial';
+        
+        // Atualizar cache local
+        if (plano) {
+          localStorage.setItem(`plano_${userEmail}`, plano);
+        }
+        
+        console.log('✅ Plano lido do Firebase:', plano, 'para:', userEmail);
+        return plano;
+      }
+    } catch (error) {
+      console.warn('Erro ao ler plano do Firebase:', error);
+    }
+    
+    return null;
+  }
+
+  static async definirPlanoUsuario(userEmail, plano) {
+    // Salvar localmente
     localStorage.setItem(`plano_${userEmail}`, plano);
-    console.log('💎 Plano definido:', plano, 'para:', userEmail);
+    console.log('💎 Plano definido localmente:', plano, 'para:', userEmail);
+    
+    // Salvar no Firebase (para sincronização entre dispositivos)
+    await this.salvarPlanoNoFirebase(userEmail, plano);
   }
 }

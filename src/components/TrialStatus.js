@@ -13,16 +13,8 @@ export default function TrialStatus({ userEmail, onUpgrade }) {
       }
       
       try {
-        // Primeiro tentar verificação local
-        const planoLocal = localStorage.getItem(`plano_${userEmail}`);
-        if (planoLocal) {
-          setPlano(planoLocal);
-          setCarregando(false);
-          return;
-        }
-        
-        // Se não tem dados locais, verificar no servidor
-        const planoVerificado = await TrialManager.verificarPremiumNoServidor(userEmail);
+        // Verificar plano (agora verifica no Firebase também)
+        const planoVerificado = await TrialManager.verificarPlanoUsuario(userEmail);
         setPlano(planoVerificado);
       } catch (error) {
         console.error('Erro ao verificar plano:', error);

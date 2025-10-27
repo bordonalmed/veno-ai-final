@@ -19,16 +19,8 @@ export default function Home({ onLogout }) {
       }
       
       try {
-        // Primeiro tentar verificação local
-        const planoLocal = localStorage.getItem(`plano_${userEmail}`);
-        if (planoLocal) {
-          setPlanoUsuario(planoLocal);
-          setCarregandoPlano(false);
-          return;
-        }
-        
-        // Se não tem dados locais, verificar no servidor
-        const planoVerificado = await TrialManager.verificarPremiumNoServidor(userEmail);
+        // Verificar plano (agora verifica no Firebase também)
+        const planoVerificado = await TrialManager.verificarPlanoUsuario(userEmail);
         setPlanoUsuario(planoVerificado);
       } catch (error) {
         console.error('Erro ao verificar plano:', error);
