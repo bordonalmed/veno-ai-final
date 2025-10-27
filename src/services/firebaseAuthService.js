@@ -103,6 +103,12 @@ class FirebaseAuthService {
             localStorage.setItem(`plano_${email}`, 'premium');
             console.log(`👑 Status Premium confirmado no login!`);
           }
+          
+          // Também salvar no formato legacy para compatibilidade
+          if (userData.plano === 'premium') {
+            localStorage.setItem('plano_premium', 'true');
+            localStorage.setItem(`plano_${email}`, 'premium');
+          }
         }
       } else {
         // Se documento não existe, criar com plano trial

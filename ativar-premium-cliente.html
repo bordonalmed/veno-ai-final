@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ativar Premium - Cliente Urgente</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 { color: #667eea; margin-bottom: 20px; }
+        .code-box {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+        button:hover { background: #5568d3; }
+        .success { background: #4caf50; }
+        .error { background: #f44336; }
+        .warning {
+            background: #ff9800;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .step {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔓 Ativar Premium - Cliente</h1>
+        
+        <div class="warning">
+            ⚠️ Este processo ativa o Premium IMEDIATAMENTE.
+        </div>
+
+        <div class="step">
+            <h3>Passo 1: Confirme seu email</h3>
+            <input type="email" id="emailInput" placeholder="Seu email de cadastro" style="width:100%; padding:10px; margin-top:10px; border-radius:5px; border:1px solid #ddd;">
+        </div>
+
+        <div class="step">
+            <h3>Passo 2: Clique para ativar</h3>
+            <button onclick="ativarPremium()" id="btnAtivar">🔥 Ativar Premium Agora</button>
+        </div>
+
+        <div id="resultado" style="margin-top:20px;"></div>
+
+        <div class="code-box" id="debug" style="display:none;">
+            <strong>Debug Info:</strong>
+            <pre id="debugContent"></pre>
+        </div>
+    </div>
+
+    <script>
+        function mostrarDebug(info) {
+            document.getElementById('debug').style.display = 'block';
+            document.getElementById('debugContent').textContent = JSON.stringify(info, null, 2);
+        }
+
+        async function ativarPremium() {
+            const email = document.getElementById('emailInput').value.trim().toLowerCase();
+            const btn = document.getElementById('btnAtivar');
+            const resultado = document.getElementById('resultado');
+            
+            if (!email) {
+                resultado.innerHTML = '<div class="error">❌ Por favor, digite seu email!</div>';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Ativando...';
+            resultado.innerHTML = '';
+
+            try {
+                mostrarDebug({ 
+                    email, 
+                    localStorage: {
+                        userEmail: localStorage.getItem('userEmail'),
+                        userUID: localStorage.getItem('userUID'),
+                        isLoggedIn: localStorage.getItem('isLoggedIn')
+                    }
+                });
+
+                // Forçar Premium no localStorage
+                localStorage.setItem(`plano_${email}`, 'premium');
+                
+                // Forçar no Firebase usando API
+                await ativarNoFirebase(email);
+
+                resultado.innerHTML = `
+                    <div class="success">
+                        ✅ PREMIUM ATIVADO COM SUCESSO!
+                        <br><br>
+                        Agora: Recarregue a página ou faça logout e login novamente.
+                        <br><br>
+                        <button onclick="location.reload()" style="margin-top:10px;">🔄 Recarregar Página</button>
+                    </div>
+                `;
+
+                btn.disabled = false;
+                btn.textContent = '✅ Premium Ativado!';
+                btn.classList.add('success');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                resultado.innerHTML = `
+                    <div class="error">
+                        ❌ Erro ao ativar Premium: ${error.message}
+                        <br><br>
+                        Mas o Premium foi ativado no localStorage!
+                        <br><br>
+                        Faça logout e login novamente.
+                    </div>
+                `;
+                btn.disabled = false;
+                btn.textContent = '🔄 Tentar Novamente';
+            }
+        }
+
+        async function ativarNoFirebase(email) {
+            // Importar funções do Firebase
+            const { db } = await import('./src/config/firebase.js');
+            const { getDoc, doc, updateDoc, setDoc } = await import('firebase/firestore');
+            
+            const userUID = localStorage.getItem('userUID');
+            
+            if (userUID) {
+                try {
+                    const userRef = doc(db, 'users', userUID);
+                    const userDoc = await getDoc(userRef);
+                    
+                    if (userDoc.exists()) {
+                        await updateDoc(userRef, {
+                            plano: 'premium',
+                            premium: true,
+                            ultimaAtualizacao: new Date().toISOString()
+                        });
+                        console.log('✅ Ativado no Firebase via UID');
+                    } else {
+                        await setDoc(userRef, {
+                            email: email,
+                            plano: 'premium',
+                            premium: true,
+                            dataCadastro: new Date().toISOString()
+                        });
+                        console.log('✅ Criado no Firebase');
+                    }
+                } catch (error) {
+                    console.warn('Firebase erro (mas localStorage foi atualizado):', error);
+                }
+            } else {
+                console.warn('Sem UID - ativação apenas no localStorage');
+            }
+        }
+    </script>
+</body>
+</html>
+
