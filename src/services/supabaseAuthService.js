@@ -92,7 +92,8 @@ class SupabaseAuthService {
       }
 
       // Criar perfil do usuário na tabela users
-      const { error: profileError } = await supabase
+      console.log('📝 Salvando perfil do usuário na tabela users...');
+      const { data: profileData, error: profileError } = await supabase
         .from('users')
         .insert({
           id: data.user.id,
@@ -104,11 +105,16 @@ class SupabaseAuthService {
           trial_inicio: new Date().toISOString(),
           data_cadastro: new Date().toISOString(),
           ...userData
-        });
+        })
+        .select();
 
       if (profileError) {
-        console.warn('Erro ao criar perfil do usuário:', profileError);
-        // Não falhar se apenas o perfil não for criado
+        console.error('❌ Erro ao criar perfil do usuário na tabela users:', profileError);
+        console.error('💡 Dica: Verifique se a tabela "users" foi criada no Supabase SQL Editor');
+        // Ainda assim, o usuário foi criado no Auth, então vamos continuar
+        // Mas vamos avisar que precisa criar a tabela
+      } else {
+        console.log('✅ Perfil do usuário salvo na tabela users:', profileData);
       }
 
       console.log('✅ Usuário criado no Supabase:', email);
