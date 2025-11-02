@@ -202,15 +202,15 @@ export class TrialManager {
     return 'trial';
   }
   
-  // Verificar se usuário é Premium no servidor
+  // Verificar se usuário é Premium no servidor (verifica Supabase + Hotmart)
   static async verificarPremiumNoServidor(userEmail) {
     try {
-      const response = await fetch('https://venoai.xyz/.netlify/functions/verificar-usuario', {
-        method: 'POST',
+      // Usar a função verificar-usuario-v2 que verifica Supabase + Hotmart
+      const response = await fetch(`https://venoai.xyz/.netlify/functions/verificar-usuario-v2?email=${encodeURIComponent(userEmail)}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: userEmail })
+        }
       });
       
       if (response.ok) {
@@ -218,7 +218,8 @@ export class TrialManager {
         if (data.premium) {
           // Salvar status Premium localmente
           localStorage.setItem(`plano_${userEmail}`, 'premium');
-          console.log('✅ Status Premium confirmado no servidor');
+          localStorage.setItem('plano_premium', 'true');
+          console.log('✅ Status Premium confirmado no servidor/Hotmart:', data.fonte || 'servidor');
           return 'premium';
         }
       }

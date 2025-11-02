@@ -189,10 +189,20 @@ function AppContent() {
       localStorage.setItem("userUID", result.user.uid || result.user.id);
       localStorage.setItem("isLoggedIn", "true");
       
-      // Verificar e sincronizar status Premium no servidor
+      // Verificar e sincronizar status Premium no servidor (verifica Hotmart também)
       try {
         const { TrialManager } = await import('./utils/trialManager');
-        await TrialManager.verificarPremiumNoServidor(result.user.email);
+        
+        // Verificar Premium no servidor (inclui verificação Hotmart)
+        const planoServidor = await TrialManager.verificarPremiumNoServidor(result.user.email);
+        
+        // Se servidor retornou premium, garantir que está salvo localmente
+        if (planoServidor === 'premium') {
+          localStorage.setItem(`plano_${result.user.email}`, 'premium');
+          localStorage.setItem('plano_premium', 'true');
+          console.log('✅ Premium confirmado e sincronizado do servidor/Hotmart');
+        }
+        
         console.log('✅ Status Premium verificado e sincronizado');
       } catch (error) {
         console.warn('Erro ao verificar Premium:', error);
