@@ -31,36 +31,52 @@ exports.handler = async (event, context) => {
   }
   
   try {
-    // LISTA DE EMAILS PREMIUM CONFIRMADOS
-    const emailsPremiumConfirmados = [
-      'vasculargabriel@gmail.com',
-      // ADICIONAR AQUI OS EMAILS DOS CLIENTES QUE PAGARAM
-      // Exemplo: 'cliente@email.com',
-      // Exemplo: 'outro@email.com',
-    ];
-    
-    // Verificar se está na lista de Premium confirmados
-    const isPremiumConfirmado = emailsPremiumConfirmados.includes(email.toLowerCase());
-    
-    // Se não estiver na lista, verificar com Hotmart (simulação)
-    let isPremiumHotmart = false;
-    
-    if (!isPremiumConfirmado) {
-      // SIMULAÇÃO: Verificar com Hotmart
-      // Em produção, você faria uma requisição real para a API do Hotmart
-      console.log(`🔍 Verificando pagamento Hotmart para: ${email}`);
-      
-      // Lista de emails que pagaram no Hotmart (você deve manter atualizada)
-      const emailsHotmart = [
-        // Adicionar emails que pagaram no Hotmart aqui
-        // Exemplo: 'cliente1@email.com',
-        // Exemplo: 'cliente2@email.com',
+    // Verificar no Supabase primeiro
+    let isPremium = false;
+    let fontePremium = 'trial';
+
+    const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+    if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+      try {
+        const { createClient } = require('@supabase/supabase-js');
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        
+        const { data: userData, error: supabaseError } = await supabase
+          .from('users')
+          .select('premium, plano')
+          .eq('email', email.toLowerCase())
+          .single();
+
+        if (!supabaseError && userData && userData.premium === true) {
+          isPremium = true;
+          fontePremium = 'supabase';
+          console.log(`✅ Usuário Premium encontrado no Supabase: ${email}`);
+        }
+      } catch (supabaseErr) {
+        console.warn('⚠️ Erro ao verificar no Supabase:', supabaseErr);
+      }
+    }
+
+    // Se não encontrou no Supabase, verificar lista manual (fallback)
+    if (!isPremium) {
+      // LISTA DE EMAILS PREMIUM CONFIRMADOS (fallback)
+      const emailsPremiumConfirmados = [
+        'vasculargabriel@gmail.com',
+        // ADICIONAR AQUI OS EMAILS DOS CLIENTES QUE PAGARAM
+        // Exemplo: 'cliente@email.com',
+        // Exemplo: 'outro@email.com',
       ];
       
-      isPremiumHotmart = emailsHotmart.includes(email.toLowerCase());
+      // Verificar se está na lista de Premium confirmados
+      const isPremiumConfirmado = emailsPremiumConfirmados.includes(email.toLowerCase());
+      
+      if (isPremiumConfirmado) {
+        isPremium = true;
+        fontePremium = 'lista-confirmada';
+      }
     }
-    
-    const isPremium = isPremiumConfirmado || isPremiumHotmart;
     
     console.log(`🔍 Verificando usuário: ${email} - Premium: ${isPremium}`);
     
@@ -77,7 +93,7 @@ exports.handler = async (event, context) => {
         status: 'success',
         timestamp: new Date().toISOString(),
         mensagem: isPremium ? 'Usuário Premium detectado!' : 'Usuário Trial',
-        fonte: isPremiumConfirmado ? 'lista-confirmada' : (isPremiumHotmart ? 'hotmart' : 'trial')
+        fonte: fontePremium
       })
     };
     

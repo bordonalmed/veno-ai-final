@@ -1,24 +1,63 @@
 /**
- * Premium Service - Usando localStorage (Firebase removido)
- * TODO: Migrar para Supabase quando configurado
+ * Premium Service - Usando Supabase + localStorage
  */
+import { supabase, supabaseConfig } from '../config/supabase';
 
 class PremiumService {
   /**
-   * Refresh premium status from localStorage
+   * Refresh premium status from Supabase + localStorage
    */
   static async refreshPremium() {
     try {
       const userEmail = localStorage.getItem('userEmail');
+      const userUID = localStorage.getItem('userUID');
       
       if (!userEmail) {
         console.warn('⚠️ [PREMIUM] No user logged in');
         return { premium: false, source: 'no-user' };
       }
 
+      // Buscar do Supabase primeiro se configurado
+      if (supabaseConfig.isConfigured && supabase && userUID) {
+        try {
+          console.log('🔍 [PREMIUM] Buscando status no Supabase...');
+          const { data: userData, error: supabaseError } = await supabase
+            .from('users')
+            .select('premium, plano')
+            .eq('id', userUID)
+            .single();
+
+          if (!supabaseError && userData) {
+            const isPremium = userData.premium === true;
+            
+            // Sincronizar com localStorage
+            if (isPremium) {
+              localStorage.setItem(`plano_${userEmail}`, 'premium');
+              localStorage.setItem('plano_premium', 'true');
+            } else {
+              localStorage.removeItem(`plano_${userEmail}`);
+              localStorage.removeItem('plano_premium');
+            }
+
+            console.log('✅ [PREMIUM] Status do Supabase:', {
+              email: userEmail,
+              premium: isPremium
+            });
+
+            return {
+              premium: isPremium,
+              source: 'supabase'
+            };
+          }
+        } catch (supabaseErr) {
+          console.warn('⚠️ [PREMIUM] Erro ao buscar do Supabase:', supabaseErr);
+        }
+      }
+
+      // Fallback para localStorage
       const premium = this.getPremiumFromLocalStorage().premium;
       
-      console.log('✅ [PREMIUM] Status refreshed:', {
+      console.log('✅ [PREMIUM] Status refreshed (localStorage):', {
         email: userEmail,
         premium: premium
       });
@@ -35,12 +74,36 @@ class PremiumService {
   }
 
   /**
-   * Sync premium status to localStorage
+   * Sync premium status to Supabase + localStorage
    */
   static async syncPremiumToLocalStorage(uid, premium) {
     try {
       const userEmail = localStorage.getItem('userEmail');
       
+      // Salvar no Supabase se configurado
+      if (supabaseConfig.isConfigured && supabase && uid) {
+        try {
+          console.log('💾 [PREMIUM] Salvando status no Supabase...');
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              premium: premium === true,
+              plano: premium ? 'premium' : 'trial',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', uid);
+
+          if (updateError) {
+            console.error('❌ [PREMIUM] Erro ao salvar no Supabase:', updateError);
+          } else {
+            console.log('✅ [PREMIUM] Status salvo no Supabase:', premium);
+          }
+        } catch (supabaseErr) {
+          console.error('❌ [PREMIUM] Erro ao conectar com Supabase:', supabaseErr);
+        }
+      }
+
+      // Salvar em localStorage também
       if (userEmail) {
         if (premium) {
           localStorage.setItem(`plano_${userEmail}`, 'premium');
