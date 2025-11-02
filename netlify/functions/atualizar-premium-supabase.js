@@ -56,11 +56,18 @@ exports.handler = async (event, context) => {
 
       console.log(`💎 Ativando Premium para: ${email}`);
 
-      // Primeiro, buscar o usuário pelo email no Supabase Auth
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('❌ Erro ao buscar usuários:', authError);
+      // Buscar usuário diretamente na tabela users pelo email
+      const { data: existingUser, error: findError } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('email', email.toLowerCase())
+        .single();
+
+      let userId = null;
+
+      if (findError && findError.code !== 'PGRST116') {
+        // Erro diferente de "não encontrado"
+        console.error('❌ Erro ao buscar usuário:', findError);
         return {
           statusCode: 500,
           headers: {
@@ -69,15 +76,25 @@ exports.handler = async (event, context) => {
           },
           body: JSON.stringify({
             error: 'Erro ao buscar usuário no Supabase',
-            success: false
+            success: false,
+            details: findError.message
           })
         };
       }
 
-      // Encontrar usuário pelo email
-      const user = authUsers.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      
-      if (!user) {
+      if (existingUser) {
+        userId = existingUser.id;
+        console.log(`✅ Usuário encontrado na tabela users: ${userId}`);
+      } else {
+        // Usuário não encontrado na tabela users
+        // Tentar buscar no auth.users usando uma query direta
+        console.log(`⚠️ Usuário não encontrado na tabela users, buscando no auth...`);
+        
+        // Buscar direto pela tabela auth.users (requer privilégios de admin)
+        // Como alternativa, vamos atualizar/criar direto pelo email na tabela users
+        // Mas primeiro precisamos do ID do auth.users
+        // Por enquanto, vamos tentar criar/atualizar e deixar o Supabase resolver
+        
         return {
           statusCode: 404,
           headers: {
@@ -85,9 +102,10 @@ exports.handler = async (event, context) => {
             'Access-Control-Allow-Origin': '*'
           },
           body: JSON.stringify({
-            error: 'Usuário não encontrado no Supabase. O usuário precisa se cadastrar primeiro.',
+            error: 'Usuário não encontrado. O usuário precisa se cadastrar e fazer login primeiro para criar o perfil na tabela users.',
             success: false,
-            email: email
+            email: email,
+            solucao: 'Peça ao usuário para fazer login no sistema primeiro, depois tente ativar o Premium novamente.'
           })
         };
       }
@@ -100,7 +118,7 @@ exports.handler = async (event, context) => {
           plano: 'premium',
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id)
+        .eq('id', userId)
         .select();
 
       if (updateError) {
@@ -111,13 +129,13 @@ exports.handler = async (event, context) => {
           const { data: insertData, error: insertError } = await supabase
             .from('users')
             .insert({
-              id: user.id,
-              email: user.email,
-              nome: user.email.split('@')[0],
+              id: userId,
+              email: email.toLowerCase(),
+              nome: email.split('@')[0],
               premium: true,
               plano: 'premium',
               trial_ativo: false,
-              data_cadastro: user.created_at || new Date().toISOString(),
+              data_cadastro: new Date().toISOString(),
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
