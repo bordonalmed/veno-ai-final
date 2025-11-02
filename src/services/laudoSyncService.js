@@ -1,32 +1,38 @@
-// Serviço para sincronizar laudos com Firebase
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  doc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db, auth } from '../config/firebase';
+// Serviço para sincronizar laudos - Usando localStorage (Firebase removido)
+// TODO: Migrar para Supabase quando configurado
 
 class LaudoSyncService {
   constructor() {
     this.currentUser = null;
+    this.loadCurrentUser();
+  }
+
+  // Carregar usuário atual do localStorage
+  loadCurrentUser() {
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      const userUID = localStorage.getItem('userUID');
+      if (userEmail && userUID) {
+        this.currentUser = {
+          email: userEmail,
+          uid: userUID
+        };
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+    }
   }
 
   // Obter usuário atual
   getCurrentUser() {
-    return auth.currentUser;
+    this.loadCurrentUser();
+    return this.currentUser;
   }
 
-  // Salvar laudo no Firebase
+  // Salvar laudo no localStorage
   async salvarLaudo(laudoData) {
     try {
-      console.log('🔥 LaudoSyncService: Iniciando salvamento...', laudoData);
+      console.log('💾 LaudoSyncService: Salvando laudo localmente...', laudoData);
       
       const user = this.getCurrentUser();
       if (!user) {
@@ -34,100 +40,46 @@ class LaudoSyncService {
         throw new Error('Usuário não logado');
       }
 
-      console.log('✅ LaudoSyncService: Usuário logado:', user.email, user.uid);
-
-      const laudoCompleto = {
-        ...laudoData,
-        userId: user.uid,
-        userEmail: user.email,
-        dataCriacao: serverTimestamp(),
-        dataModificacao: serverTimestamp(),
-        origem: 'firebase',
-        // Adicionar hash único para evitar duplicatas
-        hashUnico: `${user.uid}_${laudoData.nome}_${laudoData.data}_${laudoData.tipoNome}_${Date.now()}`
-      };
-
-      console.log('📝 LaudoSyncService: Salvando no Firebase...', laudoCompleto);
-
-      // Salvar no Firebase
-      const docRef = await addDoc(collection(db, 'laudos'), laudoCompleto);
-      
-      console.log('✅ LaudoSyncService: Laudo salvo no Firebase com ID:', docRef.id);
-      console.log('✅ LaudoSyncService: Salvamento no Firebase concluído, não salvando localmente');
-      
-      return { success: true, id: docRef.id };
-    } catch (error) {
-      console.error('❌ LaudoSyncService: Erro ao salvar laudo no Firebase:', error);
-      console.log('🔄 LaudoSyncService: Usando fallback - salvando apenas localmente');
-      // Fallback: salvar apenas localmente
-      this.salvarLocalmente(laudoData);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Salvar localmente (fallback)
-  salvarLocalmente(laudoData) {
-    try {
       const storageKey = `exames${laudoData.tipoNome?.replace(/\s+/g, '') || 'Laudo'}`;
       const examesExistentes = JSON.parse(localStorage.getItem(storageKey) || "[]");
       
       const novoExame = {
         ...laudoData,
         id: Date.now().toString(),
-        timestamp: new Date().toISOString()
+        userId: user.uid,
+        userEmail: user.email,
+        timestamp: new Date().toISOString(),
+        dataCriacao: new Date().toISOString(),
+        origem: 'localStorage'
       };
       
       examesExistentes.push(novoExame);
       localStorage.setItem(storageKey, JSON.stringify(examesExistentes));
       
-      console.log('Laudo salvo localmente:', storageKey);
+      console.log('✅ LaudoSyncService: Laudo salvo localmente:', storageKey);
+      return { success: true, id: novoExame.id };
     } catch (error) {
-      console.error('Erro ao salvar localmente:', error);
+      console.error('❌ LaudoSyncService: Erro ao salvar laudo:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // Buscar laudos do usuário
+  // Salvar localmente (método legado)
+  salvarLocalmente(laudoData) {
+    return this.salvarLaudo(laudoData);
+  }
+
+  // Buscar laudos do usuário do localStorage
   async buscarLaudos() {
     try {
-      console.log('🔍 LaudoSyncService: Buscando laudos APENAS do Firebase...');
+      console.log('🔍 LaudoSyncService: Buscando laudos localmente...');
       
       const user = this.getCurrentUser();
       if (!user) {
-        console.error('❌ LaudoSyncService: Usuário não logado');
-        throw new Error('Usuário não logado');
+        console.log('❌ LaudoSyncService: Usuário não logado');
+        return { success: false, laudos: [], error: 'Usuário não logado' };
       }
 
-      console.log('✅ LaudoSyncService: Usuário logado:', user.email, user.uid);
-
-      const q = query(
-        collection(db, 'laudos'),
-        where('userId', '==', user.uid),
-        orderBy('dataCriacao', 'desc')
-      );
-
-      console.log('📖 LaudoSyncService: Executando query...');
-      const querySnapshot = await getDocs(q);
-      const laudos = [];
-
-      querySnapshot.forEach((doc) => {
-        laudos.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      console.log('✅ LaudoSyncService: Laudos carregados do Firebase:', laudos.length);
-      return { success: true, laudos };
-    } catch (error) {
-      console.error('❌ LaudoSyncService: Erro ao buscar laudos:', error);
-      console.log('📝 LaudoSyncService: Retornando lista vazia (não usando localStorage)');
-      return { success: false, laudos: [], error: error.message }; // NÃO usar fallback
-    }
-  }
-
-  // Buscar laudos locais (fallback)
-  buscarLaudosLocais() {
-    try {
       const tiposLaudo = [
         'examesMMIIVenoso',
         'examesMMIIArterial', 
@@ -141,29 +93,45 @@ class LaudoSyncService {
       tiposLaudo.forEach(tipo => {
         const laudos = JSON.parse(localStorage.getItem(tipo) || "[]");
         laudos.forEach(laudo => {
-          todosLaudos.push({
-            ...laudo,
-            tipo: tipo,
-            origem: 'local'
-          });
+          // Filtrar apenas laudos do usuário atual
+          if (laudo.userId === user.uid || laudo.userEmail === user.email) {
+            todosLaudos.push({
+              ...laudo,
+              tipo: tipo,
+              origem: 'localStorage'
+            });
+          }
         });
       });
 
-      console.log('Laudos carregados localmente:', todosLaudos.length);
+      // Ordenar por data mais recente
+      todosLaudos.sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.dataCriacao || 0);
+        const dateB = new Date(b.timestamp || b.dataCriacao || 0);
+        return dateB - dateA;
+      });
+
+      console.log('✅ LaudoSyncService: Laudos carregados localmente:', todosLaudos.length);
       return { success: true, laudos: todosLaudos };
     } catch (error) {
-      console.error('Erro ao buscar laudos locais:', error);
-      return { success: false, laudos: [] };
+      console.error('❌ LaudoSyncService: Erro ao buscar laudos:', error);
+      return { success: false, laudos: [], error: error.message };
     }
   }
 
-  // Sincronizar laudos locais com Firebase
-  async sincronizarLaudosLocais() {
+  // Buscar laudos locais (método legado)
+  buscarLaudosLocais() {
+    return this.buscarLaudos();
+  }
+
+  // Deletar laudo do localStorage
+  async deletarLaudo(laudoId) {
     try {
+      console.log('🗑️ LaudoSyncService: Deletando laudo:', laudoId);
+      
       const user = this.getCurrentUser();
       if (!user) {
-        console.log('Usuário não logado, pulando sincronização');
-        return;
+        throw new Error('Usuário não logado');
       }
 
       const tiposLaudo = [
@@ -174,64 +142,40 @@ class LaudoSyncService {
         'examesCarotidasVertebrais'
       ];
 
-      let sincronizados = 0;
+      let deletado = false;
 
       for (const tipo of tiposLaudo) {
         const laudos = JSON.parse(localStorage.getItem(tipo) || "[]");
+        const laudosAtualizados = laudos.filter(laudo => {
+          if (laudo.id === laudoId && (laudo.userId === user.uid || laudo.userEmail === user.email)) {
+            deletado = true;
+            return false;
+          }
+          return true;
+        });
         
-        for (const laudo of laudos) {
-          // Verificar se já existe no Firebase
-          const laudoCompleto = {
-            ...laudo,
-            userId: user.uid,
-            userEmail: user.email,
-            tipo: tipo,
-            origem: 'sincronizado',
-            dataCriacao: serverTimestamp(),
-            dataModificacao: serverTimestamp()
-          };
-
-          await addDoc(collection(db, 'laudos'), laudoCompleto);
-          sincronizados++;
+        if (deletado) {
+          localStorage.setItem(tipo, JSON.stringify(laudosAtualizados));
+          break;
         }
       }
 
-      console.log(`Sincronizados ${sincronizados} laudos com Firebase`);
-      return { success: true, sincronizados };
-    } catch (error) {
-      console.error('Erro na sincronização:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Deletar laudo
-  async deletarLaudo(laudoId) {
-    try {
-      console.log('🗑️ LaudoSyncService: Iniciando exclusão do laudo:', laudoId);
-      
-      const user = this.getCurrentUser();
-      if (!user) {
-        console.error('❌ LaudoSyncService: Usuário não logado');
-        throw new Error('Usuário não logado');
+      if (deletado) {
+        console.log('✅ LaudoSyncService: Laudo deletado:', laudoId);
+        return { success: true, message: 'Laudo deletado com sucesso' };
+      } else {
+        return { success: false, error: 'Laudo não encontrado' };
       }
-
-      console.log('✅ LaudoSyncService: Usuário logado:', user.email, user.uid);
-
-      // Verificar se o documento existe antes de deletar
-      const laudoRef = doc(db, 'laudos', laudoId);
-      
-      console.log('🔍 LaudoSyncService: Verificando documento:', laudoId);
-      
-      // Deletar o documento
-      await deleteDoc(laudoRef);
-      
-      console.log('✅ LaudoSyncService: Laudo deletado com sucesso do Firebase:', laudoId);
-      
-      return { success: true, message: 'Laudo deletado com sucesso' };
     } catch (error) {
       console.error('❌ LaudoSyncService: Erro ao deletar laudo:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  // Sincronizar laudos locais (método legado - não faz nada agora)
+  async sincronizarLaudosLocais() {
+    console.log('📝 LaudoSyncService: Sincronização não necessária com localStorage');
+    return { success: true, sincronizados: 0 };
   }
 }
 

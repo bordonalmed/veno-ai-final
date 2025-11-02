@@ -1,28 +1,33 @@
-// Serviço de Sincronização em Tempo Real para Exames
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  getDocs,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db, auth } from '../config/firebase';
+// Serviço de Sincronização para Exames - Usando localStorage (Firebase removido)
+// TODO: Migrar para Supabase quando configurado
 
 class ExamesRealtimeService {
   constructor() {
     this.currentUser = null;
-    this.unsubscribeListeners = new Map(); // Para gerenciar múltiplos listeners
+    this.unsubscribeListeners = new Map();
+    this.loadCurrentUser();
+  }
+
+  // Carregar usuário atual do localStorage
+  loadCurrentUser() {
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      const userUID = localStorage.getItem('userUID');
+      if (userEmail && userUID) {
+        this.currentUser = {
+          email: userEmail,
+          uid: userUID
+        };
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+    }
   }
 
   // Obter usuário atual
   getCurrentUser() {
-    return auth.currentUser;
+    this.loadCurrentUser();
+    return this.currentUser;
   }
 
   // Verificar se usuário está logado
@@ -34,75 +39,41 @@ class ExamesRealtimeService {
     return user;
   }
 
-  // Assinar mudanças em tempo real nos exames do usuário
+  // Assinar mudanças em exames (simula tempo real verificando periodicamente)
   subscribeExames(onChange, onError = null) {
     try {
       const user = this.requireAuth();
-      console.log('🔄 ExamesRealtimeService: Iniciando listener em tempo real para:', user.email);
+      console.log('🔄 ExamesRealtimeService: Iniciando listener para:', user.email);
 
-      // Query para buscar apenas exames do usuário atual, ordenados por data de criação
-      const q = query(
-        collection(db, 'laudos'),
-        where('userId', '==', user.uid),
-        orderBy('dataCriacao', 'desc')
-      );
-
-      // Criar listener em tempo real
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          console.log('📡 ExamesRealtimeService: Recebida atualização em tempo real');
-          
-          const exames = [];
-          let hasPendingWrites = false;
-
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            
-            // Verificar se há escritas pendentes (offline)
-            if (doc.metadata.hasPendingWrites) {
-              hasPendingWrites = true;
-            }
-
-            // Filtrar exames deletados (soft delete)
-            if (!data.deletedAt) {
-              exames.push({
-                id: doc.id,
-                ...data,
-                // Garantir campos padronizados
-                tipoNome: data.tipoNome || 'Exame',
-                timestamp: data.dataCriacao || data.timestamp,
-                criadoEm: data.dataCriacao || data.timestamp,
-                origem: 'firebase-realtime'
-              });
-            }
-          });
-
-          console.log(`✅ ExamesRealtimeService: ${exames.length} exames sincronizados`);
-          if (hasPendingWrites) {
-            console.log('⏳ ExamesRealtimeService: Há escritas pendentes (offline)');
-          }
-
-          // Chamar callback com os dados
-          onChange(exames, { hasPendingWrites, isOffline: !navigator.onLine });
-        },
-        (error) => {
-          console.error('❌ ExamesRealtimeService: Erro no listener:', error);
-          if (onError) {
-            onError(error);
-          }
+      // Buscar exames inicialmente
+      this.buscarExames().then(result => {
+        if (result.success) {
+          onChange(result.exames, { hasPendingWrites: false, isOffline: false });
         }
-      );
+      });
 
-      // Armazenar unsubscribe para poder cancelar depois
+      // Criar intervalo para verificar mudanças periodicamente
+      const intervalId = setInterval(() => {
+        this.buscarExames().then(result => {
+          if (result.success) {
+            onChange(result.exames, { hasPendingWrites: false, isOffline: false });
+          }
+        }).catch(error => {
+          if (onError) onError(error);
+        });
+      }, 5000); // Verificar a cada 5 segundos
+
       const listenerId = `exames_${user.uid}`;
-      this.unsubscribeListeners.set(listenerId, unsubscribe);
+      this.unsubscribeListeners.set(listenerId, () => {
+        clearInterval(intervalId);
+      });
 
       console.log('✅ ExamesRealtimeService: Listener ativo para:', user.email);
       return listenerId;
 
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao criar listener:', error);
+      if (onError) onError(error);
       throw error;
     }
   }
@@ -132,23 +103,24 @@ class ExamesRealtimeService {
       const user = this.requireAuth();
       console.log('📝 ExamesRealtimeService: Criando novo exame...');
 
-      const exameCompleto = {
+      const storageKey = `exames${dadosExame.tipoNome?.replace(/\s+/g, '') || 'Exame'}`;
+      const examesExistentes = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      
+      const novoExame = {
         ...dadosExame,
+        id: Date.now().toString(),
         userId: user.uid,
         userEmail: user.email,
-        dataCriacao: serverTimestamp(),
-        dataModificacao: serverTimestamp(),
-        origem: 'firebase-realtime',
-        // Hash único para evitar duplicatas
-        hashUnico: `${user.uid}_${dadosExame.nome}_${dadosExame.data}_${dadosExame.tipoNome}_${Date.now()}`
+        dataCriacao: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        origem: 'localStorage'
       };
-
-      const docRef = await addDoc(collection(db, 'laudos'), exameCompleto);
       
-      console.log('✅ ExamesRealtimeService: Exame criado com ID:', docRef.id);
-      // NÃO atualizar estado local - o listener em tempo real fará isso
+      examesExistentes.push(novoExame);
+      localStorage.setItem(storageKey, JSON.stringify(examesExistentes));
       
-      return { success: true, id: docRef.id };
+      console.log('✅ ExamesRealtimeService: Exame criado:', novoExame.id);
+      return { success: true, id: novoExame.id };
 
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao criar exame:', error);
@@ -162,18 +134,43 @@ class ExamesRealtimeService {
       const user = this.requireAuth();
       console.log('✏️ ExamesRealtimeService: Atualizando exame:', exameId);
 
-      const dadosComTimestamp = {
-        ...dadosAtualizados,
-        dataModificacao: serverTimestamp(),
-        modificadoPor: user.uid
-      };
+      const tiposLaudo = [
+        'examesMMIIVenoso',
+        'examesMMIIArterial', 
+        'examesMMSSVenoso',
+        'examesMMSSArterial',
+        'examesCarotidasVertebrais'
+      ];
 
-      await updateDoc(doc(db, 'laudos', exameId), dadosComTimestamp);
-      
-      console.log('✅ ExamesRealtimeService: Exame atualizado:', exameId);
-      // NÃO atualizar estado local - o listener em tempo real fará isso
-      
-      return { success: true };
+      let atualizado = false;
+
+      for (const tipo of tiposLaudo) {
+        const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
+        const examesAtualizados = exames.map(exame => {
+          if (exame.id === exameId && (exame.userId === user.uid || exame.userEmail === user.email)) {
+            atualizado = true;
+            return {
+              ...exame,
+              ...dadosAtualizados,
+              dataModificacao: new Date().toISOString(),
+              modificadoPor: user.uid
+            };
+          }
+          return exame;
+        });
+        
+        if (atualizado) {
+          localStorage.setItem(tipo, JSON.stringify(examesAtualizados));
+          break;
+        }
+      }
+
+      if (atualizado) {
+        console.log('✅ ExamesRealtimeService: Exame atualizado:', exameId);
+        return { success: true };
+      } else {
+        return { success: false, error: 'Exame não encontrado' };
+      }
 
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao atualizar exame:', error);
@@ -181,18 +178,44 @@ class ExamesRealtimeService {
     }
   }
 
-  // Excluir exame (hard delete)
+  // Excluir exame
   async excluirExame(exameId) {
     try {
       const user = this.requireAuth();
       console.log('🗑️ ExamesRealtimeService: Excluindo exame:', exameId);
 
-      await deleteDoc(doc(db, 'laudos', exameId));
-      
-      console.log('✅ ExamesRealtimeService: Exame excluído:', exameId);
-      // NÃO atualizar estado local - o listener em tempo real fará isso
-      
-      return { success: true };
+      const tiposLaudo = [
+        'examesMMIIVenoso',
+        'examesMMIIArterial', 
+        'examesMMSSVenoso',
+        'examesMMSSArterial',
+        'examesCarotidasVertebrais'
+      ];
+
+      let deletado = false;
+
+      for (const tipo of tiposLaudo) {
+        const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
+        const examesAtualizados = exames.filter(exame => {
+          if (exame.id === exameId && (exame.userId === user.uid || exame.userEmail === user.email)) {
+            deletado = true;
+            return false;
+          }
+          return true;
+        });
+        
+        if (deletado) {
+          localStorage.setItem(tipo, JSON.stringify(examesAtualizados));
+          break;
+        }
+      }
+
+      if (deletado) {
+        console.log('✅ ExamesRealtimeService: Exame excluído:', exameId);
+        return { success: true };
+      } else {
+        return { success: false, error: 'Exame não encontrado' };
+      }
 
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao excluir exame:', error);
@@ -202,57 +225,50 @@ class ExamesRealtimeService {
 
   // Excluir exame (soft delete - alternativa)
   async excluirExameSoft(exameId) {
-    try {
-      const user = this.requireAuth();
-      console.log('🗑️ ExamesRealtimeService: Excluindo exame (soft delete):', exameId);
-
-      await updateDoc(doc(db, 'laudos', exameId), {
-        deletedAt: serverTimestamp(),
-        dataModificacao: serverTimestamp(),
-        excluidoPor: user.uid
-      });
-      
-      console.log('✅ ExamesRealtimeService: Exame marcado como excluído:', exameId);
-      
-      return { success: true };
-
-    } catch (error) {
-      console.error('❌ ExamesRealtimeService: Erro ao excluir exame (soft):', error);
-      return { success: false, error: error.message };
-    }
+    return this.excluirExame(exameId); // Por enquanto, mesmo comportamento
   }
 
-  // Buscar exames uma única vez (para casos especiais)
+  // Buscar exames uma única vez
   async buscarExames() {
     try {
       const user = this.requireAuth();
-      console.log('🔍 ExamesRealtimeService: Buscando exames (one-time)...');
+      console.log('🔍 ExamesRealtimeService: Buscando exames...');
 
-      const q = query(
-        collection(db, 'laudos'),
-        where('userId', '==', user.uid),
-        orderBy('dataCriacao', 'desc')
-      );
+      const tiposLaudo = [
+        'examesMMIIVenoso',
+        'examesMMIIArterial', 
+        'examesMMSSVenoso',
+        'examesMMSSArterial',
+        'examesCarotidasVertebrais'
+      ];
 
-      const snapshot = await getDocs(q);
-      const exames = [];
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (!data.deletedAt) {
-          exames.push({
-            id: doc.id,
-            ...data,
-            tipoNome: data.tipoNome || 'Exame',
-            timestamp: data.dataCriacao || data.timestamp,
-            criadoEm: data.dataCriacao || data.timestamp,
-            origem: 'firebase-onetime'
-          });
-        }
+      const todosExames = [];
+      
+      tiposLaudo.forEach(tipo => {
+        const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
+        exames.forEach(exame => {
+          // Filtrar apenas exames do usuário atual e não deletados
+          if (!exame.deletedAt && (exame.userId === user.uid || exame.userEmail === user.email)) {
+            todosExames.push({
+              ...exame,
+              tipoNome: exame.tipoNome || 'Exame',
+              timestamp: exame.timestamp || exame.dataCriacao,
+              criadoEm: exame.timestamp || exame.dataCriacao,
+              origem: 'localStorage'
+            });
+          }
+        });
       });
 
-      console.log(`✅ ExamesRealtimeService: ${exames.length} exames encontrados`);
-      return { success: true, exames };
+      // Ordenar por data mais recente
+      todosExames.sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.dataCriacao || 0);
+        const dateB = new Date(b.timestamp || b.dataCriacao || 0);
+        return dateB - dateA;
+      });
+
+      console.log(`✅ ExamesRealtimeService: ${todosExames.length} exames encontrados`);
+      return { success: true, exames: todosExames };
 
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao buscar exames:', error);
@@ -264,7 +280,7 @@ class ExamesRealtimeService {
   getConnectionStatus() {
     return {
       isOnline: navigator.onLine,
-      hasPendingWrites: false // Será atualizado pelo listener
+      hasPendingWrites: false
     };
   }
 }

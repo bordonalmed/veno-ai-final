@@ -2,6 +2,70 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    
+    <!-- Suprimir erros do MetaMask ANTES de tudo -->
+    <script>
+      // Suprimir erros do MetaMask silenciosamente
+      (function() {
+        // Sobrescrever console.error
+        const originalError = console.error;
+        console.error = function() {
+          const message = Array.from(arguments).join(' ');
+          if (message.includes('MetaMask') || 
+              message.includes('metamask') || 
+              message.includes('MetaMask extension not found') ||
+              message.includes('Failed to connect to MetaMask')) {
+            return; // Não mostrar
+          }
+          originalError.apply(console, arguments);
+        };
+        
+        // Capturar erros não tratados
+        window.addEventListener('error', function(event) {
+          if (event.message && (
+            event.message.includes('MetaMask') ||
+            event.message.includes('metamask') ||
+            event.message.includes('MetaMask extension not found') ||
+            event.message.includes('Failed to connect to MetaMask')
+          )) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+          }
+        }, true);
+        
+        // Capturar promessas rejeitadas
+        window.addEventListener('unhandledrejection', function(event) {
+          if (event.reason) {
+            const reason = event.reason.message || event.reason.toString() || '';
+            if (reason.includes('MetaMask') ||
+                reason.includes('metamask') ||
+                reason.includes('MetaMask extension not found') ||
+                reason.includes('Failed to connect to MetaMask')) {
+              event.preventDefault();
+              event.stopPropagation();
+              return false;
+            }
+          }
+        });
+        
+        // Suprimir erros específicos do inpage.js
+        if (window.chrome && window.chrome.runtime) {
+          const originalSendMessage = window.chrome.runtime.sendMessage;
+          window.chrome.runtime.sendMessage = function() {
+            try {
+              return originalSendMessage.apply(this, arguments);
+            } catch (e) {
+              if (e.message && e.message.includes('MetaMask')) {
+                return; // Suprimir
+              }
+              throw e;
+            }
+          };
+        }
+      })();
+    </script>
+    
     <link rel="icon" href="%PUBLIC_URL%/venoai-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0eb8d0" />
@@ -33,8 +97,5 @@
   <body>
     <noscript>Você precisa habilitar JavaScript para executar este aplicativo.</noscript>
     <div id="root"></div>
-    
-    <!-- Script do webhook do Hotmart (para testes) -->
-    <script src="/api/hotmart-webhook.js"></script>
   </body>
 </html> 

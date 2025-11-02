@@ -17,15 +17,15 @@ const STORAGE_KEYS = {
   RENAIS: "examesRenais"
 };
 
-// Função para buscar todos os exames do Firebase
+// Função para buscar todos os exames
 async function getTodosExames() {
   try {
-    console.log('🔍 ExamesRealizados: Buscando exames APENAS do Firebase...');
+    console.log('🔍 ExamesRealizados: Buscando exames...');
     
     const resultado = await laudoSyncService.buscarLaudos();
     
     if (resultado.success) {
-      console.log('✅ ExamesRealizados: Exames carregados do Firebase:', resultado.laudos.length);
+      console.log('✅ ExamesRealizados: Exames carregados:', resultado.laudos.length);
       
       // Converter para o formato esperado pela página
       const examesFormatados = resultado.laudos.map(laudo => ({
@@ -34,20 +34,18 @@ async function getTodosExames() {
         tipoNome: laudo.tipoNome || 'Exame',
         timestamp: laudo.dataCriacao || laudo.timestamp,
         criadoEm: laudo.dataCriacao || laudo.timestamp,
-        origem: 'firebase' // Marcar origem
+        origem: laudo.origem || 'localStorage'
       }));
       
       // Ordenar por data de criação (mais recente primeiro)
       return examesFormatados.sort((a, b) => new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0));
     } else {
-      console.warn('⚠️ ExamesRealizados: Erro ao carregar do Firebase:', resultado.error);
-      console.log('📝 ExamesRealizados: Retornando lista vazia (não usando localStorage)');
-      return []; // NÃO usar localStorage como fallback
+      console.warn('⚠️ ExamesRealizados: Erro ao carregar exames:', resultado.error);
+      return [];
     }
   } catch (error) {
     console.error('❌ ExamesRealizados: Erro ao carregar exames:', error);
-    console.log('📝 ExamesRealizados: Retornando lista vazia (não usando localStorage)');
-    return []; // NÃO usar localStorage como fallback
+    return [];
   }
 }
 
@@ -289,25 +287,25 @@ export default function ExamesRealizados() {
     }
   };
 
-  // Função para LIMPAR TODOS os exames do Firebase
+  // Função para LIMPAR TODOS os exames
   const limparTodosExamesFirebase = async () => {
     try {
       const confirmacao = window.confirm(
-        '⚠️ ATENÇÃO: Isso irá DELETAR TODOS os exames do Firebase!\n\n' +
+        '⚠️ ATENÇÃO: Isso irá DELETAR TODOS os exames!\n\n' +
         'Tem certeza que deseja continuar?\n\n' +
         'Esta ação NÃO pode ser desfeita!'
       );
       
       if (!confirmacao) return;
       
-      console.log('🗑️ ExamesRealizados: LIMPANDO TODOS os exames do Firebase...');
+      console.log('🗑️ ExamesRealizados: LIMPANDO TODOS os exames...');
       
       if (exames.length === 0) {
         alert('Nenhum exame encontrado!');
         return;
       }
       
-      console.log('🔥 ExamesRealizados: Deletando', exames.length, 'exames do Firebase...');
+      console.log('🔥 ExamesRealizados: Deletando', exames.length, 'exames...');
       
       let deletados = 0;
       let erros = 0;
@@ -334,11 +332,10 @@ export default function ExamesRealizados() {
             `Sistema limpo e pronto para uso!`);
       
       console.log('🎉 ExamesRealizados: Sistema limpo com sucesso!');
-      // NÃO limpar lista manualmente - o listener em tempo real fará isso
       
     } catch (error) {
-      console.error('❌ ExamesRealizados: Erro ao limpar Firebase:', error);
-      alert('Erro ao limpar Firebase: ' + error.message);
+      console.error('❌ ExamesRealizados: Erro ao limpar exames:', error);
+      alert('Erro ao limpar exames: ' + error.message);
     }
   };
 

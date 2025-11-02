@@ -1,38 +1,55 @@
-// Firebase Configuration
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence, serverTimestamp } from 'firebase/firestore';
+// Firebase Configuration - STUB (Firebase removido temporariamente)
+// Este arquivo existe apenas para manter compatibilidade com imports existentes
+// Todos os serviços foram adaptados para usar localStorage
 
-// Firebase configuration object
-const firebaseConfig = {
-  apiKey: "AIzaSyBeSJUsa_Tfa2FOG-JanFhboCwScpAdmLI",
-  authDomain: "veno-ai-final.firebaseapp.com",
-  projectId: "veno-ai-final",
-  storageBucket: "veno-ai-final.firebasestorage.app",
-  messagingSenderId: "597260170377",
-  appId: "1:597260170377:web:3f82363b30d599875c8258",
-  measurementId: "G-L2KMF0JFCJ"
+// Stub objects que simulam Firebase mas não fazem nada
+export const auth = {
+  currentUser: null,
+  onAuthStateChanged: (callback) => {
+    // Retornar usuário do localStorage se existir
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      const userUID = localStorage.getItem('userUID');
+      if (userEmail && userUID) {
+        const user = {
+          email: userEmail,
+          uid: userUID,
+          getIdToken: async () => '',
+          getIdTokenResult: async () => ({ claims: {} })
+        };
+        callback(user);
+        return () => {};
+      } else {
+        callback(null);
+        return () => {};
+      }
+    } catch (error) {
+      callback(null);
+      return () => {};
+    }
+  }
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Stub do Firestore
+export const db = {
+  collection: () => ({
+    where: () => ({ orderBy: () => ({}) }),
+    addDoc: async () => ({ id: Date.now().toString() }),
+    doc: () => ({
+      updateDoc: async () => {},
+      deleteDoc: async () => {},
+      getDoc: async () => ({ exists: () => false, data: () => null })
+    })
+  })
+};
 
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
+// Stub do serverTimestamp
+export const serverTimestampNow = () => new Date().toISOString();
 
-// Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app);
+// Aviso no console
+if (typeof window !== 'undefined') {
+  console.warn('⚠️ Firebase está desabilitado. Sistema usando localStorage.');
+  console.log('📝 Para habilitar Firebase novamente, descomente as importações em src/config/firebase.js');
+}
 
-// Enable offline persistence
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Firestore persistence failed: Multiple tabs open');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Firestore persistence not available in this browser');
-  }
-});
-
-// Export serverTimestamp for consistent timestamps
-export const serverTimestampNow = serverTimestamp;
-
-export default app;
+export default { auth, db };

@@ -13,7 +13,8 @@ import Configuracoes from "./pages/Configuracoes";
 import ExamesRealizados from "./pages/ExamesRealizados";
 import Planos from "./pages/Planos";
 import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
-import { AuthService } from "./services/firebaseAuthService";
+// Usar Supabase em vez de Firebase
+import { AuthService } from "./services/supabaseAuthService";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -136,7 +137,7 @@ function AppContent() {
     try {
       console.log('Iniciando cadastro para:', email);
       
-      // Usar o novo sistema de autenticação Firebase
+      // Usar o novo sistema de autenticação (Supabase ou localStorage)
       const result = await AuthService.createUser(email, senha, {
         plano: 'trial',
         premium: false,
@@ -154,6 +155,11 @@ function AppContent() {
       console.log('Usuário cadastrado com sucesso:', result.user.email);
       alert('🎉 Cadastro realizado com sucesso!\n\nBem-vindo ao VenoAI!\n\nVocê tem 7 dias de trial gratuito para testar todos os recursos.');
       
+      // Salvar dados no localStorage
+      localStorage.setItem("userEmail", result.user.email);
+      localStorage.setItem("userUID", result.user.uid || result.user.id);
+      localStorage.setItem("isLoggedIn", "true");
+      
       // Navegar para home
       setLogado(true);
       navigate('/home');
@@ -169,7 +175,7 @@ function AppContent() {
     try {
       console.log('🔐 Verificando usuário:', email);
       
-      // Usar o novo sistema de autenticação Firebase
+      // Usar o novo sistema de autenticação (Supabase ou localStorage)
       const result = await AuthService.login(email, senha);
       
       if (!result.success) {
@@ -178,9 +184,9 @@ function AppContent() {
       
       console.log('✅ Login realizado com sucesso:', result.user.email);
       
-      // Salvar dados no localStorage para compatibilidade com sistema antigo
+      // Salvar dados no localStorage
       localStorage.setItem("userEmail", result.user.email);
-      localStorage.setItem("userUID", result.user.uid);
+      localStorage.setItem("userUID", result.user.uid || result.user.id);
       localStorage.setItem("isLoggedIn", "true");
       
       // Verificar e sincronizar status Premium no servidor

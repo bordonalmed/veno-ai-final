@@ -1,46 +1,31 @@
 /**
- * Premium Service - Client-side implementation
- * 
- * Handles premium status reading from Firebase Auth claims and Firestore,
- * refreshes tokens, and provides UI helpers.
+ * Premium Service - Usando localStorage (Firebase removido)
+ * TODO: Migrar para Supabase quando configurado
  */
-
-import { auth } from '../config/firebase';
 
 class PremiumService {
   /**
-   * Refresh auth token and get premium status from claims
-   * This MUST be called after any payment/webhook to get latest claims
+   * Refresh premium status from localStorage
    */
   static async refreshPremium() {
     try {
-      const user = auth.currentUser;
+      const userEmail = localStorage.getItem('userEmail');
       
-      if (!user) {
+      if (!userEmail) {
         console.warn('⚠️ [PREMIUM] No user logged in');
         return { premium: false, source: 'no-user' };
       }
 
-      // Force token refresh to get latest claims
-      await user.getIdToken(true);
+      const premium = this.getPremiumFromLocalStorage().premium;
       
-      const tokenResult = await user.getIdTokenResult();
-      
-      console.log('✅ [PREMIUM] Claims refreshed:', {
-        uid: user.uid,
-        premium: tokenResult.claims.premium,
-        premiumExpiresAt: tokenResult.claims.premiumExpiresAt
+      console.log('✅ [PREMIUM] Status refreshed:', {
+        email: userEmail,
+        premium: premium
       });
-
-      const premium = !!tokenResult.claims.premium;
-      
-      // Also sync to Firestore for double-check
-      await this.syncPremiumToLocalStorage(user.uid, premium);
 
       return {
         premium,
-        premiumExpiresAt: tokenResult.claims.premiumExpiresAt,
-        source: 'claims'
+        source: 'localStorage'
       };
 
     } catch (error) {
@@ -50,14 +35,13 @@ class PremiumService {
   }
 
   /**
-   * Sync premium status from Firestore to localStorage
+   * Sync premium status to localStorage
    */
   static async syncPremiumToLocalStorage(uid, premium) {
     try {
       const userEmail = localStorage.getItem('userEmail');
       
       if (userEmail) {
-        // Update localStorage with premium status
         if (premium) {
           localStorage.setItem(`plano_${userEmail}`, 'premium');
           localStorage.setItem('plano_premium', 'true');
@@ -73,88 +57,14 @@ class PremiumService {
   }
 
   /**
-   * Check if user has premium (from multiple sources with fallback)
+   * Check if user has premium (from localStorage)
    */
   static async checkPremiumStatus() {
     try {
-      // Method 1: Check custom claims (most reliable)
-      const claimsResult = await this.getPremiumFromClaims();
-      if (claimsResult.premium !== undefined) {
-        return claimsResult;
-      }
-
-      // Method 2: Check Firestore document
-      const firestoreResult = await this.getPremiumFromFirestore();
-      if (firestoreResult.premium !== undefined) {
-        return firestoreResult;
-      }
-
-      // Method 3: Check localStorage (fallback)
-      const localResult = this.getPremiumFromLocalStorage();
-      return localResult;
-
+      return this.getPremiumFromLocalStorage();
     } catch (error) {
       console.error('❌ [PREMIUM] Error checking premium status:', error);
       return { premium: false, error: error.message };
-    }
-  }
-
-  /**
-   * Get premium status from Firebase Auth claims
-   */
-  static async getPremiumFromClaims() {
-    try {
-      const user = auth.currentUser;
-      if (!user) return { premium: false, source: 'no-user' };
-
-      const tokenResult = await user.getIdTokenResult();
-      const premium = !!tokenResult.claims.premium;
-
-      console.log('📋 [PREMIUM] From claims:', premium);
-
-      return {
-        premium,
-        premiumExpiresAt: tokenResult.claims.premiumExpiresAt,
-        source: 'claims'
-      };
-
-    } catch (error) {
-      console.error('❌ [PREMIUM] Error getting claims:', error);
-      return { error: error.message };
-    }
-  }
-
-  /**
-   * Get premium status from Firestore
-   */
-  static async getPremiumFromFirestore() {
-    try {
-      const { db } = await import('../config/firebase');
-      const { getDoc, doc } = await import('firebase/firestore');
-      
-      const user = auth.currentUser;
-      if (!user) return { premium: false, source: 'no-user' };
-
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        const premium = !!data.premium;
-
-        console.log('📋 [PREMIUM] From Firestore:', premium);
-
-        return {
-          premium,
-          premiumExpiresAt: data.premiumExpiresAt,
-          source: 'firestore'
-        };
-      }
-
-      return { premium: false, source: 'no-doc' };
-
-    } catch (error) {
-      console.error('❌ [PREMIUM] Error getting from Firestore:', error);
-      return { error: error.message };
     }
   }
 
@@ -183,7 +93,21 @@ class PremiumService {
   }
 
   /**
-   * Force refresh premium status (call after payment returns)
+   * Get premium from claims (stub - não usado mais)
+   */
+  static async getPremiumFromClaims() {
+    return this.getPremiumFromLocalStorage();
+  }
+
+  /**
+   * Get premium from Firestore (stub - não usado mais)
+   */
+  static async getPremiumFromFirestore() {
+    return this.getPremiumFromLocalStorage();
+  }
+
+  /**
+   * Force refresh premium status
    */
   static async forceRefresh() {
     console.log('🔄 [PREMIUM] Force refreshing premium status...');
@@ -196,19 +120,20 @@ class PremiumService {
   }
 
   /**
-   * Watch premium status changes (for UI updates)
+   * Watch premium status changes (simulado)
    */
   static onPremiumStatusChange(callback) {
-    return auth.onIdTokenChanged(async (user) => {
-      if (user) {
-        const status = await this.getPremiumFromClaims();
-        callback(status);
-      } else {
-        callback({ premium: false });
-      }
-    });
+    // Simular mudanças verificando periodicamente
+    const intervalId = setInterval(() => {
+      const status = this.getPremiumFromLocalStorage();
+      callback(status);
+    }, 5000);
+
+    // Retornar função para cancelar
+    return () => {
+      clearInterval(intervalId);
+    };
   }
 }
 
 export default PremiumService;
-

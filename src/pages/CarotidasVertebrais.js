@@ -32,10 +32,10 @@ async function salvarExame(dadosExame) {
     });
     
     if (resultado.success) {
-      console.log("Exame salvo com sucesso no Firebase (tempo real)!");
+      console.log("Exame salvo com sucesso!");
       return true;
     } else {
-      console.warn("Erro ao salvar no Firebase, salvando localmente:", resultado.error);
+      console.warn("Erro ao salvar exame, salvando localmente:", resultado.error);
       // Fallback: salvar localmente
       return salvarExameLocal(dadosExame);
     }

@@ -1,0 +1,20 @@
+# EXEMPLO DE ARQUIVO .env
+# 
+# ⚠️ IMPORTANTE:
+# 1. Copie este arquivo
+# 2. Renomeie para .env (sem extensão .txt)
+# 3. Substitua os valores abaixo pelas suas informações do Supabase
+# 4. Não coloque espaços antes ou depois do =
+# 5. Não use aspas ou vírgulas
+
+# Exemplo de como deve ficar:
+REACT_APP_SUPABASE_URL=https://abcdefghijk.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDU2Nzg5MDAsImV4cCI6MTk2MTI1NDkwMH0.esta-e-uma-chave-muito-longa-que-voce-copia-do-supabase
+
+# ⚠️ SUBSTITUA ACIMA pelos seus valores reais do Supabase!
+# 
+# Como obter:
+# 1. Acesse https://app.supabase.com
+# 2. Vá em Settings > API
+# 3. Copie Project URL e cole no lugar do REACT_APP_SUPABASE_URL
+# 4. Copie anon public key e cole no lugar do REACT_APP_SUPABASE_ANON_KEY

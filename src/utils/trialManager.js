@@ -180,24 +180,10 @@ export class TrialManager {
   }
 
   static async verificarPlanoUsuario(userEmail) {
-    // Primeiro verificar localStorage local
+    // Verificar localStorage local primeiro
     const planoLocal = localStorage.getItem(`plano_${userEmail}`);
     
-    // Sempre verificar no Firebase para garantir sincronização
-    try {
-      const planoFirebase = await this.lerPlanoDoFirebase(userEmail);
-      if (planoFirebase) {
-        // Se o Firebase tem um plano diferente do local, usar o Firebase
-        if (planoLocal !== planoFirebase) {
-          console.log('🔄 Plano no Firebase diferente do local, usando Firebase:', planoFirebase);
-          return planoFirebase;
-        }
-      }
-    } catch (error) {
-      console.warn('Erro ao verificar plano no Firebase:', error);
-    }
-    
-    // Se tem plano local e Firebase concordou (ou não há Firebase), retornar local
+    // Se tem plano local, retornar
     if (planoLocal) {
       return planoLocal;
     }
@@ -205,14 +191,14 @@ export class TrialManager {
     // Se não tem dados locais, verificar no servidor Netlify
     try {
       const planoServidor = await this.verificarPremiumNoServidor(userEmail);
-      if (planoServidor) {
+      if (planoServidor && planoServidor !== 'trial') {
         return planoServidor;
       }
     } catch (error) {
       console.warn('Erro ao verificar plano no servidor:', error);
     }
     
-    // Se não encontrou nada, retornar trial
+    // Se não encontrou nada, retornar trial (padrão)
     return 'trial';
   }
   
@@ -243,86 +229,35 @@ export class TrialManager {
     return 'trial'; // Default para trial
   }
 
-  // Salvar plano no Firebase
+  // Salvar plano no Supabase (se configurado) ou localStorage
   static async salvarPlanoNoFirebase(userEmail, plano) {
+    // Método mantido para compatibilidade, mas agora usa localStorage/Supabase
     try {
-      // Importar dinamicamente para evitar dependência circular
-      const { db } = await import('../config/firebase');
-      const { updateDoc, doc, setDoc, getDoc } = await import('firebase/firestore');
-      
-      // Obter UID do usuário logado
-      const userUID = localStorage.getItem('userUID');
-      
-      if (!userUID) {
-        console.warn('Usuário não autenticado no Firebase. Não é possível salvar plano no Firebase.');
-        return;
+      localStorage.setItem(`plano_${userEmail}`, plano);
+      if (plano === 'premium') {
+        localStorage.setItem('plano_premium', 'true');
       }
+      console.log('✅ Plano salvo:', plano, 'para:', userEmail);
       
-      // Salvar/atualizar usando o UID
-      const userRef = doc(db, 'users', userUID);
-      const userDoc = await getDoc(userRef);
+      // TODO: Salvar no Supabase quando configurado
+      // Por enquanto, apenas localStorage
       
-      if (userDoc.exists()) {
-        // Atualizar documento existente
-        await updateDoc(userRef, {
-          plano: plano,
-          premium: plano === 'premium',
-          ultimaAtualizacao: new Date().toISOString()
-        });
-        console.log('✅ Plano atualizado no Firebase:', plano, 'para:', userEmail);
-      } else {
-        // Criar novo documento se não existe
-        await setDoc(userRef, {
-          email: userEmail,
-          plano: plano,
-          premium: plano === 'premium',
-          dataCadastro: new Date().toISOString(),
-          ultimaAtualizacao: new Date().toISOString()
-        });
-        console.log('✅ Plano criado no Firebase:', plano, 'para:', userEmail);
-      }
     } catch (error) {
-      console.warn('Erro ao salvar plano no Firebase:', error);
-      // Não lançar erro para não quebrar o fluxo
+      console.warn('Erro ao salvar plano:', error);
     }
   }
 
-  // Ler plano do Firebase
+  // Ler plano do localStorage
   static async lerPlanoDoFirebase(userEmail) {
+    // Método mantido para compatibilidade, mas agora usa apenas localStorage
     try {
-      // Importar dinamicamente para evitar dependência circular
-      const { db } = await import('../config/firebase');
-      const { getDoc, doc } = await import('firebase/firestore');
-      
-      // Obter UID do usuário logado
-      const userUID = localStorage.getItem('userUID');
-      
-      if (!userUID) {
-        console.warn('Usuário não autenticado no Firebase. Não é possível ler plano do Firebase.');
-        return null;
-      }
-      
-      // Buscar documento do usuário usando UID
-      const userRef = doc(db, 'users', userUID);
-      const userDoc = await getDoc(userRef);
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const plano = userData.plano || 'trial';
-        
-        // Atualizar cache local
-        if (plano) {
-          localStorage.setItem(`plano_${userEmail}`, plano);
-        }
-        
-        console.log('✅ Plano lido do Firebase:', plano, 'para:', userEmail);
-        return plano;
-      }
+      const plano = localStorage.getItem(`plano_${userEmail}`) || 'trial';
+      // Não logar toda vez (era muito verboso)
+      return plano;
     } catch (error) {
-      console.warn('Erro ao ler plano do Firebase:', error);
+      console.warn('Erro ao ler plano:', error);
+      return 'trial';
     }
-    
-    return null;
   }
 
   static async definirPlanoUsuario(userEmail, plano) {
@@ -330,7 +265,6 @@ export class TrialManager {
     localStorage.setItem(`plano_${userEmail}`, plano);
     console.log('💎 Plano definido localmente:', plano, 'para:', userEmail);
     
-    // Salvar no Firebase (para sincronização entre dispositivos)
-    await this.salvarPlanoNoFirebase(userEmail, plano);
+    // Firebase removido - apenas localStorage por enquanto
   }
 }
