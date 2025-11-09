@@ -1,6 +1,53 @@
 // Serviço de Sincronização para Exames - Usando Supabase + localStorage
 import { supabase, supabaseConfig } from '../config/supabase';
 
+const STORAGE_KEY_MAP = {
+  'MMII Venoso': 'examesMMIIVenoso',
+  'MMII Arterial': 'examesMMIIArterial',
+  'MMSS Venoso': 'examesMMSSVenoso',
+  'MMSS Arterial': 'examesMMSSArterial',
+  'Carótidas e Vertebrais': 'examesCarotidasVertebrais',
+  'Aorta e Ilíacas': 'examesAorta',
+  'Artérias Renais': 'examesRenais',
+};
+
+const LEGACY_STORAGE_KEYS = [
+  'examesMMIIVenoso',
+  'examesMMIIArterial',
+  'examesMMSSVenoso',
+  'examesMMSSArterial',
+  'examesCarotidasVertebrais',
+  'examesCarotidas',
+  'examesCarótidaseVertebrais',
+  'examesAorta',
+  'examesAortaeIlíacas',
+  'examesRenais',
+  'examesArtériasRenais',
+];
+
+const STORAGE_KEYS = Array.from(new Set([
+  ...Object.values(STORAGE_KEY_MAP),
+  ...LEGACY_STORAGE_KEYS,
+  'examesLaudo',
+]));
+
+function getStorageKey(tipoNome = 'Exame') {
+  if (!tipoNome) {
+    return 'examesLaudo';
+  }
+
+  if (STORAGE_KEY_MAP[tipoNome]) {
+    return STORAGE_KEY_MAP[tipoNome];
+  }
+
+  const normalized = tipoNome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '');
+
+  return normalized ? `exames${normalized}` : 'examesLaudo';
+}
+
 class ExamesRealtimeService {
   constructor() {
     this.currentUser = null;
@@ -149,14 +196,17 @@ class ExamesRealtimeService {
       const user = this.requireAuth();
       console.log('📝 ExamesRealtimeService: Criando novo exame...');
 
-      const exameId = Date.now().toString();
+      const localId = Date.now().toString();
+      const storageKey = getStorageKey(dadosExame.tipoNome);
       const novoExame = {
         ...dadosExame,
-        id: exameId,
+        id: localId,
+        localId,
         userId: user.uid,
         userEmail: user.email,
         dataCriacao: new Date().toISOString(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        tipo: storageKey
       };
 
       // Salvar no Supabase se configurado
@@ -184,8 +234,12 @@ class ExamesRealtimeService {
             console.warn('⚠️ Salvando apenas em localStorage como fallback');
           } else {
             console.log('✅ Exame salvo no Supabase:', supabaseData);
+            const supabaseId = supabaseData?.[0]?.id;
+            if (supabaseId) {
+              novoExame.supabaseId = supabaseId;
+              novoExame.id = supabaseId;
+            }
             novoExame.origem = 'supabase';
-            novoExame.supabaseId = supabaseData[0]?.id;
           }
         } catch (supabaseErr) {
           console.error('❌ Erro ao conectar com Supabase:', supabaseErr);
@@ -194,18 +248,26 @@ class ExamesRealtimeService {
       }
 
       // Salvar em localStorage também (para compatibilidade e fallback)
-      const storageKey = `exames${dadosExame.tipoNome?.replace(/\s+/g, '') || 'Exame'}`;
       const examesExistentes = JSON.parse(localStorage.getItem(storageKey) || "[]");
-      
+      const indiceExistente = examesExistentes.findIndex(
+        (item) =>
+          (item.localId && item.localId === localId) ||
+          (item.id && item.id === localId)
+      );
+
       if (!novoExame.origem) {
         novoExame.origem = 'localStorage';
       }
       
-      examesExistentes.push(novoExame);
+      if (indiceExistente >= 0) {
+        examesExistentes[indiceExistente] = novoExame;
+      } else {
+        examesExistentes.push(novoExame);
+      }
       localStorage.setItem(storageKey, JSON.stringify(examesExistentes));
       
-      console.log('✅ ExamesRealtimeService: Exame criado:', exameId);
-      return { success: true, id: exameId };
+      console.log('✅ ExamesRealtimeService: Exame criado:', novoExame.id);
+      return { success: true, id: novoExame.id, supabaseId: novoExame.supabaseId, localId: novoExame.localId };
 
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao criar exame:', error);
@@ -221,13 +283,7 @@ class ExamesRealtimeService {
 
       // Primeiro, encontrar o exame para ver se tem supabaseId
       let exameParaAtualizar = null;
-      const tiposLaudo = [
-        'examesMMIIVenoso',
-        'examesMMIIArterial', 
-        'examesMMSSVenoso',
-        'examesMMSSArterial',
-        'examesCarotidasVertebrais'
-      ];
+      const tiposLaudo = STORAGE_KEYS;
 
       for (const tipo of tiposLaudo) {
         const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
@@ -314,17 +370,15 @@ class ExamesRealtimeService {
 
       // Primeiro, encontrar o exame para ver se tem supabaseId
       let exameParaDeletar = null;
-      const tiposLaudo = [
-        'examesMMIIVenoso',
-        'examesMMIIArterial', 
-        'examesMMSSVenoso',
-        'examesMMSSArterial',
-        'examesCarotidasVertebrais'
-      ];
+      const tiposLaudo = STORAGE_KEYS;
 
       for (const tipo of tiposLaudo) {
         const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
-        const exame = exames.find(e => e.id === exameId && (e.userId === user.uid || e.userEmail === user.email));
+        const exame = exames.find(e => {
+          if (!e) return false;
+          const matchesId = e.id === exameId || e.localId === exameId || e.supabaseId === exameId;
+          return matchesId && (!e.userId || e.userId === user.uid) && (!e.userEmail || e.userEmail === user.email);
+        });
         if (exame) {
           exameParaDeletar = exame;
           break;
@@ -332,19 +386,44 @@ class ExamesRealtimeService {
       }
 
       // Excluir do Supabase se tiver supabaseId
-      if (exameParaDeletar && exameParaDeletar.supabaseId && this.useSupabase && supabase) {
+      let supabaseDeleted = false;
+
+      const supabaseIdToDelete = exameParaDeletar?.supabaseId || exameParaDeletar?.id || exameId;
+
+      if (supabaseIdToDelete && this.useSupabase && supabase) {
         try {
           console.log('🗑️ Excluindo exame do Supabase...');
-          const { error: supabaseError } = await supabase
-            .from('laudos')
-            .delete()
-            .eq('id', exameParaDeletar.supabaseId)
-            .eq('user_id', user.uid);
+          let supabaseError = null;
 
-          if (supabaseError) {
-            console.error('❌ Erro ao excluir exame do Supabase:', supabaseError);
-          } else {
-            console.log('✅ Exame excluído do Supabase');
+          if (user?.uid) {
+            const result = await supabase
+              .from('laudos')
+              .delete()
+              .eq('id', supabaseIdToDelete)
+              .eq('user_id', user.uid);
+
+            supabaseError = result.error;
+
+            if (supabaseError) {
+              console.warn('⚠️ Não foi possível excluir com filtro por user_id. Tentando sem filtro...', supabaseError);
+            } else {
+              console.log('✅ Exame excluído do Supabase (com filtro user_id)');
+              supabaseDeleted = true;
+            }
+          }
+
+          if (!user?.uid || supabaseError) {
+            const { error: fallbackError } = await supabase
+              .from('laudos')
+              .delete()
+              .eq('id', supabaseIdToDelete);
+
+            if (fallbackError) {
+              console.error('❌ Erro ao excluir exame do Supabase:', fallbackError);
+            } else {
+              console.log('✅ Exame excluído do Supabase (sem filtro user_id)');
+              supabaseDeleted = true;
+            }
           }
         } catch (supabaseErr) {
           console.error('❌ Erro ao conectar com Supabase:', supabaseErr);
@@ -353,23 +432,38 @@ class ExamesRealtimeService {
 
       // Excluir do localStorage
       let deletado = false;
-      for (const tipo of tiposLaudo) {
+      const possibleKeys = new Set();
+
+      if (exameParaDeletar?.tipo) possibleKeys.add(exameParaDeletar.tipo);
+      if (exameParaDeletar?.tipoNome) possibleKeys.add(getStorageKey(exameParaDeletar.tipoNome));
+      if (exameParaDeletar?.origem === 'localStorage' && exameParaDeletar?.tipo) possibleKeys.add(exameParaDeletar.tipo);
+
+      tiposLaudo.forEach((key) => possibleKeys.add(key));
+
+      for (const tipo of possibleKeys) {
         const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
-        const examesAtualizados = exames.filter(exame => {
-          if (exame.id === exameId && (exame.userId === user.uid || exame.userEmail === user.email)) {
+        const examesAtualizados = exames.filter(item => {
+          if (!item) return false;
+          const matchById =
+            item.id === exameId ||
+            item.localId === exameId ||
+            item.supabaseId === exameId ||
+            (exameParaDeletar?.supabaseId && (item.id === exameParaDeletar.supabaseId || item.supabaseId === exameParaDeletar.supabaseId)) ||
+            (exameParaDeletar?.localId && (item.id === exameParaDeletar.localId || item.localId === exameParaDeletar.localId));
+
+          if (matchById && (!item.userId || item.userId === user.uid) && (!item.userEmail || item.userEmail === user.email)) {
             deletado = true;
             return false;
           }
           return true;
         });
-        
-        if (deletado) {
+
+        if (deletado && examesAtualizados.length !== exames.length) {
           localStorage.setItem(tipo, JSON.stringify(examesAtualizados));
-          break;
         }
       }
 
-      if (deletado || (exameParaDeletar && exameParaDeletar.supabaseId)) {
+      if (deletado || supabaseDeleted) {
         console.log('✅ ExamesRealtimeService: Exame excluído:', exameId);
         return { success: true };
       } else {
@@ -414,18 +508,24 @@ class ExamesRealtimeService {
             // Converter exames do Supabase para o formato esperado
             supabaseExames.forEach(exame => {
               const dadosExame = exame.dados || {};
+              const tipoNome = exame.tipo_nome || exame.tipo_exame || dadosExame.tipoNome || dadosExame.tipo || 'Exame';
+              const storageKey = getStorageKey(tipoNome);
+              const supabaseId = exame.id;
+              const localId = dadosExame.localId || dadosExame.id || supabaseId;
               todosExames.push({
                 ...dadosExame,
-                id: exame.id || Date.now().toString(),
+                id: supabaseId || localId,
+                localId,
                 userId: exame.user_id,
                 userEmail: exame.user_email,
-                tipoNome: exame.tipo_nome || exame.tipo_exame || 'Exame',
+                tipoNome,
+                tipo: storageKey,
                 nome: exame.nome || dadosExame.nome || dadosExame.paciente,
                 data: exame.data || dadosExame.data,
                 timestamp: exame.data_criacao || exame.data_modificacao,
                 criadoEm: exame.data_criacao || exame.data_modificacao,
                 origem: 'supabase',
-                supabaseId: exame.id
+                supabaseId: supabaseId
               });
             });
           }
@@ -436,32 +536,36 @@ class ExamesRealtimeService {
       }
 
       // Buscar do localStorage também (para exames antigos e fallback)
-      const tiposLaudo = [
-        'examesMMIIVenoso',
-        'examesMMIIArterial', 
-        'examesMMSSVenoso',
-        'examesMMSSArterial',
-        'examesCarotidasVertebrais'
-      ];
+      const tiposLaudo = STORAGE_KEYS;
       
       tiposLaudo.forEach(tipo => {
         const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
         exames.forEach(exame => {
+          if (!exame) return;
           // Filtrar apenas exames do usuário atual e não deletados
-          if (!exame.deletedAt && (exame.userId === user.uid || exame.userEmail === user.email)) {
+          if (!exame.deletedAt && (!exame.userId || exame.userId === user.uid) && (!exame.userEmail || exame.userEmail === user.email)) {
+            const supabaseId = exame.supabaseId;
+            const localId = exame.localId || exame.id;
             // Evitar duplicatas (se já veio do Supabase)
             const jaExiste = todosExames.some(e => 
-              (e.supabaseId && exame.supabaseId && e.supabaseId === exame.supabaseId) ||
-              (e.id === exame.id && e.origem === 'supabase')
+              (e.supabaseId && supabaseId && e.supabaseId === supabaseId) ||
+              (e.id && supabaseId && e.id === supabaseId) ||
+              (e.localId && localId && e.localId === localId)
             );
             
             if (!jaExiste) {
+              const tipoNome = exame.tipoNome || exame.tipo || 'Exame';
+              const storageKey = exame.tipo || tipo || getStorageKey(tipoNome);
               todosExames.push({
                 ...exame,
-                tipoNome: exame.tipoNome || 'Exame',
+                id: supabaseId || exame.id || localId,
+                localId,
+                tipoNome: tipoNome,
+                tipo: storageKey,
                 timestamp: exame.timestamp || exame.dataCriacao,
                 criadoEm: exame.timestamp || exame.dataCriacao,
-                origem: exame.origem || 'localStorage'
+                origem: exame.origem || 'localStorage',
+                supabaseId: supabaseId || exame.supabaseId
               });
             }
           }

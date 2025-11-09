@@ -7,15 +7,38 @@ import laudoSyncService from "../services/laudoSyncService";
 import examesRealtimeService from "../services/examesRealtimeService";
 
 // Helpers para exames salvos (localStorage)
-const STORAGE_KEYS = {
-  MMII_VENOSO: "examesMMIIVenoso",
-  MMII_ARTERIAL: "examesMMIIArterial",
-  MMSS_VENOSO: "examesMMSSVenoso",
-  MMSS_ARTERIAL: "examesMMSSArterial",
-  CAROTIDAS: "examesCarotidas",
-  AORTA: "examesAorta",
-  RENAIS: "examesRenais"
+const STORAGE_KEY_TO_LABEL = {
+  "examesMMIIVenoso": "MMII Venoso",
+  "examesMMIIArterial": "MMII Arterial",
+  "examesMMSSVenoso": "MMSS Venoso",
+  "examesMMSSArterial": "MMSS Arterial",
+  "examesCarotidasVertebrais": "Carótidas e Vertebrais",
+  "examesCarotidas": "Carótidas e Vertebrais", // legado
+  "examesCarótidaseVertebrais": "Carótidas e Vertebrais", // legado com acento
+  "examesAorta": "Aorta e Ilíacas",
+  "examesAortaeIlíacas": "Aorta e Ilíacas", // legado com acento
+  "examesRenais": "Artérias Renais",
+  "examesArtériasRenais": "Artérias Renais", // legado com acento
+  "examesLaudo": "Exame"
 };
+
+const STORAGE_KEYS = Object.keys(STORAGE_KEY_TO_LABEL);
+
+function getStorageKeyFromTipoNome(tipoNome) {
+  if (!tipoNome) return "examesLaudo";
+
+  const entry = Object.entries(STORAGE_KEY_TO_LABEL)
+    .find(([, label]) => label === tipoNome);
+
+  if (entry) return entry[0];
+
+  const normalized = tipoNome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '');
+
+  return normalized ? `exames${normalized}` : "examesLaudo";
+}
 
 // Função para buscar todos os exames
 async function getTodosExames() {
@@ -28,14 +51,18 @@ async function getTodosExames() {
       console.log('✅ ExamesRealizados: Exames carregados:', resultado.laudos.length);
       
       // Converter para o formato esperado pela página
-      const examesFormatados = resultado.laudos.map(laudo => ({
-        ...laudo,
-        tipo: laudo.tipo || 'examesLaudo',
-        tipoNome: laudo.tipoNome || 'Exame',
-        timestamp: laudo.dataCriacao || laudo.timestamp,
-        criadoEm: laudo.dataCriacao || laudo.timestamp,
-        origem: laudo.origem || 'localStorage'
-      }));
+      const examesFormatados = resultado.laudos.map(laudo => {
+        const tipoNome = laudo.tipoNome || STORAGE_KEY_TO_LABEL[laudo.tipo] || laudo.tipo || 'Exame';
+        const tipo = laudo.tipo || getStorageKeyFromTipoNome(tipoNome);
+        return {
+          ...laudo,
+          tipo,
+          tipoNome,
+          timestamp: laudo.dataCriacao || laudo.timestamp,
+          criadoEm: laudo.dataCriacao || laudo.timestamp,
+          origem: laudo.origem || 'localStorage'
+        };
+      });
       
       // Ordenar por data de criação (mais recente primeiro)
       return examesFormatados.sort((a, b) => new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0));
@@ -53,13 +80,14 @@ async function getTodosExames() {
 function getTodosExamesLocais() {
   const todosExames = [];
   
-  Object.values(STORAGE_KEYS).forEach(key => {
+  STORAGE_KEYS.forEach((key) => {
     const exames = JSON.parse(localStorage.getItem(key) || "[]");
     exames.forEach(exame => {
+      const tipoNome = exame.tipoNome || STORAGE_KEY_TO_LABEL[key] || "Exame";
       todosExames.push({
         ...exame,
-        tipo: key,
-        tipoNome: getTipoNome(key)
+        tipo: exame.tipo || key,
+        tipoNome
       });
     });
   });
@@ -69,22 +97,14 @@ function getTodosExamesLocais() {
 }
 
 function getTipoNome(key) {
-  const tipos = {
-    "examesMMIIVenoso": "MMII Venoso",
-    "examesMMIIArterial": "MMII Arterial", 
-    "examesMMSSVenoso": "MMSS Venoso",
-    "examesMMSSArterial": "MMSS Arterial",
-    "examesCarotidas": "Carótidas e Vertebrais",
-    "examesAorta": "Aorta e Ilíacas",
-    "examesRenais": "Artérias Renais"
-  };
-  return tipos[key] || "Exame";
+  return STORAGE_KEY_TO_LABEL[key] || "Exame";
 }
 
 function excluirExame(exame) {
-  const todos = JSON.parse(localStorage.getItem(exame.tipo) || "[]");
+  const storageKey = exame.tipo || getStorageKeyFromTipoNome(exame.tipoNome);
+  const todos = JSON.parse(localStorage.getItem(storageKey) || "[]");
   const filtrados = todos.filter(e => e.id !== exame.id);
-  localStorage.setItem(exame.tipo, JSON.stringify(filtrados));
+  localStorage.setItem(storageKey, JSON.stringify(filtrados));
 }
 
 // Função para formatar o laudo com melhor espaçamento
@@ -276,7 +296,7 @@ export default function ExamesRealizados() {
       console.log('🧹 ExamesRealizados: Limpando todos os dados locais...');
       
       // Limpar todas as chaves de exames do localStorage
-      Object.values(STORAGE_KEYS).forEach(key => {
+      STORAGE_KEYS.forEach(key => {
         localStorage.removeItem(key);
         console.log('🗑️ ExamesRealizados: Removido:', key);
       });
