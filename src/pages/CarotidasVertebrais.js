@@ -1256,9 +1256,12 @@ function CarotidasVertebrais() {
 
               function addCabecalho(y) {
                 let yLogo = 14;
+                const logoHeight = 20; // altura do logo
+                const logoSpacing = 8; // espaço após o logo antes do conteúdo
+                
                 if (logoClinica) {
                   try {
-                    doc.addImage(logoClinica, 'PNG', 95, yLogo, 20, 20);
+                    doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight);
                   } catch (e) {}
                 }
                 doc.setFontSize(9);
@@ -1273,7 +1276,8 @@ function CarotidasVertebrais() {
                 });
                 doc.setFont(undefined, "normal");
                 doc.setFontSize(11);
-                return yLogo + 22;
+                // Retorna posição Y após logo + espaço + margem superior
+                return yLogo + logoHeight + logoSpacing;
               }
 
               function addRodape() {
@@ -1292,33 +1296,137 @@ function CarotidasVertebrais() {
                 doc.setFontSize(11);
               }
 
+              // Função auxiliar para quebrar conclusão por travessões
+              function processarConclusao(texto) {
+                // Se a linha contém múltiplos travessões, quebrar em linhas separadas
+                if (texto.includes('- ') && texto.split('- ').length > 2) {
+                  // Remove o primeiro travessão se já existir
+                  const partes = texto.split('- ').filter(p => p.trim() !== '');
+                  return partes.map(p => p.trim()).filter(p => p !== '');
+                }
+                return [texto];
+              }
+
+              // Função auxiliar para quebrar texto longo respeitando margens
+              function quebrarTexto(texto, maxWidth, x) {
+                if (!texto || texto.trim() === '') return [''];
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const margemEsquerda = x || 15;
+                const margemDireita = 15;
+                const larguraDisponivel = pageWidth - margemEsquerda - margemDireita;
+                
+                // Usar splitTextToSize do jsPDF - ele calcula automaticamente baseado na fonte atual
+                try {
+                  const linhas = doc.splitTextToSize(texto, larguraDisponivel);
+                  // Garantir que sempre retorna um array
+                  return Array.isArray(linhas) ? linhas : [linhas];
+                } catch (e) {
+                  console.warn('Erro ao quebrar texto com splitTextToSize:', e);
+                  // Fallback: quebrar manualmente por caracteres
+                  const linhas = [];
+                  // Aproximação conservadora: ~3mm por caractere para fonte padrão
+                  const maxChars = Math.max(1, Math.floor(larguraDisponivel / 3));
+                  for (let i = 0; i < texto.length; i += maxChars) {
+                    linhas.push(texto.substring(i, i + maxChars));
+                  }
+                  return linhas.length > 0 ? linhas : [texto];
+                }
+              }
+
               let y = addCabecalho(12);
               const linhas = laudoTexto.split("\n");
               let inConclusao = false;
+              let inObservacoes = false;
               
               for (let i = 0; i < linhas.length; i++) {
                 let line = linhas[i];
                 if (line.startsWith("PACIENTE:") || line.startsWith("DOPPLER DE CARÓTIDAS")) {
                   doc.setFont(undefined, "bold");
-                  doc.text(line, 15, y);
+                  const linhasQuebradas = quebrarTexto(line, 0, 15);
+                  linhasQuebradas.forEach(linha => {
+                    doc.text(linha, 15, y);
+                    y += 8;
+                  });
                   doc.setFont(undefined, "normal");
+                  y -= 8; // Ajuste para não ter espaço extra
                 } else if (line.startsWith("**") && line.endsWith("**")) {
                   doc.setFont(undefined, "bold");
-                  doc.text(line.replace(/\*\*/g, ""), 15, y);
+                  const textoLimpo = line.replace(/\*\*/g, "");
+                  const linhasQuebradas = quebrarTexto(textoLimpo, 0, 15);
+                  linhasQuebradas.forEach(linha => {
+                    doc.text(linha, 15, y);
+                    y += 8;
+                  });
                   doc.setFont(undefined, "normal");
+                  y -= 8; // Ajuste para não ter espaço extra
                 } else if (line.startsWith("**CONCLUSÃO:**")) {
                   doc.setFont(undefined, "bold");
                   doc.text("CONCLUSÃO:", 15, y);
                   doc.setFont(undefined, "normal");
                   inConclusao = true;
-                } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("**")) {
+                  inObservacoes = false;
+                  y += 8;
+                } else if (line.startsWith("OBSERVAÇÕES") || line.startsWith("**OBSERVAÇÕES**")) {
                   doc.setFont(undefined, "bold");
-                  doc.text(line, 15, y);
+                  doc.text("OBSERVAÇÕES:", 15, y);
                   doc.setFont(undefined, "normal");
+                  inConclusao = false;
+                  inObservacoes = true;
+                  y += 8;
+                } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("**") && !line.startsWith("OBSERVAÇÕES")) {
+                  // Processar conclusão: quebrar por travessões
+                  const linhasConclusao = processarConclusao(line);
+                  doc.setFont(undefined, "bold");
+                  linhasConclusao.forEach(linhaConclusao => {
+                    // Garantir que cada item comece com travessão
+                    const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
+                    const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
+                    linhasQuebradas.forEach(linha => {
+                      if (y > 265) {
+                        addRodape();
+                        doc.addPage();
+                        y = addCabecalho(12);
+                      }
+                      doc.text(linha, 15, y);
+                      y += 8;
+                    });
+                  });
+                  doc.setFont(undefined, "normal");
+                  y -= 8; // Ajuste para não ter espaço extra
+                } else if (inObservacoes && line && line.trim() !== "") {
+                  // Quebrar observações longas respeitando margens
+                  doc.setFont(undefined, "normal");
+                  const linhasQuebradas = quebrarTexto(line, 0, 15);
+                  linhasQuebradas.forEach(linha => {
+                    if (y > 265) {
+                      addRodape();
+                      doc.addPage();
+                      y = addCabecalho(12);
+                    }
+                    doc.text(linha, 15, y);
+                    y += 8;
+                  });
+                  y -= 8; // Ajuste para não ter espaço extra
                 } else {
                   doc.setFont(undefined, "normal");
-                  doc.text(line, 15, y);
-                  if (inConclusao && line && line.trim() === "") inConclusao = false;
+                  // Quebrar linhas longas também
+                  const linhasQuebradas = quebrarTexto(line, 0, 15);
+                  linhasQuebradas.forEach(linha => {
+                    if (y > 265) {
+                      addRodape();
+                      doc.addPage();
+                      y = addCabecalho(12);
+                    }
+                    doc.text(linha, 15, y);
+                    y += 8;
+                  });
+                  if (inConclusao && line && line.trim() === "") {
+                    inConclusao = false;
+                  }
+                  if (inObservacoes && line && line.trim() === "") {
+                    inObservacoes = false;
+                  }
+                  y -= 8; // Ajuste para não ter espaço extra
                 }
                 y += 8;
                 if (y > 265) {
