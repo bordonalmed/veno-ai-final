@@ -1,6 +1,6 @@
 [build]
   publish = "build"
-  command = "npm ci --legacy-peer-deps || (rm -rf node_modules && npm install --legacy-peer-deps) && npm run build"
+  command = "npm install --legacy-peer-deps --no-audit && npm run build"
 
 [build.environment]
   NODE_VERSION = "20.x"
