@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiSave, FiUser, FiFileText, FiSettings, FiShield, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiUser, FiFileText, FiSettings, FiShield, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2, FiMail } from "react-icons/fi";
 import { TrialManager } from "../utils/trialManager";
 
-export default function Configuracoes() {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("personalizacao");
-  
-  // Estados para personalização do laudo
-  const [configLaudo, setConfigLaudo] = useState({
+const CONFIG_LAUDO_PREMIUM_KEY = "configLaudoPremium";
+const PERFIL_LAUDO_ATIVO_KEY = "perfilLaudoAtivo";
+const MAX_PERFIS_PREMIUM = 3;
+
+function getConfigLaudoDefault() {
+  return {
     nomeMedico: localStorage.getItem("nomeMedico") || "",
     crm: localStorage.getItem("crm") || "",
     especialidade: localStorage.getItem("especialidadeLaudo") || "",
@@ -16,10 +16,93 @@ export default function Configuracoes() {
     enderecoClinica: localStorage.getItem("enderecoClinica") || "",
     telefoneClinica: localStorage.getItem("telefoneClinica") || "",
     emailClinica: localStorage.getItem("emailClinica") || "",
-    modeloConclusao: localStorage.getItem("modeloConclusao") || "Padrão",
     logoClinica: localStorage.getItem("logoClinica") || "",
     assinaturaMedico: localStorage.getItem("assinaturaMedico") || ""
+  };
+}
+
+function isUsuarioPremium() {
+  const userEmail = localStorage.getItem("userEmail") || "";
+  return (
+    localStorage.getItem("plano_premium") === "true" ||
+    localStorage.getItem(`plano_${userEmail}`) === "premium"
+  );
+}
+
+function temAcessoPremium() {
+  // Retorna true se for Premium OU se trial estiver ativo (7 dias com acesso igual ao Premium)
+  const userEmail = localStorage.getItem("userEmail") || "";
+  if (isUsuarioPremium()) return true;
+  const trial = TrialManager.verificarTrial(userEmail);
+  return trial.status === "ativo";
+}
+
+function aplicarPerfilAosLegacyKeys(perfil) {
+  if (!perfil) return;
+  const map = {
+    nomeMedico: "nomeMedico",
+    crm: "crm",
+    especialidade: "especialidadeLaudo",
+    nomeClinica: "nomeClinica",
+    enderecoClinica: "enderecoClinica",
+    telefoneClinica: "telefoneClinica",
+    emailClinica: "emailClinica",
+    logoClinica: "logoClinica",
+    assinaturaMedico: "assinaturaMedico"
+  };
+  Object.entries(map).forEach(([keyPerfil, keyStorage]) => {
+    const v = perfil[keyPerfil];
+    if (v != null && v !== undefined) {
+      localStorage.setItem(keyStorage, v);
+      if (keyStorage === "especialidadeLaudo") localStorage.setItem("especialidade", v);
+    }
   });
+}
+
+export default function Configuracoes() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("personalizacao");
+  const [isPremium] = useState(() => isUsuarioPremium());
+  const temAcesso = temAcessoPremium(); // Premium OU trial ativo
+
+  const defaultSingle = getConfigLaudoDefault();
+  const defaultPerfis = () => {
+    try {
+      const saved = localStorage.getItem(CONFIG_LAUDO_PREMIUM_KEY);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        while (arr.length < MAX_PERFIS_PREMIUM) arr.push({ ...getConfigLaudoDefault() });
+        return arr.slice(0, MAX_PERFIS_PREMIUM);
+      }
+    } catch (_) {}
+    return Array(MAX_PERFIS_PREMIUM).fill(null).map(() => ({ ...getConfigLaudoDefault() }));
+  };
+
+  const [configLaudo, setConfigLaudo] = useState(defaultSingle);
+  const [configLaudoPerfis, setConfigLaudoPerfis] = useState(defaultPerfis);
+  const [perfilLaudoAtivo, setPerfilLaudoAtivo] = useState(() => {
+    const n = parseInt(localStorage.getItem(PERFIL_LAUDO_ATIVO_KEY) || "0", 10);
+    return Math.min(Math.max(0, n), MAX_PERFIS_PREMIUM - 1);
+  });
+
+  const currentConfig = isPremium ? (configLaudoPerfis[perfilLaudoAtivo] || getConfigLaudoDefault()) : configLaudo;
+  const setCurrentConfig = (updater) => {
+    if (isPremium) {
+      setConfigLaudoPerfis(prev => {
+        const p = prev.slice();
+        const current = p[perfilLaudoAtivo] || {};
+        p[perfilLaudoAtivo] = typeof updater === "function" ? updater(current) : { ...current, ...updater };
+        return p;
+      });
+    } else {
+      setConfigLaudo(typeof updater === "function" ? updater(configLaudo) : { ...configLaudo, ...updater });
+    }
+  };
+
+  useEffect(() => {
+    if (isPremium && configLaudoPerfis[perfilLaudoAtivo])
+      aplicarPerfilAosLegacyKeys(configLaudoPerfis[perfilLaudoAtivo]);
+  }, [isPremium, perfilLaudoAtivo]);
 
   console.log("=== CARREGAMENTO INICIAL ===");
   console.log("Especialidade carregada:", localStorage.getItem("especialidade"));
@@ -49,16 +132,15 @@ export default function Configuracoes() {
   const [integracoes, setIntegracoes] = useState({
     whatsapp: localStorage.getItem("whatsapp") === "true",
     numeroWhatsapp: localStorage.getItem("numeroWhatsapp") || "",
+    envioEmail: localStorage.getItem("envioEmail") === "true",
+    emailRemetente: localStorage.getItem("emailRemetente") || "",
     prontuarioEletronico: localStorage.getItem("prontuarioEletronico") === "true"
   });
 
-  // Estados para plano
-  const [plano, setPlano] = useState({
-    tipo: localStorage.getItem("tipoPlano") || "Gratuito",
-    status: localStorage.getItem("statusPlano") || "Ativo",
-    dataVencimento: localStorage.getItem("dataVencimento") || "",
-    cartao: localStorage.getItem("cartao") || ""
-  });
+  // Estados para plano (exibição baseada em isPremium)
+  const tipoPlanoExibicao = isPremium ? "Premium" : "Gratuito";
+  const statusPlanoExibicao = "Ativo";
+  const HOTMART_CHECKOUT_URL = "https://pay.hotmart.com/S102049895B";
 
   const [mensagem, setMensagem] = useState("");
 
@@ -83,8 +165,8 @@ export default function Configuracoes() {
       const reader = new FileReader();
       reader.onload = function(e) {
         const logoData = e.target.result;
-        setConfigLaudo(prev => ({...prev, logoClinica: logoData}));
-        localStorage.setItem("logoClinica", logoData);
+        setCurrentConfig(prev => ({ ...prev, logoClinica: logoData }));
+        if (!isPremium) localStorage.setItem("logoClinica", logoData);
         setMensagem("Logo carregado com sucesso!");
         setTimeout(() => setMensagem(""), 3000);
       };
@@ -92,10 +174,9 @@ export default function Configuracoes() {
     }
   }
 
-  // Função para remover logo
   function removerLogo() {
-    setConfigLaudo(prev => ({...prev, logoClinica: ""}));
-    localStorage.removeItem("logoClinica");
+    setCurrentConfig(prev => ({ ...prev, logoClinica: "" }));
+    if (!isPremium) localStorage.removeItem("logoClinica");
     setMensagem("Logo removido com sucesso!");
     setTimeout(() => setMensagem(""), 3000);
   }
@@ -121,8 +202,8 @@ export default function Configuracoes() {
       const reader = new FileReader();
       reader.onload = function(e) {
         const assinaturaData = e.target.result;
-        setConfigLaudo(prev => ({...prev, assinaturaMedico: assinaturaData}));
-        localStorage.setItem("assinaturaMedico", assinaturaData);
+        setCurrentConfig(prev => ({ ...prev, assinaturaMedico: assinaturaData }));
+        if (!isPremium) localStorage.setItem("assinaturaMedico", assinaturaData);
         setMensagem("Assinatura carregada com sucesso!");
         setTimeout(() => setMensagem(""), 3000);
       };
@@ -130,30 +211,30 @@ export default function Configuracoes() {
     }
   }
 
-  // Função para remover assinatura
   function removerAssinatura() {
-    setConfigLaudo(prev => ({...prev, assinaturaMedico: ""}));
-    localStorage.removeItem("assinaturaMedico");
+    setCurrentConfig(prev => ({ ...prev, assinaturaMedico: "" }));
+    if (!isPremium) localStorage.removeItem("assinaturaMedico");
     setMensagem("Assinatura removida com sucesso!");
     setTimeout(() => setMensagem(""), 3000);
   }
 
-  // Salvar configurações
   function salvarConfiguracoes() {
     console.log("=== SALVANDO CONFIGURAÇÕES ===");
-    console.log("configLaudo antes de salvar:", configLaudo);
-    
-    // Salvar personalização do laudo
-    Object.keys(configLaudo).forEach(key => {
-      if (key === "especialidade") {
-        localStorage.setItem("especialidadeLaudo", configLaudo.especialidade);
-        localStorage.setItem("especialidade", configLaudo.especialidade);
-        console.log(`Salvando especialidadeLaudo: ${configLaudo.especialidade}`);
-      } else {
-        localStorage.setItem(key, configLaudo[key]);
-        console.log(`Salvando ${key}:`, configLaudo[key]);
-      }
-    });
+
+    if (isPremium) {
+      localStorage.setItem(CONFIG_LAUDO_PREMIUM_KEY, JSON.stringify(configLaudoPerfis));
+      localStorage.setItem(PERFIL_LAUDO_ATIVO_KEY, String(perfilLaudoAtivo));
+      aplicarPerfilAosLegacyKeys(configLaudoPerfis[perfilLaudoAtivo]);
+    } else {
+      Object.keys(configLaudo).forEach(key => {
+        if (key === "especialidade") {
+          localStorage.setItem("especialidadeLaudo", configLaudo.especialidade);
+          localStorage.setItem("especialidade", configLaudo.especialidade);
+        } else {
+          localStorage.setItem(key, configLaudo[key]);
+        }
+      });
+    }
 
     // Salvar dados do usuário
     Object.keys(dadosUsuario).forEach(key => {
@@ -174,16 +255,11 @@ export default function Configuracoes() {
       localStorage.setItem(key, integracoes[key]);
     });
 
-    // Salvar plano
-    Object.keys(plano).forEach(key => {
-      localStorage.setItem(key, plano[key]);
-    });
-
     // Verificar se foi salvo
     const especialidadeSalva = localStorage.getItem("especialidade");
     console.log("Especialidade salva no localStorage:", especialidadeSalva);
 
-    setMensagem("Configurações salvas com sucesso!");
+    setMensagem("Perfil salvo");
     setTimeout(() => setMensagem(""), 3000);
   }
 
@@ -261,21 +337,6 @@ export default function Configuracoes() {
         </h1>
       </div>
 
-      {/* Mensagem de feedback */}
-      {mensagem && (
-        <div style={{
-          background: mensagem.includes("sucesso") ? "#11b581" : "#e74c3c",
-          color: "#fff",
-          padding: "12px 20px",
-          borderRadius: 8,
-          marginBottom: 20,
-          textAlign: "center",
-          fontWeight: 600
-        }}>
-          {mensagem}
-        </div>
-      )}
-
       {/* Tabs */}
       <div style={{
         display: "flex",
@@ -320,7 +381,39 @@ export default function Configuracoes() {
             <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20 }}>
               🎨 Personalização do Laudo
             </h3>
-            
+
+            {isPremium && (
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ color: "#aaa", fontSize: 14, marginBottom: 12 }}>
+                  💎 Premium: cadastre até 3 usuários (cada um com logo, nome, CRM, especialidade, assinatura e dados da clínica). O perfil ativo é usado nos laudos.
+                </p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {[0, 1, 2].map(i => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setPerfilLaudoAtivo(i);
+                        localStorage.setItem(PERFIL_LAUDO_ATIVO_KEY, String(i));
+                        aplicarPerfilAosLegacyKeys(configLaudoPerfis[i]);
+                      }}
+                      style={{
+                        background: perfilLaudoAtivo === i ? "#0eb8d0" : "#1a2332",
+                        color: "#fff",
+                        border: perfilLaudoAtivo === i ? "2px solid #0eb8d0" : "1px solid #444",
+                        borderRadius: 8,
+                        padding: "10px 18px",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Perfil {i + 1} {perfilLaudoAtivo === i && "(ativo)"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "grid", gap: 20 }}>
               {/* Upload de Logo */}
               <div style={{
@@ -334,10 +427,10 @@ export default function Configuracoes() {
                   O logo aparecerá no topo centralizado dos laudos em PDF. Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 2MB.
                 </p>
                 
-                {configLaudo.logoClinica ? (
+                {currentConfig.logoClinica ? (
                   <div style={{ textAlign: "center" }}>
                     <img 
-                      src={configLaudo.logoClinica} 
+                      src={currentConfig.logoClinica} 
                       alt="Logo da clínica" 
                       style={{
                         maxWidth: "200px",
@@ -420,8 +513,8 @@ export default function Configuracoes() {
                 </label>
                 <input
                   type="text"
-                  value={configLaudo.nomeMedico}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, nomeMedico: e.target.value}))}
+                  value={currentConfig.nomeMedico || ""}
+                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, nomeMedico: e.target.value }))}
                   placeholder="Dr. João Silva"
                   style={{
                     width: "100%",
@@ -439,8 +532,8 @@ export default function Configuracoes() {
                 </label>
                 <input
                   type="text"
-                  value={configLaudo.crm}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, crm: e.target.value}))}
+                  value={currentConfig.crm || ""}
+                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, crm: e.target.value }))}
                   placeholder="12345 SP"
                   style={{
                     width: "100%",
@@ -458,8 +551,8 @@ export default function Configuracoes() {
                 </label>
                 <input
                   type="text"
-                  value={configLaudo.especialidade}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, especialidade: e.target.value}))}
+                  value={currentConfig.especialidade || ""}
+                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, especialidade: e.target.value }))}
                   placeholder="Angiologia e Cirurgia Vascular"
                   style={{
                     width: "100%",
@@ -483,10 +576,10 @@ export default function Configuracoes() {
                   A assinatura aparecerá centralizada no final dos laudos em PDF, abaixo da conclusão. Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 1MB.
                 </p>
                 
-                {configLaudo.assinaturaMedico ? (
+                {currentConfig.assinaturaMedico ? (
                   <div style={{ textAlign: "center" }}>
                     <img 
-                      src={configLaudo.assinaturaMedico} 
+                      src={currentConfig.assinaturaMedico} 
                       alt="Assinatura do médico" 
                       style={{
                         maxWidth: "200px",
@@ -569,8 +662,8 @@ export default function Configuracoes() {
                 </label>
                 <input
                   type="text"
-                  value={configLaudo.nomeClinica}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, nomeClinica: e.target.value}))}
+                  value={currentConfig.nomeClinica || ""}
+                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, nomeClinica: e.target.value }))}
                   placeholder="Clínica Vascular São Paulo"
                   style={{
                     width: "100%",
@@ -588,8 +681,8 @@ export default function Configuracoes() {
                 </label>
                 <input
                   type="text"
-                  value={configLaudo.enderecoClinica}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, enderecoClinica: e.target.value}))}
+                  value={currentConfig.enderecoClinica || ""}
+                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, enderecoClinica: e.target.value }))}
                   placeholder="Rua das Flores, 123 - Centro"
                   style={{
                     width: "100%",
@@ -607,8 +700,8 @@ export default function Configuracoes() {
                 </label>
                 <input
                   type="text"
-                  value={configLaudo.telefoneClinica}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, telefoneClinica: e.target.value}))}
+                  value={currentConfig.telefoneClinica || ""}
+                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, telefoneClinica: e.target.value }))}
                   placeholder="(11) 99999-9999"
                   style={{
                     width: "100%",
@@ -626,8 +719,8 @@ export default function Configuracoes() {
                 </label>
                 <input
                   type="email"
-                  value={configLaudo.emailClinica}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, emailClinica: e.target.value}))}
+                  value={currentConfig.emailClinica || ""}
+                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, emailClinica: e.target.value }))}
                   placeholder="contato@clinica.com"
                   style={{
                     width: "100%",
@@ -639,26 +732,6 @@ export default function Configuracoes() {
                 />
               </div>
 
-              <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                  Modelo de Conclusão:
-                </label>
-                <select
-                  value={configLaudo.modeloConclusao}
-                  onChange={(e) => setConfigLaudo(prev => ({...prev, modeloConclusao: e.target.value}))}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 6,
-                    border: "none",
-                    fontSize: 14
-                  }}
-                >
-                  <option value="Padrão">Padrão</option>
-                  <option value="Detalhado">Detalhado</option>
-                  <option value="Simplificado">Simplificado</option>
-                </select>
-              </div>
             </div>
           </div>
         )}
@@ -671,52 +744,6 @@ export default function Configuracoes() {
             </h3>
             
             <div style={{ display: "grid", gap: 20 }}>
-              {/* Perfis de Clínica/Contato */}
-              <div style={{ border: "1px solid #0eb8d033", borderRadius: 8, padding: 16, background: "#1a2332" }}>
-                <h4 style={{ color: "#0eb8d0", marginBottom: 10 }}>Perfis de Clínica/Contato</h4>
-                {dadosUsuario.clinicas.map((clinica, idx) => (
-                  <div key={idx} style={{ marginBottom: 18, padding: 10, background: dadosUsuario.clinicaAtiva === idx ? "#0eb8d022" : "#222", borderRadius: 6 }}>
-                    <label style={{ fontWeight: 600, color: "#0eb8d0" }}>
-                      <input
-                        type="radio"
-                        name="clinicaAtiva"
-                        checked={dadosUsuario.clinicaAtiva === idx}
-                        onChange={() => {
-                          setDadosUsuario(prev => ({ ...prev, clinicaAtiva: idx }));
-                          localStorage.setItem("clinicaAtiva", idx);
-                        }}
-                        style={{ marginRight: 8 }}
-                      />
-                      Perfil {idx + 1} {dadosUsuario.clinicaAtiva === idx && "(Ativo)"}
-                    </label>
-                    <div style={{ marginTop: 8 }}>
-                      <input
-                        type="text"
-                        placeholder="Nome da Clínica"
-                        value={clinica.nomeClinica}
-                        onChange={e => {
-                          const novas = [...dadosUsuario.clinicas];
-                          novas[idx].nomeClinica = e.target.value;
-                          setDadosUsuario(prev => ({ ...prev, clinicas: novas }));
-                        }}
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 5, border: "none", fontSize: 14, marginBottom: 6 }}
-                      />
-                      <textarea
-                        placeholder="Dados de contato (endereço, telefone, e-mail, etc)"
-                        value={clinica.dadosContato}
-                        onChange={e => {
-                          const novas = [...dadosUsuario.clinicas];
-                          novas[idx].dadosContato = e.target.value;
-                          setDadosUsuario(prev => ({ ...prev, clinicas: novas }));
-                        }}
-                        rows={2}
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 5, border: "none", fontSize: 13, resize: "vertical" }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
               <div>
                 <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
                   Email:
@@ -865,7 +892,22 @@ export default function Configuracoes() {
             <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20 }}>
               🔗 Integrações
             </h3>
-            
+            {!temAcesso ? (
+              <div style={{
+                background: "#1a2332",
+                padding: 40,
+                borderRadius: 12,
+                border: "1px solid #0eb8d033",
+                textAlign: "center"
+              }}>
+                <p style={{ fontSize: 18, color: "#0eb8d0", fontWeight: 600, marginBottom: 8 }}>
+                  Trial Expirado
+                </p>
+                <p style={{ color: "#aaa", fontSize: 14 }}>
+                  Seu período de trial de 7 dias expirou. Faça upgrade para Premium para continuar usando as integrações (WhatsApp e envio por e-mail).
+                </p>
+              </div>
+            ) : (
             <div style={{ display: "grid", gap: 20 }}>
               <div style={{
                 background: "#1a2332",
@@ -878,8 +920,11 @@ export default function Configuracoes() {
                   <h4 style={{ margin: 0, color: "#0eb8d0" }}>WhatsApp</h4>
                 </div>
                 
-                <p style={{ marginBottom: 15, color: "#ccc" }}>
-                  Envie laudos diretamente para os pacientes via WhatsApp
+                <p style={{ marginBottom: 10, color: "#ccc" }}>
+                  Ative o envio de exames por WhatsApp. Após ativar e clicar em &quot;Salvar Configurações&quot;, o botão verde WhatsApp ficará visível em Exames Realizados. Apenas exames salvos podem ser enviados, e somente em formato PDF (por segurança).
+                </p>
+                <p style={{ marginBottom: 15, fontSize: 13, color: "#999" }}>
+                  <strong>Como usar:</strong> Marque &quot;Ativar integração com WhatsApp&quot;, informe o número (seu ou da clínica) e salve. Gere o PDF do exame (botão 🖨️ PDF) e use o botão WhatsApp para enviar o laudo em PDF ao paciente.
                 </p>
                 
                 <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 15, cursor: "pointer" }}>
@@ -889,19 +934,92 @@ export default function Configuracoes() {
                     onChange={(e) => setIntegracoes(prev => ({...prev, whatsapp: e.target.checked}))}
                     style={{ transform: "scale(1.2)" }}
                   />
-                  <span>Ativar integração com WhatsApp</span>
+                  <span>Ativar envio de exames via WhatsApp</span>
                 </label>
 
                 {integracoes.whatsapp && (
                   <div>
                     <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                      Número do WhatsApp:
+                      Número do WhatsApp (seu ou da clínica) para enviar ao paciente:
                     </label>
                     <input
                       type="text"
                       value={integracoes.numeroWhatsapp}
                       onChange={(e) => setIntegracoes(prev => ({...prev, numeroWhatsapp: e.target.value}))}
-                      placeholder="+55 11 99999-9999"
+                      placeholder="+55 11 99999-9999 ou 11999999999"
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 6,
+                        border: "none",
+                        fontSize: 14,
+                        marginBottom: 12
+                      }}
+                    />
+                    {integracoes.numeroWhatsapp.trim() && (() => {
+                      const digits = integracoes.numeroWhatsapp.replace(/\D/g, "");
+                      const withCountry = digits.startsWith("55") ? digits : (digits.length <= 11 ? "55" + digits : digits);
+                      const waNumber = withCountry || "55";
+                      return (
+                      <a
+                        href={`https://wa.me/${waNumber}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          background: "#25D366",
+                          color: "#fff",
+                          padding: "10px 18px",
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          textDecoration: "none",
+                          fontSize: 14
+                        }}
+                      >
+                        <FiMessageCircle size={20} /> Abrir conversa no WhatsApp
+                      </a>
+                    ); })()}
+                  </div>
+                )}
+              </div>
+
+              <div style={{
+                background: "#1a2332",
+                padding: 20,
+                borderRadius: 8,
+                border: "1px solid #0eb8d033"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 15 }}>
+                  <FiMail size={24} color="#0eb8d0" />
+                  <h4 style={{ margin: 0, color: "#0eb8d0" }}>Envio por E-mail</h4>
+                </div>
+                <p style={{ marginBottom: 10, color: "#ccc" }}>
+                  Ative o envio de exames por e-mail. Após ativar e clicar em &quot;Salvar Configurações&quot;, o botão azul E-mail ficará visível em Exames Realizados. Apenas exames salvos podem ser enviados, e somente em formato PDF (por segurança).
+                </p>
+                <p style={{ marginBottom: 15, fontSize: 13, color: "#999" }}>
+                  <strong>Como usar:</strong> Marque &quot;Ativar envio de exames via e-mail&quot;, opcionalmente informe seu e-mail (ou da clínica) e salve. Gere o PDF do exame (botão 🖨️ PDF) e use o botão E-mail para enviar o laudo em PDF ao paciente.
+                </p>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 15, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={integracoes.envioEmail}
+                    onChange={(e) => setIntegracoes(prev => ({ ...prev, envioEmail: e.target.checked }))}
+                    style={{ transform: "scale(1.2)" }}
+                  />
+                  <span>Ativar envio de exames via e-mail</span>
+                </label>
+                {integracoes.envioEmail && (
+                  <div>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Seu e-mail ou da clínica (remetente):
+                    </label>
+                    <input
+                      type="email"
+                      value={integracoes.emailRemetente}
+                      onChange={(e) => setIntegracoes(prev => ({ ...prev, emailRemetente: e.target.value }))}
+                      placeholder="ex: contato@clinica.com.br"
                       style={{
                         width: "100%",
                         padding: "10px 12px",
@@ -941,6 +1059,7 @@ export default function Configuracoes() {
                 </label>
               </div>
             </div>
+            )}
           </div>
         )}
 
@@ -984,24 +1103,20 @@ export default function Configuracoes() {
                 <div style={{ display: "grid", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Tipo:</span>
-                    <span style={{ fontWeight: 600, color: "#0eb8d0" }}>{plano.tipo}</span>
+                    <span style={{ fontWeight: 600, color: "#0eb8d0" }}>{tipoPlanoExibicao}</span>
                   </div>
                   
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Status:</span>
-                    <span style={{ 
-                      fontWeight: 600, 
-                      color: plano.status === "Ativo" ? "#11b581" : "#e74c3c" 
-                    }}>
-                      {plano.status}
+                    <span style={{ fontWeight: 600, color: "#11b581" }}>
+                      {statusPlanoExibicao}
                     </span>
                   </div>
                   
-                  {plano.dataVencimento && (
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Vencimento:</span>
-                      <span>{plano.dataVencimento}</span>
-                    </div>
+                  {!isPremium && (
+                    <p style={{ margin: "12px 0 0", fontSize: 13, color: "#e6d68a" }}>
+                      O plano gratuito tem validade de 7 dias.
+                    </p>
                   )}
                 </div>
               </div>
@@ -1015,47 +1130,44 @@ export default function Configuracoes() {
                 <h4 style={{ color: "#0eb8d0", marginBottom: 15 }}>Gerenciar Plano</h4>
                 
                 <div style={{ display: "grid", gap: 15 }}>
-                  <button
-                    style={{
-                      background: "#0eb8d0",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "12px 20px",
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    Atualizar Plano
-                  </button>
-                  
-                  <button
-                    style={{
-                      background: "#11b581",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "12px 20px",
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    Ver Recibos
-                  </button>
-                  
-                  <button
-                    style={{
-                      background: "#ff9500",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "12px 20px",
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    Adicionar Cartão
-                  </button>
+                  {!isPremium ? (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(
+                          "Deseja ser redirecionado para a página de pagamento Hotmart para assinar o plano Premium?\n\nApós o pagamento, seu plano será ativado."
+                        )) {
+                          window.open(HOTMART_CHECKOUT_URL, "_blank");
+                          navigate("/confirmacao-pagamento");
+                        }
+                      }}
+                      style={{
+                        background: "#11b581",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "12px 20px",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Assinar Premium (Hotmart)
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => navigate("/home")}
+                      style={{
+                        background: "#0eb8d0",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "12px 20px",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Atualizar Plano
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1063,8 +1175,24 @@ export default function Configuracoes() {
         )}
       </div>
 
+      {/* Mensagem de feedback - logo acima dos botões */}
+      {mensagem && (
+        <div style={{
+          background: (mensagem.includes("sucesso") || mensagem.includes("salvo")) ? "#11b581" : "#e74c3c",
+          color: "#fff",
+          padding: "12px 20px",
+          borderRadius: 8,
+          marginTop: 30,
+          marginBottom: 16,
+          textAlign: "center",
+          fontWeight: 600
+        }}>
+          {mensagem}
+        </div>
+      )}
+
       {/* Botão Salvar */}
-      <div style={{ textAlign: "center", marginTop: 30 }}>
+      <div style={{ textAlign: "center", marginTop: mensagem ? 0 : 30 }}>
         <button
           onClick={salvarConfiguracoes}
           style={{
@@ -1086,10 +1214,12 @@ export default function Configuracoes() {
         
         <button
           onClick={() => {
-            const especialidade = localStorage.getItem("especialidade");
-            const nomeMedico = localStorage.getItem("nomeMedico");
-            const crm = localStorage.getItem("crm");
-            alert(`Dados salvos:\nNome: ${nomeMedico}\nEspecialidade: ${especialidade}\nCRM: ${crm}`);
+            const especialidade = localStorage.getItem("especialidade") || localStorage.getItem("especialidadeLaudo") || "";
+            const nomeMedico = localStorage.getItem("nomeMedico") || "";
+            const crm = localStorage.getItem("crm") || "";
+            const nomeClinica = localStorage.getItem("nomeClinica") || "";
+            setMensagem(`Dados salvos: Nome: ${nomeMedico || "(vazio)"} | CRM: ${crm || "(vazio)"} | Especialidade: ${especialidade || "(vazio)"} | Clínica: ${nomeClinica || "(vazio)"}`);
+            setTimeout(() => setMensagem(""), 5000);
           }}
           style={{
             background: "#ff6b35",
