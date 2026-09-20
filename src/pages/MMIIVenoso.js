@@ -2195,6 +2195,7 @@ function MMIIVenoso() {
         magna={magna}
         parva={parva}
         perfurantes={perfurantes}
+        profundas={profundas}
       />
       <style>{`
         @keyframes logoGlow {

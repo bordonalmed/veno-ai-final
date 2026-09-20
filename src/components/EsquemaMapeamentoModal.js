@@ -16,11 +16,27 @@ import {
   construirSegmentosVeia,
   gerarConclusaoVisual,
   posicaoPerfurante,
+  piorCorProfundo,
+  conclusoesSistemaProfundo,
 } from "../utils/vascularMapping";
 
 // Monta o SVG (vista medial + vista posterior lado a lado) de UM membro.
 function montarSvgLado(dadosLado) {
-  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurante, mirrored } = dadosLado;
+  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurante, profundas, mirrored } = dadosLado;
+
+  const p = profundas || {};
+  const corFemoral = piorCorProfundo([
+    p["Veia Femoral Comum"],
+    p["Veia Femoral Superficial"],
+    p["Veia Femoral Profunda"],
+  ]);
+  const corPoplitea = piorCorProfundo([p["Veia Poplítea"]]);
+  const corTibiais = piorCorProfundo([
+    p["Veias Tibiais posteriores"],
+    p["Veias Tibiais anteriores"],
+    p["Veias Gastrocnêmicas"],
+    p["Veias Soleares"],
+  ]);
 
   const magnaResult = construirSegmentosVeia({
     spine: VSM_SPINE,
@@ -75,15 +91,15 @@ function montarSvgLado(dadosLado) {
 
   const medialInner = `
     <path d="${MEDIAL_SILHOUETTE}" fill="url(#skinGradM)" stroke="#a97a4e" stroke-width="1.5"/>
-    <path d="${FEMORAL_RIBBON}" fill="${CORES["ausente"]}" opacity="0.55"/>
+    <path d="${FEMORAL_RIBBON}" fill="${corFemoral}" opacity="0.85"/>
     ${magnaSegsSvg}
     <circle cx="150" cy="48" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
     ${perfMarker}
   `;
   const posteriorInner = `
     <path d="${POSTERIOR_SILHOUETTE}" fill="url(#skinGradP)" stroke="#a97a4e" stroke-width="1.5"/>
-    <path d="${POPLITEA_RIBBON}" fill="${CORES["ausente"]}" opacity="0.55"/>
-    <path d="${TIBIAIS_RIBBON}" fill="${CORES["ausente"]}" opacity="0.5"/>
+    <path d="${POPLITEA_RIBBON}" fill="${corPoplitea}" opacity="0.85"/>
+    <path d="${TIBIAIS_RIBBON}" fill="${corTibiais}" opacity="0.85"/>
     ${parvaSegsSvg}
     <circle cx="150" cy="316" r="7" fill="${jspFill}" stroke="${jspStroke}" stroke-width="1.5"/>
   `;
@@ -103,7 +119,7 @@ function montarSvgLado(dadosLado) {
     <text x="480" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA POSTERIOR</text>
   </svg>`;
 
-  const conclusoes = [];
+  const conclusoes = [...conclusoesSistemaProfundo(profundas)];
   const cMagna = gerarConclusaoVisual("magna", "JSF", magnaStatus, magnaExtra.inicio, magnaExtra.fim, magnaExtra.inicio_valor, magnaExtra.fim_valor);
   const cParva = gerarConclusaoVisual("parva", "JSP", parvaStatus, parvaExtra.inicio, parvaExtra.fim, parvaExtra.inicio_valor, parvaExtra.fim_valor);
   if (cMagna) conclusoes.push(cMagna);
@@ -153,6 +169,7 @@ export default function EsquemaMapeamentoModal({
   magna,
   parva,
   perfurantes,
+  profundas,
 }) {
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
@@ -167,11 +184,12 @@ export default function EsquemaMapeamentoModal({
         parvaStatus: superficiais?.[ladoAtual]?.["Safena Parva"],
         parvaExtra: parva?.[ladoAtual] || {},
         perfurante: perfurantes?.[ladoAtual],
+        profundas: profundas?.[ladoAtual],
         mirrored: ladoAtual === "Esquerdo",
       });
     });
     return out;
-  }, [lado, superficiais, magna, parva, perfurantes]);
+  }, [lado, superficiais, magna, parva, perfurantes, profundas]);
 
   if (!aberto) return null;
 
@@ -215,6 +233,7 @@ export default function EsquemaMapeamentoModal({
           ["Veia suficiente", CORES["pérvia e competente"]],
           ["Veia insuficiente", CORES["pérvia e incompetente"]],
           ["Trombose", CORES["não compressível e sem fluxo (trombose)"]],
+          ["Recanalização parcial", CORES["recanalização parcial"]],
           ["Veia ausente", CORES["ausente"]],
         ];
         let lx = (pageWidth - 150) / 2;

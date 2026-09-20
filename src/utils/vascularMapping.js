@@ -23,6 +23,7 @@ export const CORES = {
   "pérvia e incompetente": "#c0392b",
   "não compressível e sem fluxo (trombose)": "#2b2f33",
   "ausente": "#aab4bc",
+  "recanalização parcial": "#d99a3d",
 };
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -179,4 +180,49 @@ export function posicaoPerfurante(segmentoLabel, valor) {
   const y = yFromField(field, valor || 0, LANDMARK_MAGNA);
   const [x] = interpAt(VSM_SPINE, VSM_HALF, y);
   return { x: x - 22, y };
+}
+
+// ---- Sistema venoso profundo (Femorais, Poplítea, Tibiais, Gastrocnêmicas, Soleares) ----
+// Usa as mesmas opções do formulário (profOptions em MMIIVenoso.js):
+// "pérvia e competente" | "pérvia e incompetente" |
+// "não compressível e sem fluxo (sugestivo de trombose)" |
+// "semi compressível, sugestivo de recanalização parcial"
+export function corStatusProfundo(status) {
+  if (!status) return CORES["pérvia e competente"];
+  if (status.indexOf("não compressível") === 0) return CORES["não compressível e sem fluxo (trombose)"];
+  if (status.indexOf("semi compressível") === 0) return CORES["recanalização parcial"];
+  if (status === "pérvia e incompetente") return CORES["pérvia e incompetente"];
+  return CORES["pérvia e competente"];
+}
+
+// Prioridade (mais grave primeiro) para quando um único traçado do desenho
+// representa mais de uma veia profunda (ex.: Femoral Comum + Superficial).
+const PRIORIDADE_PROFUNDO = [
+  "não compressível",
+  "pérvia e incompetente",
+  "semi compressível",
+];
+export function piorCorProfundo(statusList) {
+  const lista = (statusList || []).filter(Boolean);
+  for (const chave of PRIORIDADE_PROFUNDO) {
+    const achado = lista.find((s) => s.indexOf(chave) === 0 || s === chave);
+    if (achado) return corStatusProfundo(achado);
+  }
+  return CORES["pérvia e competente"];
+}
+
+// Mesma lógica de gerarConclusaoPorLado() em MMIIVenoso.js para o sistema profundo
+export function conclusoesSistemaProfundo(profundas) {
+  const valores = Object.values(profundas || {});
+  const conclusoes = [];
+  if (valores.some((v) => v && v.includes("não compressível"))) {
+    conclusoes.push("Trombose venosa profunda");
+  }
+  if (valores.some((v) => v && v.includes("semi compressível"))) {
+    conclusoes.push("Sinais de recanalização parcial do sistema venoso profundo");
+  }
+  if (valores.some((v) => v && v.includes("incompetente"))) {
+    conclusoes.push("Insuficiência de sistema venoso profundo");
+  }
+  return conclusoes;
 }
