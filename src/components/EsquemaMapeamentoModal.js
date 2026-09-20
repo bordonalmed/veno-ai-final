@@ -1,0 +1,370 @@
+import React, { useMemo, useState } from "react";
+import jsPDF from "jspdf";
+import {
+  MEDIAL_SILHOUETTE,
+  FEMORAL_RIBBON,
+  POSTERIOR_SILHOUETTE,
+  POPLITEA_RIBBON,
+  TIBIAIS_RIBBON,
+  VSM_SPINE,
+  VSM_HALF,
+  VSP_SPINE,
+  VSP_HALF,
+  LANDMARK_MAGNA,
+  LANDMARK_PARVA,
+  CORES,
+  construirSegmentosVeia,
+  gerarConclusaoVisual,
+  posicaoPerfurante,
+} from "../utils/vascularMapping";
+
+// Monta o SVG (vista medial + vista posterior lado a lado) de UM membro.
+function montarSvgLado(dadosLado) {
+  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurante, mirrored } = dadosLado;
+
+  const magnaResult = construirSegmentosVeia({
+    spine: VSM_SPINE,
+    half: VSM_HALF,
+    landmark: LANDMARK_MAGNA,
+    status: magnaStatus,
+    ini: magnaExtra.inicio,
+    fim: magnaExtra.fim,
+    iniVal: magnaExtra.inicio_valor,
+    fimVal: magnaExtra.fim_valor,
+  });
+  const parvaResult = construirSegmentosVeia({
+    spine: VSP_SPINE,
+    half: VSP_HALF,
+    landmark: LANDMARK_PARVA,
+    status: parvaStatus,
+    ini: parvaExtra.inicio,
+    fim: parvaExtra.fim,
+    iniVal: parvaExtra.inicio_valor,
+    fimVal: parvaExtra.fim_valor,
+  });
+
+  const magnaSegsSvg = magnaResult.segments
+    .map((s) =>
+      s.tracejado
+        ? `<path d="${s.d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round"/>`
+        : `<path d="${s.d}" fill="${s.color}"/>`
+    )
+    .join("");
+  const parvaSegsSvg = parvaResult.segments
+    .map((s) =>
+      s.tracejado
+        ? `<path d="${s.d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round"/>`
+        : `<path d="${s.d}" fill="${s.color}"/>`
+    )
+    .join("");
+
+  const jsfFill = magnaResult.dotColor;
+  const jsfStroke = magnaResult.dotStroke || "#ffffff";
+  const jspFill = parvaResult.dotColor;
+  const jspStroke = parvaResult.dotStroke || "#ffffff";
+
+  let perfMarker = "";
+  if (perfurante && perfurante.status === "pérvia e incompetente" && perfurante.segmento) {
+    const pos = posicaoPerfurante(perfurante.segmento, perfurante.valor);
+    if (pos) {
+      perfMarker = `<circle cx="${pos.x.toFixed(2)}" cy="${pos.y.toFixed(2)}" r="5.5" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3"/>`;
+    }
+  }
+
+  const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
+
+  const medialInner = `
+    <path d="${MEDIAL_SILHOUETTE}" fill="url(#skinGradM)" stroke="#a97a4e" stroke-width="1.5"/>
+    <path d="${FEMORAL_RIBBON}" fill="${CORES["ausente"]}" opacity="0.55"/>
+    ${magnaSegsSvg}
+    <circle cx="150" cy="48" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
+    ${perfMarker}
+  `;
+  const posteriorInner = `
+    <path d="${POSTERIOR_SILHOUETTE}" fill="url(#skinGradP)" stroke="#a97a4e" stroke-width="1.5"/>
+    <path d="${POPLITEA_RIBBON}" fill="${CORES["ausente"]}" opacity="0.55"/>
+    <path d="${TIBIAIS_RIBBON}" fill="${CORES["ausente"]}" opacity="0.5"/>
+    ${parvaSegsSvg}
+    <circle cx="150" cy="316" r="7" fill="${jspFill}" stroke="${jspStroke}" stroke-width="1.5"/>
+  `;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 680" width="640" height="680">
+    <defs>
+      <radialGradient id="skinGradM" cx="${mirrored ? 65 : 35}%" cy="30%" r="80%">
+        <stop offset="0%" stop-color="#f0c9a0"/><stop offset="100%" stop-color="#d9a877"/>
+      </radialGradient>
+      <radialGradient id="skinGradP" cx="50%" cy="25%" r="85%">
+        <stop offset="0%" stop-color="#f0c9a0"/><stop offset="100%" stop-color="#d9a877"/>
+      </radialGradient>
+    </defs>
+    <g transform="translate(0,10)"><g transform="${mirrorTransform}">${medialInner}</g></g>
+    <g transform="translate(330,10)"><g transform="${mirrorTransform}">${posteriorInner}</g></g>
+    <text x="150" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA MEDIAL</text>
+    <text x="480" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA POSTERIOR</text>
+  </svg>`;
+
+  const conclusoes = [];
+  const cMagna = gerarConclusaoVisual("magna", "JSF", magnaStatus, magnaExtra.inicio, magnaExtra.fim, magnaExtra.inicio_valor, magnaExtra.fim_valor);
+  const cParva = gerarConclusaoVisual("parva", "JSP", parvaStatus, parvaExtra.inicio, parvaExtra.fim, parvaExtra.inicio_valor, parvaExtra.fim_valor);
+  if (cMagna) conclusoes.push(cMagna);
+  if (cParva) conclusoes.push(cParva);
+  if (perfurante && perfurante.status === "pérvia e incompetente") {
+    conclusoes.push(
+      `Insuficiência de veia perfurante${perfurante.segmento ? ` (${perfurante.valor ? perfurante.valor + " " : ""}${perfurante.segmento})` : ""}`
+    );
+  }
+
+  return { svg, conclusoes };
+}
+
+function svgParaImagemDataUrl(svgString, largura, altura) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const escala = 2; // suficiente para nitidez em A4, sem inflar o arquivo
+      const canvas = document.createElement("canvas");
+      canvas.width = largura * escala;
+      canvas.height = altura * escala;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      // JPEG reduz bastante o tamanho do PDF; sem transparência no desenho, não perde qualidade visível
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = (e) => {
+      URL.revokeObjectURL(url);
+      reject(e);
+    };
+    img.src = url;
+  });
+}
+
+export default function EsquemaMapeamentoModal({
+  aberto,
+  onFechar,
+  lado,
+  nome,
+  data,
+  superficiais,
+  magna,
+  parva,
+  perfurantes,
+}) {
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+
+  const ladosParaMostrar = lado === "Ambos" ? ["Direito", "Esquerdo"] : lado ? [lado] : [];
+
+  const esquemas = useMemo(() => {
+    const out = {};
+    ladosParaMostrar.forEach((ladoAtual) => {
+      out[ladoAtual] = montarSvgLado({
+        magnaStatus: superficiais?.[ladoAtual]?.["Safena Magna"],
+        magnaExtra: magna?.[ladoAtual] || {},
+        parvaStatus: superficiais?.[ladoAtual]?.["Safena Parva"],
+        parvaExtra: parva?.[ladoAtual] || {},
+        perfurante: perfurantes?.[ladoAtual],
+        mirrored: ladoAtual === "Esquerdo",
+      });
+    });
+    return out;
+  }, [lado, superficiais, magna, parva, perfurantes]);
+
+  if (!aberto) return null;
+
+  async function handleBaixarPdf() {
+    setGerandoPdf(true);
+    try {
+      const nomeClinica = localStorage.getItem("nomeClinica") || "";
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      for (let i = 0; i < ladosParaMostrar.length; i++) {
+        const ladoAtual = ladosParaMostrar[i];
+        if (i > 0) doc.addPage();
+
+        const dataUrl = await svgParaImagemDataUrl(esquemas[ladoAtual].svg, 640, 680);
+
+        let y = 16;
+        if (nomeClinica) {
+          doc.setFontSize(9);
+          doc.setFont(undefined, "bold");
+          doc.text(nomeClinica, pageWidth / 2, y, { align: "center" });
+          y += 6;
+        }
+        doc.setFontSize(13);
+        doc.setFont(undefined, "bold");
+        doc.text(`Mapeamento Venoso — Membro Inferior ${ladoAtual}`, pageWidth / 2, y, { align: "center" });
+        y += 5;
+        doc.setFontSize(9);
+        doc.setFont(undefined, "normal");
+        doc.text(nome ? `Paciente: ${nome}${data ? "  •  " + data : ""}` : "", pageWidth / 2, y, { align: "center" });
+        y += 6;
+
+        const imgWidthMm = 170;
+        const imgHeightMm = imgWidthMm * (680 / 640);
+        const x = (pageWidth - imgWidthMm) / 2;
+        doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
+        y += imgHeightMm + 6;
+
+        doc.setFontSize(8.5);
+        const legenda = [
+          ["Veia suficiente", CORES["pérvia e competente"]],
+          ["Veia insuficiente", CORES["pérvia e incompetente"]],
+          ["Trombose", CORES["não compressível e sem fluxo (trombose)"]],
+          ["Veia ausente", CORES["ausente"]],
+        ];
+        let lx = (pageWidth - 150) / 2;
+        legenda.forEach(([label, cor]) => {
+          const rgb = hexParaRgb(cor);
+          doc.setFillColor(rgb.r, rgb.g, rgb.b);
+          doc.rect(lx, y - 2.6, 4, 2, "F");
+          doc.setTextColor(90, 100, 110);
+          doc.text(label, lx + 6, y);
+          lx += 6 + doc.getTextWidth(label) + 8;
+        });
+        doc.setTextColor(0, 0, 0);
+        y += 8;
+
+        if (esquemas[ladoAtual].conclusoes.length) {
+          doc.setFontSize(9.5);
+          doc.setFont(undefined, "bold");
+          doc.text("Achados:", 20, y);
+          y += 5;
+          doc.setFont(undefined, "normal");
+          esquemas[ladoAtual].conclusoes.forEach((c) => {
+            doc.text(`• ${c}`, 22, y);
+            y += 5;
+          });
+        }
+      }
+
+      const nomeArquivo = `Mapeamento_Venoso_${nome ? nome.replace(/\s+/g, "_") : "exame"}${data ? "_" + data : ""}.pdf`;
+      doc.save(nomeArquivo);
+    } catch (e) {
+      console.error("Erro ao gerar PDF do esquema de mapeamento:", e);
+      alert("Não foi possível gerar o PDF do esquema. Tente novamente.");
+    } finally {
+      setGerandoPdf(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(8, 14, 22, 0.72)",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        overflowY: "auto",
+        padding: "clamp(16px, 3vw, 40px) 16px",
+      }}
+      onClick={onFechar}
+    >
+      <div
+        style={{
+          background: "#fff",
+          color: "#1a2530",
+          borderRadius: 14,
+          maxWidth: 900,
+          width: "100%",
+          padding: "clamp(16px, 3vw, 28px)",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ margin: 0, fontSize: "clamp(16px, 3vw, 20px)", color: "#1c3d5a" }}>Esquema de Mapeamento Venoso</h2>
+          <button
+            onClick={onFechar}
+            style={{
+              background: "transparent",
+              border: "1px solid #d7dee3",
+              borderRadius: 8,
+              padding: "6px 12px",
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#5c6b78",
+            }}
+          >
+            Fechar
+          </button>
+        </div>
+
+        {ladosParaMostrar.length === 0 && (
+          <p style={{ color: "#5c6b78", fontSize: 14 }}>
+            Selecione o lado (Direito, Esquerdo ou Ambos) no topo do formulário antes de gerar o esquema.
+          </p>
+        )}
+
+        {ladosParaMostrar.map((ladoAtual) => (
+          <div
+            key={ladoAtual}
+            style={{
+              border: "1px solid #d7dee3",
+              borderRadius: 10,
+              padding: 14,
+              marginBottom: 14,
+              background: "#f7f8fa",
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#1c3d5a" }}>
+              Membro Inferior {ladoAtual}
+            </div>
+            <div
+              style={{ width: "100%" }}
+              dangerouslySetInnerHTML={{ __html: esquemas[ladoAtual].svg }}
+            />
+            {esquemas[ladoAtual].conclusoes.length > 0 && (
+              <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12.5, color: "#1a2530" }}>
+                {esquemas[ladoAtual].conclusoes.map((c, i) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+          <button
+            onClick={handleBaixarPdf}
+            disabled={ladosParaMostrar.length === 0 || gerandoPdf}
+            style={{
+              background: "#0eb8d0",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              padding: "10px 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: ladosParaMostrar.length === 0 ? "not-allowed" : "pointer",
+              opacity: ladosParaMostrar.length === 0 || gerandoPdf ? 0.6 : 1,
+            }}
+          >
+            {gerandoPdf ? "Gerando PDF..." : "Baixar PDF (A4)"}
+          </button>
+        </div>
+
+        <p style={{ fontSize: 11, color: "#8fa0ad", marginTop: 12, marginBottom: 0 }}>
+          Ilustração esquemática original, gerada a partir dos achados preenchidos no formulário. Não substitui a
+          descrição textual do laudo.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function hexParaRgb(hex) {
+  const m = hex.replace("#", "");
+  return {
+    r: parseInt(m.substring(0, 2), 16),
+    g: parseInt(m.substring(2, 4), 16),
+    b: parseInt(m.substring(4, 6), 16),
+  };
+}

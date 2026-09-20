@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import ExamHeader from "../components/ExamHeader";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
+import EsquemaMapeamentoModal from "../components/EsquemaMapeamentoModal";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIVenoso";
@@ -914,6 +915,7 @@ function MMIIVenoso() {
     Esquerdo: { tipo: '', localizacao: [] }
   });
   const [anexos, setAnexos] = useState([]);
+  const [mostrarEsquema, setMostrarEsquema] = useState(false);
 
   // Hook para detectar mudanças no tamanho da tela
   useEffect(() => {
@@ -1150,6 +1152,15 @@ function MMIIVenoso() {
         alignItems: 'center', 
         gap: 'clamp(12px, 2vw, 16px)' 
       }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setMostrarEsquema(true)}
+            style={{ ...buttonStyle, background: "#6f42c1" }}
+          >
+            🩺 Gerar Esquema de Mapeamento
+          </button>
+        </div>
         <div style={{ 
           width: '100%', 
           display: 'flex', 
@@ -2174,6 +2185,17 @@ function MMIIVenoso() {
           )}
         </div>
       )}
+      <EsquemaMapeamentoModal
+        aberto={mostrarEsquema}
+        onFechar={() => setMostrarEsquema(false)}
+        lado={lado}
+        nome={nome}
+        data={data}
+        superficiais={superficiais}
+        magna={magna}
+        parva={parva}
+        perfurantes={perfurantes}
+      />
       <style>{`
         @keyframes logoGlow {
           0% {
