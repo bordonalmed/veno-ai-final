@@ -99,7 +99,7 @@ const LEGENDA_SEGMENTO = {
   tornozelo: "tornozelo",
 };
 
-function fmt(field, val) {
+export function fmt(field, val) {
   if (!field) return field;
   if (field.indexOf("cm_") === 0 && val) return `${val} ${LEGENDA_SEGMENTO[field]}`;
   return LEGENDA_SEGMENTO[field] || field;
@@ -155,7 +155,15 @@ export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim
     segments.push({ d: pathFromTriples(sliceSpine(spine, half, yEnd, landmark.tornozelo)), color: CORES["pérvia e competente"] });
   }
   const dotColor = yStart <= landmark.top + 2 ? CORES["pérvia e incompetente"] : CORES["pérvia e competente"];
-  return { segments, dotColor };
+  const refluxo = {
+    yStart,
+    yEnd,
+    iniLabel: fmt(ini, iniVal),
+    fimLabel: fmt(fim, fimVal),
+    marcarIni: yStart > landmark.top + 2,
+    marcarFim: yEnd < landmark.tornozelo - 2,
+  };
+  return { segments, dotColor, refluxo };
 }
 
 export function gerarConclusaoVisual(veinLabel, topField, status, ini, fim, iniVal, fimVal) {

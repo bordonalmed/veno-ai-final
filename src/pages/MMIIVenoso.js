@@ -2196,6 +2196,8 @@ function MMIIVenoso() {
         parva={parva}
         perfurantes={perfurantes}
         profundas={profundas}
+        jsfDiametro={jsfDiametro}
+        jspDiametro={jspDiametro}
       />
       <style>{`
         @keyframes logoGlow {

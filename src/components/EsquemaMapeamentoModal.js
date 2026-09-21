@@ -18,11 +18,71 @@ import {
   posicaoPerfurante,
   piorCorProfundo,
   conclusoesSistemaProfundo,
+  interpAt,
 } from "../utils/vascularMapping";
+
+// Texto com "halo" branco (paint-order) para ficar legível sobre a ilustração,
+// sem precisar desenhar um retângulo de fundo atrás de cada rótulo.
+// Quando a perna está espelhada (Esquerdo), o texto é envolvido num
+// contra-espelhamento local (ao redor do próprio ponto x,y) para não sair
+// com as letras invertidas, já que ele vive dentro do <g scale(-1,1)> da perna.
+function medidaTexto(x, y, texto, align, mirrored) {
+  const t = `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="monospace" font-size="9.5" text-anchor="${align}" fill="#1a2530" paint-order="stroke" stroke="#ffffff" stroke-width="3">${texto}</text>`;
+  if (!mirrored) return t;
+  return `<g transform="translate(${(2 * x).toFixed(2)},0) scale(-1,1)">${t}</g>`;
+}
+
+// Diâmetro (mm) ao lado da veia, num ponto y aproximado do seu trajeto.
+function diametroMarcador(spine, half, y, valorMm, ladoTexto, mirrored) {
+  if (!valorMm) return "";
+  const [x, , h] = interpAt(spine, half, y);
+  const offset = h + 5;
+  if (ladoTexto === "esquerda") {
+    return medidaTexto(x - offset, y + 3, `Ø ${valorMm}mm`, "end", mirrored);
+  }
+  return medidaTexto(x + offset, y + 3, `Ø ${valorMm}mm`, "start", mirrored);
+}
+
+// Marcadores de início/fim do trecho com refluxo (distância ao longo da veia).
+function distanciaMarcadores(spine, half, refluxo, ladoTexto, mirrored) {
+  if (!refluxo) return "";
+  let svg = "";
+  const tick = (y) => {
+    const [x, , h] = interpAt(spine, half, y);
+    const x1 = ladoTexto === "esquerda" ? x - h : x + h;
+    const x2 = ladoTexto === "esquerda" ? x - h - 8 : x + h + 8;
+    return `<line x1="${x1.toFixed(2)}" y1="${y.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y.toFixed(2)}" stroke="#5c6b78" stroke-width="1"/>`;
+  };
+  if (refluxo.marcarIni) {
+    svg += tick(refluxo.yStart);
+    const [x, , h] = interpAt(spine, half, refluxo.yStart);
+    const offset = h + 10;
+    svg += medidaTexto(
+      ladoTexto === "esquerda" ? x - offset : x + offset,
+      refluxo.yStart + 3,
+      refluxo.iniLabel,
+      ladoTexto === "esquerda" ? "end" : "start",
+      mirrored
+    );
+  }
+  if (refluxo.marcarFim) {
+    svg += tick(refluxo.yEnd);
+    const [x, , h] = interpAt(spine, half, refluxo.yEnd);
+    const offset = h + 10;
+    svg += medidaTexto(
+      ladoTexto === "esquerda" ? x - offset : x + offset,
+      refluxo.yEnd + 3,
+      refluxo.fimLabel,
+      ladoTexto === "esquerda" ? "end" : "start",
+      mirrored
+    );
+  }
+  return svg;
+}
 
 // Monta o SVG (vista medial + vista posterior lado a lado) de UM membro.
 function montarSvgLado(dadosLado) {
-  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurante, profundas, mirrored } = dadosLado;
+  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurante, profundas, mirrored, jsfDiametro, jspDiametro } = dadosLado;
 
   const p = profundas || {};
   const corFemoral = piorCorProfundo([
@@ -89,12 +149,30 @@ function montarSvgLado(dadosLado) {
 
   const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
 
+  // Medidas (diâmetros e distâncias do refluxo) sobre a vista medial (safena magna)
+  const jsfDiamSvg = jsfDiametro
+    ? medidaTexto(150 + 15, 48 + 4, `Ø ${jsfDiametro}mm`, "start", mirrored)
+    : "";
+  const magnaCoxaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 150, magnaExtra.coxa, "direita", mirrored);
+  const magnaPernaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 420, magnaExtra.perna, "direita", mirrored);
+  const magnaTornozeloSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 530, magnaExtra.tornozelo, "direita", mirrored);
+  const magnaRefluxoSvg = distanciaMarcadores(VSM_SPINE, VSM_HALF, magnaResult.refluxo, "esquerda", mirrored);
+
+  // Medidas sobre a vista posterior (safena parva)
+  const jspDiamSvg = jspDiametro
+    ? medidaTexto(150 + 15, 316 + 4, `Ø ${jspDiametro}mm`, "start", mirrored)
+    : "";
+  const parvaProximalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 340, parvaExtra.proximal, "direita", mirrored);
+  const parvaDistalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 515, parvaExtra.distal, "direita", mirrored);
+  const parvaRefluxoSvg = distanciaMarcadores(VSP_SPINE, VSP_HALF, parvaResult.refluxo, "esquerda", mirrored);
+
   const medialInner = `
     <path d="${MEDIAL_SILHOUETTE}" fill="url(#skinGradM)" stroke="#a97a4e" stroke-width="1.5"/>
     <path d="${FEMORAL_RIBBON}" fill="${corFemoral}" opacity="0.85"/>
     ${magnaSegsSvg}
     <circle cx="150" cy="48" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
     ${perfMarker}
+    ${jsfDiamSvg}${magnaCoxaSvg}${magnaPernaSvg}${magnaTornozeloSvg}${magnaRefluxoSvg}
   `;
   const posteriorInner = `
     <path d="${POSTERIOR_SILHOUETTE}" fill="url(#skinGradP)" stroke="#a97a4e" stroke-width="1.5"/>
@@ -102,6 +180,7 @@ function montarSvgLado(dadosLado) {
     <path d="${TIBIAIS_RIBBON}" fill="${corTibiais}" opacity="0.85"/>
     ${parvaSegsSvg}
     <circle cx="150" cy="316" r="7" fill="${jspFill}" stroke="${jspStroke}" stroke-width="1.5"/>
+    ${jspDiamSvg}${parvaProximalSvg}${parvaDistalSvg}${parvaRefluxoSvg}
   `;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 680" width="640" height="680">
@@ -170,6 +249,8 @@ export default function EsquemaMapeamentoModal({
   parva,
   perfurantes,
   profundas,
+  jsfDiametro,
+  jspDiametro,
 }) {
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
@@ -186,10 +267,12 @@ export default function EsquemaMapeamentoModal({
         perfurante: perfurantes?.[ladoAtual],
         profundas: profundas?.[ladoAtual],
         mirrored: ladoAtual === "Esquerdo",
+        jsfDiametro: jsfDiametro?.[ladoAtual],
+        jspDiametro: jspDiametro?.[ladoAtual],
       });
     });
     return out;
-  }, [lado, superficiais, magna, parva, perfurantes, profundas]);
+  }, [lado, superficiais, magna, parva, perfurantes, profundas, jsfDiametro, jspDiametro]);
 
   if (!aberto) return null;
 
