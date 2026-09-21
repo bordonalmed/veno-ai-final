@@ -101,6 +101,7 @@ const lados = ["Direito", "Esquerdo", "Ambos"];
 const legendaCampos = {
   "JSF": "JSF",
   "JSP": "JSP",
+  "joelho": "joelho",
   "cm_acima_joelho": "cm acima do joelho",
   "cm_abaixo_joelho": "cm abaixo do joelho",
   "cm_acima_tornozelo": "cm acima do tornozelo",
@@ -506,6 +507,7 @@ function SafenaMagnaExtra({ status, valores, onChange }) {
           >
             <option value="">Selecione</option>
             <option value="JSF">JSF</option>
+            <option value="joelho">joelho</option>
             <option value="cm_acima_joelho">cm acima do joelho</option>
             <option value="cm_abaixo_joelho">cm abaixo do joelho</option>
             <option value="cm_acima_tornozelo">cm acima do tornozelo</option>
@@ -543,6 +545,7 @@ function SafenaMagnaExtra({ status, valores, onChange }) {
             }}
           >
             <option value="">Selecione</option>
+            <option value="joelho">joelho</option>
             <option value="cm_acima_joelho">cm acima do joelho</option>
             <option value="cm_abaixo_joelho">cm abaixo do joelho</option>
             <option value="cm_acima_tornozelo">cm acima do tornozelo</option>
@@ -656,6 +659,7 @@ function SafenaParvaExtra({ status, valores, onChange }) {
           >
             <option value="">Selecione</option>
             <option value="JSP">JSP</option>
+            <option value="joelho">joelho</option>
             <option value="cm_abaixo_joelho">cm abaixo do joelho</option>
           </select>
           {valores.inicio === "cm_abaixo_joelho" && (
@@ -691,6 +695,7 @@ function SafenaParvaExtra({ status, valores, onChange }) {
             }}
           >
             <option value="">Selecione</option>
+            <option value="joelho">joelho</option>
             <option value="cm_acima_tornozelo">cm acima do tornozelo</option>
             <option value="tornozelo">tornozelo</option>
           </select>

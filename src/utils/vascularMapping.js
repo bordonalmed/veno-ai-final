@@ -83,6 +83,7 @@ export function pathFromTriples(triples) {
 export function yFromField(field, val, landmark) {
   const v = parseFloat(val) || 0;
   if (field === landmark.topField) return landmark.top;
+  if (field === "joelho") return landmark.joelho;
   if (field === "tornozelo") return landmark.tornozelo;
   if (field === "cm_acima_joelho") return clamp(landmark.joelho - v * PX_PER_CM, landmark.top, landmark.tornozelo);
   if (field === "cm_abaixo_joelho") return clamp(landmark.joelho + v * PX_PER_CM, landmark.top, landmark.tornozelo);
@@ -93,6 +94,7 @@ export function yFromField(field, val, landmark) {
 const LEGENDA_SEGMENTO = {
   JSF: "JSF",
   JSP: "JSP",
+  joelho: "joelho",
   cm_acima_joelho: "cm acima do joelho",
   cm_abaixo_joelho: "cm abaixo do joelho",
   cm_acima_tornozelo: "cm acima do tornozelo",
