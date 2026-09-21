@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
 import ExamHeader from "../components/ExamHeader";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
-import EsquemaMapeamentoModal from "../components/EsquemaMapeamentoModal";
+import EsquemaMapeamentoModal, { adicionarEsquemaAoPdf } from "../components/EsquemaMapeamentoModal";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIVenoso";
@@ -916,6 +916,7 @@ function MMIIVenoso() {
   });
   const [anexos, setAnexos] = useState([]);
   const [mostrarEsquema, setMostrarEsquema] = useState(false);
+  const [incluirEsquemaPdf, setIncluirEsquemaPdf] = useState(false);
 
   // Hook para detectar mudanças no tamanho da tela
   useEffect(() => {
@@ -1152,16 +1153,7 @@ function MMIIVenoso() {
         alignItems: 'center', 
         gap: 'clamp(12px, 2vw, 16px)' 
       }}>
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <button
-            type="button"
-            onClick={() => setMostrarEsquema(true)}
-            style={{ ...buttonStyle, background: "#6f42c1" }}
-          >
-            🩺 Gerar Esquema de Mapeamento
-          </button>
-        </div>
-        <div style={{ 
+        <div style={{
           width: '100%', 
           display: 'flex', 
           gap: 'clamp(12px, 2vw, 20px)',
@@ -1216,24 +1208,36 @@ function MMIIVenoso() {
                   maxHeight: "75vh",
                   overflowY: "auto"
                 }}>
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
-                    <button style={{ 
-                      ...buttonStyle, 
-                      background: "#0eb8d0", 
-                      color: "#fff", 
-                      fontSize: 'clamp(10px, 2vw, 12px)', 
-                      padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 'clamp(10px, 2vw, 12px)', color: "#333", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={incluirEsquemaPdf}
+                        onChange={e => setIncluirEsquemaPdf(e.target.checked)}
+                      />
+                      Incluir esquema de mapeamento no PDF
+                    </label>
+                    <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
+                    <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarEsquema(true)}>
+                      🩺 Esquema de Mapeamento
+                    </button>
+                    <button style={{
+                      ...buttonStyle,
+                      background: "#0eb8d0",
+                      color: "#fff",
+                      fontSize: 'clamp(10px, 2vw, 12px)',
+                      padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)"
                     }} onClick={() => {
                       const blob = new Blob([laudoTexto], { type: "text/plain;charset=utf-8" });
                       saveAs(blob, `Laudo_${nome}_${data}.txt`);
                     }}>Salvar TXT</button>
-                    <button style={{ 
-                      ...buttonStyle, 
-                      background: "#0eb8d0", 
-                      color: "#fff", 
-                      fontSize: 'clamp(10px, 2vw, 12px)', 
-                      padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-                    }} onClick={() => {
+                    <button style={{
+                      ...buttonStyle,
+                      background: "#0eb8d0",
+                      color: "#fff",
+                      fontSize: 'clamp(10px, 2vw, 12px)',
+                      padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)"
+                    }} onClick={async () => {
                       // Buscar dados do localStorage
                       const nomeMedico = localStorage.getItem("nomeMedico") || "";
                       const crm = localStorage.getItem("crm") || "";
@@ -1469,7 +1473,24 @@ function MMIIVenoso() {
                           console.error('Erro ao adicionar anexo ao PDF:', e);
                         }
                       });
-                      
+
+                      if (incluirEsquemaPdf) {
+                        try {
+                          await adicionarEsquemaAoPdf(doc, {
+                            ladosParaMostrar: lados,
+                            superficiais,
+                            magna,
+                            parva,
+                            perfurantes,
+                            profundas,
+                            jsfDiametro,
+                            jspDiametro,
+                          });
+                        } catch (e) {
+                          console.error('Erro ao adicionar esquema de mapeamento ao PDF:', e);
+                        }
+                      }
+
                       doc.save(`Laudo_${nome}_${data}.pdf`);
                       // Limpar formulário para novo laudo
                       setNome("");
@@ -1501,13 +1522,15 @@ function MMIIVenoso() {
                       setJsfDiametro({ Direito: "", Esquerdo: "" });
                       setJspDiametro({ Direito: "", Esquerdo: "" });
                       setAnexos([]);
+                      setIncluirEsquemaPdf(false);
                       setErro("");
                     }}>Salvar PDF</button>
+                    </div>
                   </div>
                   {laudoTexto}
                 </div>
               )}
-              
+
               {/* Caixa de Anexos Compacta - aparece apenas quando o preview está visível */}
               {laudoTexto && (
                 <div style={{
@@ -1745,29 +1768,43 @@ function MMIIVenoso() {
           maxHeight: "75vh",
           overflowY: "auto"
         }}>
-          <div style={{ 
-            display: "flex", 
-            justifyContent: "flex-end", 
-            gap: 'clamp(6px, 1.5vw, 8px)', 
-            marginBottom: 'clamp(6px, 1.5vw, 8px)' 
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 'clamp(6px, 1.5vw, 8px)',
+            marginBottom: 'clamp(6px, 1.5vw, 8px)'
           }}>
-            <button style={{ 
-              ...buttonStyle, 
-              background: "#0eb8d0", 
-              color: "#fff", 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
+            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 'clamp(10px, 2vw, 12px)', color: "#333", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={incluirEsquemaPdf}
+                onChange={e => setIncluirEsquemaPdf(e.target.checked)}
+              />
+              Incluir esquema de mapeamento no PDF
+            </label>
+            <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
+            <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarEsquema(true)}>
+              🩺 Esquema de Mapeamento
+            </button>
+            <button style={{
+              ...buttonStyle,
+              background: "#0eb8d0",
+              color: "#fff",
+              fontSize: 'clamp(10px, 2vw, 12px)',
+              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)"
             }} onClick={() => {
               const blob = new Blob([laudoTexto], { type: "text/plain;charset=utf-8" });
               saveAs(blob, `Laudo_${nome}_${data}.txt`);
             }}>Salvar TXT</button>
-            <button style={{ 
-              ...buttonStyle, 
-              background: "#0eb8d0", 
-              color: "#fff", 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-            }} onClick={() => {
+            <button style={{
+              ...buttonStyle,
+              background: "#0eb8d0",
+              color: "#fff",
+              fontSize: 'clamp(10px, 2vw, 12px)',
+              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)"
+            }} onClick={async () => {
               // Buscar dados do localStorage
               const nomeMedico = localStorage.getItem("nomeMedico") || "";
               const crm = localStorage.getItem("crm") || "";
@@ -2003,7 +2040,24 @@ function MMIIVenoso() {
                   console.error('Erro ao adicionar anexo ao PDF:', e);
                 }
               });
-              
+
+              if (incluirEsquemaPdf) {
+                try {
+                  await adicionarEsquemaAoPdf(doc, {
+                    ladosParaMostrar: lados,
+                    superficiais,
+                    magna,
+                    parva,
+                    perfurantes,
+                    profundas,
+                    jsfDiametro,
+                    jspDiametro,
+                  });
+                } catch (e) {
+                  console.error('Erro ao adicionar esquema de mapeamento ao PDF:', e);
+                }
+              }
+
               doc.save(`Laudo_${nome}_${data}.pdf`);
               // Limpar formulário para novo laudo
               setNome("");
@@ -2035,13 +2089,15 @@ function MMIIVenoso() {
               setJsfDiametro({ Direito: "", Esquerdo: "" });
               setJspDiametro({ Direito: "", Esquerdo: "" });
               setAnexos([]);
+              setIncluirEsquemaPdf(false);
               setErro("");
             }}>Salvar PDF</button>
+            </div>
           </div>
           {laudoTexto}
         </div>
       )}
-      
+
       {/* Caixa de Anexos Compacta para layout "Ambos" - aparece apenas quando o preview está visível */}
       {laudoTexto && lado === "Ambos" && (
         <div style={{

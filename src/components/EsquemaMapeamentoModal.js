@@ -238,6 +238,83 @@ function svgParaImagemDataUrl(svgString, largura, altura) {
   });
 }
 
+// Anexa o esquema de mapeamento (uma página A4 por lado) diretamente a um jsPDF
+// já existente. Usado tanto pelo modal (Baixar PDF isolado) quanto pelo laudo
+// principal (quando o usuário marca "Incluir esquema de mapeamento no PDF").
+export async function adicionarEsquemaAoPdf(doc, {
+  ladosParaMostrar,
+  superficiais,
+  magna,
+  parva,
+  perfurantes,
+  profundas,
+  jsfDiametro,
+  jspDiametro,
+}) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  for (const ladoAtual of ladosParaMostrar) {
+    const { svg, conclusoes } = montarSvgLado({
+      magnaStatus: superficiais?.[ladoAtual]?.["Safena Magna"],
+      magnaExtra: magna?.[ladoAtual] || {},
+      parvaStatus: superficiais?.[ladoAtual]?.["Safena Parva"],
+      parvaExtra: parva?.[ladoAtual] || {},
+      perfurante: perfurantes?.[ladoAtual],
+      profundas: profundas?.[ladoAtual],
+      mirrored: ladoAtual === "Esquerdo",
+      jsfDiametro: jsfDiametro?.[ladoAtual],
+      jspDiametro: jspDiametro?.[ladoAtual],
+    });
+    const dataUrl = await svgParaImagemDataUrl(svg, 640, 680);
+
+    doc.addPage();
+    let y = 16;
+    doc.setFontSize(13);
+    doc.setFont(undefined, "bold");
+    doc.text(`Esquema de Mapeamento Venoso — Membro Inferior ${ladoAtual}`, pageWidth / 2, y, { align: "center" });
+    y += 8;
+    doc.setFont(undefined, "normal");
+
+    const imgWidthMm = 170;
+    const imgHeightMm = imgWidthMm * (680 / 640);
+    const x = (pageWidth - imgWidthMm) / 2;
+    doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
+    y += imgHeightMm + 6;
+
+    doc.setFontSize(8.5);
+    const legenda = [
+      ["Veia suficiente", CORES["pérvia e competente"]],
+      ["Veia insuficiente", CORES["pérvia e incompetente"]],
+      ["Trombose", CORES["não compressível e sem fluxo (trombose)"]],
+      ["Recanalização parcial", CORES["recanalização parcial"]],
+      ["Veia ausente", CORES["ausente"]],
+    ];
+    let lx = (pageWidth - 150) / 2;
+    legenda.forEach(([label, cor]) => {
+      const rgb = hexParaRgb(cor);
+      doc.setFillColor(rgb.r, rgb.g, rgb.b);
+      doc.rect(lx, y - 2.6, 4, 2, "F");
+      doc.setTextColor(90, 100, 110);
+      doc.text(label, lx + 6, y);
+      lx += 6 + doc.getTextWidth(label) + 8;
+    });
+    doc.setTextColor(0, 0, 0);
+    y += 8;
+
+    if (conclusoes.length) {
+      doc.setFontSize(9.5);
+      doc.setFont(undefined, "bold");
+      doc.text("Achados do mapeamento:", 20, y);
+      y += 5;
+      doc.setFont(undefined, "normal");
+      conclusoes.forEach((c) => {
+        doc.text(`• ${c}`, 22, y);
+        y += 5;
+      });
+    }
+  }
+}
+
 export default function EsquemaMapeamentoModal({
   aberto,
   onFechar,
