@@ -692,10 +692,9 @@ function SafenaParvaExtra({ status, valores, onChange }) {
               width: 'clamp(100px, 20vw, 120px)', 
               fontSize: 'clamp(10px, 2vw, 12px)', 
               padding: 'clamp(1px, 0.5vw, 2px)' 
-            }}
+            }} 
           >
             <option value="">Selecione</option>
-            <option value="joelho">joelho</option>
             <option value="cm_acima_tornozelo">cm acima do tornozelo</option>
             <option value="tornozelo">tornozelo</option>
           </select>
