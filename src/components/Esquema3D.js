@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { LANDMARK_MAGNA, LANDMARK_PARVA, CORES, piorCorProfundo } from "../utils/vascularMapping";
 import {
   pxToY,
-  legRadiusAtPx,
+  legCrossSectionXZ,
   buildVeinCurvePoints,
   pontoNaPerna,
   segmentosPorPx,
@@ -54,14 +54,62 @@ const terminoParvaOptions = [
   ["tornozelo", "tornozelo"],
 ];
 
-function LegMesh() {
-  const geometry = useMemo(() => {
-    const pts = [];
-    for (let px = LEG_PX_RANGE[0]; px <= LEG_PX_RANGE[1]; px += 6) {
-      pts.push(new THREE.Vector2(Math.max(0.02, legRadiusAtPx(px)), pxToY(px)));
+// Malha da perna com contorno anatômico de verdade: cada "anel" segue
+// legCrossSectionXZ (que já tem largura/profundidade próprias e os relevos
+// de batata da perna, joelho, canela, maléolos e calcanhar), em vez do
+// círculo perfeito de um lathe comum.
+function buildLegGeometry() {
+  const segments = 56;
+  const pxs = [];
+  for (let px = LEG_PX_RANGE[0]; px <= LEG_PX_RANGE[1]; px += 4) pxs.push(px);
+  const ringCount = pxs.length;
+  const vertsPerRing = segments + 1;
+
+  const positions = [];
+  for (let i = 0; i < ringCount; i++) {
+    const px = pxs[i];
+    const y = pxToY(px);
+    for (let j = 0; j <= segments; j++) {
+      const thetaDeg = (j / segments) * 360;
+      const [x, z] = legCrossSectionXZ(px, thetaDeg);
+      positions.push(x, y, z);
     }
-    return new THREE.LatheGeometry(pts, 40);
-  }, []);
+  }
+
+  const indices = [];
+  for (let i = 0; i < ringCount - 1; i++) {
+    for (let j = 0; j < segments; j++) {
+      const a = i * vertsPerRing + j;
+      const b = i * vertsPerRing + j + 1;
+      const c = (i + 1) * vertsPerRing + j;
+      const d = (i + 1) * vertsPerRing + j + 1;
+      indices.push(a, b, c);
+      indices.push(b, d, c);
+    }
+  }
+
+  // Tampas (coxa cortada em cima, ponta do pé embaixo) pra não ficar oco.
+  const topCenter = positions.length / 3;
+  positions.push(0, pxToY(pxs[0]), 0);
+  for (let j = 0; j < segments; j++) {
+    indices.push(topCenter, j, j + 1);
+  }
+  const bottomCenter = positions.length / 3;
+  const lastRingStart = (ringCount - 1) * vertsPerRing;
+  positions.push(0, pxToY(pxs[ringCount - 1]), 0);
+  for (let j = 0; j < segments; j++) {
+    indices.push(bottomCenter, lastRingStart + j + 1, lastRingStart + j);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function LegMesh() {
+  const geometry = useMemo(() => buildLegGeometry(), []);
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
