@@ -67,7 +67,7 @@ function LegMesh() {
       <meshStandardMaterial
         color="#e8b28a"
         transparent
-        opacity={0.28}
+        opacity={0.22}
         roughness={0.85}
         side={THREE.DoubleSide}
         depthWrite={false}

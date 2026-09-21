@@ -60,8 +60,8 @@ export const VEIN_ANGLE = {
 export const VEIN_DEPTH = {
   magna: 0.97,
   parva: 0.95,
-  femoral: 0.5,
-  calf: 0.55,
+  femoral: 0.38,
+  calf: 0.42,
 };
 
 // Retorna uma lista de pontos [x,y,z] (array simples, sem depender de THREE)
