@@ -145,8 +145,11 @@ function montarSvgLado(dadosLado) {
     .map((perf, idx) => {
       const pos = posicaoPerfurante(perf.segmento, perf.valor);
       if (!pos) return "";
-      const jitter = idx * 9; // evita sobrepor marcadores quando caem no mesmo ponto
-      return `<circle cx="${(pos.x - jitter).toFixed(2)}" cy="${pos.y.toFixed(2)}" r="5.5" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3"/>`;
+      // Evita sobrepor marcadores quando caem no mesmo ponto, empilhando na
+      // VERTICAL (um deslocamento horizontal maior jogava os marcadores
+      // extras pra fora do desenho perto do joelho, onde a perna afunila).
+      const jitter = idx * 12;
+      return `<circle cx="${pos.x.toFixed(2)}" cy="${(pos.y + jitter).toFixed(2)}" r="5.5" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3"/>`;
     })
     .join("");
 

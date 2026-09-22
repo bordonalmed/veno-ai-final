@@ -960,7 +960,7 @@ function MMIIVenoso() {
             onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
             style={{ ...buttonStyle, background: "#3d5a80" }}
           >
-            🖱️ Preencher Clicando no Mapa
+            🖱️ Mapeamento Interativo
           </button>
         </div>
       )}
@@ -1525,6 +1525,12 @@ function MMIIVenoso() {
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
         onAbrirMapeamentoVisual={() => setMostrarEsquema(true)}
+        anexos={anexos}
+        onFileUpload={handleFileUpload}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onRemoveAnexo={removeAnexo}
+        formatFileSize={formatFileSize}
       />
       <style>{`
         @keyframes logoGlow {

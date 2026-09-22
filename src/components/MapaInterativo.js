@@ -148,6 +148,7 @@ export default function MapaInterativo({
   onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
   onJsfDiametro, onJspDiametro, onVarizes,
   onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
+  anexos = [], onFileUpload, onDrop, onDragOver, onRemoveAnexo, formatFileSize,
 }) {
   const [selecionado, setSelecionado] = useState(null);
 
@@ -198,12 +199,16 @@ export default function MapaInterativo({
   const jspCor = CORES[s["JSP"]] || CORES["pérvia e competente"];
 
   // ---- Marcadores de perfurante insuficiente (vista medial) ----
+  // Quando há mais de um perfurante na mesma altura, empilha os marcadores
+  // na VERTICAL (não na horizontal): perto do joelho a perna afunila e um
+  // deslocamento lateral maior jogava os marcadores extras pra fora do
+  // desenho.
   const perfMarkers = perfs
     .filter((perf) => perf && perf.status === "pérvia e incompetente" && perf.segmento)
     .map((perf, idx) => {
       const pos = posicaoPerfurante(perf.segmento, perf.valor);
       if (!pos) return null;
-      return { x: pos.x - idx * 9, y: pos.y };
+      return { x: pos.x, y: pos.y + idx * 12 };
     })
     .filter(Boolean);
 
@@ -458,6 +463,40 @@ export default function MapaInterativo({
             onClick={() => onPerfurantes(l, [...perfs, { status: "pérvia e competente", segmento: "", valor: "" }])}
             style={{ padding: "4px 10px", borderRadius: 4, border: "1.5px solid #0eb8d0", background: "transparent", color: "#0eb8d0", fontWeight: 600, fontSize: 12, cursor: "pointer" }}
           >+ Adicionar perfurante</button>
+        </div>
+
+        {/* Anexos: mesmas imagens (PNG/JPG) que o formulário principal anexa ao PDF */}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>📎 Anexos:</div>
+            <span style={{ fontSize: 11, color: "#5c6b78" }}>{anexos.length} arquivo(s)</span>
+          </div>
+          <div
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onClick={() => document.getElementById('fileInputMapa').click()}
+            style={{
+              border: "1px dashed #0eb8d0", borderRadius: 6, padding: 10, textAlign: "center",
+              background: "rgba(14,184,208,0.05)", cursor: "pointer", fontSize: 12, color: "#0eb8d0",
+            }}
+          >
+            <input id="fileInputMapa" type="file" accept=".png,.jpg,.jpeg" multiple onChange={onFileUpload} style={{ display: "none" }} />
+            Clique ou arraste para anexar (PNG/JPG até 15MB)
+          </div>
+          {anexos.length > 0 && (
+            <div style={{ maxHeight: 120, overflowY: "auto", border: "1px solid #dfe6ec", borderRadius: 6, background: "#f7f9fa", padding: 6, marginTop: 6 }}>
+              {anexos.map((anexo) => (
+                <div key={anexo.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: 4, background: "#fff", borderRadius: 4, marginBottom: 4, border: "1px solid #dfe6ec" }}>
+                  <img src={anexo.thumbnail} alt={anexo.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 3, border: "1px solid #dfe6ec" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{anexo.name}</div>
+                    <div style={{ fontSize: 10, color: "#5c6b78" }}>{formatFileSize(anexo.size)}</div>
+                  </div>
+                  <button onClick={() => onRemoveAnexo(anexo.id)} style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer" }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Laudo ao vivo */}

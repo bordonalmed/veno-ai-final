@@ -254,13 +254,17 @@ const PERF_SEGMENTO_FIELD = {
 
 // Posiciona o marcador da veia perfurante na vista medial, usando a mesma
 // escala anatomica da Safena Magna (o campo "segmento" do formulario ja usa
-// os mesmos textos: "cm acima do joelho" etc).
+// os mesmos textos: "cm acima do joelho" etc). O marcador fica um pouco a
+// esquerda (medial) da Safena Magna. Perto do joelho (y~320) a silhueta da
+// perna afunila e sobra so ~10px entre a Safena Magna e o contorno — um
+// deslocamento maior (usado antes) fazia o marcador (raio 5.5) sair do
+// desenho da perna ali. 3px cabe com folga em qualquer altura da perna.
 export function posicaoPerfurante(segmentoLabel, valor) {
   const field = PERF_SEGMENTO_FIELD[segmentoLabel];
   if (!field) return null;
   const y = yFromField(field, valor || 0, LANDMARK_MAGNA);
   const [x] = interpAt(VSM_SPINE, VSM_HALF, y);
-  return { x: x - 22, y };
+  return { x: x - 3, y };
 }
 
 // ---- Sistema venoso profundo (Femorais, Poplítea, Tibiais, Gastrocnêmicas, Soleares) ----
