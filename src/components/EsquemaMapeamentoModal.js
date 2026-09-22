@@ -440,7 +440,7 @@ export default function EsquemaMapeamentoModal({
         position: "fixed",
         inset: 0,
         background: "rgba(8, 14, 22, 0.72)",
-        zIndex: 1000,
+        zIndex: 2100, // acima do Mapa Interativo (zIndex 2000) — pode ser aberto por cima dele
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",

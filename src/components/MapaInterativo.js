@@ -37,6 +37,13 @@ const VIEW_TY = 16;
 const VIEW_W = COL_WIDTH * 2;
 const VIEW_H = 660;
 
+function mapaBotaoStyle(background) {
+  return {
+    padding: "6px 14px", borderRadius: 6, border: "none", background, color: "#fff",
+    cursor: "pointer", fontWeight: 600, fontSize: 12,
+  };
+}
+
 function hitPath(d, onClick, key, selecionado, largura = 10) {
   const ativo = selecionado === key;
   return (
@@ -140,6 +147,7 @@ export default function MapaInterativo({
   jsfDiametro, jspDiametro,
   onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
   onJsfDiametro, onJspDiametro, onVarizes,
+  onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
 }) {
   const [selecionado, setSelecionado] = useState(null);
 
@@ -461,6 +469,19 @@ export default function MapaInterativo({
           }}>
             {montarLaudo({ nome, data, lado: l, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes })}
           </pre>
+        </div>
+
+        {/* Salvar direto daqui, sem precisar fechar o mapa e voltar ao
+            formulário. Salva o exame completo (os dois lados, se "Ambos"),
+            não só o lado ativo no mapa. */}
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <button onClick={onAbrirMapeamentoVisual} style={mapaBotaoStyle("#6f42c1")}>🩺 Mapeamento Visual</button>
+          <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
+          <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>
+          <button onClick={() => {
+            if (!nome || !data) { alert("Preencha nome e data no formulário antes de salvar o exame!"); return; }
+            onSalvarExame();
+          }} style={mapaBotaoStyle("#28a745")}>Salvar Exame</button>
         </div>
       </div>
     </div>
