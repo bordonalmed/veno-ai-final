@@ -39,6 +39,35 @@ export const perfurantesSegmentoOptions = [
   "cm abaixo do joelho",
   "cm acima do tornozelo",
 ];
+export const varizesTipoOptions = [
+  "Varizes Reticulares",
+  "Varizes Superficiais",
+  "Microvarizes",
+];
+export const varizesRegioes = ["coxa", "perna", "tornozelo", "pe"];
+export const varizesRegiaoLabel = { coxa: "Coxa", perna: "Perna", tornozelo: "Tornozelo", pe: "Pé" };
+
+// Agrupa as regiões por tipo de variz (cada região guarda seu próprio tipo,
+// independente das outras) — usado tanto no laudo quanto na CONCLUSÃO.
+// Aceita também o formato antigo ({ tipo, localizacao: [] }), tratando-o como
+// um único tipo aplicado a todas as localizações marcadas.
+function agruparVarizesPorTipo(varizesLado) {
+  if (!varizesLado) return [];
+  const porTipo = {};
+  if (varizesLado.tipo) {
+    // formato antigo (compatibilidade)
+    const regioesAntigas = (varizesLado.localizacao || []).map(loc => loc.charAt(0).toUpperCase() + loc.slice(1));
+    if (regioesAntigas.length) porTipo[varizesLado.tipo] = regioesAntigas;
+  }
+  varizesRegioes.forEach(regiao => {
+    const tipo = varizesLado[regiao];
+    if (tipo) {
+      if (!porTipo[tipo]) porTipo[tipo] = [];
+      porTipo[tipo].push(varizesRegiaoLabel[regiao]);
+    }
+  });
+  return Object.entries(porTipo).map(([tipo, regioes]) => `${tipo} em ${regioes.join(', ')}`);
+}
 export const legendaCampos = {
   "JSF": "JSF",
   "JSP": "JSP",
@@ -172,9 +201,7 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
     const nIncompetentes = perfurantes.filter(p => p.status === "pérvia e incompetente").length;
     conclusoes.push(nIncompetentes > 1 ? "Insuficiência de veias perfurantes" : "Insuficiência de veia perfurante");
   }
-  if (varizes && varizes.tipo) {
-    conclusoes.push(varizes.tipo + ".");
-  }
+  agruparVarizesPorTipo(varizes).forEach(linha => conclusoes.push(linha + "."));
   if (!conclusoes.length) return "- Ausência de refluxo venoso nos territórios estudados.";
   return "- " + conclusoes.join("\n- ");
 }
@@ -238,14 +265,10 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
     } else {
       linhas.push("- Não especificado");
     }
-    if (varizes && varizes[l] && varizes[l].tipo) {
+    const linhasVarizesLado = agruparVarizesPorTipo(varizes && varizes[l]);
+    if (linhasVarizesLado.length) {
       linhas.push("");
-      let linhaVariz = `${varizes[l].tipo}`;
-      if (varizes[l].localizacao && varizes[l].localizacao.length > 0) {
-        linhaVariz += ` em ${varizes[l].localizacao.map(loc => loc.charAt(0).toUpperCase() + loc.slice(1)).join(', ')}`;
-      }
-      linhaVariz += ".";
-      linhas.push(linhaVariz);
+      linhasVarizesLado.forEach(linha => linhas.push(linha + "."));
       linhas.push("");
     }
     linhas.push("");

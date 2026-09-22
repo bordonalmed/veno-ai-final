@@ -6,6 +6,7 @@ import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
 import EsquemaMapeamentoModal, { adicionarEsquemaAoPdf } from "../components/EsquemaMapeamentoModal";
 import { SafenaMagnaExtra, SafenaParvaExtra } from "../components/SafenaExtraFields";
+import VarizesRegioes from "../components/VarizesRegioes";
 import MapaInterativo from "../components/MapaInterativo";
 import {
   veiasProfundas, veiasSuperficiais, profOptions, supOptions,
@@ -212,7 +213,7 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
           )}
         </div>
       ))}
-      {/* Linha para seleção de varizes */}
+      {/* Varizes: cada região (coxa/perna/tornozelo/pé) tem seu próprio tipo */}
       <div style={{
         marginTop: 'clamp(12px, 2.5vw, 16px)',
         marginBottom: 'clamp(8px, 2vw, 12px)',
@@ -221,43 +222,7 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
       }}>
         Varizes
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(4px, 1vw, 8px)', flexWrap: 'wrap', marginBottom: 'clamp(6px, 1vw, 10px)' }}>
-        {["varizes reticulares", "varizes superficiais", "microvarizes", "nenhuma"].map(tipo => (
-          <label key={tipo} style={{ marginRight: 'clamp(4px, 1vw, 8px)', textTransform: 'capitalize', fontSize: 'clamp(10px, 1.5vw, 12px)' }}>
-            <input
-              type="radio"
-              name={`tipoVariz_${lado}`}
-              value={tipo === "nenhuma" ? "" : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-              checked={varizes.tipo === (tipo === "nenhuma" ? "" : tipo.charAt(0).toUpperCase() + tipo.slice(1))}
-              onChange={e => onVarizes({ ...varizes, tipo: e.target.value, localizacao: e.target.value ? varizes.localizacao : [] })}
-              style={{ marginRight: 4 }}
-            />
-            {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-          </label>
-        ))}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 12px)', flexWrap: 'wrap', marginBottom: 'clamp(6px, 1vw, 10px)' }}>
-        <span style={{ fontWeight: 500, fontSize: 'clamp(11px, 2.2vw, 13px)', marginRight: 8 }}>Localização:</span>
-        {["coxa", "perna", "tornozelo", "pé"].map(loc => (
-          <label key={loc} style={{ marginRight: 'clamp(8px, 2vw, 12px)' }}>
-            <input
-              type="checkbox"
-              name={`localVariz_${lado}_${loc}`}
-              checked={varizes.localizacao.includes(loc)}
-              disabled={!varizes.tipo}
-              onChange={e => {
-                if (e.target.checked) {
-                  onVarizes({ ...varizes, localizacao: [...varizes.localizacao, loc] });
-                } else {
-                  onVarizes({ ...varizes, localizacao: varizes.localizacao.filter(l => l !== loc) });
-                }
-              }}
-              style={{ marginRight: 4 }}
-            />
-            {loc}
-          </label>
-        ))}
-      </div>
+      <VarizesRegioes valores={varizes} onChange={onVarizes} />
       {/* Bloco de veias perfurantes (lista - permite múltiplas por lado) */}
       <div style={{
         marginTop: 'clamp(12px, 2.5vw, 16px)',
@@ -437,8 +402,8 @@ function MMIIVenoso() {
   const [jspDiametro, setJspDiametro] = useState({ Direito: "", Esquerdo: "" });
   const [erro, setErro] = useState("");
   const [varizes, setVarizes] = useState({
-    Direito: { tipo: '', localizacao: [] },
-    Esquerdo: { tipo: '', localizacao: [] }
+    Direito: { coxa: '', perna: '', tornozelo: '', pe: '' },
+    Esquerdo: { coxa: '', perna: '', tornozelo: '', pe: '' }
   });
   const [anexos, setAnexos] = useState([]);
   const [mostrarEsquema, setMostrarEsquema] = useState(false);
@@ -1825,6 +1790,7 @@ function MMIIVenoso() {
         onPerfurantes={(l, val) => setPerfurantes(prev => ({ ...prev, [l]: val }))}
         onJsfDiametro={(l, val) => setJsfDiametro(prev => ({ ...prev, [l]: val }))}
         onJspDiametro={(l, val) => setJspDiametro(prev => ({ ...prev, [l]: val }))}
+        onVarizes={(l, val) => setVarizes(prev => ({ ...prev, [l]: val }))}
       />
       <style>{`
         @keyframes logoGlow {

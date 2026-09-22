@@ -17,6 +17,7 @@ import {
 import { SafenaMagnaExtra, SafenaParvaExtra } from "./SafenaExtraFields";
 import {
   profOptions, supOptions, perfurantesStatusOptions, perfurantesSegmentoOptions,
+  varizesTipoOptions, varizesRegiaoLabel,
   montarLaudo,
 } from "../utils/mmiiVenosoLaudo";
 
@@ -62,6 +63,64 @@ const CALF_DOTS = [
   { key: "Veias Tibiais posteriores", label: "Tp", x: 143, y: 428 },
 ];
 
+// Cores próprias para os "adesivos" de variz (diferentes das cores de status
+// dos vasos, pra não confundir o usuário: variz não é achado de status de
+// veia, é um achado de pele à parte).
+const VARIZ_CORES = {
+  "Varizes Superficiais": "#6f42c1",
+  "Varizes Reticulares": "#2f7dd1",
+  "Microvarizes": "#c0392b",
+};
+
+// Ícone pequeno e distinto por tipo de variz, "colado" na região clicada —
+// sem tipo, mostra um círculo tracejado com "+" (toque pra marcar).
+function VarizIcon({ tipo, cx, cy, ativo }) {
+  const cor = VARIZ_CORES[tipo];
+  if (!tipo) {
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={7} fill="#fff" fillOpacity={0.6} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={ativo ? 2 : 1.2} strokeDasharray="2.5 2" />
+        <line x1={cx - 3} y1={cy} x2={cx + 3} y2={cy} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.2} />
+        <line x1={cx} y1={cy - 3} x2={cx} y2={cy + 3} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.2} />
+      </g>
+    );
+  }
+  if (tipo === "Varizes Superficiais") {
+    // squiggle grosso (traço tortuoso, como uma variz visível)
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={9} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2 : 1.2} />
+        <path d={`M ${cx - 5},${cy + 3} Q ${cx - 2.5},${cy - 4} ${cx},${cy - 1} Q ${cx + 2.5},${cy + 3} ${cx + 5},${cy - 3}`} fill="none" stroke={cor} strokeWidth={2} strokeLinecap="round" />
+      </g>
+    );
+  }
+  if (tipo === "Varizes Reticulares") {
+    // pequena malha/rede (linhas finas cruzadas)
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={9} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2 : 1.2} />
+        <path d={`M ${cx - 5},${cy - 3} L ${cx + 5},${cy - 3} M ${cx - 5},${cy + 3} L ${cx + 5},${cy + 3} M ${cx - 3},${cy - 5} L ${cx - 3},${cy + 5} M ${cx + 3},${cy - 5} L ${cx + 3},${cy + 5}`} stroke={cor} strokeWidth={1} />
+      </g>
+    );
+  }
+  // Microvarizes: pequeno buquê de tracinhos finos
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={9} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2 : 1.2} />
+      <path d={`M ${cx - 4},${cy - 2} l 2.5,1.5 M ${cx + 1.5},${cy - 4} l 1,3 M ${cx - 1},${cy + 1} l 3,2 M ${cx + 2},${cy + 2} l 2,-1`} stroke={cor} strokeWidth={1.3} strokeLinecap="round" />
+    </g>
+  );
+}
+
+// Posições fixas dos 3 marcadores de variz (coxa/perna/tornozelo), colocados
+// nos espaços livres de cada vista (checados contra o contorno real da
+// perna e contra os vasos já desenhados ali perto, com folga).
+const VARIZ_SPOTS = [
+  { regiao: "coxa", view: "medial", x: 121, y: 150 },
+  { regiao: "perna", view: "medial", x: 127, y: 420 },
+  { regiao: "tornozelo", view: "posterior", x: 144, y: 540 },
+];
+
 const PROFUNDA_LABELS = {
   "Veia Femoral Comum": "Veia Femoral Comum",
   "Veia Femoral Superficial": "Veia Femoral Superficial",
@@ -80,7 +139,7 @@ export default function MapaInterativo({
   profundas, superficiais, magna, parva, perfurantes, observacoes, varizes,
   jsfDiametro, jspDiametro,
   onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
-  onJsfDiametro, onJspDiametro,
+  onJsfDiametro, onJspDiametro, onVarizes,
 }) {
   const [selecionado, setSelecionado] = useState(null);
 
@@ -92,6 +151,7 @@ export default function MapaInterativo({
   const m = magna?.[l] || {};
   const pv = parva?.[l] || {};
   const perfs = Array.isArray(perfurantes?.[l]) ? perfurantes[l] : [];
+  const vz = varizes?.[l] || {};
 
   function selecionar(tipo, key) {
     setSelecionado({ tipo, key });
@@ -194,6 +254,15 @@ export default function MapaInterativo({
                 {perfMarkers.map((mk, i) => (
                   <circle key={i} cx={mk.x} cy={mk.y} r={5.5} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} />
                 ))}
+                {VARIZ_SPOTS.filter((spot) => spot.view === "medial").map((spot) => {
+                  const chave = `variz:${spot.regiao}`;
+                  const ativo = chaveAtiva === chave;
+                  return (
+                    <g key={spot.regiao} style={{ cursor: "pointer" }} onClick={() => selecionar("variz", spot.regiao)}>
+                      <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
+                    </g>
+                  );
+                })}
               </g>
               <text x={mx(70)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>JSF</text>
               <text x={mx(170)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>Femoral</text>
@@ -221,6 +290,15 @@ export default function MapaInterativo({
                     </g>
                   );
                 })}
+                {VARIZ_SPOTS.filter((spot) => spot.view === "posterior").map((spot) => {
+                  const chave = `variz:${spot.regiao}`;
+                  const ativo = chaveAtiva === chave;
+                  return (
+                    <g key={spot.regiao} style={{ cursor: "pointer" }} onClick={() => selecionar("variz", spot.regiao)}>
+                      <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
+                    </g>
+                  );
+                })}
               </g>
               <text x={mx(70)} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>JSP</text>
               <text x={mx(165)} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>V. Poplítea</text>
@@ -237,6 +315,12 @@ export default function MapaInterativo({
           <span>🟠 recanalização parcial</span>
           <span>⚪ ausente</span>
           <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
+          <span>Varizes (toque nos círculos tracejados na coxa/perna/tornozelo):</span>
+          <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>〰️ superficiais</span>
+          <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>▦ reticulares</span>
+          <span style={{ color: VARIZ_CORES["Microvarizes"] }}>✦ microvarizes</span>
         </div>
 
         {/* Painel contextual do vaso selecionado */}
@@ -302,6 +386,19 @@ export default function MapaInterativo({
                 </select>
               </div>
               <SafenaParvaExtra status={s["Safena Parva"]} valores={pv} onChange={(val) => onParva(l, val)} />
+            </div>
+          )}
+          {selecionado?.tipo === "variz" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <strong style={{ fontSize: 13 }}>Varizes — {varizesRegiaoLabel[selecionado.key]}:</strong>
+              <select
+                value={vz[selecionado.key] || ""}
+                onChange={(e) => onVarizes(l, { ...vz, [selecionado.key]: e.target.value })}
+                style={{ padding: 4, borderRadius: 4, fontSize: 13 }}
+              >
+                <option value="">Nenhuma</option>
+                {varizesTipoOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
             </div>
           )}
         </div>
