@@ -303,79 +303,118 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
           </label>
         ))}
       </div>
-      {/* Bloco de veias perfurantes */}
+      {/* Bloco de veias perfurantes (lista - permite múltiplas por lado) */}
       <div style={{
-        marginTop: 'clamp(12px, 2.5vw, 16px)', 
-        fontWeight: 700, 
+        marginTop: 'clamp(12px, 2.5vw, 16px)',
+        fontWeight: 700,
         fontSize: 'clamp(12px, 2.5vw, 14px)'
       }}>Veias Perfurantes ({lado}):</div>
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 'clamp(6px, 1.5vw, 8px)', 
-        marginBottom: 'clamp(3px, 1vw, 4px)', 
-        flexWrap: 'wrap' 
-      }}>
-        <label style={{ 
-          minWidth: 'clamp(120px, 20vw, 160px)', 
-          fontSize: 'clamp(11px, 2.2vw, 13px)' 
-        }}>Veias Perfurantes:</label>
-        <select
-          value={perfurantes.status}
-          onChange={e => onPerfurantes({ ...perfurantes, status: e.target.value })}
-          style={{
-            flex: 1, 
-            minWidth: 'clamp(120px, 25vw, 150px)', 
-            maxWidth: 'clamp(300px, 40vw, 400px)', 
-            padding: 'clamp(3px, 1vw, 4px)', 
-            borderRadius: 'clamp(3px, 1vw, 4px)', 
-            fontSize: 'clamp(11px, 2.2vw, 13px)'
-          }}
-        >
-          {perfurantesStatusOptions.map(opt => <option key={opt}>{opt}</option>)}
-        </select>
-      </div>
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 'clamp(6px, 1.5vw, 8px)', 
-        marginBottom: 'clamp(3px, 1vw, 4px)', 
-        flexWrap: 'wrap', 
-        marginLeft: 'clamp(8px, 2vw, 12px)' 
-      }}>
-        <select
-          value={perfurantes.segmento}
-          onChange={e => onPerfurantes({ ...perfurantes, segmento: e.target.value, valor: "" })}
-          style={{ 
-            minWidth: 'clamp(120px, 25vw, 150px)', 
-            maxWidth: 'clamp(180px, 30vw, 220px)', 
-            padding: 'clamp(3px, 1vw, 4px)', 
-            borderRadius: 'clamp(3px, 1vw, 4px)', 
-            fontSize: 'clamp(11px, 2.2vw, 13px)' 
-          }}
-        >
-          <option value="">Selecione o segmento</option>
-          {perfurantesSegmentoOptions.map(opt => <option key={opt}>{opt}</option>)}
-        </select>
-        {perfurantes.segmento && (
-          <input
-            type="number"
-            min={0}
-            step={0.1}
-            value={perfurantes.valor}
-            onChange={e => onPerfurantes({ ...perfurantes, valor: e.target.value })}
-            placeholder="cm"
-            style={{ 
-              width: 'clamp(50px, 10vw, 60px)', 
-              marginLeft: 'clamp(3px, 1vw, 4px)', 
-              borderRadius: 'clamp(3px, 1vw, 4px)', 
-              padding: 'clamp(3px, 1vw, 4px)', 
-              border: '1.5px solid #0eb8d0', 
-              fontSize: 'clamp(11px, 2.2vw, 13px)' 
-            }}
-          />
-        )}
-      </div>
+      {perfurantes.map((perf, idx) => (
+        <div key={idx} style={{
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: 'clamp(4px, 1vw, 6px)',
+          padding: 'clamp(6px, 1.5vw, 8px)',
+          marginBottom: 'clamp(6px, 1.5vw, 8px)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'clamp(6px, 1.5vw, 8px)',
+            marginBottom: 'clamp(3px, 1vw, 4px)',
+            flexWrap: 'wrap'
+          }}>
+            <label style={{
+              minWidth: 'clamp(120px, 20vw, 160px)',
+              fontSize: 'clamp(11px, 2.2vw, 13px)'
+            }}>Perfurante {idx + 1}:</label>
+            <select
+              value={perf.status}
+              onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, status: e.target.value } : p))}
+              style={{
+                flex: 1,
+                minWidth: 'clamp(120px, 25vw, 150px)',
+                maxWidth: 'clamp(300px, 40vw, 400px)',
+                padding: 'clamp(3px, 1vw, 4px)',
+                borderRadius: 'clamp(3px, 1vw, 4px)',
+                fontSize: 'clamp(11px, 2.2vw, 13px)'
+              }}
+            >
+              {perfurantesStatusOptions.map(opt => <option key={opt}>{opt}</option>)}
+            </select>
+            {perfurantes.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onPerfurantes(perfurantes.filter((_, i) => i !== idx))}
+                style={{
+                  padding: 'clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)',
+                  borderRadius: 'clamp(3px, 1vw, 4px)',
+                  border: 'none',
+                  background: '#c0392b',
+                  color: '#fff',
+                  fontSize: 'clamp(11px, 2.2vw, 13px)',
+                  cursor: 'pointer',
+                }}
+              >Remover</button>
+            )}
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'clamp(6px, 1.5vw, 8px)',
+            marginBottom: 'clamp(3px, 1vw, 4px)',
+            flexWrap: 'wrap',
+            marginLeft: 'clamp(8px, 2vw, 12px)'
+          }}>
+            <select
+              value={perf.segmento}
+              onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, segmento: e.target.value, valor: "" } : p))}
+              style={{
+                minWidth: 'clamp(120px, 25vw, 150px)',
+                maxWidth: 'clamp(180px, 30vw, 220px)',
+                padding: 'clamp(3px, 1vw, 4px)',
+                borderRadius: 'clamp(3px, 1vw, 4px)',
+                fontSize: 'clamp(11px, 2.2vw, 13px)'
+              }}
+            >
+              <option value="">Selecione o segmento</option>
+              {perfurantesSegmentoOptions.map(opt => <option key={opt}>{opt}</option>)}
+            </select>
+            {perf.segmento && (
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                value={perf.valor}
+                onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, valor: e.target.value } : p))}
+                placeholder="cm"
+                style={{
+                  width: 'clamp(50px, 10vw, 60px)',
+                  marginLeft: 'clamp(3px, 1vw, 4px)',
+                  borderRadius: 'clamp(3px, 1vw, 4px)',
+                  padding: 'clamp(3px, 1vw, 4px)',
+                  border: '1.5px solid #0eb8d0',
+                  fontSize: 'clamp(11px, 2.2vw, 13px)'
+                }}
+              />
+            )}
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onPerfurantes([...perfurantes, { status: "pérvia e competente", segmento: "", valor: "" }])}
+        style={{
+          padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px)',
+          borderRadius: 'clamp(3px, 1vw, 4px)',
+          border: '1.5px solid #0eb8d0',
+          background: 'transparent',
+          color: '#0eb8d0',
+          fontSize: 'clamp(11px, 2.2vw, 13px)',
+          fontWeight: 600,
+          cursor: 'pointer',
+          marginBottom: 'clamp(6px, 1.5vw, 8px)',
+        }}
+      >+ Adicionar perfurante</button>
       {/* Caixa de Observação por membro */}
       <div style={{ width: '100%', marginTop: 'clamp(6px, 1.5vw, 8px)' }}>
         <label style={{ 
@@ -798,8 +837,9 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
   if (superficiais["JSP"] === "pérvia e incompetente") {
     conclusoes.push("Incompetência da junção safeno-poplítea (JSP)");
   }
-  if (perfurantes && perfurantes.status === "pérvia e incompetente") {
-    conclusoes.push("Insuficiência de veia perfurante");
+  if (Array.isArray(perfurantes) && perfurantes.some(p => p.status === "pérvia e incompetente")) {
+    const nIncompetentes = perfurantes.filter(p => p.status === "pérvia e incompetente").length;
+    conclusoes.push(nIncompetentes > 1 ? "Insuficiência de veias perfurantes" : "Insuficiência de veia perfurante");
   }
   if (varizes && varizes.tipo) {
     conclusoes.push(varizes.tipo + ".");
@@ -853,12 +893,15 @@ function montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, 
     });
     linhas.push("");
     linhas.push("Veias Perfurantes:");
-    if (perfurantes[l] && perfurantes[l].status) {
-      let linhaPerf = `- ${perfurantes[l].status}`;
-      if (perfurantes[l].segmento && perfurantes[l].valor) {
-        linhaPerf += ` (${perfurantes[l].valor} ${perfurantes[l].segmento})`;
-      }
-      linhas.push(linhaPerf);
+    if (Array.isArray(perfurantes[l]) && perfurantes[l].length) {
+      perfurantes[l].forEach((perf, idx) => {
+        const prefixo = perfurantes[l].length > 1 ? `- Perfurante ${idx + 1}: ${perf.status}` : `- ${perf.status}`;
+        let linhaPerf = prefixo;
+        if (perf.segmento && perf.valor) {
+          linhaPerf += ` (${perf.valor} ${perf.segmento})`;
+        }
+        linhas.push(linhaPerf);
+      });
     } else {
       linhas.push("- Não especificado");
     }
@@ -910,8 +953,8 @@ function MMIIVenoso() {
     Esquerdo: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
   });
   const [perfurantes, setPerfurantes] = useState({
-    Direito: { status: "pérvia e competente", segmento: "", valor: "" },
-    Esquerdo: { status: "pérvia e competente", segmento: "", valor: "" }
+    Direito: [{ status: "pérvia e competente", segmento: "", valor: "" }],
+    Esquerdo: [{ status: "pérvia e competente", segmento: "", valor: "" }]
   });
   const [observacoes, setObservacoes] = useState({ Direito: '', Esquerdo: '' });
   const [laudoTexto, setLaudoTexto] = useState("");
@@ -953,7 +996,13 @@ function MMIIVenoso() {
       if (exameEmEdicao.superficiais) setSuperficiais(exameEmEdicao.superficiais);
       if (exameEmEdicao.magna) setMagna(exameEmEdicao.magna);
       if (exameEmEdicao.parva) setParva(exameEmEdicao.parva);
-      if (exameEmEdicao.perfurantes) setPerfurantes(exameEmEdicao.perfurantes);
+      if (exameEmEdicao.perfurantes) {
+        const migrarPerfurantes = (v) => Array.isArray(v) ? v : (v && v.status ? [v] : []);
+        setPerfurantes({
+          Direito: migrarPerfurantes(exameEmEdicao.perfurantes.Direito),
+          Esquerdo: migrarPerfurantes(exameEmEdicao.perfurantes.Esquerdo),
+        });
+      }
       if (exameEmEdicao.observacoes) setObservacoes(exameEmEdicao.observacoes);
       if (exameEmEdicao.jsfDiametro) setJsfDiametro(exameEmEdicao.jsfDiametro);
       if (exameEmEdicao.jspDiametro) setJspDiametro(exameEmEdicao.jspDiametro);
@@ -1536,8 +1585,8 @@ function MMIIVenoso() {
                         Esquerdo: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
                       });
                       setPerfurantes({
-                        Direito: { status: "pérvia e competente", segmento: "", valor: "" },
-                        Esquerdo: { status: "pérvia e competente", segmento: "", valor: "" }
+                        Direito: [{ status: "pérvia e competente", segmento: "", valor: "" }],
+                        Esquerdo: [{ status: "pérvia e competente", segmento: "", valor: "" }]
                       });
                       setObservacoes({ Direito: '', Esquerdo: '' });
                       setLaudoTexto("");
@@ -2103,8 +2152,8 @@ function MMIIVenoso() {
                 Esquerdo: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
               });
               setPerfurantes({
-                Direito: { status: "pérvia e competente", segmento: "", valor: "" },
-                Esquerdo: { status: "pérvia e competente", segmento: "", valor: "" }
+                Direito: [{ status: "pérvia e competente", segmento: "", valor: "" }],
+                Esquerdo: [{ status: "pérvia e competente", segmento: "", valor: "" }]
               });
               setObservacoes({ Direito: '', Esquerdo: '' });
               setLaudoTexto("");

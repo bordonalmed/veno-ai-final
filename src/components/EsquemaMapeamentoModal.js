@@ -82,7 +82,9 @@ function distanciaMarcadores(spine, half, refluxo, ladoTexto, mirrored) {
 
 // Monta o SVG (vista medial + vista posterior lado a lado) de UM membro.
 function montarSvgLado(dadosLado) {
-  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurante, profundas, mirrored, jsfDiametro, jspDiametro } = dadosLado;
+  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurantes, profundas, mirrored, jsfDiametro, jspDiametro } = dadosLado;
+  const perfurantesInsuficientes = (Array.isArray(perfurantes) ? perfurantes : [])
+    .filter((perf) => perf && perf.status === "pérvia e incompetente" && perf.segmento);
 
   const p = profundas || {};
   const corFemoral = piorCorProfundo([
@@ -139,13 +141,14 @@ function montarSvgLado(dadosLado) {
   const jspFill = parvaResult.dotColor;
   const jspStroke = parvaResult.dotStroke || "#ffffff";
 
-  let perfMarker = "";
-  if (perfurante && perfurante.status === "pérvia e incompetente" && perfurante.segmento) {
-    const pos = posicaoPerfurante(perfurante.segmento, perfurante.valor);
-    if (pos) {
-      perfMarker = `<circle cx="${pos.x.toFixed(2)}" cy="${pos.y.toFixed(2)}" r="5.5" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3"/>`;
-    }
-  }
+  const perfMarker = perfurantesInsuficientes
+    .map((perf, idx) => {
+      const pos = posicaoPerfurante(perf.segmento, perf.valor);
+      if (!pos) return "";
+      const jitter = idx * 9; // evita sobrepor marcadores quando caem no mesmo ponto
+      return `<circle cx="${(pos.x - jitter).toFixed(2)}" cy="${pos.y.toFixed(2)}" r="5.5" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3"/>`;
+    })
+    .join("");
 
   const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
 
@@ -203,11 +206,11 @@ function montarSvgLado(dadosLado) {
   const cParva = gerarConclusaoVisual("parva", "JSP", parvaStatus, parvaExtra.inicio, parvaExtra.fim, parvaExtra.inicio_valor, parvaExtra.fim_valor);
   if (cMagna) conclusoes.push(cMagna);
   if (cParva) conclusoes.push(cParva);
-  if (perfurante && perfurante.status === "pérvia e incompetente") {
+  perfurantesInsuficientes.forEach((perf) => {
     conclusoes.push(
-      `Insuficiência de veia perfurante${perfurante.segmento ? ` (${perfurante.valor ? perfurante.valor + " " : ""}${perfurante.segmento})` : ""}`
+      `Insuficiência de veia perfurante${perf.segmento ? ` (${perf.valor ? perf.valor + " " : ""}${perf.segmento})` : ""}`
     );
-  }
+  });
 
   return { svg, conclusoes };
 }
@@ -259,7 +262,7 @@ export async function adicionarEsquemaAoPdf(doc, {
       magnaExtra: magna?.[ladoAtual] || {},
       parvaStatus: superficiais?.[ladoAtual]?.["Safena Parva"],
       parvaExtra: parva?.[ladoAtual] || {},
-      perfurante: perfurantes?.[ladoAtual],
+      perfurantes: perfurantes?.[ladoAtual],
       profundas: profundas?.[ladoAtual],
       mirrored: ladoAtual === "Esquerdo",
       jsfDiametro: jsfDiametro?.[ladoAtual],
@@ -341,7 +344,7 @@ export default function EsquemaMapeamentoModal({
         magnaExtra: magna?.[ladoAtual] || {},
         parvaStatus: superficiais?.[ladoAtual]?.["Safena Parva"],
         parvaExtra: parva?.[ladoAtual] || {},
-        perfurante: perfurantes?.[ladoAtual],
+        perfurantes: perfurantes?.[ladoAtual],
         profundas: profundas?.[ladoAtual],
         mirrored: ladoAtual === "Esquerdo",
         jsfDiametro: jsfDiametro?.[ladoAtual],
