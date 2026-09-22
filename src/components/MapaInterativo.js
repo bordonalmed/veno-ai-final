@@ -15,7 +15,7 @@ import {
   CORES,
   construirSegmentosVeia,
   corStatusProfundo,
-  linhaVeiaSimples,
+  fitaVeiaSimples,
   posicaoPerfurante,
   PX_PER_CM,
 } from "../utils/vascularMapping";
@@ -41,7 +41,7 @@ const VIEW_W = RULER_WIDTH * 2 + COL_WIDTH * 4;
 const VIEW_H = 700;
 const JOELHO_Y = LANDMARK_MAGNA.joelho; // referência "0" da régua
 
-function hitPath(d, onClick, key, selecionado) {
+function hitPath(d, onClick, key, selecionado, largura = 10) {
   const ativo = selecionado === key;
   return (
     <path
@@ -49,7 +49,7 @@ function hitPath(d, onClick, key, selecionado) {
       fill="none"
       stroke={ativo ? "#0eb8d0" : "#000"}
       strokeOpacity={ativo ? 0.35 : 0.001}
-      strokeWidth={ativo ? 14 : 16}
+      strokeWidth={largura}
       strokeLinecap="round"
       style={{ cursor: "pointer" }}
       onClick={onClick}
@@ -128,16 +128,16 @@ export default function MapaInterativo({
   const chaveAtiva = selecionado ? `${selecionado.tipo}:${selecionado.key}` : null;
 
   // ---- Vista ANTERIOR: Femoral Comum + Superficial + Profunda ----
-  const comumD = linhaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, LANDMARK_MAGNA.top, FEMORAL_COMUM_FIM);
-  const superficialD = linhaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, LANDMARK_MAGNA.joelho);
-  const profundaFemD = linhaVeiaSimples(FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF, FEMORAL_PROFUNDA_SPINE[0][1], FEMORAL_PROFUNDA_SPINE[FEMORAL_PROFUNDA_SPINE.length - 1][1]);
+  const comumD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, LANDMARK_MAGNA.top, FEMORAL_COMUM_FIM);
+  const superficialD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, LANDMARK_MAGNA.joelho);
+  const profundaFemD = fitaVeiaSimples(FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF, FEMORAL_PROFUNDA_SPINE[0][1], FEMORAL_PROFUNDA_SPINE[FEMORAL_PROFUNDA_SPINE.length - 1][1]);
 
   // ---- Vista MEDIAL: JSF + Safena Magna ----
   const magnaResult = construirSegmentosVeia({
     spine: VSM_SPINE, half: VSM_HALF, landmark: LANDMARK_MAGNA,
     status: s["Safena Magna"], ini: m.inicio, fim: m.fim, iniVal: m.inicio_valor, fimVal: m.fim_valor,
   });
-  const magnaHitD = linhaVeiaSimples(VSM_SPINE, VSM_HALF, LANDMARK_MAGNA.top, LANDMARK_MAGNA.tornozelo);
+  const magnaHitD = fitaVeiaSimples(VSM_SPINE, VSM_HALF, LANDMARK_MAGNA.top, LANDMARK_MAGNA.tornozelo);
   const jsfCor = CORES[s["JSF"]] || CORES["pérvia e competente"];
 
   // ---- Vista POSTERIOR: JSP + Veia Poplítea + Safena Parva ----
@@ -147,14 +147,15 @@ export default function MapaInterativo({
   });
   // Área de clique começa abaixo da faixa da Veia Poplítea (POPLITEA_RIBBON vai
   // até y~388), para não roubar o clique destinado a ela logo abaixo do JSP.
-  const parvaHitD = linhaVeiaSimples(VSP_SPINE, VSP_HALF, 382, LANDMARK_PARVA.tornozelo);
+  const parvaHitD = fitaVeiaSimples(VSP_SPINE, VSP_HALF, 382, LANDMARK_PARVA.tornozelo);
   const jspCor = CORES[s["JSP"]] || CORES["pérvia e competente"];
 
-  // ---- Vista LATERAL: leque de veias profundas da panturrilha ----
-  const tibialPostD = linhaVeiaSimples(TIBIAL_POSTERIOR_SPINE, TIBIAL_POSTERIOR_HALF, TIBIAL_POSTERIOR_SPINE[0][1], TIBIAL_POSTERIOR_SPINE[TIBIAL_POSTERIOR_SPINE.length - 1][1]);
-  const tibialAntD = linhaVeiaSimples(TIBIAL_ANTERIOR_SPINE, TIBIAL_ANTERIOR_HALF, TIBIAL_ANTERIOR_SPINE[0][1], TIBIAL_ANTERIOR_SPINE[TIBIAL_ANTERIOR_SPINE.length - 1][1]);
-  const gastrocD = linhaVeiaSimples(GASTROCNEMICA_SPINE, GASTROCNEMICA_HALF, GASTROCNEMICA_SPINE[0][1], GASTROCNEMICA_SPINE[GASTROCNEMICA_SPINE.length - 1][1]);
-  const solearD = linhaVeiaSimples(SOLEAR_SPINE, SOLEAR_HALF, SOLEAR_SPINE[0][1], SOLEAR_SPINE[SOLEAR_SPINE.length - 1][1]);
+  // ---- Vista LATERAL: veias profundas da panturrilha (todas dentro do
+  // compartimento profundo, próximas ao eixo — ver comentário em vascularMapping.js) ----
+  const tibialPostD = fitaVeiaSimples(TIBIAL_POSTERIOR_SPINE, TIBIAL_POSTERIOR_HALF, TIBIAL_POSTERIOR_SPINE[0][1], TIBIAL_POSTERIOR_SPINE[TIBIAL_POSTERIOR_SPINE.length - 1][1]);
+  const tibialAntD = fitaVeiaSimples(TIBIAL_ANTERIOR_SPINE, TIBIAL_ANTERIOR_HALF, TIBIAL_ANTERIOR_SPINE[0][1], TIBIAL_ANTERIOR_SPINE[TIBIAL_ANTERIOR_SPINE.length - 1][1]);
+  const gastrocD = fitaVeiaSimples(GASTROCNEMICA_SPINE, GASTROCNEMICA_HALF, GASTROCNEMICA_SPINE[0][1], GASTROCNEMICA_SPINE[GASTROCNEMICA_SPINE.length - 1][1]);
+  const solearD = fitaVeiaSimples(SOLEAR_SPINE, SOLEAR_HALF, SOLEAR_SPINE[0][1], SOLEAR_SPINE[SOLEAR_SPINE.length - 1][1]);
 
   // ---- Marcadores de perfurante insuficiente (vista medial, mesma lógica do Esquema de Mapeamento) ----
   const perfMarkers = perfs
@@ -210,12 +211,12 @@ export default function MapaInterativo({
             {/* ANTERIOR: Femoral Comum / Superficial / Profunda */}
             <g transform={`translate(${colAnterior.tx},${VIEW_TY})`}>
               <path d={MEDIAL_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
-              <path d={profundaFemD} fill="none" stroke={corStatusProfundo(p["Veia Femoral Profunda"])} strokeWidth={5} strokeLinecap="round" strokeDasharray="2 3" pointerEvents="none" />
-              {hitPath(profundaFemD, () => selecionar("profunda", "Veia Femoral Profunda"), "profunda:Veia Femoral Profunda", chaveAtiva)}
-              <path d={comumD} fill="none" stroke={corStatusProfundo(p["Veia Femoral Comum"])} strokeWidth={7} strokeLinecap="round" pointerEvents="none" />
-              {hitPath(comumD, () => selecionar("profunda", "Veia Femoral Comum"), "profunda:Veia Femoral Comum", chaveAtiva)}
-              <path d={superficialD} fill="none" stroke={corStatusProfundo(p["Veia Femoral Superficial"])} strokeWidth={7} strokeLinecap="round" pointerEvents="none" />
-              {hitPath(superficialD, () => selecionar("profunda", "Veia Femoral Superficial"), "profunda:Veia Femoral Superficial", chaveAtiva)}
+              <path d={profundaFemD} fill={corStatusProfundo(p["Veia Femoral Profunda"])} pointerEvents="none" />
+              {hitPath(profundaFemD, () => selecionar("profunda", "Veia Femoral Profunda"), "profunda:Veia Femoral Profunda", chaveAtiva, 12)}
+              <path d={comumD} fill={corStatusProfundo(p["Veia Femoral Comum"])} pointerEvents="none" />
+              {hitPath(comumD, () => selecionar("profunda", "Veia Femoral Comum"), "profunda:Veia Femoral Comum", chaveAtiva, 12)}
+              <path d={superficialD} fill={corStatusProfundo(p["Veia Femoral Superficial"])} pointerEvents="none" />
+              {hitPath(superficialD, () => selecionar("profunda", "Veia Femoral Superficial"), "profunda:Veia Femoral Superficial", chaveAtiva, 12)}
               <text x={195} y={45} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Femoral Comum</text>
               <text x={195} y={130} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Femoral Superficial</text>
               <text x={165} y={68} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Femoral Profunda</text>
@@ -253,14 +254,26 @@ export default function MapaInterativo({
             {/* LATERAL: leque de veias profundas da panturrilha */}
             <g transform={`translate(${colLateral.tx},${VIEW_TY})`}>
               <path d={POSTERIOR_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
-              <path d={tibialPostD} fill="none" stroke={corStatusProfundo(p["Veias Tibiais posteriores"])} strokeWidth={5} strokeLinecap="round" pointerEvents="none" />
-              {hitPath(tibialPostD, () => selecionar("profunda", "Veias Tibiais posteriores"), "profunda:Veias Tibiais posteriores", chaveAtiva)}
-              <path d={tibialAntD} fill="none" stroke={corStatusProfundo(p["Veias Tibiais anteriores"])} strokeWidth={5} strokeLinecap="round" pointerEvents="none" />
-              {hitPath(tibialAntD, () => selecionar("profunda", "Veias Tibiais anteriores"), "profunda:Veias Tibiais anteriores", chaveAtiva)}
-              <path d={gastrocD} fill="none" stroke={corStatusProfundo(p["Veias Gastrocnêmicas"])} strokeWidth={5} strokeLinecap="round" pointerEvents="none" />
-              {hitPath(gastrocD, () => selecionar("profunda", "Veias Gastrocnêmicas"), "profunda:Veias Gastrocnêmicas", chaveAtiva)}
-              <path d={solearD} fill="none" stroke={corStatusProfundo(p["Veias Soleares"])} strokeWidth={5} strokeLinecap="round" pointerEvents="none" />
-              {hitPath(solearD, () => selecionar("profunda", "Veias Soleares"), "profunda:Veias Soleares", chaveAtiva)}
+              {[
+                { d: tibialPostD, key: "Veias Tibiais posteriores" },
+                { d: tibialAntD, key: "Veias Tibiais anteriores" },
+                { d: gastrocD, key: "Veias Gastrocnêmicas" },
+                { d: solearD, key: "Veias Soleares" },
+              ].map(({ d, key }) => {
+                const chave = `profunda:${key}`;
+                const ativo = chaveAtiva === chave;
+                return (
+                  <path
+                    key={key}
+                    d={d}
+                    fill={corStatusProfundo(p[key])}
+                    stroke={ativo ? "#0eb8d0" : "none"}
+                    strokeWidth={ativo ? 1.5 : 0}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => selecionar("profunda", key)}
+                  />
+                );
+              })}
               <text x={185} y={370} fontFamily="monospace" fontSize="9.5" fill="#1a2530">T. Anteriores</text>
               <text x={95} y={420} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor="end">T. Posteriores</text>
               <text x={95} y={340} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor="end">Gastrocnêmicas</text>
