@@ -8,16 +8,11 @@ import {
   LANDMARK_MAGNA, LANDMARK_PARVA,
   FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM,
   FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF,
-  TIBIAL_POSTERIOR_SPINE, TIBIAL_POSTERIOR_HALF,
-  TIBIAL_ANTERIOR_SPINE, TIBIAL_ANTERIOR_HALF,
-  GASTROCNEMICA_SPINE, GASTROCNEMICA_HALF,
-  SOLEAR_SPINE, SOLEAR_HALF,
   CORES,
   construirSegmentosVeia,
   corStatusProfundo,
   fitaVeiaSimples,
   posicaoPerfurante,
-  PX_PER_CM,
 } from "../utils/vascularMapping";
 import { SafenaMagnaExtra, SafenaParvaExtra } from "./SafenaExtraFields";
 import {
@@ -25,21 +20,21 @@ import {
   montarLaudo,
 } from "../utils/mmiiVenosoLaudo";
 
-// Layout do SVG: régua esquerda + 4 colunas (anterior/medial/posterior/lateral)
-// + régua direita. Cada coluna usa o MESMO sistema de coordenadas local das
-// silhuetas já existentes (x ~105-190, y ~8-622) — só muda o "tx" de cada uma.
-const COL_WIDTH = 260;
-const RULER_WIDTH = 55;
+// Layout simples e direto: só 2 vistas (medial + posterior — as mesmas do
+// Esquema de Mapeamento), sem régua/grade. As veias profundas da coxa
+// (Femoral Comum/Superficial/Profunda) entram na vista medial, ao lado da
+// Safena Magna; as veias profundas da panturrilha entram na vista
+// posterior — Tibiais/Gastrocnêmicas/Soleares como pequenos marcadores
+// (ficam muito próximas entre si na realidade; tentar traçar 4 linhas
+// separadas ali colide com a Safena Parva e entre si).
+const COL_WIDTH = 320;
 const COLS = [
-  { key: "anterior", label: "anterior", tx: RULER_WIDTH - 65 },
-  { key: "medial", label: "medial", tx: RULER_WIDTH + COL_WIDTH - 65 },
-  { key: "posterior", label: "posterior", tx: RULER_WIDTH + COL_WIDTH * 2 - 65 },
-  { key: "lateral", label: "lateral", tx: RULER_WIDTH + COL_WIDTH * 3 - 65 },
+  { key: "medial", label: "medial", tx: -75 },
+  { key: "posterior", label: "posterior", tx: COL_WIDTH - 75 },
 ];
-const VIEW_TY = 20;
-const VIEW_W = RULER_WIDTH * 2 + COL_WIDTH * 4;
-const VIEW_H = 700;
-const JOELHO_Y = LANDMARK_MAGNA.joelho; // referência "0" da régua
+const VIEW_TY = 16;
+const VIEW_W = COL_WIDTH * 2;
+const VIEW_H = 660;
 
 function hitPath(d, onClick, key, selecionado, largura = 10) {
   const ativo = selecionado === key;
@@ -57,39 +52,15 @@ function hitPath(d, onClick, key, selecionado, largura = 10) {
   );
 }
 
-function Regua({ mirror }) {
-  const ticks = [];
-  for (let n = -45; n <= 45; n += 5) {
-    const yLocal = JOELHO_Y - n * PX_PER_CM;
-    if (yLocal < 12 || yLocal > VIEW_H - VIEW_TY - 15) continue;
-    const y = yLocal + VIEW_TY;
-    const label = n === 0 ? "0" : String(Math.abs(n));
-    ticks.push(
-      <g key={n}>
-        <line x1={mirror ? 0 : 8} y1={y} x2={mirror ? RULER_WIDTH - 8 : RULER_WIDTH} y2={y} stroke="#7a8a99" strokeWidth={n === 0 ? 2 : 1} />
-        <text x={mirror ? 6 : RULER_WIDTH - 6} y={y + 3} fontFamily="monospace" fontSize="9" fill="#5c6b78" textAnchor={mirror ? "start" : "end"}>{label}</text>
-      </g>
-    );
-  }
-  return (
-    <g>
-      <text x={mirror ? 4 : RULER_WIDTH - 4} y={14} fontFamily="monospace" fontSize="9" fill="#5c6b78" textAnchor={mirror ? "start" : "end"}>cm</text>
-      <text x={mirror ? 4 : RULER_WIDTH - 4} y={VIEW_H - 8} fontFamily="monospace" fontSize="9" fill="#5c6b78" textAnchor={mirror ? "start" : "end"}>cm</text>
-      {ticks}
-    </g>
-  );
-}
-
-function Gridlines() {
-  const lines = [];
-  for (let n = -45; n <= 45; n += 5) {
-    const yLocal = JOELHO_Y - n * PX_PER_CM;
-    if (yLocal < 12 || yLocal > VIEW_H - VIEW_TY - 15) continue;
-    const y = yLocal + VIEW_TY;
-    lines.push(<line key={n} x1={RULER_WIDTH} y1={y} x2={VIEW_W - RULER_WIDTH} y2={y} stroke="#dfe6ec" strokeWidth={n === 0 ? 1.4 : 0.7} />);
-  }
-  return <g>{lines}</g>;
-}
+// Marcadores compactos (bolinha + rótulo curto) para as veias profundas da
+// panturrilha — mais fáceis de tocar num tablet do que 4 linhas finas e
+// coladas, e continuam dentro do contorno da perna.
+const CALF_DOTS = [
+  { key: "Veias Gastrocnêmicas", label: "Gc", x: 123, y: 402 },
+  { key: "Veias Tibiais anteriores", label: "Ta", x: 143, y: 402 },
+  { key: "Veias Soleares", label: "So", x: 123, y: 428 },
+  { key: "Veias Tibiais posteriores", label: "Tp", x: 143, y: 428 },
+];
 
 const PROFUNDA_LABELS = {
   "Veia Femoral Comum": "Veia Femoral Comum",
@@ -127,12 +98,7 @@ export default function MapaInterativo({
   }
   const chaveAtiva = selecionado ? `${selecionado.tipo}:${selecionado.key}` : null;
 
-  // ---- Vista ANTERIOR: Femoral Comum + Superficial + Profunda ----
-  const comumD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, LANDMARK_MAGNA.top, FEMORAL_COMUM_FIM);
-  const superficialD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, LANDMARK_MAGNA.joelho);
-  const profundaFemD = fitaVeiaSimples(FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF, FEMORAL_PROFUNDA_SPINE[0][1], FEMORAL_PROFUNDA_SPINE[FEMORAL_PROFUNDA_SPINE.length - 1][1]);
-
-  // ---- Vista MEDIAL: JSF + Safena Magna ----
+  // ---- Vista MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda ----
   const magnaResult = construirSegmentosVeia({
     spine: VSM_SPINE, half: VSM_HALF, landmark: LANDMARK_MAGNA,
     status: s["Safena Magna"], ini: m.inicio, fim: m.fim, iniVal: m.inicio_valor, fimVal: m.fim_valor,
@@ -140,7 +106,11 @@ export default function MapaInterativo({
   const magnaHitD = fitaVeiaSimples(VSM_SPINE, VSM_HALF, LANDMARK_MAGNA.top, LANDMARK_MAGNA.tornozelo);
   const jsfCor = CORES[s["JSF"]] || CORES["pérvia e competente"];
 
-  // ---- Vista POSTERIOR: JSP + Veia Poplítea + Safena Parva ----
+  const comumD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, LANDMARK_MAGNA.top, FEMORAL_COMUM_FIM);
+  const superficialD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, LANDMARK_MAGNA.joelho);
+  const profundaFemD = fitaVeiaSimples(FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF, FEMORAL_PROFUNDA_SPINE[0][1], FEMORAL_PROFUNDA_SPINE[FEMORAL_PROFUNDA_SPINE.length - 1][1]);
+
+  // ---- Vista POSTERIOR: JSP + Veia Poplítea + Safena Parva + panturrilha ----
   const parvaResult = construirSegmentosVeia({
     spine: VSP_SPINE, half: VSP_HALF, landmark: LANDMARK_PARVA,
     status: s["Safena Parva"], ini: pv.inicio, fim: pv.fim, iniVal: pv.inicio_valor, fimVal: pv.fim_valor,
@@ -150,14 +120,7 @@ export default function MapaInterativo({
   const parvaHitD = fitaVeiaSimples(VSP_SPINE, VSP_HALF, 382, LANDMARK_PARVA.tornozelo);
   const jspCor = CORES[s["JSP"]] || CORES["pérvia e competente"];
 
-  // ---- Vista LATERAL: veias profundas da panturrilha (todas dentro do
-  // compartimento profundo, próximas ao eixo — ver comentário em vascularMapping.js) ----
-  const tibialPostD = fitaVeiaSimples(TIBIAL_POSTERIOR_SPINE, TIBIAL_POSTERIOR_HALF, TIBIAL_POSTERIOR_SPINE[0][1], TIBIAL_POSTERIOR_SPINE[TIBIAL_POSTERIOR_SPINE.length - 1][1]);
-  const tibialAntD = fitaVeiaSimples(TIBIAL_ANTERIOR_SPINE, TIBIAL_ANTERIOR_HALF, TIBIAL_ANTERIOR_SPINE[0][1], TIBIAL_ANTERIOR_SPINE[TIBIAL_ANTERIOR_SPINE.length - 1][1]);
-  const gastrocD = fitaVeiaSimples(GASTROCNEMICA_SPINE, GASTROCNEMICA_HALF, GASTROCNEMICA_SPINE[0][1], GASTROCNEMICA_SPINE[GASTROCNEMICA_SPINE.length - 1][1]);
-  const solearD = fitaVeiaSimples(SOLEAR_SPINE, SOLEAR_HALF, SOLEAR_SPINE[0][1], SOLEAR_SPINE[SOLEAR_SPINE.length - 1][1]);
-
-  // ---- Marcadores de perfurante insuficiente (vista medial, mesma lógica do Esquema de Mapeamento) ----
+  // ---- Marcadores de perfurante insuficiente (vista medial) ----
   const perfMarkers = perfs
     .filter((perf) => perf && perf.status === "pérvia e incompetente" && perf.segmento)
     .map((perf, idx) => {
@@ -167,7 +130,7 @@ export default function MapaInterativo({
     })
     .filter(Boolean);
 
-  const colAnterior = COLS[0], colMedial = COLS[1], colPosterior = COLS[2], colLateral = COLS[3];
+  const colMedial = COLS[0], colPosterior = COLS[1];
 
   return (
     <div style={{
@@ -175,7 +138,7 @@ export default function MapaInterativo({
       display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "clamp(8px,2vw,24px)",
     }}>
       <div style={{
-        background: "#fff", borderRadius: 12, padding: "clamp(12px,2vw,20px)", maxWidth: 1200, width: "100%",
+        background: "#fff", borderRadius: 12, padding: "clamp(12px,2vw,20px)", maxWidth: 820, width: "100%",
         boxShadow: "0 8px 40px rgba(0,0,0,0.4)", color: "#1a2530",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
@@ -199,32 +162,20 @@ export default function MapaInterativo({
           </div>
         </div>
         <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#5c6b78" }}>
-          Toque numa veia do desenho para marcar o achado (suficiente, insuficiente, trombose ou recanalização). O laudo abaixo é atualizado em tempo real.
+          Toque numa veia do desenho para marcar o achado. O laudo abaixo é atualizado em tempo real.
         </p>
 
-        <div style={{ width: "100%", overflowX: "auto", border: "1px solid #dfe6ec", borderRadius: 8, background: "#fbfbfb" }}>
-          <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width="100%" style={{ minWidth: 720, display: "block" }}>
-            <Gridlines />
-            <Regua mirror={false} />
-            <g transform={`translate(${VIEW_W - RULER_WIDTH},0)`}><Regua mirror /></g>
-
-            {/* ANTERIOR: Femoral Comum / Superficial / Profunda */}
-            <g transform={`translate(${colAnterior.tx},${VIEW_TY})`}>
-              <path d={MEDIAL_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
-              <path d={profundaFemD} fill={corStatusProfundo(p["Veia Femoral Profunda"])} pointerEvents="none" />
-              {hitPath(profundaFemD, () => selecionar("profunda", "Veia Femoral Profunda"), "profunda:Veia Femoral Profunda", chaveAtiva, 12)}
-              <path d={comumD} fill={corStatusProfundo(p["Veia Femoral Comum"])} pointerEvents="none" />
-              {hitPath(comumD, () => selecionar("profunda", "Veia Femoral Comum"), "profunda:Veia Femoral Comum", chaveAtiva, 12)}
-              <path d={superficialD} fill={corStatusProfundo(p["Veia Femoral Superficial"])} pointerEvents="none" />
-              {hitPath(superficialD, () => selecionar("profunda", "Veia Femoral Superficial"), "profunda:Veia Femoral Superficial", chaveAtiva, 12)}
-              <text x={195} y={45} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Femoral Comum</text>
-              <text x={195} y={130} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Femoral Superficial</text>
-              <text x={165} y={68} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Femoral Profunda</text>
-            </g>
-
-            {/* MEDIAL: JSF + Safena Magna + marcadores de perfurante */}
+        <div style={{ width: "100%", display: "flex", justifyContent: "center", border: "1px solid #dfe6ec", borderRadius: 8, background: "#fbfbfb" }}>
+          <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width="100%" style={{ maxWidth: 480, display: "block" }}>
+            {/* MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda + perfurantes */}
             <g transform={`translate(${colMedial.tx},${VIEW_TY})`}>
               <path d={MEDIAL_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
+              <path d={profundaFemD} fill={corStatusProfundo(p["Veia Femoral Profunda"])} pointerEvents="none" />
+              {hitPath(profundaFemD, () => selecionar("profunda", "Veia Femoral Profunda"), "profunda:Veia Femoral Profunda", chaveAtiva, 8)}
+              <path d={comumD} fill={corStatusProfundo(p["Veia Femoral Comum"])} pointerEvents="none" />
+              {hitPath(comumD, () => selecionar("profunda", "Veia Femoral Comum"), "profunda:Veia Femoral Comum", chaveAtiva, 8)}
+              <path d={superficialD} fill={corStatusProfundo(p["Veia Femoral Superficial"])} pointerEvents="none" />
+              {hitPath(superficialD, () => selecionar("profunda", "Veia Femoral Superficial"), "profunda:Veia Femoral Superficial", chaveAtiva, 8)}
               {magnaResult.segments.map((seg, i) => (
                 <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
               ))}
@@ -233,11 +184,13 @@ export default function MapaInterativo({
               {perfMarkers.map((mk, i) => (
                 <circle key={i} cx={mk.x} cy={mk.y} r={5.5} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} />
               ))}
-              <text x={195} y={44} fontFamily="monospace" fontSize="9.5" fill="#1a2530">JSF</text>
-              <text x={195} y={130} fontFamily="monospace" fontSize="9.5" fill="#1a2530">VSM</text>
+              <text x={70} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530">JSF</text>
+              <text x={170} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Femoral</text>
+              <text x={95} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530">VSM</text>
+              <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">medial</text>
             </g>
 
-            {/* POSTERIOR: JSP + Veia Poplítea + Safena Parva */}
+            {/* POSTERIOR: JSP + Veia Poplítea + Safena Parva + panturrilha */}
             <g transform={`translate(${colPosterior.tx},${VIEW_TY})`}>
               <path d={POSTERIOR_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
               <path d={POPLITEA_RIBBON} fill={corStatusProfundo(p["Veia Poplítea"])} style={{ cursor: "pointer" }} onClick={() => selecionar("profunda", "Veia Poplítea")} opacity={chaveAtiva === "profunda:Veia Poplítea" ? 0.7 : 1} stroke={chaveAtiva === "profunda:Veia Poplítea" ? "#0eb8d0" : "none"} strokeWidth={2} />
@@ -246,52 +199,31 @@ export default function MapaInterativo({
               ))}
               {hitPath(parvaHitD, () => selecionar("superficial", "Safena Parva"), "superficial:Safena Parva", chaveAtiva)}
               <circle cx={150} cy={314} r={8} fill={jspCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSP")} />
-              <text x={195} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530">JSP</text>
-              <text x={195} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530">V. Poplítea</text>
-              <text x={195} y={430} fontFamily="monospace" fontSize="9.5" fill="#1a2530">VSP</text>
-            </g>
-
-            {/* LATERAL: leque de veias profundas da panturrilha */}
-            <g transform={`translate(${colLateral.tx},${VIEW_TY})`}>
-              <path d={POSTERIOR_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
-              {[
-                { d: tibialPostD, key: "Veias Tibiais posteriores" },
-                { d: tibialAntD, key: "Veias Tibiais anteriores" },
-                { d: gastrocD, key: "Veias Gastrocnêmicas" },
-                { d: solearD, key: "Veias Soleares" },
-              ].map(({ d, key }) => {
-                const chave = `profunda:${key}`;
+              {CALF_DOTS.map((dot) => {
+                const chave = `profunda:${dot.key}`;
                 const ativo = chaveAtiva === chave;
                 return (
-                  <path
-                    key={key}
-                    d={d}
-                    fill={corStatusProfundo(p[key])}
-                    stroke={ativo ? "#0eb8d0" : "none"}
-                    strokeWidth={ativo ? 1.5 : 0}
-                    style={{ cursor: "pointer" }}
-                    onClick={() => selecionar("profunda", key)}
-                  />
+                  <g key={dot.key} style={{ cursor: "pointer" }} onClick={() => selecionar("profunda", dot.key)}>
+                    <circle cx={dot.x} cy={dot.y} r={7} fill={corStatusProfundo(p[dot.key])} stroke={ativo ? "#0eb8d0" : "#fff"} strokeWidth={ativo ? 2.5 : 1.5} />
+                    <text x={dot.x} y={dot.y + 3} fontFamily="monospace" fontSize="7.5" fill="#fff" textAnchor="middle" pointerEvents="none">{dot.label}</text>
+                  </g>
                 );
               })}
-              <text x={185} y={370} fontFamily="monospace" fontSize="9.5" fill="#1a2530">T. Anteriores</text>
-              <text x={95} y={420} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor="end">T. Posteriores</text>
-              <text x={95} y={340} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor="end">Gastrocnêmicas</text>
-              <text x={185} y={470} fontFamily="monospace" fontSize="9.5" fill="#1a2530">Soleares</text>
+              <text x={70} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530">JSP</text>
+              <text x={165} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530">V. Poplítea</text>
+              <text x={185} y={430} fontFamily="monospace" fontSize="9.5" fill="#1a2530">VSP</text>
+              <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">posterior</text>
             </g>
-
-            {COLS.map((c) => (
-              <text key={c.key} x={c.tx + 150} y={VIEW_H - 14} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">{c.label}</text>
-            ))}
           </svg>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center" }}>
           <span>🔵 suficiente</span>
           <span>🔴 insuficiente</span>
           <span>⚫ trombose</span>
           <span>🟠 recanalização parcial</span>
           <span>⚪ ausente</span>
+          <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
         </div>
 
         {/* Painel contextual do vaso selecionado */}

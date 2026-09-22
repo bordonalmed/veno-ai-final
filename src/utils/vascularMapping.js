@@ -18,36 +18,24 @@ export const LANDMARK_MAGNA = { top: 48, joelho: 320, tornozelo: 552, topField: 
 export const LANDMARK_PARVA = { top: 314, joelho: 320, tornozelo: 535, topField: "JSP" };
 export const PX_PER_CM = 6.6;
 
-// ---- Geometria extra para o Mapa Interativo (vista anterior + lateral) ----
+// ---- Geometria extra para o Mapa Interativo (vistas medial + posterior) ----
 // Mesmo padrão de "fita" (ribbon) usado em FEMORAL_RIBBON/TIBIAIS_RIBBON: um
 // eixo (spine) + meia-largura (half) por ponto, desenhado com ribbonPath/
 // pathFromTriples — não linhas soltas — para o traçado ficar consistente com
 // o resto do desenho e, principalmente, para caber dentro do contorno real
-// da perna (MEDIAL_SILHOUETTE / POSTERIOR_SILHOUETTE) em cada altura.
+// da perna (MEDIAL_SILHOUETTE) em cada altura. As coordenadas abaixo foram
+// checadas ponto a ponto contra o contorno real da silhueta (com folga),
+// deslocadas para a direita do eixo da Safena Magna (VSM_SPINE) o suficiente
+// para não colidir visualmente com ela.
 //
 // Tronco femoral (Femoral Comum -> Femoral Superficial, é a mesma veia
 // anatomicamente, então usa um único traçado partido em dois trechos).
-export const FEMORAL_TRUNK_SPINE = [[150, 48], [147, 90], [143, 140], [139, 190], [136, 240], [133, 280], [131, 320]];
-export const FEMORAL_TRUNK_HALF = [6.0, 5.8, 5.5, 5.2, 5.0, 4.8, 4.6];
+export const FEMORAL_TRUNK_SPINE = [[161.8, 48], [162, 90], [156.2, 140], [151, 190], [146.6, 240], [144.5, 280], [146, 320]];
+export const FEMORAL_TRUNK_HALF = [4.6, 4.4, 4.2, 4.0, 3.8, 3.6, 3.4];
 export const FEMORAL_COMUM_FIM = 110; // px: acima disso é "Comum", abaixo é "Superficial"
 
-export const FEMORAL_PROFUNDA_SPINE = [[161, 70], [158, 110], [155, 160], [153, 210], [152, 260], [153, 300]];
-export const FEMORAL_PROFUNDA_HALF = [4.5, 4.3, 4.2, 4.0, 3.8, 3.6];
-
-// Veias profundas da panturrilha (vista lateral) — tibiais anterior/
-// posterior, gastrocnêmicas e soleares ficam todas no compartimento
-// profundo, próximas ao eixo central da perna (não espalhadas até a pele).
-// Os deslocamentos em x abaixo foram checados contra o contorno real da
-// POSTERIOR_SILHOUETTE (reaproveitada nesta vista) em cada altura, com
-// margem de sobra, para nunca ultrapassar a silhueta.
-export const TIBIAL_POSTERIOR_SPINE = [[145, 325], [144, 370], [143, 420], [143, 470], [144, 520], [145, 552]];
-export const TIBIAL_POSTERIOR_HALF = [3.4, 3.2, 3.0, 2.8, 2.6, 2.4];
-export const TIBIAL_ANTERIOR_SPINE = [[155, 325], [156, 370], [157, 420], [157, 470], [156, 520], [155, 552]];
-export const TIBIAL_ANTERIOR_HALF = [3.2, 3.0, 2.8, 2.6, 2.4, 2.2];
-export const GASTROCNEMICA_SPINE = [[150, 330], [147, 360], [146, 395], [146, 420]];
-export const GASTROCNEMICA_HALF = [3.0, 2.8, 2.6, 2.4];
-export const SOLEAR_SPINE = [[150, 340], [153, 390], [154, 440], [154, 480]];
-export const SOLEAR_HALF = [2.8, 2.6, 2.4, 2.2];
+export const FEMORAL_PROFUNDA_SPINE = [[163.5, 70], [164.1, 110], [165, 160], [163, 210], [159, 260], [158, 300]];
+export const FEMORAL_PROFUNDA_HALF = [3.4, 3.2, 3.0, 2.8, 2.6, 2.4];
 
 // Trecho (em forma de fita, já pronto para <path fill=.../>) de uma veia
 // profunda com status único (sem trecho de refluxo parcial, ao contrário de
