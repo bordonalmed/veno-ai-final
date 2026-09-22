@@ -1,14 +1,10 @@
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import ExamHeader from "../components/ExamHeader";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
 import EsquemaMapeamentoModal, { adicionarEsquemaAoPdf } from "../components/EsquemaMapeamentoModal";
-
-// Carregado sob demanda: só baixa three.js/@react-three quando o usuário
-// realmente abre o Esquema 3D, sem pesar no carregamento inicial do programa.
-const Esquema3D = lazy(() => import("../components/Esquema3D"));
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIVenoso";
@@ -329,7 +325,11 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
             }}>Perfurante {idx + 1}:</label>
             <select
               value={perf.status}
-              onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, status: e.target.value } : p))}
+              onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? (
+                e.target.value === "pérvia e incompetente"
+                  ? { ...p, status: e.target.value }
+                  : { ...p, status: e.target.value, segmento: "", valor: "" }
+              ) : p))}
               style={{
                 flex: 1,
                 minWidth: 'clamp(120px, 25vw, 150px)',
@@ -357,47 +357,49 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
               >Remover</button>
             )}
           </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'clamp(6px, 1.5vw, 8px)',
-            marginBottom: 'clamp(3px, 1vw, 4px)',
-            flexWrap: 'wrap',
-            marginLeft: 'clamp(8px, 2vw, 12px)'
-          }}>
-            <select
-              value={perf.segmento}
-              onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, segmento: e.target.value, valor: "" } : p))}
-              style={{
-                minWidth: 'clamp(120px, 25vw, 150px)',
-                maxWidth: 'clamp(180px, 30vw, 220px)',
-                padding: 'clamp(3px, 1vw, 4px)',
-                borderRadius: 'clamp(3px, 1vw, 4px)',
-                fontSize: 'clamp(11px, 2.2vw, 13px)'
-              }}
-            >
-              <option value="">Selecione o segmento</option>
-              {perfurantesSegmentoOptions.map(opt => <option key={opt}>{opt}</option>)}
-            </select>
-            {perf.segmento && (
-              <input
-                type="number"
-                min={0}
-                step={0.1}
-                value={perf.valor}
-                onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, valor: e.target.value } : p))}
-                placeholder="cm"
+          {perf.status === "pérvia e incompetente" && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'clamp(6px, 1.5vw, 8px)',
+              marginBottom: 'clamp(3px, 1vw, 4px)',
+              flexWrap: 'wrap',
+              marginLeft: 'clamp(8px, 2vw, 12px)'
+            }}>
+              <select
+                value={perf.segmento}
+                onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, segmento: e.target.value, valor: "" } : p))}
                 style={{
-                  width: 'clamp(50px, 10vw, 60px)',
-                  marginLeft: 'clamp(3px, 1vw, 4px)',
-                  borderRadius: 'clamp(3px, 1vw, 4px)',
+                  minWidth: 'clamp(120px, 25vw, 150px)',
+                  maxWidth: 'clamp(180px, 30vw, 220px)',
                   padding: 'clamp(3px, 1vw, 4px)',
-                  border: '1.5px solid #0eb8d0',
+                  borderRadius: 'clamp(3px, 1vw, 4px)',
                   fontSize: 'clamp(11px, 2.2vw, 13px)'
                 }}
-              />
-            )}
-          </div>
+              >
+                <option value="">Selecione o segmento</option>
+                {perfurantesSegmentoOptions.map(opt => <option key={opt}>{opt}</option>)}
+              </select>
+              {perf.segmento && (
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={perf.valor}
+                  onChange={e => onPerfurantes(perfurantes.map((p, i) => i === idx ? { ...p, valor: e.target.value } : p))}
+                  placeholder="cm"
+                  style={{
+                    width: 'clamp(50px, 10vw, 60px)',
+                    marginLeft: 'clamp(3px, 1vw, 4px)',
+                    borderRadius: 'clamp(3px, 1vw, 4px)',
+                    padding: 'clamp(3px, 1vw, 4px)',
+                    border: '1.5px solid #0eb8d0',
+                    fontSize: 'clamp(11px, 2.2vw, 13px)'
+                  }}
+                />
+              )}
+            </div>
+          )}
         </div>
       ))}
       <button
@@ -968,8 +970,6 @@ function MMIIVenoso() {
   const [anexos, setAnexos] = useState([]);
   const [mostrarEsquema, setMostrarEsquema] = useState(false);
   const [incluirEsquemaPdf, setIncluirEsquemaPdf] = useState(false);
-  const [mostrar3D, setMostrar3D] = useState(false);
-  const [lado3D, setLado3D] = useState("Direito");
 
   // Hook para detectar mudanças no tamanho da tela
   useEffect(() => {
@@ -1203,19 +1203,7 @@ function MMIIVenoso() {
         erro={erro}
       />
 
-      {lado && (
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
-          <button
-            type="button"
-            onClick={() => { setLado3D(lado === "Ambos" ? "Direito" : lado); setMostrar3D(true); }}
-            style={{ ...buttonStyle, background: "#3d5a80" }}
-          >
-            🧊 Preencher Clicando no Esquema 3D
-          </button>
-        </div>
-      )}
-
-      <div style={{ 
+      <div style={{
         width: '100%', 
         maxWidth: 'min(1200px, 98vw)', 
         margin: 'clamp(16px, 3vw, 24px) auto 0 auto', 
@@ -2326,23 +2314,6 @@ function MMIIVenoso() {
         jsfDiametro={jsfDiametro}
         jspDiametro={jspDiametro}
       />
-      <Suspense fallback={null}>
-        <Esquema3D
-          aberto={mostrar3D}
-          onFechar={() => setMostrar3D(false)}
-          lado={lado}
-          ladoAtivo={lado3D}
-          onTrocarLado={setLado3D}
-          superficiais={superficiais[lado3D] || {}}
-          magna={magna[lado3D] || {}}
-          parva={parva[lado3D] || {}}
-          profundas={profundas[lado3D] || {}}
-          onSuperficiais={(val) => setSuperficiais((prev) => ({ ...prev, [lado3D]: val }))}
-          onMagna={(val) => setMagna((prev) => ({ ...prev, [lado3D]: val }))}
-          onParva={(val) => setParva((prev) => ({ ...prev, [lado3D]: val }))}
-          onProfundas={(val) => setProfundas((prev) => ({ ...prev, [lado3D]: val }))}
-        />
-      </Suspense>
       <style>{`
         @keyframes logoGlow {
           0% {
