@@ -148,6 +148,7 @@ export default function MapaInterativo({
   onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
   onJsfDiametro, onJspDiametro, onVarizes,
   onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
+  incluirMapeamentoVisualPdf, onIncluirMapeamentoVisualPdf,
   anexos = [], onFileUpload, onDrop, onDragOver, onRemoveAnexo, formatFileSize,
 }) {
   const [selecionado, setSelecionado] = useState(null);
@@ -513,7 +514,15 @@ export default function MapaInterativo({
         {/* Salvar direto daqui, sem precisar fechar o mapa e voltar ao
             formulário. Salva o exame completo (os dois lados, se "Ambos"),
             não só o lado ativo no mapa. */}
-        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
+        <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 12, fontSize: 12, color: "#333", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={incluirMapeamentoVisualPdf}
+            onChange={(e) => onIncluirMapeamentoVisualPdf(e.target.checked)}
+          />
+          Incluir Mapeamento Visual no PDF
+        </label>
+        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
           <button onClick={onAbrirMapeamentoVisual} style={mapaBotaoStyle("#6f42c1")}>🩺 Mapeamento Visual</button>
           <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
           <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>

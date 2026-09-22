@@ -1036,7 +1036,7 @@ function MMIIVenoso() {
                         checked={incluirEsquemaPdf}
                         onChange={e => setIncluirEsquemaPdf(e.target.checked)}
                       />
-                      Incluir esquema de mapeamento no PDF
+                      Incluir Mapeamento Visual no PDF
                     </label>
                     <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
                     <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarEsquema(true)}>
@@ -1313,7 +1313,7 @@ function MMIIVenoso() {
                 checked={incluirEsquemaPdf}
                 onChange={e => setIncluirEsquemaPdf(e.target.checked)}
               />
-              Incluir esquema de mapeamento no PDF
+              Incluir Mapeamento Visual no PDF
             </label>
             <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
             <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarEsquema(true)}>
@@ -1525,6 +1525,8 @@ function MMIIVenoso() {
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
         onAbrirMapeamentoVisual={() => setMostrarEsquema(true)}
+        incluirMapeamentoVisualPdf={incluirEsquemaPdf}
+        onIncluirMapeamentoVisualPdf={setIncluirEsquemaPdf}
         anexos={anexos}
         onFileUpload={handleFileUpload}
         onDrop={handleDrop}
