@@ -5,6 +5,13 @@ import ExamHeader from "../components/ExamHeader";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
 import EsquemaMapeamentoModal, { adicionarEsquemaAoPdf } from "../components/EsquemaMapeamentoModal";
+import { SafenaMagnaExtra, SafenaParvaExtra } from "../components/SafenaExtraFields";
+import MapaInterativo from "../components/MapaInterativo";
+import {
+  veiasProfundas, veiasSuperficiais, profOptions, supOptions,
+  perfurantesStatusOptions, perfurantesSegmentoOptions,
+  montarLaudo,
+} from "../utils/mmiiVenosoLaudo";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIVenoso";
@@ -68,55 +75,7 @@ function carregarExameEmEdicao() {
   }
 }
 
-// Opções e legendas por extenso
-const veiasProfundas = [
-  "Veia Femoral Comum",
-  "Veia Femoral Superficial",
-  "Veia Femoral Profunda",
-  "Veia Poplítea",
-  "Veias Tibiais posteriores",
-  "Veias Tibiais anteriores",
-  "Veias Gastrocnêmicas",
-  "Veias Soleares",
-];
-const veiasSuperficiais = [
-  "JSF",
-  "Safena Magna",
-  "JSP",
-  "Safena Parva",
-];
-const profOptions = [
-  "pérvia e competente",
-  "pérvia e incompetente",
-  "não compressível e sem fluxo (sugestivo de trombose)",
-  "semi compressível, sugestivo de recanalização parcial",
-];
-const supOptions = [
-  "pérvia e competente",
-  "pérvia e incompetente",
-  "não compressível e sem fluxo (trombose)",
-  "ausente",
-];
 const lados = ["Direito", "Esquerdo", "Ambos"];
-const legendaCampos = {
-  "JSF": "JSF",
-  "JSP": "JSP",
-  "joelho": "joelho",
-  "cm_acima_joelho": "cm acima do joelho",
-  "cm_abaixo_joelho": "cm abaixo do joelho",
-  "cm_acima_tornozelo": "cm acima do tornozelo",
-  "tornozelo": "tornozelo",
-};
-
-const perfurantesStatusOptions = [
-  "pérvia e competente",
-  "pérvia e incompetente",
-];
-const perfurantesSegmentoOptions = [
-  "cm acima do joelho",
-  "cm abaixo do joelho",
-  "cm acima do tornozelo",
-];
 
 // Bloco de campos por lado
 function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes, onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes, jsfDiametro, setJsfDiametro, jspDiametro, setJspDiametro, observacao, onObservacao, varizes, onVarizes }) {
@@ -445,492 +404,6 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
   );
 }
 
-// Componentes extras das safenas
-function SafenaMagnaExtra({ status, valores, onChange }) {
-  if (status !== "pérvia e incompetente") return null;
-  return (
-    <div style={{ 
-      width: '100%', 
-      margin: 'clamp(1px, 0.5vw, 2px) 0 clamp(4px, 1.5vw, 6px) 0', 
-      padding: 0, 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'flex-start', 
-      background: 'none' 
-    }}>
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'row', 
-        gap: 'clamp(6px, 1.5vw, 8px)', 
-        alignItems: 'center', 
-        width: '100%', 
-        marginBottom: 'clamp(2px, 1vw, 3px)', 
-        flexWrap: 'wrap', 
-        justifyContent: 'flex-start' 
-      }}>
-        <label style={{ 
-          minWidth: 'clamp(60px, 12vw, 80px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Coxa:
-          <input 
-            type="number" 
-            min={0} 
-            step={0.1} 
-            value={valores.coxa} 
-            onChange={e => onChange({ ...valores, coxa: e.target.value })} 
-            style={{ 
-              width: 'clamp(40px, 8vw, 50px)', 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }} 
-          />
-        </label>
-        <label style={{ 
-          minWidth: 'clamp(60px, 12vw, 80px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Perna:
-          <input 
-            type="number" 
-            min={0} 
-            step={0.1} 
-            value={valores.perna} 
-            onChange={e => onChange({ ...valores, perna: e.target.value })} 
-            style={{ 
-              width: 'clamp(40px, 8vw, 50px)', 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }} 
-          />
-        </label>
-        <label style={{ 
-          minWidth: 'clamp(80px, 15vw, 100px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Tornozelo:
-          <input 
-            type="number" 
-            min={0} 
-            step={0.1} 
-            value={valores.tornozelo} 
-            onChange={e => onChange({ ...valores, tornozelo: e.target.value })} 
-            style={{ 
-              width: 'clamp(40px, 8vw, 50px)', 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }} 
-          />
-        </label>
-      </div>
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'row', 
-        gap: 'clamp(6px, 1.5vw, 8px)', 
-        alignItems: 'center', 
-        width: '100%', 
-        flexWrap: 'wrap', 
-        justifyContent: 'flex-start' 
-      }}>
-        <label style={{ 
-          minWidth: 'clamp(90px, 18vw, 110px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Início:
-          <select 
-            value={valores.inicio} 
-            onChange={e => onChange({ ...valores, inicio: e.target.value, inicio_valor: "" })} 
-            style={{ 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              width: 'clamp(100px, 20vw, 120px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }}
-          >
-            <option value="">Selecione</option>
-            <option value="JSF">JSF</option>
-            <option value="joelho">joelho</option>
-            <option value="cm_acima_joelho">cm acima do joelho</option>
-            <option value="cm_abaixo_joelho">cm abaixo do joelho</option>
-            <option value="cm_acima_tornozelo">cm acima do tornozelo</option>
-          </select>
-          {valores.inicio && valores.inicio.startsWith("cm_") && (
-            <input 
-              type="number" 
-              min={0} 
-              step={0.1} 
-              value={valores.inicio_valor} 
-              onChange={e => onChange({ ...valores, inicio_valor: e.target.value })} 
-              placeholder="cm" 
-              style={{ 
-                width: 'clamp(30px, 6vw, 40px)', 
-                marginLeft: 'clamp(2px, 1vw, 3px)', 
-                fontSize: 'clamp(10px, 2vw, 12px)', 
-                padding: 'clamp(1px, 0.5vw, 2px)' 
-              }} 
-            />
-          )}
-        </label>
-        <label style={{ 
-          minWidth: 'clamp(90px, 18vw, 110px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Término:
-          <select 
-            value={valores.fim} 
-            onChange={e => onChange({ ...valores, fim: e.target.value, fim_valor: "" })} 
-            style={{ 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              width: 'clamp(100px, 20vw, 120px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }}
-          >
-            <option value="">Selecione</option>
-            <option value="joelho">joelho</option>
-            <option value="cm_acima_joelho">cm acima do joelho</option>
-            <option value="cm_abaixo_joelho">cm abaixo do joelho</option>
-            <option value="cm_acima_tornozelo">cm acima do tornozelo</option>
-            <option value="tornozelo">tornozelo</option>
-          </select>
-          {valores.fim && valores.fim.startsWith("cm_") && (
-            <input 
-              type="number" 
-              min={0} 
-              step={0.1} 
-              value={valores.fim_valor} 
-              onChange={e => onChange({ ...valores, fim_valor: e.target.value })} 
-              placeholder="cm" 
-              style={{ 
-                width: 'clamp(30px, 6vw, 40px)', 
-                marginLeft: 'clamp(2px, 1vw, 3px)', 
-                fontSize: 'clamp(10px, 2vw, 12px)', 
-                padding: 'clamp(1px, 0.5vw, 2px)' 
-              }} 
-            />
-          )}
-        </label>
-      </div>
-    </div>
-  );
-}
-function SafenaParvaExtra({ status, valores, onChange }) {
-  if (status !== "pérvia e incompetente") return null;
-  return (
-    <div style={{ 
-      width: '100%', 
-      margin: 'clamp(1px, 0.5vw, 2px) 0 clamp(4px, 1.5vw, 6px) 0', 
-      padding: 0, 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'flex-start', 
-      background: 'none' 
-    }}>
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'row', 
-        gap: 'clamp(6px, 1.5vw, 8px)', 
-        alignItems: 'center', 
-        width: '100%', 
-        marginBottom: 'clamp(2px, 1vw, 3px)', 
-        flexWrap: 'wrap', 
-        justifyContent: 'flex-start' 
-      }}>
-        <label style={{ 
-          minWidth: 'clamp(70px, 14vw, 90px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Proximal:
-          <input 
-            type="number" 
-            min={0} 
-            step={0.1} 
-            value={valores.proximal} 
-            onChange={e => onChange({ ...valores, proximal: e.target.value })} 
-            style={{ 
-              width: 'clamp(40px, 8vw, 50px)', 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }} 
-          />
-        </label>
-        <label style={{ 
-          minWidth: 'clamp(70px, 14vw, 90px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Distal:
-          <input 
-            type="number" 
-            min={0} 
-            step={0.1} 
-            value={valores.distal} 
-            onChange={e => onChange({ ...valores, distal: e.target.value })} 
-            style={{ 
-              width: 'clamp(40px, 8vw, 50px)', 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }} 
-          />
-        </label>
-      </div>
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'row', 
-        gap: 'clamp(6px, 1.5vw, 8px)', 
-        alignItems: 'center', 
-        width: '100%', 
-        flexWrap: 'wrap', 
-        justifyContent: 'flex-start' 
-      }}>
-        <label style={{ 
-          minWidth: 'clamp(90px, 18vw, 110px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Início:
-          <select 
-            value={valores.inicio} 
-            onChange={e => onChange({ ...valores, inicio: e.target.value, inicio_valor: "" })} 
-            style={{ 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              width: 'clamp(100px, 20vw, 120px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }}
-          >
-            <option value="">Selecione</option>
-            <option value="JSP">JSP</option>
-            <option value="joelho">joelho</option>
-            <option value="cm_abaixo_joelho">cm abaixo do joelho</option>
-          </select>
-          {valores.inicio === "cm_abaixo_joelho" && (
-            <input 
-              type="number" 
-              min={0} 
-              step={0.1} 
-              value={valores.inicio_valor} 
-              onChange={e => onChange({ ...valores, inicio_valor: e.target.value })} 
-              placeholder="cm" 
-              style={{ 
-                width: 'clamp(30px, 6vw, 40px)', 
-                marginLeft: 'clamp(2px, 1vw, 3px)', 
-                fontSize: 'clamp(10px, 2vw, 12px)', 
-                padding: 'clamp(1px, 0.5vw, 2px)' 
-              }} 
-            />
-          )}
-        </label>
-        <label style={{ 
-          minWidth: 'clamp(90px, 18vw, 110px)', 
-          fontWeight: 500, 
-          fontSize: 'clamp(10px, 2vw, 12px)' 
-        }}>Término:
-          <select 
-            value={valores.fim} 
-            onChange={e => onChange({ ...valores, fim: e.target.value, fim_valor: "" })} 
-            style={{ 
-              marginLeft: 'clamp(2px, 1vw, 3px)', 
-              width: 'clamp(100px, 20vw, 120px)', 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: 'clamp(1px, 0.5vw, 2px)' 
-            }} 
-          >
-            <option value="">Selecione</option>
-            <option value="cm_acima_tornozelo">cm acima do tornozelo</option>
-            <option value="tornozelo">tornozelo</option>
-          </select>
-          {valores.fim === "cm_acima_tornozelo" && (
-            <input 
-              type="number" 
-              min={0} 
-              step={0.1} 
-              value={valores.fim_valor} 
-              onChange={e => onChange({ ...valores, fim_valor: e.target.value })} 
-              placeholder="cm" 
-              style={{ 
-                width: 'clamp(30px, 6vw, 40px)', 
-                marginLeft: 'clamp(2px, 1vw, 3px)', 
-                fontSize: 'clamp(10px, 2vw, 12px)', 
-                padding: 'clamp(1px, 0.5vw, 2px)' 
-              }} 
-            />
-          )}
-        </label>
-      </div>
-    </div>
-  );
-}
-
-// Função que monta o laudo e mostra legendas por extenso
-function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfurantes, varizes }) {
-  const conclusoes = [];
-  if (Object.values(profundas).some(v => v.includes("não compressível"))) {
-    conclusoes.push("Trombose venosa profunda");
-  }
-  if (Object.values(profundas).some(v => v.includes("semi compressível"))) {
-    conclusoes.push("Sinais de recanalização parcial do sistema venoso profundo");
-  }
-  if (Object.values(profundas).some(v => v.includes("incompetente"))) {
-    conclusoes.push("Insuficiência de sistema venoso profundo");
-  }
-  if (superficiais["Safena Magna"] === "pérvia e incompetente") {
-    const ini = magna.inicio;
-    const fim = magna.fim;
-    const ini_val = magna.inicio_valor;
-    const fim_val = magna.fim_valor;
-    const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
-    const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
-    
-    // Verifica se tem dados de início e fim preenchidos
-    if (ini && fim) {
-      if ((ini_fmt && ini_fmt.includes("JSF")) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
-        conclusoes.push("Insuficiência total da safena magna");
-      } else if ((ini_fmt && (ini_fmt.includes("joelho") || ini_fmt.includes("JSF"))) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
-        conclusoes.push("Insuficiência parcial da safena magna");
-      } else if ((ini_fmt && ini_fmt.includes("joelho")) && (fim_fmt && fim_fmt.includes("joelho"))) {
-        conclusoes.push("Insuficiência segmentar da safena magna");
-      } else if ((ini_fmt && ini_fmt.includes("JSF")) && (fim_fmt && fim_fmt.includes("joelho"))) {
-        conclusoes.push("Insuficiência parcial da safena magna");
-      } else {
-        conclusoes.push("Insuficiência da safena magna");
-      }
-    } else {
-      conclusoes.push("Insuficiência da safena magna");
-    }
-  }
-  if (superficiais["Safena Parva"] === "pérvia e incompetente") {
-    const ini = parva.inicio;
-    const fim = parva.fim;
-    const ini_val = parva.inicio_valor;
-    const fim_val = parva.fim_valor;
-    const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
-    const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
-    
-    // Verifica se tem dados de início e fim preenchidos
-    if (ini && fim) {
-      if ((ini_fmt && ini_fmt.includes("JSP")) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
-        conclusoes.push("Insuficiência total da safena parva");
-      } else if ((ini_fmt && (ini_fmt.includes("joelho") || ini_fmt.includes("JSP"))) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
-        conclusoes.push("Insuficiência parcial da safena parva");
-      } else if ((ini_fmt && ini_fmt.includes("joelho")) && (fim_fmt && fim_fmt.includes("joelho"))) {
-        conclusoes.push("Insuficiência segmentar da safena parva");
-      } else if ((ini_fmt && ini_fmt.includes("JSP")) && (fim_fmt && fim_fmt.includes("joelho"))) {
-        conclusoes.push("Insuficiência parcial da safena parva");
-      } else {
-        conclusoes.push("Insuficiência da safena parva");
-      }
-    } else {
-      conclusoes.push("Insuficiência da safena parva");
-    }
-  }
-  if (superficiais["Safena Magna"] === "não compressível e sem fluxo (trombose)") {
-    conclusoes.push("Tromboflebite da safena magna");
-  }
-  if (superficiais["Safena Parva"] === "não compressível e sem fluxo (trombose)") {
-    conclusoes.push("Tromboflebite da safena parva");
-  }
-  if (superficiais["JSF"] === "pérvia e incompetente") {
-    conclusoes.push("Incompetência da junção safeno-femoral (JSF)");
-  }
-  if (superficiais["JSP"] === "pérvia e incompetente") {
-    conclusoes.push("Incompetência da junção safeno-poplítea (JSP)");
-  }
-  if (Array.isArray(perfurantes) && perfurantes.some(p => p.status === "pérvia e incompetente")) {
-    const nIncompetentes = perfurantes.filter(p => p.status === "pérvia e incompetente").length;
-    conclusoes.push(nIncompetentes > 1 ? "Insuficiência de veias perfurantes" : "Insuficiência de veia perfurante");
-  }
-  if (varizes && varizes.tipo) {
-    conclusoes.push(varizes.tipo + ".");
-  }
-  if (!conclusoes.length) return "- Ausência de refluxo venoso nos territórios estudados.";
-  return "- " + conclusoes.join("\n- ");
-}
-
-function montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes }) {
-  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
-  const blocos = lados.map(l => {
-    let linhas = [];
-    linhas.push(`PACIENTE: ${nome}`);
-    linhas.push(`DATA: ${data}`);
-    linhas.push(`DOPPLER VENOSO DE MEMBRO INFERIOR ${l.toUpperCase()}`);
-    linhas.push("");
-    linhas.push("Sistema Venoso Profundo:");
-    veiasProfundas.forEach(v => {
-      linhas.push(`- ${v}: ${profundas[l][v]}`);
-    });
-    linhas.push("");
-    linhas.push("Sistema Venoso Superficial:");
-    veiasSuperficiais.forEach(v => {
-      let extra = "";
-      if (v === "JSF" && jsfDiametro && jsfDiametro[l] && jsfDiametro[l] !== "") extra = ` (diâmetro: ${jsfDiametro[l]} mm)`;
-      if (v === "JSP" && jspDiametro && jspDiametro[l] && jspDiametro[l] !== "") extra = ` (diâmetro: ${jspDiametro[l]} mm)`;
-      linhas.push(`- ${v}: ${superficiais[l][v]}${extra}`);
-      if (v === "Safena Magna" && superficiais[l][v] === "pérvia e incompetente") {
-        if (magna[l].coxa) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
-        if (magna[l].perna) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
-        if (magna[l].tornozelo) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
-        const ini = magna[l].inicio;
-        const fim = magna[l].fim;
-        const ini_val = magna[l].inicio_valor;
-        const fim_val = magna[l].fim_valor;
-        const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
-        const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
-        linhas.push(`  > Segmento insuficiente: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
-      }
-      if (v === "Safena Parva" && superficiais[l][v] === "pérvia e incompetente") {
-        if (parva[l].proximal) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
-        if (parva[l].distal) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
-        const ini = parva[l].inicio;
-        const fim = parva[l].fim;
-        const ini_val = parva[l].inicio_valor;
-        const fim_val = parva[l].fim_valor;
-        const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
-        const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
-        linhas.push(`  > Segmento insuficiente: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
-      }
-    });
-    linhas.push("");
-    linhas.push("Veias Perfurantes:");
-    if (Array.isArray(perfurantes[l]) && perfurantes[l].length) {
-      perfurantes[l].forEach((perf, idx) => {
-        const prefixo = perfurantes[l].length > 1 ? `- Perfurante ${idx + 1}: ${perf.status}` : `- ${perf.status}`;
-        let linhaPerf = prefixo;
-        if (perf.segmento && perf.valor) {
-          linhaPerf += ` (${perf.valor} ${perf.segmento})`;
-        }
-        linhas.push(linhaPerf);
-      });
-    } else {
-      linhas.push("- Não especificado");
-    }
-    // Adicione aqui a linha detalhada das varizes
-    if (varizes && varizes[l] && varizes[l].tipo) {
-      linhas.push(""); // Adiciona espaço em branco
-      let linhaVariz = `${varizes[l].tipo}`;
-      if (varizes[l].localizacao && varizes[l].localizacao.length > 0) {
-        linhaVariz += ` em ${varizes[l].localizacao.map(loc => loc.charAt(0).toUpperCase() + loc.slice(1)).join(', ')}`;
-      }
-      linhaVariz += ".";
-      linhas.push(linhaVariz);
-      linhas.push("");
-    }
-    linhas.push("");
-    linhas.push("CONCLUSÃO:");
-    linhas.push(gerarConclusaoPorLado({ profundas: profundas[l], superficiais: superficiais[l], magna: magna[l], parva: parva[l], perfurantes: perfurantes[l], varizes: varizes[l] }));
-    if (observacoes && observacoes[l]) {
-      linhas.push("");
-      linhas.push("OBSERVAÇÕES:");
-      linhas.push(observacoes[l]);
-    }
-    return linhas.join("\n");
-  });
-  return blocos.join("\n\n" + "=".repeat(80) + "\n\n");
-}
-
 function MMIIVenoso() {
   const [nome, setNome] = useState("");
   const [idade, setIdade] = useState("");
@@ -970,6 +443,8 @@ function MMIIVenoso() {
   const [anexos, setAnexos] = useState([]);
   const [mostrarEsquema, setMostrarEsquema] = useState(false);
   const [incluirEsquemaPdf, setIncluirEsquemaPdf] = useState(false);
+  const [mostrarMapa, setMostrarMapa] = useState(false);
+  const [ladoMapa, setLadoMapa] = useState("Direito");
 
   // Hook para detectar mudanças no tamanho da tela
   useEffect(() => {
@@ -1203,9 +678,21 @@ function MMIIVenoso() {
         erro={erro}
       />
 
+      {lado && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
+          <button
+            type="button"
+            onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
+            style={{ ...buttonStyle, background: "#3d5a80" }}
+          >
+            🖱️ Preencher Clicando no Mapa
+          </button>
+        </div>
+      )}
+
       <div style={{
-        width: '100%', 
-        maxWidth: 'min(1200px, 98vw)', 
+        width: '100%',
+        maxWidth: 'min(1200px, 98vw)',
         margin: 'clamp(16px, 3vw, 24px) auto 0 auto', 
         display: 'flex', 
         flexDirection: 'column', 
@@ -2313,6 +1800,31 @@ function MMIIVenoso() {
         profundas={profundas}
         jsfDiametro={jsfDiametro}
         jspDiametro={jspDiametro}
+      />
+      <MapaInterativo
+        aberto={mostrarMapa}
+        onFechar={() => setMostrarMapa(false)}
+        lado={lado}
+        ladoAtivo={ladoMapa}
+        onTrocarLado={setLadoMapa}
+        nome={nome}
+        data={data}
+        profundas={profundas}
+        superficiais={superficiais}
+        magna={magna}
+        parva={parva}
+        perfurantes={perfurantes}
+        observacoes={observacoes}
+        varizes={varizes}
+        jsfDiametro={jsfDiametro}
+        jspDiametro={jspDiametro}
+        onProfundas={(l, val) => setProfundas(prev => ({ ...prev, [l]: val }))}
+        onSuperficiais={(l, val) => setSuperficiais(prev => ({ ...prev, [l]: val }))}
+        onMagna={(l, val) => setMagna(prev => ({ ...prev, [l]: val }))}
+        onParva={(l, val) => setParva(prev => ({ ...prev, [l]: val }))}
+        onPerfurantes={(l, val) => setPerfurantes(prev => ({ ...prev, [l]: val }))}
+        onJsfDiametro={(l, val) => setJsfDiametro(prev => ({ ...prev, [l]: val }))}
+        onJspDiametro={(l, val) => setJspDiametro(prev => ({ ...prev, [l]: val }))}
       />
       <style>{`
         @keyframes logoGlow {

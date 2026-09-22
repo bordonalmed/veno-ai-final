@@ -16,7 +16,35 @@ export const VSP_HALF = [5.2, 5.0, 4.8, 4.6, 4.4, 4.2, 4.0, 3.6, 3.2];
 
 export const LANDMARK_MAGNA = { top: 48, joelho: 320, tornozelo: 552, topField: "JSF" };
 export const LANDMARK_PARVA = { top: 314, joelho: 320, tornozelo: 535, topField: "JSP" };
-const PX_PER_CM = 6.6;
+export const PX_PER_CM = 6.6;
+
+// ---- Geometria extra para o Mapa Interativo (vista anterior + lateral) ----
+// Tronco femoral (Femoral Comum -> Femoral Superficial, é a mesma veia
+// anatomicamente, então usa um único traçado partido em dois trechos).
+export const FEMORAL_TRUNK_SPINE = [[150, 48], [147, 90], [143, 140], [139, 190], [136, 240], [133, 280], [131, 320]];
+export const FEMORAL_TRUNK_HALF = [6.0, 5.8, 5.5, 5.2, 5.0, 4.8, 4.6];
+export const FEMORAL_COMUM_FIM = 110; // px: acima disso é "Comum", abaixo é "Superficial"
+
+export const FEMORAL_PROFUNDA_SPINE = [[163, 70], [160, 110], [157, 160], [155, 210], [154, 260], [155, 300]];
+export const FEMORAL_PROFUNDA_HALF = [4.5, 4.3, 4.2, 4.0, 3.8, 3.6];
+
+// Leque de veias profundas da panturrilha (vista lateral), todas partindo da
+// altura do oco poplíteo (mesma referência da LANDMARK_MAGNA.joelho = 320).
+export const TIBIAL_POSTERIOR_SPINE = [[148, 325], [140, 370], [133, 420], [128, 470], [126, 520], [128, 552]];
+export const TIBIAL_POSTERIOR_HALF = [3.6, 3.4, 3.2, 3.0, 2.8, 2.6];
+export const TIBIAL_ANTERIOR_SPINE = [[152, 325], [162, 370], [170, 420], [176, 470], [179, 520], [180, 552]];
+export const TIBIAL_ANTERIOR_HALF = [3.4, 3.2, 3.0, 2.8, 2.6, 2.4];
+export const GASTROCNEMICA_SPINE = [[150, 330], [145, 360], [142, 395], [141, 420]];
+export const GASTROCNEMICA_HALF = [3.2, 3.0, 2.8, 2.6];
+export const SOLEAR_SPINE = [[150, 340], [147, 390], [145, 440], [144, 480]];
+export const SOLEAR_HALF = [3.0, 2.8, 2.6, 2.4];
+
+// Linha simples (sem preenchimento) para um traçado de veia profunda com
+// status único (sem trecho de refluxo parcial, ao contrário de magna/parva).
+export function linhaVeiaSimples(spine, half, yA, yB) {
+  const pts = sliceSpine(spine, half, yA, yB).map((p) => [p[0], p[1]]);
+  return catmullRom(pts, false);
+}
 
 export const CORES = {
   "pérvia e competente": "#1f6fb2",
