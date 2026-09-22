@@ -144,15 +144,60 @@ export function classify(veinLabel, topField, ini, fim, iniVal, fimVal) {
   return `Insuficiência da safena ${veinLabel}`;
 }
 
+// Mesma árvore de decisão de classify(), mas para o segmento marcado como
+// "ausente" (veia não identificável de um ponto a outro), em vez de
+// insuficiente — mesmo texto de segmento (JSF/joelho/tornozelo/cm), só troca
+// "Insuficiência" por "Ausência".
+export function classifyAusencia(veinLabel, topField, ini, fim, iniVal, fimVal) {
+  if (!ini || !fim) return `Ausência de safena ${veinLabel} identificável ao exame`;
+  const iniFmt = fmt(ini, iniVal), fimFmt = fmt(fim, fimVal);
+  if (iniFmt.includes(topField) && fimFmt.includes("tornozelo")) return `Ausência total da safena ${veinLabel}`;
+  if ((iniFmt.includes("joelho") || iniFmt.includes(topField)) && fimFmt.includes("tornozelo")) return `Ausência parcial da safena ${veinLabel}`;
+  if (iniFmt.includes("joelho") && fimFmt.includes("joelho")) return `Ausência segmentar da safena ${veinLabel}`;
+  if (iniFmt.includes(topField) && fimFmt.includes("joelho")) return `Ausência parcial da safena ${veinLabel}`;
+  return `Ausência de safena ${veinLabel} identificável ao exame`;
+}
+
 // Retorna os trechos coloridos (path + cor) da veia, a partir dos MESMOS
 // campos que o formulario ja usa (status, inicio, fim, inicio_valor, fim_valor).
 export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim, iniVal, fimVal }) {
   if (status === "ausente") {
-    const pts = sliceSpine(spine, half, landmark.top, landmark.tornozelo).map((p) => [p[0], p[1]]);
+    const needIniA = ini && ini.indexOf("cm_") === 0;
+    const needFimA = fim && fim.indexOf("cm_") === 0;
+    const completoA = ini && fim && (!needIniA || iniVal) && (!needFimA || fimVal);
+    if (!completoA) {
+      const pts = sliceSpine(spine, half, landmark.top, landmark.tornozelo).map((p) => [p[0], p[1]]);
+      return {
+        segments: [{ d: catmullRom(pts, false), color: CORES.ausente, tracejado: true }],
+        dotColor: "#ffffff",
+        dotStroke: CORES.ausente,
+      };
+    }
+    let yStartA = yFromField(ini, iniVal, landmark);
+    let yEndA = yFromField(fim, fimVal, landmark);
+    if (yStartA > yEndA) { const t = yStartA; yStartA = yEndA; yEndA = t; }
+    const segmentsA = [];
+    if (yStartA > landmark.top + 2) {
+      segmentsA.push({ d: pathFromTriples(sliceSpine(spine, half, landmark.top, yStartA)), color: CORES["pérvia e competente"] });
+    }
+    segmentsA.push({ d: catmullRom(sliceSpine(spine, half, yStartA, yEndA).map((p) => [p[0], p[1]]), false), color: CORES.ausente, tracejado: true });
+    if (yEndA < landmark.tornozelo - 2) {
+      segmentsA.push({ d: pathFromTriples(sliceSpine(spine, half, yEndA, landmark.tornozelo)), color: CORES["pérvia e competente"] });
+    }
+    const dotColorA = yStartA <= landmark.top + 2 ? "#ffffff" : CORES["pérvia e competente"];
+    const dotStrokeA = yStartA <= landmark.top + 2 ? CORES.ausente : undefined;
     return {
-      segments: [{ d: catmullRom(pts, false), color: CORES.ausente, tracejado: true }],
-      dotColor: "#ffffff",
-      dotStroke: CORES.ausente,
+      segments: segmentsA,
+      dotColor: dotColorA,
+      dotStroke: dotStrokeA,
+      refluxo: {
+        yStart: yStartA,
+        yEnd: yEndA,
+        iniLabel: fmt(ini, iniVal),
+        fimLabel: fmt(fim, fimVal),
+        marcarIni: yStartA > landmark.top + 2,
+        marcarFim: yEndA < landmark.tornozelo - 2,
+      },
     };
   }
   if (status !== "pérvia e incompetente") {
@@ -195,7 +240,7 @@ export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim
 }
 
 export function gerarConclusaoVisual(veinLabel, topField, status, ini, fim, iniVal, fimVal) {
-  if (status === "ausente") return `Ausência de safena ${veinLabel} identificável ao exame`;
+  if (status === "ausente") return classifyAusencia(veinLabel, topField, ini, fim, iniVal, fimVal);
   if (status === "não compressível e sem fluxo (trombose)") return `Tromboflebite da safena ${veinLabel}`;
   if (status === "pérvia e incompetente") return classify(veinLabel, topField, ini, fim, iniVal, fimVal);
   return null;

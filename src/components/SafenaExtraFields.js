@@ -4,7 +4,7 @@ import React from "react";
 // Extraídos para módulo compartilhado para que tanto o formulário
 // (MMIIVenoso.js) quanto o Mapa Interativo usem exatamente os mesmos campos.
 export function SafenaMagnaExtra({ status, valores, onChange }) {
-  if (status !== "pérvia e incompetente") return null;
+  if (status !== "pérvia e incompetente" && status !== "ausente") return null;
   return (
     <div style={{
       width: '100%',
@@ -175,7 +175,7 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
   );
 }
 export function SafenaParvaExtra({ status, valores, onChange }) {
-  if (status !== "pérvia e incompetente") return null;
+  if (status !== "pérvia e incompetente" && status !== "ausente") return null;
   return (
     <div style={{
       width: '100%',

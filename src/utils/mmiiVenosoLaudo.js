@@ -84,6 +84,30 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
       conclusoes.push("Insuficiência da safena magna");
     }
   }
+  if (superficiais["Safena Magna"] === "ausente") {
+    const ini = magna.inicio;
+    const fim = magna.fim;
+    const ini_val = magna.inicio_valor;
+    const fim_val = magna.fim_valor;
+    const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
+    const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
+
+    if (ini && fim) {
+      if ((ini_fmt && ini_fmt.includes("JSF")) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
+        conclusoes.push("Ausência total da safena magna");
+      } else if ((ini_fmt && (ini_fmt.includes("joelho") || ini_fmt.includes("JSF"))) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
+        conclusoes.push("Ausência parcial da safena magna");
+      } else if ((ini_fmt && ini_fmt.includes("joelho")) && (fim_fmt && fim_fmt.includes("joelho"))) {
+        conclusoes.push("Ausência segmentar da safena magna");
+      } else if ((ini_fmt && ini_fmt.includes("JSF")) && (fim_fmt && fim_fmt.includes("joelho"))) {
+        conclusoes.push("Ausência parcial da safena magna");
+      } else {
+        conclusoes.push("Ausência de safena magna identificável ao exame");
+      }
+    } else {
+      conclusoes.push("Ausência de safena magna identificável ao exame");
+    }
+  }
   if (superficiais["Safena Parva"] === "pérvia e incompetente") {
     const ini = parva.inicio;
     const fim = parva.fim;
@@ -106,6 +130,30 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
       }
     } else {
       conclusoes.push("Insuficiência da safena parva");
+    }
+  }
+  if (superficiais["Safena Parva"] === "ausente") {
+    const ini = parva.inicio;
+    const fim = parva.fim;
+    const ini_val = parva.inicio_valor;
+    const fim_val = parva.fim_valor;
+    const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
+    const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
+
+    if (ini && fim) {
+      if ((ini_fmt && ini_fmt.includes("JSP")) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
+        conclusoes.push("Ausência total da safena parva");
+      } else if ((ini_fmt && (ini_fmt.includes("joelho") || ini_fmt.includes("JSP"))) && (fim_fmt && fim_fmt.includes("tornozelo"))) {
+        conclusoes.push("Ausência parcial da safena parva");
+      } else if ((ini_fmt && ini_fmt.includes("joelho")) && (fim_fmt && fim_fmt.includes("joelho"))) {
+        conclusoes.push("Ausência segmentar da safena parva");
+      } else if ((ini_fmt && ini_fmt.includes("JSP")) && (fim_fmt && fim_fmt.includes("joelho"))) {
+        conclusoes.push("Ausência parcial da safena parva");
+      } else {
+        conclusoes.push("Ausência de safena parva identificável ao exame");
+      }
+    } else {
+      conclusoes.push("Ausência de safena parva identificável ao exame");
     }
   }
   if (superficiais["Safena Magna"] === "não compressível e sem fluxo (trombose)") {
@@ -150,7 +198,8 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
       if (v === "JSF" && jsfDiametro && jsfDiametro[l] && jsfDiametro[l] !== "") extra = ` (diâmetro: ${jsfDiametro[l]} mm)`;
       if (v === "JSP" && jspDiametro && jspDiametro[l] && jspDiametro[l] !== "") extra = ` (diâmetro: ${jspDiametro[l]} mm)`;
       linhas.push(`- ${v}: ${superficiais[l][v]}${extra}`);
-      if (v === "Safena Magna" && superficiais[l][v] === "pérvia e incompetente") {
+      if (v === "Safena Magna" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente")) {
+        const rotulo = superficiais[l][v] === "ausente" ? "ausente" : "insuficiente";
         if (magna[l].coxa) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
         if (magna[l].perna) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
         if (magna[l].tornozelo) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
@@ -160,9 +209,10 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
         const fim_val = magna[l].fim_valor;
         const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
         const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
-        linhas.push(`  > Segmento insuficiente: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
+        linhas.push(`  > Segmento ${rotulo}: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
       }
-      if (v === "Safena Parva" && superficiais[l][v] === "pérvia e incompetente") {
+      if (v === "Safena Parva" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente")) {
+        const rotulo = superficiais[l][v] === "ausente" ? "ausente" : "insuficiente";
         if (parva[l].proximal) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
         if (parva[l].distal) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
         const ini = parva[l].inicio;
@@ -171,7 +221,7 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
         const fim_val = parva[l].fim_valor;
         const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
         const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
-        linhas.push(`  > Segmento insuficiente: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
+        linhas.push(`  > Segmento ${rotulo}: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
       }
     });
     linhas.push("");
