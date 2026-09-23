@@ -13,6 +13,7 @@ import {
   corStatusProfundo,
   fitaVeiaSimples,
   posicaoPerfurante,
+  trianguloPontos,
 } from "../utils/vascularMapping";
 import { SafenaMagnaExtra, SafenaParvaExtra } from "./SafenaExtraFields";
 import {
@@ -266,7 +267,7 @@ export default function MapaInterativo({
                 {hitPath(magnaHitD, () => selecionar("superficial", "Safena Magna"), "superficial:Safena Magna", chaveAtiva)}
                 <circle cx={150} cy={48} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSF")} />
                 {perfMarkers.map((mk, i) => (
-                  <circle key={i} cx={mk.x} cy={mk.y} r={5.5} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} />
+                  <polygon key={i} points={trianguloPontos(mk.x, mk.y, 6.5)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
                 ))}
                 {VARIZ_SPOTS.filter((spot) => spot.view === "medial").map((spot) => {
                   const chave = `variz:${spot.regiao}`;
@@ -328,6 +329,7 @@ export default function MapaInterativo({
           <span>⚫ trombose</span>
           <span>🟠 recanalização parcial</span>
           <span>⚪ ausente</span>
+          <span style={{ marginLeft: 8, color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
           <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>

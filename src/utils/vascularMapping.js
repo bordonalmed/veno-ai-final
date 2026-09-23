@@ -267,6 +267,19 @@ export function posicaoPerfurante(segmentoLabel, valor) {
   return { x: x - 3, y };
 }
 
+// Vértices de um triângulo equilátero apontando pra cima, inscrito num
+// círculo de raio r centrado em (cx, cy) — usado como marcador de
+// perfurante insuficiente (formato diferente dos círculos de status das
+// veias, pra não confundir os dois tipos de achado no desenho).
+export function trianguloPontos(cx, cy, r) {
+  return [-90, 150, 30]
+    .map((deg) => {
+      const rad = (deg * Math.PI) / 180;
+      return `${(cx + r * Math.cos(rad)).toFixed(2)},${(cy + r * Math.sin(rad)).toFixed(2)}`;
+    })
+    .join(" ");
+}
+
 // ---- Sistema venoso profundo (Femorais, Poplítea, Tibiais, Gastrocnêmicas, Soleares) ----
 // Usa as mesmas opções do formulário (profOptions em MMIIVenoso.js):
 // "pérvia e competente" | "pérvia e incompetente" |

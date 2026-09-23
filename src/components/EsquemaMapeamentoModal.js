@@ -16,6 +16,7 @@ import {
   construirSegmentosVeia,
   gerarConclusaoVisual,
   posicaoPerfurante,
+  trianguloPontos,
   piorCorProfundo,
   conclusoesSistemaProfundo,
   interpAt,
@@ -149,7 +150,8 @@ function montarSvgLado(dadosLado) {
       // VERTICAL (um deslocamento horizontal maior jogava os marcadores
       // extras pra fora do desenho perto do joelho, onde a perna afunila).
       const jitter = idx * 12;
-      return `<circle cx="${pos.x.toFixed(2)}" cy="${(pos.y + jitter).toFixed(2)}" r="5.5" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3"/>`;
+      const pontos = trianguloPontos(pos.x, pos.y + jitter, 6.5);
+      return `<polygon points="${pontos}" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>`;
     })
     .join("");
 
