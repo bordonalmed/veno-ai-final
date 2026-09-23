@@ -80,16 +80,22 @@ const VARIZ_CORES = {
   "Microvarizes": "#c0392b",
 };
 
-// Ícone pequeno e distinto por tipo de variz, "colado" na região clicada —
-// sem tipo, mostra um círculo tracejado com "+" (toque pra marcar).
+// Ícone por tipo de variz, "colado" na região clicada — sem tipo, mostra um
+// círculo tracejado com "+" (toque pra marcar). O contorno é uma elipse (mais
+// alta que larga, não um círculo): a faixa livre entre a perna e a Safena
+// Magna na vista medial é estreita na horizontal mas sobra bastante espaço
+// na vertical, então esticar pra cima/baixo é o jeito de deixar o alvo bem
+// maior (o dobro de área do círculo antigo) sem esbarrar na Safena Magna
+// nem sair do contorno da perna. rx=8/ry=12.25 (sem tipo) e rx=8/ry=20.25
+// (com tipo) verificados contra os dois limites em todos os 3 pontos.
 function VarizIcon({ tipo, cx, cy, ativo }) {
   const cor = VARIZ_CORES[tipo];
   if (!tipo) {
     return (
       <g>
-        <circle cx={cx} cy={cy} r={7} fill="#fff" fillOpacity={0.6} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={ativo ? 2 : 1.2} strokeDasharray="2.5 2" />
-        <line x1={cx - 3} y1={cy} x2={cx + 3} y2={cy} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.2} />
-        <line x1={cx} y1={cy - 3} x2={cx} y2={cy + 3} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.2} />
+        <ellipse cx={cx} cy={cy} rx={8} ry={12.25} fill="#fff" fillOpacity={0.6} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={ativo ? 2.2 : 1.4} strokeDasharray="3 2.5" />
+        <line x1={cx - 4} y1={cy} x2={cx + 4} y2={cy} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.4} />
+        <line x1={cx} y1={cy - 4} x2={cx} y2={cy + 4} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.4} />
       </g>
     );
   }
@@ -97,8 +103,8 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
     // squiggle grosso (traço tortuoso, como uma variz visível)
     return (
       <g>
-        <circle cx={cx} cy={cy} r={9} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2 : 1.2} />
-        <path d={`M ${cx - 5},${cy + 3} Q ${cx - 2.5},${cy - 4} ${cx},${cy - 1} Q ${cx + 2.5},${cy + 3} ${cx + 5},${cy - 3}`} fill="none" stroke={cor} strokeWidth={2} strokeLinecap="round" />
+        <ellipse cx={cx} cy={cy} rx={8} ry={20.25} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
+        <path d={`M ${cx - 6.5},${cy + 3.9} Q ${cx - 3.25},${cy - 5.2} ${cx},${cy - 1.3} Q ${cx + 3.25},${cy + 3.9} ${cx + 6.5},${cy - 3.9}`} fill="none" stroke={cor} strokeWidth={2.4} strokeLinecap="round" />
       </g>
     );
   }
@@ -106,26 +112,26 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
     // pequena malha/rede (linhas finas cruzadas)
     return (
       <g>
-        <circle cx={cx} cy={cy} r={9} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2 : 1.2} />
-        <path d={`M ${cx - 5},${cy - 3} L ${cx + 5},${cy - 3} M ${cx - 5},${cy + 3} L ${cx + 5},${cy + 3} M ${cx - 3},${cy - 5} L ${cx - 3},${cy + 5} M ${cx + 3},${cy - 5} L ${cx + 3},${cy + 5}`} stroke={cor} strokeWidth={1} />
+        <ellipse cx={cx} cy={cy} rx={8} ry={20.25} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
+        <path d={`M ${cx - 6.5},${cy - 3.9} L ${cx + 6.5},${cy - 3.9} M ${cx - 6.5},${cy + 3.9} L ${cx + 6.5},${cy + 3.9} M ${cx - 3.9},${cy - 6.5} L ${cx - 3.9},${cy + 6.5} M ${cx + 3.9},${cy - 6.5} L ${cx + 3.9},${cy + 6.5}`} stroke={cor} strokeWidth={1.2} />
       </g>
     );
   }
   // Microvarizes: pequeno buquê de tracinhos finos
   return (
     <g>
-      <circle cx={cx} cy={cy} r={9} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2 : 1.2} />
-      <path d={`M ${cx - 4},${cy - 2} l 2.5,1.5 M ${cx + 1.5},${cy - 4} l 1,3 M ${cx - 1},${cy + 1} l 3,2 M ${cx + 2},${cy + 2} l 2,-1`} stroke={cor} strokeWidth={1.3} strokeLinecap="round" />
+      <ellipse cx={cx} cy={cy} rx={8} ry={20.25} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
+      <path d={`M ${cx - 5.2},${cy - 2.6} l 3.25,1.95 M ${cx + 1.95},${cy - 5.2} l 1.3,3.9 M ${cx - 1.3},${cy + 1.3} l 3.9,2.6 M ${cx + 2.6},${cy + 2.6} l 2.6,-1.3`} stroke={cor} strokeWidth={1.5} strokeLinecap="round" />
     </g>
   );
 }
 
-// Posições fixas dos 3 marcadores de variz (coxa/perna/tornozelo), colocados
-// nos espaços livres de cada vista (checados contra o contorno real da
-// perna e contra os vasos já desenhados ali perto, com folga).
+// Posições fixas dos 3 marcadores de variz (coxa/perna/tornozelo), recentradas
+// na faixa livre entre o contorno da perna e a Safena Magna (verificado
+// programaticamente, com folga) pra caber o ícone maior definido acima.
 const VARIZ_SPOTS = [
-  { regiao: "coxa", view: "medial", x: 121, y: 150 },
-  { regiao: "perna", view: "medial", x: 127, y: 420 },
+  { regiao: "coxa", view: "medial", x: 123, y: 150 },
+  { regiao: "perna", view: "medial", x: 128, y: 420 },
   { regiao: "tornozelo", view: "posterior", x: 144, y: 540 },
 ];
 
@@ -333,7 +339,7 @@ export default function MapaInterativo({
           <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-          <span>Varizes (toque nos círculos tracejados na coxa/perna/tornozelo):</span>
+          <span>Varizes (toque nos ícones tracejados na coxa/perna/tornozelo):</span>
           <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>〰️ superficiais</span>
           <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>▦ reticulares</span>
           <span style={{ color: VARIZ_CORES["Microvarizes"] }}>✦ microvarizes</span>
