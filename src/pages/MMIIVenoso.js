@@ -535,6 +535,24 @@ function MMIIVenoso() {
     }
   }
 
+  // Copia os achados estruturados de um lado pro outro (exame bilateral com
+  // achado parecido nos dois lados) — não copia observações, que costumam
+  // ser um texto livre específico daquele lado.
+  function handleCopiarLado(origem, destino) {
+    if (!window.confirm(`Copiar todos os achados de ${origem} para ${destino}? Isso substitui o que já estiver preenchido em ${destino}.`)) {
+      return;
+    }
+    const clonar = (obj) => JSON.parse(JSON.stringify(obj));
+    setProfundas(prev => ({ ...prev, [destino]: clonar(prev[origem]) }));
+    setSuperficiais(prev => ({ ...prev, [destino]: clonar(prev[origem]) }));
+    setMagna(prev => ({ ...prev, [destino]: clonar(prev[origem]) }));
+    setParva(prev => ({ ...prev, [destino]: clonar(prev[origem]) }));
+    setPerfurantes(prev => ({ ...prev, [destino]: clonar(prev[origem]) }));
+    setJsfDiametro(prev => ({ ...prev, [destino]: prev[origem] }));
+    setJspDiametro(prev => ({ ...prev, [destino]: prev[origem] }));
+    setVarizes(prev => ({ ...prev, [destino]: clonar(prev[origem]) }));
+  }
+
   // Gera o TXT sempre a partir do estado atual (e não do laudoTexto já
   // exibido), pra garantir que reflita edições feitas depois de
   // "Visualizar Laudo" — por exemplo, ao salvar direto de dentro do Mapa
@@ -1003,11 +1021,29 @@ function MMIIVenoso() {
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center', 
-        gap: 'clamp(12px, 2vw, 16px)' 
+        gap: 'clamp(12px, 2vw, 16px)'
       }}>
+        {lado === "Ambos" && (
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: 'clamp(6px, 1.5vw, 10px)', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleCopiarLado('Direito', 'Esquerdo')}
+              style={{ ...buttonStyle, background: '#3d5a80', fontSize: 'clamp(11px, 2vw, 13px)', padding: 'clamp(5px, 1.5vw, 7px) clamp(10px, 2.5vw, 14px)' }}
+            >
+              Copiar Direito → Esquerdo
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCopiarLado('Esquerdo', 'Direito')}
+              style={{ ...buttonStyle, background: '#3d5a80', fontSize: 'clamp(11px, 2vw, 13px)', padding: 'clamp(5px, 1.5vw, 7px) clamp(10px, 2.5vw, 14px)' }}
+            >
+              Copiar Esquerdo → Direito
+            </button>
+          </div>
+        )}
         <div style={{
-          width: '100%', 
-          display: 'flex', 
+          width: '100%',
+          display: 'flex',
           gap: 'clamp(12px, 2vw, 20px)',
           flexDirection: isMobile ? 'column' : 'row'
         }}>
