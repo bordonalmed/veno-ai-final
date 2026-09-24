@@ -446,7 +446,27 @@ function MMIIVenoso() {
       if (exameEmEdicao.observacoes) setObservacoes(exameEmEdicao.observacoes);
       if (exameEmEdicao.jsfDiametro) setJsfDiametro(exameEmEdicao.jsfDiametro);
       if (exameEmEdicao.jspDiametro) setJspDiametro(exameEmEdicao.jspDiametro);
-      
+      if (exameEmEdicao.varizes) {
+        // Exames salvos antes de "varizes por região" guardavam {tipo, localizacao}
+        // pra perna toda — migra pro formato atual {coxa, perna, tornozelo, pe}.
+        const migrarVarizes = (v) => {
+          if (!v) return { coxa: '', perna: '', tornozelo: '', pe: '' };
+          if (v.tipo !== undefined || v.localizacao !== undefined) {
+            const regioes = { coxa: '', perna: '', tornozelo: '', pe: '' };
+            (v.localizacao || []).forEach((regiao) => {
+              const chave = regiao.toLowerCase();
+              if (chave in regioes) regioes[chave] = v.tipo || '';
+            });
+            return regioes;
+          }
+          return { coxa: '', perna: '', tornozelo: '', pe: '', ...v };
+        };
+        setVarizes({
+          Direito: migrarVarizes(exameEmEdicao.varizes.Direito),
+          Esquerdo: migrarVarizes(exameEmEdicao.varizes.Esquerdo),
+        });
+      }
+
       // Se já tem laudo, mostrar
       if (exameEmEdicao.laudo) {
         setLaudoTexto(exameEmEdicao.laudo);
@@ -497,6 +517,7 @@ function MMIIVenoso() {
       observacoes,
       jsfDiametro,
       jspDiametro,
+      varizes,
       laudo,
       tipoNome: "MMII Venoso"
     };
@@ -819,6 +840,10 @@ function MMIIVenoso() {
     setLaudoTexto("");
     setJsfDiametro({ Direito: "", Esquerdo: "" });
     setJspDiametro({ Direito: "", Esquerdo: "" });
+    setVarizes({
+      Direito: { coxa: '', perna: '', tornozelo: '', pe: '' },
+      Esquerdo: { coxa: '', perna: '', tornozelo: '', pe: '' }
+    });
     setAnexos([]);
     setIncluirEsquemaPdf(false);
     setErro("");
