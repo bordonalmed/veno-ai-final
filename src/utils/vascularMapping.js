@@ -267,6 +267,11 @@ export function posicaoPerfurante(segmentoLabel, valor) {
   return { x: x - 3, y };
 }
 
+// Raio do triângulo do marcador de perfurante insuficiente — verificado
+// (programaticamente, com folga) contra o contorno da perna no pior caso
+// (perto do joelho, ver vascularMapping.test.js).
+export const PERFURANTE_TRIANGULO_RAIO = 6.5;
+
 // Vértices de um triângulo equilátero apontando pra cima, inscrito num
 // círculo de raio r centrado em (cx, cy) — usado como marcador de
 // perfurante insuficiente (formato diferente dos círculos de status das

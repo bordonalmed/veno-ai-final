@@ -14,6 +14,7 @@ import {
   fitaVeiaSimples,
   posicaoPerfurante,
   trianguloPontos,
+  PERFURANTE_TRIANGULO_RAIO,
 } from "../utils/vascularMapping";
 import { SafenaMagnaExtra, SafenaParvaExtra } from "./SafenaExtraFields";
 import {
@@ -80,20 +81,25 @@ const VARIZ_CORES = {
   "Microvarizes": "#c0392b",
 };
 
+// O contorno do ícone de variz é uma elipse (mais alta que larga, não um
+// círculo): a faixa livre entre a perna e a Safena Magna na vista medial é
+// estreita na horizontal mas sobra bastante espaço na vertical, então
+// esticar pra cima/baixo é o jeito de deixar o alvo bem maior (o dobro de
+// área do círculo antigo) sem esbarrar na Safena Magna nem sair do
+// contorno da perna. Valores verificados (programaticamente, com folga)
+// contra os dois limites em todos os 4 pontos — ver vascularMapping.test.js.
+export const VARIZ_ICON_RX = 8;
+export const VARIZ_ICON_RY_VAZIO = 12.25;
+export const VARIZ_ICON_RY_TIPO = 20.25;
+
 // Ícone por tipo de variz, "colado" na região clicada — sem tipo, mostra um
-// círculo tracejado com "+" (toque pra marcar). O contorno é uma elipse (mais
-// alta que larga, não um círculo): a faixa livre entre a perna e a Safena
-// Magna na vista medial é estreita na horizontal mas sobra bastante espaço
-// na vertical, então esticar pra cima/baixo é o jeito de deixar o alvo bem
-// maior (o dobro de área do círculo antigo) sem esbarrar na Safena Magna
-// nem sair do contorno da perna. rx=8/ry=12.25 (sem tipo) e rx=8/ry=20.25
-// (com tipo) verificados contra os dois limites em todos os 3 pontos.
+// círculo tracejado com "+" (toque pra marcar).
 function VarizIcon({ tipo, cx, cy, ativo }) {
   const cor = VARIZ_CORES[tipo];
   if (!tipo) {
     return (
       <g>
-        <ellipse cx={cx} cy={cy} rx={8} ry={12.25} fill="#fff" fillOpacity={0.6} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={ativo ? 2.2 : 1.4} strokeDasharray="3 2.5" />
+        <ellipse cx={cx} cy={cy} rx={VARIZ_ICON_RX} ry={VARIZ_ICON_RY_VAZIO} fill="#fff" fillOpacity={0.6} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={ativo ? 2.2 : 1.4} strokeDasharray="3 2.5" />
         <line x1={cx - 4} y1={cy} x2={cx + 4} y2={cy} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.4} />
         <line x1={cx} y1={cy - 4} x2={cx} y2={cy + 4} stroke={ativo ? "#0eb8d0" : "#9aa7b0"} strokeWidth={1.4} />
       </g>
@@ -103,7 +109,7 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
     // squiggle grosso (traço tortuoso, como uma variz visível)
     return (
       <g>
-        <ellipse cx={cx} cy={cy} rx={8} ry={20.25} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
+        <ellipse cx={cx} cy={cy} rx={VARIZ_ICON_RX} ry={VARIZ_ICON_RY_TIPO} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
         <path d={`M ${cx - 6.5},${cy + 3.9} Q ${cx - 3.25},${cy - 5.2} ${cx},${cy - 1.3} Q ${cx + 3.25},${cy + 3.9} ${cx + 6.5},${cy - 3.9}`} fill="none" stroke={cor} strokeWidth={2.4} strokeLinecap="round" />
       </g>
     );
@@ -112,7 +118,7 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
     // pequena malha/rede (linhas finas cruzadas)
     return (
       <g>
-        <ellipse cx={cx} cy={cy} rx={8} ry={20.25} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
+        <ellipse cx={cx} cy={cy} rx={VARIZ_ICON_RX} ry={VARIZ_ICON_RY_TIPO} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
         <path d={`M ${cx - 6.5},${cy - 3.9} L ${cx + 6.5},${cy - 3.9} M ${cx - 6.5},${cy + 3.9} L ${cx + 6.5},${cy + 3.9} M ${cx - 3.9},${cy - 6.5} L ${cx - 3.9},${cy + 6.5} M ${cx + 3.9},${cy - 6.5} L ${cx + 3.9},${cy + 6.5}`} stroke={cor} strokeWidth={1.2} />
       </g>
     );
@@ -120,7 +126,7 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
   // Microvarizes: pequeno buquê de tracinhos finos
   return (
     <g>
-      <ellipse cx={cx} cy={cy} rx={8} ry={20.25} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
+      <ellipse cx={cx} cy={cy} rx={VARIZ_ICON_RX} ry={VARIZ_ICON_RY_TIPO} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
       <path d={`M ${cx - 5.2},${cy - 2.6} l 3.25,1.95 M ${cx + 1.95},${cy - 5.2} l 1.3,3.9 M ${cx - 1.3},${cy + 1.3} l 3.9,2.6 M ${cx + 2.6},${cy + 2.6} l 2.6,-1.3`} stroke={cor} strokeWidth={1.5} strokeLinecap="round" />
     </g>
   );
@@ -131,7 +137,7 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
 // programaticamente, com folga) pra caber o ícone maior definido acima. O
 // pé fica na vista posterior, abaixo do tornozelo, onde o desenho já alarga
 // bastante (bem mais espaço ali do que perto do tornozelo).
-const VARIZ_SPOTS = [
+export const VARIZ_SPOTS = [
   { regiao: "coxa", view: "medial", x: 123, y: 150 },
   { regiao: "perna", view: "medial", x: 128, y: 420 },
   { regiao: "tornozelo", view: "posterior", x: 144, y: 540 },
@@ -276,7 +282,7 @@ export default function MapaInterativo({
                 {hitPath(magnaHitD, () => selecionar("superficial", "Safena Magna"), "superficial:Safena Magna", chaveAtiva)}
                 <circle cx={150} cy={48} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSF")} />
                 {perfMarkers.map((mk, i) => (
-                  <polygon key={i} points={trianguloPontos(mk.x, mk.y, 6.5)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
+                  <polygon key={i} points={trianguloPontos(mk.x, mk.y, PERFURANTE_TRIANGULO_RAIO)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
                 ))}
                 {VARIZ_SPOTS.filter((spot) => spot.view === "medial").map((spot) => {
                   const chave = `variz:${spot.regiao}`;

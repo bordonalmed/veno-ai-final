@@ -17,6 +17,7 @@ import {
   gerarConclusaoVisual,
   posicaoPerfurante,
   trianguloPontos,
+  PERFURANTE_TRIANGULO_RAIO,
   piorCorProfundo,
   conclusoesSistemaProfundo,
   interpAt,
@@ -150,7 +151,7 @@ function montarSvgLado(dadosLado) {
       // VERTICAL (um deslocamento horizontal maior jogava os marcadores
       // extras pra fora do desenho perto do joelho, onde a perna afunila).
       const jitter = idx * 12;
-      const pontos = trianguloPontos(pos.x, pos.y + jitter, 6.5);
+      const pontos = trianguloPontos(pos.x, pos.y + jitter, PERFURANTE_TRIANGULO_RAIO);
       return `<polygon points="${pontos}" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>`;
     })
     .join("");
