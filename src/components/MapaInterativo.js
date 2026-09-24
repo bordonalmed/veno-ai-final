@@ -126,13 +126,16 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
   );
 }
 
-// Posições fixas dos 3 marcadores de variz (coxa/perna/tornozelo), recentradas
+// Posições fixas dos 4 marcadores de variz (coxa/perna/tornozelo/pé), recentradas
 // na faixa livre entre o contorno da perna e a Safena Magna (verificado
-// programaticamente, com folga) pra caber o ícone maior definido acima.
+// programaticamente, com folga) pra caber o ícone maior definido acima. O
+// pé fica na vista posterior, abaixo do tornozelo, onde o desenho já alarga
+// bastante (bem mais espaço ali do que perto do tornozelo).
 const VARIZ_SPOTS = [
   { regiao: "coxa", view: "medial", x: 123, y: 150 },
   { regiao: "perna", view: "medial", x: 128, y: 420 },
   { regiao: "tornozelo", view: "posterior", x: 144, y: 540 },
+  { regiao: "pe", view: "posterior", x: 150, y: 595 },
 ];
 
 const PROFUNDA_LABELS = {
@@ -339,7 +342,7 @@ export default function MapaInterativo({
           <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-          <span>Varizes (toque nos ícones tracejados na coxa/perna/tornozelo):</span>
+          <span>Varizes (toque nos ícones tracejados na coxa/perna/tornozelo/pé):</span>
           <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>〰️ superficiais</span>
           <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>▦ reticulares</span>
           <span style={{ color: VARIZ_CORES["Microvarizes"] }}>✦ microvarizes</span>
