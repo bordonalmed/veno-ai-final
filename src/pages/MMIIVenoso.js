@@ -557,6 +557,12 @@ function MMIIVenoso() {
       alert("Preencha nome, data e lado antes de salvar o exame!");
       return;
     }
+    // "Salvar PDF" baixa o PDF e já limpa o formulário pro próximo paciente
+    // (não dá pra desfazer) — confirma antes pra evitar perder o que estava
+    // preenchido se o clique foi sem querer ou antes de revisar tudo.
+    if (!window.confirm("Isso vai baixar o PDF e limpar o formulário para um novo exame. Deseja continuar?")) {
+      return;
+    }
     const laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes });
     // Buscar dados do localStorage
     const nomeMedico = localStorage.getItem("nomeMedico") || "";
