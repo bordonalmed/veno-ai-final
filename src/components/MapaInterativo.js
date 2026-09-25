@@ -162,7 +162,7 @@ export default function MapaInterativo({
   profundas, superficiais, magna, parva, perfurantes, observacoes, varizes,
   jsfDiametro, jspDiametro,
   onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
-  onJsfDiametro, onJspDiametro, onVarizes,
+  onJsfDiametro, onJspDiametro, onVarizes, onObservacao,
   onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
   incluirMapeamentoVisualPdf, onIncluirMapeamentoVisualPdf,
   anexos = [], onFileUpload, onDrop, onDragOver, onRemoveAnexo, formatFileSize,
@@ -481,6 +481,27 @@ export default function MapaInterativo({
             onClick={() => onPerfurantes(l, [...perfs, { status: "pérvia e competente", segmento: "", valor: "" }])}
             style={{ padding: "4px 10px", borderRadius: 4, border: "1.5px solid #0eb8d0", background: "transparent", color: "#0eb8d0", fontWeight: 600, fontSize: 12, cursor: "pointer" }}
           >+ Adicionar perfurante</button>
+        </div>
+
+        {/* Observações do membro ativo — mesmo campo do formulário escrito.
+            Preenchido aqui, aparece também no Mapeamento Venoso e no PDF. */}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Observações ({l}):</div>
+          <textarea
+            value={observacoes?.[l] || ""}
+            onChange={(e) => onObservacao(l, e.target.value)}
+            placeholder={`Digite observações adicionais do exame do membro ${l.toLowerCase()}...`}
+            style={{
+              width: "100%",
+              minHeight: 50,
+              fontSize: 12,
+              borderRadius: 6,
+              border: "1.5px solid #0eb8d0",
+              padding: 8,
+              resize: "vertical",
+              boxSizing: "border-box",
+            }}
+          />
         </div>
 
         {/* Anexos: mesmas imagens (PNG/JPG) que o formulário principal anexa ao PDF */}

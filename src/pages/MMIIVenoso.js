@@ -828,6 +828,7 @@ function MMIIVenoso() {
           profundas,
           jsfDiametro,
           jspDiametro,
+          observacoes,
         });
       } catch (e) {
         console.error('Erro ao adicionar esquema de mapeamento ao PDF:', e);
@@ -1555,6 +1556,7 @@ function MMIIVenoso() {
         profundas={profundas}
         jsfDiametro={jsfDiametro}
         jspDiametro={jspDiametro}
+        observacoes={observacoes}
       />
       <MapaInterativo
         aberto={mostrarMapa}
@@ -1581,6 +1583,7 @@ function MMIIVenoso() {
         onJsfDiametro={(l, val) => setJsfDiametro(prev => ({ ...prev, [l]: val }))}
         onJspDiametro={(l, val) => setJspDiametro(prev => ({ ...prev, [l]: val }))}
         onVarizes={(l, val) => setVarizes(prev => ({ ...prev, [l]: val }))}
+        onObservacao={(l, val) => setObservacoes(prev => ({ ...prev, [l]: val }))}
         onSalvarExame={handleSalvarExame}
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}

@@ -159,6 +159,7 @@ function montarSvgLado(dadosLado) {
   const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
 
   // Medidas (diâmetros e distâncias do refluxo) sobre a vista medial (safena magna)
+  const jsfLabelSvg = medidaTexto(150 - 16, 48 + 4, "JSF", "end", mirrored);
   const jsfDiamSvg = jsfDiametro
     ? medidaTexto(150 + 15, 48 + 4, `Ø ${jsfDiametro}mm`, "start", mirrored)
     : "";
@@ -168,6 +169,7 @@ function montarSvgLado(dadosLado) {
   const magnaRefluxoSvg = distanciaMarcadores(VSM_SPINE, VSM_HALF, magnaResult.refluxo, "esquerda", mirrored);
 
   // Medidas sobre a vista posterior (safena parva)
+  const jspLabelSvg = medidaTexto(150 - 16, 316 + 4, "JSP", "end", mirrored);
   const jspDiamSvg = jspDiametro
     ? medidaTexto(150 + 15, 316 + 4, `Ø ${jspDiametro}mm`, "start", mirrored)
     : "";
@@ -181,7 +183,7 @@ function montarSvgLado(dadosLado) {
     ${magnaSegsSvg}
     <circle cx="150" cy="48" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
     ${perfMarker}
-    ${jsfDiamSvg}${magnaCoxaSvg}${magnaPernaSvg}${magnaTornozeloSvg}${magnaRefluxoSvg}
+    ${jsfLabelSvg}${jsfDiamSvg}${magnaCoxaSvg}${magnaPernaSvg}${magnaTornozeloSvg}${magnaRefluxoSvg}
   `;
   const posteriorInner = `
     <path d="${POSTERIOR_SILHOUETTE}" fill="url(#skinGradP)" stroke="#a97a4e" stroke-width="1.5"/>
@@ -189,7 +191,7 @@ function montarSvgLado(dadosLado) {
     <path d="${TIBIAIS_RIBBON}" fill="${corTibiais}" opacity="0.85"/>
     ${parvaSegsSvg}
     <circle cx="150" cy="316" r="7" fill="${jspFill}" stroke="${jspStroke}" stroke-width="1.5"/>
-    ${jspDiamSvg}${parvaProximalSvg}${parvaDistalSvg}${parvaRefluxoSvg}
+    ${jspLabelSvg}${jspDiamSvg}${parvaProximalSvg}${parvaDistalSvg}${parvaRefluxoSvg}
   `;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 680" width="640" height="680">
@@ -274,6 +276,25 @@ function desenharLegendaPdf(doc, pageWidth, yInicial) {
   return y;
 }
 
+// Observações do membro (mesmo texto livre digitado no formulário ou no
+// Mapa Interativo), impressas no PDF do esquema quando preenchidas.
+function desenharObservacoesPdf(doc, pageWidth, yInicial, observacao) {
+  if (!observacao || !observacao.trim()) return yInicial;
+  let y = yInicial;
+  doc.setFontSize(9.5);
+  doc.setFont(undefined, "bold");
+  doc.text("Observações:", 20, y);
+  y += 5;
+  doc.setFont(undefined, "normal");
+  doc.setFontSize(9);
+  const linhas = doc.splitTextToSize(observacao.trim(), pageWidth - 40);
+  linhas.forEach((linha) => {
+    doc.text(linha, 22, y);
+    y += 4.5;
+  });
+  return y;
+}
+
 function svgParaImagemDataUrl(svgString, largura, altura) {
   return new Promise((resolve, reject) => {
     const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
@@ -312,6 +333,7 @@ export async function adicionarEsquemaAoPdf(doc, {
   profundas,
   jsfDiametro,
   jspDiametro,
+  observacoes,
 }) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -355,7 +377,10 @@ export async function adicionarEsquemaAoPdf(doc, {
         doc.text(`• ${c}`, 22, y);
         y += 5;
       });
+      y += 2;
     }
+
+    desenharObservacoesPdf(doc, pageWidth, y, observacoes?.[ladoAtual]);
   }
 }
 
@@ -372,6 +397,7 @@ export default function EsquemaMapeamentoModal({
   profundas,
   jsfDiametro,
   jspDiametro,
+  observacoes,
 }) {
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
@@ -444,7 +470,10 @@ export default function EsquemaMapeamentoModal({
             doc.text(`• ${c}`, 22, y);
             y += 5;
           });
+          y += 2;
         }
+
+        desenharObservacoesPdf(doc, pageWidth, y, observacoes?.[ladoAtual]);
       }
 
       const nomeArquivo = `Mapeamento_Venoso_${nome ? nome.replace(/\s+/g, "_") : "exame"}${data ? "_" + data : ""}.pdf`;
@@ -554,6 +583,11 @@ export default function EsquemaMapeamentoModal({
                   <li key={i}>{c}</li>
                 ))}
               </ul>
+            )}
+            {observacoes?.[ladoAtual] && observacoes[ladoAtual].trim() && (
+              <div style={{ marginTop: 8, fontSize: 12.5, color: "#1a2530" }}>
+                <strong>Observações:</strong> {observacoes[ladoAtual]}
+              </div>
             )}
           </div>
         ))}
