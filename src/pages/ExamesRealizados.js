@@ -9,7 +9,7 @@ import { TrialManager } from "../utils/trialManager";
 
 // Helpers para exames salvos (localStorage)
 const STORAGE_KEY_TO_LABEL = {
-  "examesMMIIVenoso": "MMII Venoso",
+  "examesMMIIVenoso": "Doppler Venoso de Membros Inferiores",
   "examesMMIIArterial": "MMII Arterial",
   "examesMMSSVenoso": "MMSS Venoso",
   "examesMMSSArterial": "MMSS Arterial",
@@ -348,7 +348,8 @@ export default function ExamesRealizados() {
   function handleEditarExame(exame) {
     // Navegar para a página específica do tipo de exame
     const rotas = {
-      "MMII Venoso": "/mmii-venoso",
+      "Doppler Venoso de Membros Inferiores": "/mmii-venoso",
+      "MMII Venoso": "/mmii-venoso", // legado — nome usado antes da renomeação
       "MMII Arterial": "/mmii-arterial",
       "MMSS Venoso": "/mmss-venoso", 
       "MMSS Arterial": "/mmss-arterial",

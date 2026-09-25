@@ -207,7 +207,7 @@ export default function Home({ onLogout }) {
         maxWidth: 600,
         padding: "0 20px"
       }}>
-        <MenuButton label="MMII Venoso" onClick={() => navigate("/mmii-venoso")} />
+        <MenuButton label="Doppler Venoso de Membros Inferiores" onClick={() => navigate("/mmii-venoso")} />
         <MenuButton label="MMII Arterial" onClick={() => navigate("/mmii-arterial")} />
         <MenuButton label="MMSS Venoso" onClick={() => navigate("/mmss-venoso")} />
         <MenuButton label="MMSS Arterial" onClick={() => navigate("/mmss-arterial")} />

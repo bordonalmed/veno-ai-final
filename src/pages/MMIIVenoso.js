@@ -23,7 +23,7 @@ async function salvarExame(dadosExame) {
     // Salvar usando o serviço em tempo real
     const resultado = await examesRealtimeService.criarExame({
       ...dadosExame,
-      tipoNome: "MMII Venoso"
+      tipoNome: "Doppler Venoso de Membros Inferiores"
     });
     
     if (resultado.success) {
@@ -519,7 +519,7 @@ function MMIIVenoso() {
       jspDiametro,
       varizes,
       laudo,
-      tipoNome: "MMII Venoso"
+      tipoNome: "Doppler Venoso de Membros Inferiores"
     };
     
     try {
@@ -988,7 +988,7 @@ function MMIIVenoso() {
       position: "relative"
     }}>
       <ExamHeader
-        examTitle="MMII Venoso"
+        examTitle="Doppler Venoso de Membros Inferiores"
         nome={nome}
         idade={idade}
         data={data}
