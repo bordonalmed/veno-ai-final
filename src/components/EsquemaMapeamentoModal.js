@@ -221,6 +221,59 @@ function montarSvgLado(dadosLado) {
   return { svg, conclusoes };
 }
 
+// Desenha a legenda de cores e símbolos usada nos PDFs do esquema de
+// mapeamento (compartilhada entre o PDF isolado "Baixar PDF (A4)" e o PDF
+// anexado ao laudo principal via "Incluir Mapeamento Visual no PDF"), para
+// que quem receber o exame impresso saiba o que cada cor/símbolo significa.
+function desenharLegendaPdf(doc, pageWidth, yInicial) {
+  let y = yInicial;
+  doc.setFontSize(8.5);
+  const legendaCores = [
+    ["Veia suficiente", CORES["pérvia e competente"]],
+    ["Veia insuficiente", CORES["pérvia e incompetente"]],
+    ["Trombose", CORES["não compressível e sem fluxo (trombose)"]],
+    ["Recanalização parcial", CORES["recanalização parcial"]],
+    ["Veia ausente", CORES["ausente"]],
+  ];
+  let lx = (pageWidth - 150) / 2;
+  legendaCores.forEach(([label, cor]) => {
+    const rgb = hexParaRgb(cor);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.rect(lx, y - 2.6, 4, 2, "F");
+    doc.setTextColor(90, 100, 110);
+    doc.text(label, lx + 6, y);
+    lx += 6 + doc.getTextWidth(label) + 8;
+  });
+  doc.setTextColor(0, 0, 0);
+  y += 6;
+
+  const rgbPerf = hexParaRgb(CORES["pérvia e incompetente"]);
+  doc.setFillColor(rgbPerf.r, rgbPerf.g, rgbPerf.b);
+  const rotuloTriangulo = "Perfurante insuficiente";
+  const larguraLinha2 = 6 + doc.getTextWidth(rotuloTriangulo);
+  const lx2 = (pageWidth - larguraLinha2) / 2;
+  doc.triangle(lx2 + 2, y - 1, lx2, y - 4.2, lx2 + 4, y - 4.2, "F");
+  doc.setTextColor(90, 100, 110);
+  doc.text(rotuloTriangulo, lx2 + 6, y);
+  doc.setTextColor(0, 0, 0);
+  y += 5.5;
+
+  let fonteExplicativa = 7.5;
+  doc.setFontSize(fonteExplicativa);
+  const textoExplicativo =
+    "Ø = diâmetro (mm)   ·   traço perpendicular à veia = limite do trecho com refluxo detectado";
+  if (doc.getTextWidth(textoExplicativo) > pageWidth - 20) {
+    fonteExplicativa = 6.5;
+    doc.setFontSize(fonteExplicativa);
+  }
+  doc.setTextColor(120, 130, 138);
+  doc.text(textoExplicativo, pageWidth / 2, y, { align: "center" });
+  doc.setTextColor(0, 0, 0);
+  y += 8;
+
+  return y;
+}
+
 function svgParaImagemDataUrl(svgString, largura, altura) {
   return new Promise((resolve, reject) => {
     const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
@@ -280,7 +333,7 @@ export async function adicionarEsquemaAoPdf(doc, {
     let y = 16;
     doc.setFontSize(13);
     doc.setFont(undefined, "bold");
-    doc.text(`Esquema de Mapeamento Venoso — Membro Inferior ${ladoAtual}`, pageWidth / 2, y, { align: "center" });
+    doc.text(`Mapeamento Venoso — Membro Inferior ${ladoAtual}`, pageWidth / 2, y, { align: "center" });
     y += 8;
     doc.setFont(undefined, "normal");
 
@@ -290,25 +343,7 @@ export async function adicionarEsquemaAoPdf(doc, {
     doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
     y += imgHeightMm + 6;
 
-    doc.setFontSize(8.5);
-    const legenda = [
-      ["Veia suficiente", CORES["pérvia e competente"]],
-      ["Veia insuficiente", CORES["pérvia e incompetente"]],
-      ["Trombose", CORES["não compressível e sem fluxo (trombose)"]],
-      ["Recanalização parcial", CORES["recanalização parcial"]],
-      ["Veia ausente", CORES["ausente"]],
-    ];
-    let lx = (pageWidth - 150) / 2;
-    legenda.forEach(([label, cor]) => {
-      const rgb = hexParaRgb(cor);
-      doc.setFillColor(rgb.r, rgb.g, rgb.b);
-      doc.rect(lx, y - 2.6, 4, 2, "F");
-      doc.setTextColor(90, 100, 110);
-      doc.text(label, lx + 6, y);
-      lx += 6 + doc.getTextWidth(label) + 8;
-    });
-    doc.setTextColor(0, 0, 0);
-    y += 8;
+    y = desenharLegendaPdf(doc, pageWidth, y);
 
     if (conclusoes.length) {
       doc.setFontSize(9.5);
@@ -397,25 +432,7 @@ export default function EsquemaMapeamentoModal({
         doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
         y += imgHeightMm + 6;
 
-        doc.setFontSize(8.5);
-        const legenda = [
-          ["Veia suficiente", CORES["pérvia e competente"]],
-          ["Veia insuficiente", CORES["pérvia e incompetente"]],
-          ["Trombose", CORES["não compressível e sem fluxo (trombose)"]],
-          ["Recanalização parcial", CORES["recanalização parcial"]],
-          ["Veia ausente", CORES["ausente"]],
-        ];
-        let lx = (pageWidth - 150) / 2;
-        legenda.forEach(([label, cor]) => {
-          const rgb = hexParaRgb(cor);
-          doc.setFillColor(rgb.r, rgb.g, rgb.b);
-          doc.rect(lx, y - 2.6, 4, 2, "F");
-          doc.setTextColor(90, 100, 110);
-          doc.text(label, lx + 6, y);
-          lx += 6 + doc.getTextWidth(label) + 8;
-        });
-        doc.setTextColor(0, 0, 0);
-        y += 8;
+        y = desenharLegendaPdf(doc, pageWidth, y);
 
         if (esquemas[ladoAtual].conclusoes.length) {
           doc.setFontSize(9.5);
@@ -468,7 +485,7 @@ export default function EsquemaMapeamentoModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: "clamp(16px, 3vw, 20px)", color: "#1c3d5a" }}>Esquema de Mapeamento Venoso</h2>
+          <h2 style={{ margin: 0, fontSize: "clamp(16px, 3vw, 20px)", color: "#1c3d5a" }}>Mapeamento Venoso</h2>
           <button
             onClick={onFechar}
             style={{
@@ -489,6 +506,28 @@ export default function EsquemaMapeamentoModal({
           <p style={{ color: "#5c6b78", fontSize: 14 }}>
             Selecione o lado (Direito, Esquerdo ou Ambos) no topo do formulário antes de gerar o esquema.
           </p>
+        )}
+
+        {ladosParaMostrar.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              marginBottom: 10,
+              fontSize: 11,
+              color: "#5c6b78",
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            <span>🔵 suficiente</span>
+            <span>🔴 insuficiente</span>
+            <span>⚫ trombose</span>
+            <span>🟠 recanalização parcial</span>
+            <span>⚪ ausente (tracejado)</span>
+            <span style={{ color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
+            <span style={{ marginLeft: 8 }}>Ø = diâmetro (mm) · traço = limite do trecho com refluxo</span>
+          </div>
         )}
 
         {ladosParaMostrar.map((ladoAtual) => (
