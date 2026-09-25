@@ -1032,13 +1032,6 @@ function MMIIVenoso() {
             >
               Copiar Direito → Esquerdo
             </button>
-            <button
-              type="button"
-              onClick={() => handleCopiarLado('Esquerdo', 'Direito')}
-              style={{ ...buttonStyle, background: '#3d5a80', fontSize: 'clamp(11px, 2vw, 13px)', padding: 'clamp(5px, 1.5vw, 7px) clamp(10px, 2.5vw, 14px)' }}
-            >
-              Copiar Esquerdo → Direito
-            </button>
           </div>
         )}
         <div style={{
