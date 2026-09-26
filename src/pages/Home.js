@@ -5,12 +5,40 @@ import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
 import { TrialManager } from "../utils/trialManager";
 
+const COLOR_STYLES = {
+  blue: { border: "#3f93e0", ring: "rgba(63,147,224,0.1)", glow: "rgba(63,147,224,0.55)" },
+  red: { border: "#e0574a", ring: "rgba(224,87,74,0.1)", glow: "rgba(224,87,74,0.55)" },
+  cyan: { border: "#4fd8ec", ring: "rgba(14,184,208,0.1)", glow: "rgba(14,184,208,0.55)" },
+};
+
+const EXAMES = [
+  { label: "Doppler Venoso de Membros Inferiores", rota: "/mmii-venoso", emoji: "🦵", cor: "blue", regiao: "Membros inferiores" },
+  { label: "Doppler Arterial de Membros Inferiores", rota: "/mmii-arterial", emoji: "🦵", cor: "red", regiao: "Membros inferiores" },
+  { label: "Doppler Venoso de Membros Superiores", rota: "/mmss-venoso", emoji: "💪", cor: "blue", regiao: "Membros superiores" },
+  { label: "Doppler Arterial de Membros Superiores", rota: "/mmss-arterial", emoji: "💪", cor: "red", regiao: "Membros superiores" },
+  { label: "Doppler de Carótidas e Vertebrais", rota: "/carotidas-vertebrais", emoji: "🧠", cor: "cyan", regiao: "Pescoço" },
+];
+
 export default function Home({ onLogout }) {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const nomeMedico = localStorage.getItem("nomeMedico") || "";
   const [planoUsuario, setPlanoUsuario] = useState('trial');
   const [carregandoPlano, setCarregandoPlano] = useState(true);
-  
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Hook para detectar mudanças no tamanho da tela
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
   useEffect(() => {
     const verificarPlano = async () => {
       if (!userEmail) {
@@ -149,7 +177,12 @@ export default function Home({ onLogout }) {
           animation: "logoGlow 3s ease-in-out infinite alternate"
         }}
       />
-      
+
+      <span style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, fontFamily: "monospace", fontSize: 11, color: "#5fce8a", letterSpacing: 0.4 }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5fce8a", boxShadow: "0 0 6px #5fce8a" }}></span>
+        SISTEMA ONLINE
+      </span>
+
       {/* Status do Trial */}
       <TrialStatus userEmail={userEmail} onUpgrade={handleUpgrade} />
       
@@ -195,25 +228,28 @@ export default function Home({ onLogout }) {
         </div>
       )}
       
+      {nomeMedico && (
+        <div style={{ width: "100%", maxWidth: 820, padding: "0 20px", marginTop: 8, boxSizing: "border-box" }}>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "#ffffff" }}>Olá, {nomeMedico}</div>
+          <div style={{ marginTop: 5, height: 2, width: 56, background: "linear-gradient(90deg, #4fd8ec, transparent)" }}></div>
+        </div>
+      )}
+
       <div style={{ margin: "10px 0 15px", fontSize: 14, color: "#abfaff" }}>
         Selecione o tipo de exame para continuar:
       </div>
-      
+
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap: 10,
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+        gap: isMobile ? 10 : 16,
         width: "100%",
-        maxWidth: 600,
+        maxWidth: isMobile ? 420 : 820,
         padding: "0 20px"
       }}>
-        <MenuButton label="Doppler Venoso de Membros Inferiores" onClick={() => navigate("/mmii-venoso")} />
-        <MenuButton label="MMII Arterial" onClick={() => navigate("/mmii-arterial")} />
-        <MenuButton label="MMSS Venoso" onClick={() => navigate("/mmss-venoso")} />
-        <MenuButton label="MMSS Arterial" onClick={() => navigate("/mmss-arterial")} />
-        <MenuButton label="Carótidas e Vertebrais" onClick={() => navigate("/carotidas-vertebrais")} />
-        {/* <MenuButton label="Aorta e Ilíacas" onClick={() => navigate("/aorta-iliacas")} /> */}
-        {/* <MenuButton label="Artérias Renais" onClick={() => navigate("/arterias-renais")} /> */}
+        {EXAMES.map((exame) => (
+          <ExamTile key={exame.label} exame={exame} isMobile={isMobile} onClick={() => navigate(exame.rota)} />
+        ))}
       </div>
       
 
@@ -228,48 +264,75 @@ export default function Home({ onLogout }) {
               filter: drop-shadow(0 12px 35px #00e0ffc0);
             }
           }
+          .examTile {
+            position: relative;
+            display: flex;
+            gap: 12px;
+            border: 1px solid rgba(79,216,236,0.25);
+            background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+            clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+            cursor: pointer;
+            transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+          }
+          .examTile:hover {
+            border-color: rgba(79,216,236,0.75);
+            box-shadow: 0 0 24px var(--glow);
+            background: linear-gradient(160deg, rgba(79,216,236,0.09), rgba(255,255,255,0.02));
+            transform: translateY(-3px);
+          }
+          .examTile::before, .examTile::after {
+            content: "";
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            pointer-events: none;
+          }
+          .examTile::before { top: -1px; right: -1px; border-top: 2px solid #4fd8ec; border-right: 2px solid #4fd8ec; }
+          .examTile::after { bottom: -1px; left: -1px; border-bottom: 2px solid #4fd8ec; border-left: 2px solid #4fd8ec; }
+          .examTile:focus-visible { outline: 2px solid #4fd8ec; outline-offset: 3px; }
         `}
       </style>
     </div>
   );
 }
 
-function MenuButton({ label, onClick }) {
+function ExamTile({ exame, isMobile, onClick }) {
+  const c = COLOR_STYLES[exame.cor];
   return (
     <button
+      className="examTile"
       onClick={onClick}
+      aria-label={exame.label}
       style={{
-        width: "100%",
-        background: "#0eb8d0",
-        color: "#fff",
-        fontWeight: 600,
-        fontSize: 14,
-        padding: "10px 8px",
-        border: "none",
-        borderRadius: 10,
-        cursor: "pointer",
-        letterSpacing: 0.5,
-        boxShadow: "0 2px 10px #00e0ff30",
-        transition: ".2s",
-        minHeight: 45,
+        "--glow": c.glow,
+        flexDirection: isMobile ? "row" : "column",
+        alignItems: "center",
+        justifyContent: isMobile ? "flex-start" : "center",
+        padding: isMobile ? "12px 16px" : "24px 14px 18px",
+      }}
+    >
+      <div style={{
+        width: isMobile ? 44 : 56,
+        height: isMobile ? 44 : 56,
+        borderRadius: "50%",
+        border: `1.5px solid ${c.border}`,
+        background: c.ring,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        textAlign: "center",
-        lineHeight: 1.3
-      }}
-      onMouseEnter={(e) => {
-        e.target.style.background = "#0ca8b8";
-        e.target.style.transform = "translateY(-2px)";
-        e.target.style.boxShadow = "0 4px 15px #00e0ff50";
-      }}
-      onMouseLeave={(e) => {
-        e.target.style.background = "#0eb8d0";
-        e.target.style.transform = "translateY(0)";
-        e.target.style.boxShadow = "0 2px 10px #00e0ff30";
-      }}
-    >
-      {label}
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: isMobile ? 20 : 24, filter: "grayscale(1) contrast(1.15)" }}>{exame.emoji}</span>
+      </div>
+      <span style={{
+        fontWeight: 600,
+        fontSize: isMobile ? 13 : 14,
+        color: "#ffffff",
+        textAlign: isMobile ? "left" : "center",
+        lineHeight: 1.3,
+      }}>
+        {exame.label}
+      </span>
     </button>
   );
-} 
+}
