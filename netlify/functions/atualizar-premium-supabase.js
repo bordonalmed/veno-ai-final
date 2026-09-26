@@ -1,5 +1,6 @@
 // Função para atualizar status Premium no Supabase
 const { createClient } = require('@supabase/supabase-js');
+const { requireAdminKey } = require('./_shared/adminAuth');
 
 exports.handler = async (event, context) => {
   // Permitir CORS
@@ -8,12 +9,16 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
       },
       body: ''
     };
   }
+
+  // Endpoint administrativo: exige a chave secreta (header X-Admin-Key)
+  const authError = requireAdminKey(event);
+  if (authError) return authError;
 
   const { email, acao } = event.queryStringParameters || {};
 

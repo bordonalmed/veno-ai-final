@@ -2,7 +2,8 @@
 import { supabase, supabaseConfig } from '../config/supabase';
 
 const STORAGE_KEY_MAP = {
-  'MMII Venoso': 'examesMMIIVenoso',
+  'Doppler Venoso de Membros Inferiores': 'examesMMIIVenoso',
+  'MMII Venoso': 'examesMMIIVenoso', // legado — nome usado antes da renomeação
   'MMII Arterial': 'examesMMIIArterial',
   'MMSS Venoso': 'examesMMSSVenoso',
   'MMSS Arterial': 'examesMMSSArterial',
