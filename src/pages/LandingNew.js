@@ -67,6 +67,44 @@ export default function LandingNew() {
         </p>
       </div>
 
+      {/* Selos com os tipos de exame cobertos */}
+      <div style={{ display: "flex", gap: 14, marginBottom: 22 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid #3f93e0", background: "rgba(63,147,224,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 18, filter: "grayscale(1) contrast(1.15)" }}>🦵</span>
+          </div>
+          <span style={{ fontSize: 10, color: "#8fb3bd" }}>Venoso</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid #e0574a", background: "rgba(224,87,74,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 18, filter: "grayscale(1) contrast(1.15)" }}>💪</span>
+          </div>
+          <span style={{ fontSize: 10, color: "#8fb3bd" }}>Arterial</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid #4fd8ec", background: "rgba(14,184,208,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 18, filter: "grayscale(1) contrast(1.15)" }}>🧠</span>
+          </div>
+          <span style={{ fontSize: 10, color: "#8fb3bd" }}>Carótidas</span>
+        </div>
+      </div>
+
+      {/* Chamada do teste gratis */}
+      <div style={{
+        width: "100%",
+        maxWidth: 400,
+        boxSizing: "border-box",
+        marginBottom: 22,
+        background: "rgba(95,206,138,0.08)",
+        border: "1px solid rgba(95,206,138,0.3)",
+        borderRadius: 10,
+        padding: "12px 16px",
+        textAlign: "center"
+      }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: "#5fce8a" }}>🎯 Teste grátis por 7 dias</div>
+        <div style={{ marginTop: 3, fontSize: 12, color: "#9fc7b3" }}>5 laudos inclusos · sem cartão de crédito</div>
+      </div>
+
       {/* Botões de ação */}
       <div style={{ 
         marginBottom: 25, 
@@ -96,7 +134,11 @@ export default function LandingNew() {
         >
           Entrar / Cadastrar
         </button>
-        
+
+        <div style={{ textAlign: "center", fontSize: 11, color: "#6f8890", marginTop: -4 }}>
+          Cancele quando quiser · sem compromisso
+        </div>
+
         <button
           onClick={() => navigate("/planos")}
           style={{
@@ -111,22 +153,23 @@ export default function LandingNew() {
             letterSpacing: 0.5,
             transition: "all 0.3s ease",
             width: "100%",
-            whiteSpace: "nowrap"
+            whiteSpace: "normal",
+            lineHeight: 1.3
           }}
           onMouseEnter={(e) => {
-            e.target.style.background = "#0eb8d0";
-            e.target.style.color = "#fff";
-            e.target.style.transform = "translateY(-2px)";
-            e.target.style.boxShadow = "0 4px 15px #00e0ff50";
+            e.currentTarget.style.background = "#0eb8d0";
+            e.currentTarget.style.color = "#fff";
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 4px 15px #00e0ff50";
           }}
           onMouseLeave={(e) => {
-            e.target.style.background = "transparent";
-            e.target.style.color = "#0eb8d0";
-            e.target.style.transform = "translateY(0)";
-            e.target.style.boxShadow = "none";
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "#0eb8d0";
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "none";
           }}
         >
-          Ver Planos
+          Ver Planos <span style={{ opacity: 0.75, fontWeight: 500, fontSize: "0.75em" }}>— a partir de R$ 97/mês</span>
         </button>
       </div>
       
