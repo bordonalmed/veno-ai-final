@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { saveAs } from "file-saver";
-import { FiArrowLeft, FiEye, FiEdit, FiPrinter, FiTrash2, FiX, FiWifi, FiWifiOff, FiMessageCircle, FiMail } from "react-icons/fi";
-import laudoSyncService from "../services/laudoSyncService";
+import { FiArrowLeft, FiTrash2, FiX, FiWifi, FiWifiOff, FiMessageCircle, FiMail, FiMoreVertical, FiAlertTriangle } from "react-icons/fi";
 import examesRealtimeService from "../services/examesRealtimeService";
 import { TrialManager } from "../utils/trialManager";
 
@@ -24,6 +23,21 @@ const STORAGE_KEY_TO_LABEL = {
 };
 
 const STORAGE_KEYS = Object.keys(STORAGE_KEY_TO_LABEL);
+
+// Cores por categoria de exame (mesmo padrão usado na Home/Landing)
+const TIPO_COR = {
+  "Doppler Venoso de Membros Inferiores": "#3f93e0",
+  "MMII Venoso": "#3f93e0", // legado
+  "MMSS Venoso": "#3f93e0",
+  "MMII Arterial": "#e0574a",
+  "MMSS Arterial": "#e0574a",
+  "Aorta e Ilíacas": "#e0574a",
+  "Artérias Renais": "#e0574a",
+  "Carótidas e Vertebrais": "#4fd8ec",
+};
+function corDoTipo(tipoNome) {
+  return TIPO_COR[tipoNome] || "#6f8890";
+}
 
 function isUsuarioPremium() {
   const userEmail = localStorage.getItem("userEmail") || "";
@@ -50,89 +64,6 @@ function formatarDataDiaMesAno(val) {
   const dma = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(s); // DD/MM/YYYY ou DD-MM-YYYY
   if (dma) return `${dma[1].padStart(2,"0")}/${dma[2].padStart(2,"0")}/${dma[3]}`;
   return s;
-}
-
-function getStorageKeyFromTipoNome(tipoNome) {
-  if (!tipoNome) return "examesLaudo";
-
-  const entry = Object.entries(STORAGE_KEY_TO_LABEL)
-    .find(([, label]) => label === tipoNome);
-
-  if (entry) return entry[0];
-
-  const normalized = tipoNome
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]/g, '');
-
-  return normalized ? `exames${normalized}` : "examesLaudo";
-}
-
-// Função para buscar todos os exames
-async function getTodosExames() {
-  try {
-    console.log('🔍 ExamesRealizados: Buscando exames...');
-    
-    const resultado = await laudoSyncService.buscarLaudos();
-    
-    if (resultado.success) {
-      console.log('✅ ExamesRealizados: Exames carregados:', resultado.laudos.length);
-      
-      // Converter para o formato esperado pela página
-      const examesFormatados = resultado.laudos.map(laudo => {
-        const tipoNome = laudo.tipoNome || STORAGE_KEY_TO_LABEL[laudo.tipo] || laudo.tipo || 'Exame';
-        const tipo = laudo.tipo || getStorageKeyFromTipoNome(tipoNome);
-        return {
-          ...laudo,
-          tipo,
-          tipoNome,
-          timestamp: laudo.dataCriacao || laudo.timestamp,
-          criadoEm: laudo.dataCriacao || laudo.timestamp,
-          origem: laudo.origem || 'localStorage'
-        };
-      });
-      
-      // Ordenar por data de criação (mais recente primeiro)
-      return examesFormatados.sort((a, b) => new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0));
-    } else {
-      console.warn('⚠️ ExamesRealizados: Erro ao carregar exames:', resultado.error);
-      return [];
-    }
-  } catch (error) {
-    console.error('❌ ExamesRealizados: Erro ao carregar exames:', error);
-    return [];
-  }
-}
-
-// Função de fallback para buscar do localStorage
-function getTodosExamesLocais() {
-  const todosExames = [];
-  
-  STORAGE_KEYS.forEach((key) => {
-    const exames = JSON.parse(localStorage.getItem(key) || "[]");
-    exames.forEach(exame => {
-      const tipoNome = exame.tipoNome || STORAGE_KEY_TO_LABEL[key] || "Exame";
-      todosExames.push({
-        ...exame,
-        tipo: exame.tipo || key,
-        tipoNome
-      });
-    });
-  });
-  
-  // Ordenar por data de criação (mais recente primeiro)
-  return todosExames.sort((a, b) => new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0));
-}
-
-function getTipoNome(key) {
-  return STORAGE_KEY_TO_LABEL[key] || "Exame";
-}
-
-function excluirExame(exame) {
-  const storageKey = exame.tipo || getStorageKeyFromTipoNome(exame.tipoNome);
-  const todos = JSON.parse(localStorage.getItem(storageKey) || "[]");
-  const filtrados = todos.filter(e => e.id !== exame.id);
-  localStorage.setItem(storageKey, JSON.stringify(filtrados));
 }
 
 // Função para formatar o laudo com melhor espaçamento
@@ -253,6 +184,10 @@ export default function ExamesRealizados() {
   const [whatsappNumeroPaciente, setWhatsappNumeroPaciente] = useState("");
   const [emailExame, setEmailExame] = useState(null);
   const [emailPaciente, setEmailPaciente] = useState("");
+  const [ordenacao, setOrdenacao] = useState("recentes");
+  const [menuAbertoId, setMenuAbertoId] = useState(null);
+  const [confirmacao, setConfirmacao] = useState(null); // { tipo: 'excluirUm'|'excluirSelecionados'|'limparTudo', exame? }
+  const [confirmaLimparTudo, setConfirmaLimparTudo] = useState(false);
   const isPremium = isUsuarioPremium();
   const temAcesso = temAcessoPremium(); // Premium OU trial ativo
 
@@ -343,6 +278,12 @@ export default function ExamesRealizados() {
     return matchTipo && matchBusca;
   });
 
+  const examesOrdenados = [...examesFiltrados].sort((a, b) => {
+    if (ordenacao === "nome") return (a.nome || "").localeCompare(b.nome || "");
+    if (ordenacao === "tipo") return (a.tipoNome || "").localeCompare(b.tipoNome || "");
+    return new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0);
+  });
+
   const tiposUnicos = [...new Set(exames.map(e => e.tipoNome))];
 
   function handleEditarExame(exame) {
@@ -383,29 +324,22 @@ export default function ExamesRealizados() {
     }
   };
 
-  // Função para LIMPAR TODOS os exames
-  const limparTodosExamesFirebase = async () => {
+  // Função para LIMPAR TODOS os exames (executada após confirmação no modal)
+  const confirmarLimparTudo = async () => {
     try {
-      const confirmacao = window.confirm(
-        '⚠️ ATENÇÃO: Isso irá DELETAR TODOS os exames!\n\n' +
-        'Tem certeza que deseja continuar?\n\n' +
-        'Esta ação NÃO pode ser desfeita!'
-      );
-      
-      if (!confirmacao) return;
-      
-      console.log('🗑️ ExamesRealizados: LIMPANDO TODOS os exames...');
-      
+      setConfirmacao(null);
+      setConfirmaLimparTudo(false);
+
       if (exames.length === 0) {
         alert('Nenhum exame encontrado!');
         return;
       }
-      
+
       console.log('🔥 ExamesRealizados: Deletando', exames.length, 'exames...');
-      
+
       let deletados = 0;
       let erros = 0;
-      
+
       for (const exame of exames) {
         if (exame.id) {
           const resultado = await examesRealtimeService.excluirExame(exame.id);
@@ -418,43 +352,40 @@ export default function ExamesRealizados() {
           }
         }
       }
-      
+
       // Limpar dados locais também
       limparDadosLocais();
-      
+
       alert(`🧹 LIMPEZA CONCLUÍDA!\n\n` +
             `✅ Exames deletados: ${deletados}\n` +
             `❌ Erros: ${erros}\n\n` +
             `Sistema limpo e pronto para uso!`);
-      
+
       console.log('🎉 ExamesRealizados: Sistema limpo com sucesso!');
-      
+
     } catch (error) {
       console.error('❌ ExamesRealizados: Erro ao limpar exames:', error);
       alert('Erro ao limpar exames: ' + error.message);
     }
   };
 
+  const confirmarExcluirExame = async (exame) => {
+    setConfirmacao(null);
+    try {
+      console.log('🗑️ ExamesRealizados: Excluindo exame:', exame.id);
 
-  const handleExcluirExame = async (exame) => {
-    if (window.confirm(`Tem certeza que deseja excluir o exame de ${exame.nome}?`)) {
-      try {
-        console.log('🗑️ ExamesRealizados: Excluindo exame:', exame.id);
-        
-        // Excluir usando o serviço em tempo real
-        const resultado = await examesRealtimeService.excluirExame(exame.id);
-        
-        if (resultado.success) {
-          console.log('✅ ExamesRealizados: Exame excluído com sucesso');
-          // NÃO atualizar estado local - o listener em tempo real fará isso
-        } else {
-          console.error('❌ ExamesRealizados: Erro ao excluir exame:', resultado.error);
-          alert('Erro ao excluir exame: ' + resultado.error);
-        }
-      } catch (error) {
-        console.error('❌ ExamesRealizados: Erro ao excluir exame:', error);
-        alert('Erro ao excluir exame: ' + error.message);
+      const resultado = await examesRealtimeService.excluirExame(exame.id);
+
+      if (resultado.success) {
+        console.log('✅ ExamesRealizados: Exame excluído com sucesso');
+        // NÃO atualizar estado local - o listener em tempo real fará isso
+      } else {
+        console.error('❌ ExamesRealizados: Erro ao excluir exame:', resultado.error);
+        alert('Erro ao excluir exame: ' + resultado.error);
       }
+    } catch (error) {
+      console.error('❌ ExamesRealizados: Erro ao excluir exame:', error);
+      alert('Erro ao excluir exame: ' + error.message);
     }
   };
 
@@ -474,18 +405,9 @@ export default function ExamesRealizados() {
     setExamesSelecionados(examesFiltrados);
   };
 
-  const deselecionarTodos = () => {
-    setExamesSelecionados([]);
-  };
-
-  const excluirSelecionados = async () => {
+  const confirmarExcluirSelecionados = async () => {
     if (examesSelecionados.length === 0) return;
-    
-    const confirmacao = window.confirm(
-      `Tem certeza que deseja excluir ${examesSelecionados.length} exame(s) selecionado(s)?`
-    );
-    
-    if (!confirmacao) return;
+    setConfirmacao(null);
 
     try {
       setCarregando(true);
@@ -686,30 +608,6 @@ export default function ExamesRealizados() {
             {modoSelecao ? "❌ Cancelar" : "☑️ Selecionar"}
           </button>
           
-          {/* Botão de limpeza (apenas se houver exames) */}
-          {exames.length > 0 && (
-            <button
-              onClick={limparTodosExamesFirebase}
-              disabled={carregando}
-              style={{
-                background: "#e67e22",
-                color: "white",
-                border: "none",
-                padding: "8px 12px",
-                borderRadius: "6px",
-                cursor: carregando ? "not-allowed" : "pointer",
-                fontSize: "12px",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                opacity: carregando ? 0.7 : 1
-              }}
-            >
-              🗑️ Limpar
-            </button>
-          )}
-          
           {/* Botões de seleção (apenas no modo seleção) */}
           {modoSelecao && (
             <>
@@ -730,9 +628,9 @@ export default function ExamesRealizados() {
               >
                 ☑️ Todos
               </button>
-              
+
               <button
-                onClick={excluirSelecionados}
+                onClick={() => setConfirmacao({ tipo: "excluirSelecionados" })}
                 disabled={examesSelecionados.length === 0 || carregando}
                 style={{
                   background: "#e74c3c",
@@ -749,6 +647,32 @@ export default function ExamesRealizados() {
                 🗑️ Excluir ({examesSelecionados.length})
               </button>
             </>
+          )}
+
+          {/* Zona de risco: separada visualmente das ações normais */}
+          {exames.length > 0 && (
+            <button
+              onClick={() => { setConfirmaLimparTudo(false); setConfirmacao({ tipo: "limparTudo" }); }}
+              disabled={carregando}
+              title="Apaga todos os exames — ação irreversível"
+              style={{
+                background: "transparent",
+                color: "#e74c3c",
+                border: "1.5px dashed #e74c3c88",
+                padding: "8px 12px",
+                borderRadius: "6px",
+                cursor: carregando ? "not-allowed" : "pointer",
+                fontSize: "12px",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: carregando ? 0.5 : 0.85,
+                marginLeft: "auto"
+              }}
+            >
+              <FiAlertTriangle size={13} /> Limpar tudo
+            </button>
           )}
         </div>
       </div>
@@ -821,11 +745,51 @@ export default function ExamesRealizados() {
               ))}
             </select>
           </div>
+
+          {/* Ordenação */}
+          <div>
+            <label style={{
+              display: "block",
+              marginBottom: "4px",
+              fontSize: "12px",
+              color: "#aaa"
+            }}>
+              ↕️ Ordenar por:
+            </label>
+            <select
+              value={ordenacao}
+              onChange={(e) => setOrdenacao(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "6px",
+                border: "none",
+                fontSize: "14px",
+                background: "#fff",
+                color: "#333"
+              }}
+            >
+              <option value="recentes">Mais recentes</option>
+              <option value="nome">Nome do paciente (A-Z)</option>
+              <option value="tipo">Tipo de exame (A-Z)</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Lista de Exames Mobile-Optimized */}
-      {examesFiltrados.length === 0 ? (
+      {carregando ? (
+        <div style={{
+          textAlign: "center",
+          padding: "50px 20px",
+          background: "#242d43",
+          borderRadius: "8px",
+          color: "#8fb3bd"
+        }}>
+          <div className="examesSpinner" />
+          <p style={{ fontSize: "14px", marginTop: 14 }}>Carregando exames...</p>
+        </div>
+      ) : examesOrdenados.length === 0 ? (
         <div style={{
           textAlign: "center",
           padding: "40px 20px",
@@ -851,16 +815,31 @@ export default function ExamesRealizados() {
           flexDirection: "column",
           gap: "12px"
         }}>
-          {examesFiltrados.map((exame, index) => (
-            <div key={exame.id} style={{
-              background: "#242d43",
-              borderRadius: "8px",
-              padding: "15px",
-              border: "1px solid #0eb8d033",
-              transition: "all 0.2s",
-              position: "relative",
-              borderColor: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d033"
-            }}>
+          {examesOrdenados.map((exame) => (
+            <div
+              key={exame.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Ver exame de ${exame.nome}`}
+              onClick={() => (modoSelecao ? toggleSelecaoExame(exame) : setExameVisualizando(exame))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  modoSelecao ? toggleSelecaoExame(exame) : setExameVisualizando(exame);
+                }
+              }}
+              style={{
+                background: "#242d43",
+                borderRadius: "8px",
+                padding: "15px",
+                border: "1px solid #0eb8d033",
+                borderLeft: `4px solid ${corDoTipo(exame.tipoNome)}`,
+                transition: "all 0.2s",
+                position: "relative",
+                cursor: "pointer",
+                borderColor: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d033"
+              }}
+            >
               {/* Checkbox para seleção múltipla */}
               {modoSelecao && (
                 <div style={{
@@ -873,6 +852,7 @@ export default function ExamesRealizados() {
                     type="checkbox"
                     checked={examesSelecionados.find(e => e.id === exame.id) ? true : false}
                     onChange={() => toggleSelecaoExame(exame)}
+                    onClick={(e) => e.stopPropagation()}
                     style={{
                       width: "18px",
                       height: "18px",
@@ -881,42 +861,44 @@ export default function ExamesRealizados() {
                   />
                 </div>
               )}
-              
+
               <div style={{
                 marginLeft: modoSelecao ? "35px" : "0"
               }}>
                 {/* Informações do exame */}
                 <div style={{ marginBottom: "12px" }}>
-                  <h3 style={{ 
-                    color: "#0eb8d0", 
+                  <h3 style={{
+                    color: "#0eb8d0",
                     margin: "0 0 6px 0",
                     fontSize: "16px",
                     fontWeight: 600
                   }}>
                     {exame.nome}
                   </h3>
-                  <div style={{ 
-                    display: "flex", 
-                    flexWrap: "wrap", 
+                  <div style={{
+                    display: "flex",
+                    flexWrap: "wrap",
                     gap: "8px",
-                    fontSize: "12px", 
-                    color: "#aaa" 
+                    fontSize: "12px",
+                    color: "#aaa"
                   }}>
                     <span>📅 {formatarDataDiaMesAno(exame.data) || exame.data}</span>
                     <span>🏥 {exame.tipoNome}</span>
                     {exame.lado && <span>🦵 {exame.lado}</span>}
                   </div>
                 </div>
-                
+
                 {/* Botões de ação */}
                 {!modoSelecao && (
                   <div style={{
                     display: "flex",
                     gap: "6px",
-                    flexWrap: "wrap"
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    position: "relative"
                   }}>
                     <button
-                      onClick={() => setExameVisualizando(exame)}
+                      onClick={(e) => { e.stopPropagation(); setExameVisualizando(exame); }}
                       style={{
                         background: "#11b581",
                         color: "#fff",
@@ -932,9 +914,9 @@ export default function ExamesRealizados() {
                     >
                       👁️ Ver
                     </button>
-                    
+
                     <button
-                      onClick={() => handleEditarExame(exame)}
+                      onClick={(e) => { e.stopPropagation(); handleEditarExame(exame); }}
                       style={{
                         background: "#0eb8d0",
                         color: "#fff",
@@ -950,9 +932,9 @@ export default function ExamesRealizados() {
                     >
                       ✏️ Editar
                     </button>
-                    
+
                     <button
-                      onClick={() => gerarPDFExame(exame)}
+                      onClick={(e) => { e.stopPropagation(); gerarPDFExame(exame); }}
                       style={{
                         background: "#ff9500",
                         color: "#fff",
@@ -968,74 +950,97 @@ export default function ExamesRealizados() {
                     >
                       🖨️ PDF
                     </button>
-                    
-                    {temAcesso && localStorage.getItem("whatsapp") === "true" && (
-                      <button
-                        onClick={() => {
-                          setWhatsappExame(exame);
-                          setWhatsappNumeroPaciente(exame.telefonePaciente || "");
-                        }}
-                        style={{
-                          background: "#25D366",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "4px",
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                          fontSize: "11px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                        title="Enviar laudo em PDF por WhatsApp ao paciente"
-                      >
-                        <FiMessageCircle size={14} /> WhatsApp
-                      </button>
-                    )}
-                    {temAcesso && localStorage.getItem("envioEmail") === "true" && (
-                      <button
-                        onClick={() => {
-                          setEmailExame(exame);
-                          setEmailPaciente(exame.emailPaciente || "");
-                        }}
-                        style={{
-                          background: "#0eb8d0",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "4px",
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                          fontSize: "11px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                        title="Enviar laudo em PDF por e-mail ao paciente"
-                      >
-                        <FiMail size={14} /> E-mail
-                      </button>
-                    )}
-                    
+
                     <button
-                      onClick={() => handleExcluirExame(exame)}
+                      onClick={(e) => { e.stopPropagation(); setMenuAbertoId(menuAbertoId === exame.id ? null : exame.id); }}
+                      title="Mais ações"
                       style={{
-                        background: "#e74c3c",
+                        background: "#38445e",
                         color: "#fff",
                         border: "none",
                         borderRadius: "4px",
-                        padding: "6px 10px",
+                        padding: "6px 8px",
                         cursor: "pointer",
-                        fontSize: "11px",
                         display: "flex",
-                        alignItems: "center",
-                        gap: "4px"
+                        alignItems: "center"
                       }}
                     >
-                      🗑️ Excluir
+                      <FiMoreVertical size={14} />
                     </button>
+
+                    {menuAbertoId === exame.id && (
+                      <>
+                        <div
+                          style={{ position: "fixed", inset: 0, zIndex: 15 }}
+                          onClick={(e) => { e.stopPropagation(); setMenuAbertoId(null); }}
+                        />
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            position: "absolute",
+                            right: 0,
+                            top: "36px",
+                            zIndex: 16,
+                            background: "#1a2332",
+                            border: "1px solid #38445e",
+                            borderRadius: "8px",
+                            minWidth: "190px",
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
+                            overflow: "hidden"
+                          }}
+                        >
+                          {temAcesso && localStorage.getItem("whatsapp") === "true" && (
+                            <button
+                              onClick={() => {
+                                setWhatsappExame(exame);
+                                setWhatsappNumeroPaciente(exame.telefonePaciente || "");
+                                setMenuAbertoId(null);
+                              }}
+                              style={{
+                                width: "100%", textAlign: "left", background: "none", border: "none",
+                                color: "#fff", padding: "10px 14px", cursor: "pointer", fontSize: "13px",
+                                display: "flex", alignItems: "center", gap: "8px"
+                              }}
+                            >
+                              <FiMessageCircle size={14} color="#25D366" /> WhatsApp
+                            </button>
+                          )}
+                          {temAcesso && localStorage.getItem("envioEmail") === "true" && (
+                            <button
+                              onClick={() => {
+                                setEmailExame(exame);
+                                setEmailPaciente(exame.emailPaciente || "");
+                                setMenuAbertoId(null);
+                              }}
+                              style={{
+                                width: "100%", textAlign: "left", background: "none", border: "none",
+                                color: "#fff", padding: "10px 14px", cursor: "pointer", fontSize: "13px",
+                                display: "flex", alignItems: "center", gap: "8px"
+                              }}
+                            >
+                              <FiMail size={14} color="#0eb8d0" /> E-mail
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setMenuAbertoId(null);
+                              setConfirmacao({ tipo: "excluirUm", exame });
+                            }}
+                            style={{
+                              width: "100%", textAlign: "left", background: "none", border: "none",
+                              borderTop: "1px solid #38445e",
+                              color: "#e74c3c", padding: "10px 14px", cursor: "pointer", fontSize: "13px",
+                              display: "flex", alignItems: "center", gap: "8px"
+                            }}
+                          >
+                            <FiTrash2 size={14} /> Excluir
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
-                
+
                 {/* Status de seleção */}
                 {modoSelecao && (
                   <div style={{
@@ -1383,6 +1388,99 @@ export default function ExamesRealizados() {
           </div>
         </div>
       )}
+
+      {/* Modal de confirmação (substitui window.confirm nativo) */}
+      {confirmacao && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(8,14,22,0.75)", display: "flex",
+            justifyContent: "center", alignItems: "center", zIndex: 1002, padding: "15px"
+          }}
+          onClick={() => { setConfirmacao(null); setConfirmaLimparTudo(false); }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#151b26", border: `1px solid ${confirmacao.tipo === "limparTudo" ? "#e74c3c" : "#2a3441"}`,
+              borderRadius: "10px", padding: "22px", width: "100%", maxWidth: "420px"
+            }}
+          >
+            {confirmacao.tipo === "excluirUm" && (
+              <>
+                <h3 style={{ color: "#fff", margin: "0 0 10px 0", fontSize: "17px" }}>Excluir exame?</h3>
+                <p style={{ color: "#aab6c2", fontSize: "14px", marginBottom: 20 }}>
+                  Tem certeza que deseja excluir o exame de <strong style={{ color: "#0eb8d0" }}>{confirmacao.exame.nome}</strong>? Essa ação não pode ser desfeita.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setConfirmacao(null)} style={{ background: "#38445e", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: "14px" }}>Cancelar</button>
+                  <button onClick={() => confirmarExcluirExame(confirmacao.exame)} style={{ background: "#e74c3c", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: "14px" }}>Excluir</button>
+                </div>
+              </>
+            )}
+
+            {confirmacao.tipo === "excluirSelecionados" && (
+              <>
+                <h3 style={{ color: "#fff", margin: "0 0 10px 0", fontSize: "17px" }}>Excluir exames selecionados?</h3>
+                <p style={{ color: "#aab6c2", fontSize: "14px", marginBottom: 20 }}>
+                  Tem certeza que deseja excluir <strong style={{ color: "#0eb8d0" }}>{examesSelecionados.length}</strong> exame(s) selecionado(s)? Essa ação não pode ser desfeita.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setConfirmacao(null)} style={{ background: "#38445e", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: "14px" }}>Cancelar</button>
+                  <button onClick={confirmarExcluirSelecionados} style={{ background: "#e74c3c", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: "14px" }}>Excluir</button>
+                </div>
+              </>
+            )}
+
+            {confirmacao.tipo === "limparTudo" && (
+              <>
+                <h3 style={{ color: "#e74c3c", margin: "0 0 10px 0", fontSize: "17px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <FiAlertTriangle /> Apagar todos os exames
+                </h3>
+                <p style={{ color: "#aab6c2", fontSize: "14px", marginBottom: 14 }}>
+                  Isso vai deletar permanentemente <strong style={{ color: "#fff" }}>{exames.length}</strong> exame(s) da sua conta. Essa ação NÃO pode ser desfeita.
+                </p>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "13px", color: "#e6d68a", marginBottom: 20, cursor: "pointer" }}>
+                  <input type="checkbox" checked={confirmaLimparTudo} onChange={(e) => setConfirmaLimparTudo(e.target.checked)} />
+                  Entendo que essa ação é irreversível
+                </label>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => { setConfirmacao(null); setConfirmaLimparTudo(false); }} style={{ background: "#38445e", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: "14px" }}>Cancelar</button>
+                  <button
+                    onClick={confirmarLimparTudo}
+                    disabled={!confirmaLimparTudo}
+                    style={{
+                      background: confirmaLimparTudo ? "#e74c3c" : "#5a3232",
+                      color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600,
+                      cursor: confirmaLimparTudo ? "pointer" : "not-allowed", fontSize: "14px",
+                      opacity: confirmaLimparTudo ? 1 : 0.7
+                    }}
+                  >
+                    Apagar tudo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <style>
+        {`
+          .examesSpinner {
+            width: 34px;
+            height: 34px;
+            margin: 0 auto;
+            border: 3px solid #344257;
+            border-top-color: #0eb8d0;
+            border-radius: 50%;
+            animation: examesSpin 0.8s linear infinite;
+          }
+          @keyframes examesSpin {
+            to { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 } 

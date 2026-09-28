@@ -547,15 +547,21 @@ class ExamesRealtimeService {
           if (!exame.deletedAt && (!exame.userId || exame.userId === user.uid) && (!exame.userEmail || exame.userEmail === user.email)) {
             const supabaseId = exame.supabaseId;
             const localId = exame.localId || exame.id;
-            // Evitar duplicatas (se já veio do Supabase)
-            const jaExiste = todosExames.some(e => 
+            const tipoNome = exame.tipoNome || exame.tipo || 'Exame';
+            const nomePaciente = exame.nome || exame.paciente;
+            // Evitar duplicatas (se já veio do Supabase). Além do match por id,
+            // trata como o mesmo exame quando nome+data+tipo batem com um registro
+            // já sincronizado do Supabase — cobre exames antigos salvos apenas no
+            // localStorage que depois também foram migrados/sincronizados lá, sem
+            // compartilhar o mesmo id local.
+            const jaExiste = todosExames.some(e =>
               (e.supabaseId && supabaseId && e.supabaseId === supabaseId) ||
               (e.id && supabaseId && e.id === supabaseId) ||
-              (e.localId && localId && e.localId === localId)
+              (e.localId && localId && e.localId === localId) ||
+              (e.origem === 'supabase' && nomePaciente && e.nome === nomePaciente && e.data === exame.data && e.tipoNome === tipoNome)
             );
-            
+
             if (!jaExiste) {
-              const tipoNome = exame.tipoNome || exame.tipo || 'Exame';
               const storageKey = exame.tipo || tipo || getStorageKey(tipoNome);
               todosExames.push({
                 ...exame,
