@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiSave, FiUser, FiFileText, FiSettings, FiShield, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2, FiMail } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiUser, FiFileText, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2, FiMail, FiAlertTriangle } from "react-icons/fi";
 import { TrialManager } from "../utils/trialManager";
+import { AuthService } from "../services/supabaseAuthService";
 
 const CONFIG_LAUDO_PREMIUM_KEY = "configLaudoPremium";
 const PERFIL_LAUDO_ATIVO_KEY = "perfilLaudoAtivo";
@@ -104,13 +105,7 @@ export default function Configuracoes() {
       aplicarPerfilAosLegacyKeys(configLaudoPerfis[perfilLaudoAtivo]);
   }, [isPremium, perfilLaudoAtivo]);
 
-  console.log("=== CARREGAMENTO INICIAL ===");
-  console.log("Especialidade carregada:", localStorage.getItem("especialidade"));
-  console.log("configLaudo inicial:", configLaudo);
-
   // Estados para dados do usuário
-  const clinicasSalvas = JSON.parse(localStorage.getItem("clinicasCadastradas") || "[]");
-  const clinicaAtiva = parseInt(localStorage.getItem("clinicaAtiva") || "0", 10);
   const [dadosUsuario, setDadosUsuario] = useState({
     email: localStorage.getItem("userEmail") || "",
     nomeCompleto: localStorage.getItem("nomeCompleto") || "",
@@ -119,13 +114,7 @@ export default function Configuracoes() {
     novaSenha: "",
     confirmarSenha: "",
     notificacoes: localStorage.getItem("notificacoes") === "true",
-    senhaExames: localStorage.getItem("senhaExames") === "true",
-    clinicas: clinicasSalvas.length ? clinicasSalvas : [
-      { nomeClinica: "", dadosContato: "" },
-      { nomeClinica: "", dadosContato: "" },
-      { nomeClinica: "", dadosContato: "" }
-    ],
-    clinicaAtiva: clinicaAtiva
+    senhaExames: localStorage.getItem("senhaExames") === "true"
   });
 
   // Estados para integrações
@@ -143,6 +132,10 @@ export default function Configuracoes() {
   const HOTMART_CHECKOUT_URL = "https://pay.hotmart.com/S102049895B";
 
   const [mensagem, setMensagem] = useState("");
+  const [alterandoSenha, setAlterandoSenha] = useState(false);
+  // Modal de confirmação customizado (substitui window.confirm nativo):
+  // tipo: 'assinarPremium' | 'removerLogo' | 'removerAssinatura'
+  const [confirmacao, setConfirmacao] = useState(null);
 
   // Função para fazer upload de logo
   function handleLogoUpload(event) {
@@ -174,7 +167,8 @@ export default function Configuracoes() {
     }
   }
 
-  function removerLogo() {
+  function confirmarRemoverLogo() {
+    setConfirmacao(null);
     setCurrentConfig(prev => ({ ...prev, logoClinica: "" }));
     if (!isPremium) localStorage.removeItem("logoClinica");
     setMensagem("Logo removido com sucesso!");
@@ -211,7 +205,8 @@ export default function Configuracoes() {
     }
   }
 
-  function removerAssinatura() {
+  function confirmarRemoverAssinatura() {
+    setConfirmacao(null);
     setCurrentConfig(prev => ({ ...prev, assinaturaMedico: "" }));
     if (!isPremium) localStorage.removeItem("assinaturaMedico");
     setMensagem("Assinatura removida com sucesso!");
@@ -219,8 +214,6 @@ export default function Configuracoes() {
   }
 
   function salvarConfiguracoes() {
-    console.log("=== SALVANDO CONFIGURAÇÕES ===");
-
     if (isPremium) {
       localStorage.setItem(CONFIG_LAUDO_PREMIUM_KEY, JSON.stringify(configLaudoPerfis));
       localStorage.setItem(PERFIL_LAUDO_ATIVO_KEY, String(perfilLaudoAtivo));
@@ -239,14 +232,7 @@ export default function Configuracoes() {
     // Salvar dados do usuário
     Object.keys(dadosUsuario).forEach(key => {
       if (key !== "senhaAtual" && key !== "novaSenha" && key !== "confirmarSenha") {
-        if (key === "clinicas") {
-          localStorage.setItem("clinicasCadastradas", JSON.stringify(dadosUsuario.clinicas));
-        } else if (key === "clinicaAtiva") {
-          localStorage.setItem("clinicaAtiva", dadosUsuario.clinicaAtiva);
-        } else {
-          localStorage.setItem(key, dadosUsuario[key]);
-        }
-        console.log(`Salvando dadosUsuario.${key}:`, dadosUsuario[key]);
+        localStorage.setItem(key, dadosUsuario[key]);
       }
     });
 
@@ -255,16 +241,16 @@ export default function Configuracoes() {
       localStorage.setItem(key, integracoes[key]);
     });
 
-    // Verificar se foi salvo
-    const especialidadeSalva = localStorage.getItem("especialidade");
-    console.log("Especialidade salva no localStorage:", especialidadeSalva);
-
     setMensagem("Perfil salvo");
     setTimeout(() => setMensagem(""), 3000);
   }
 
-  // Alterar senha
-  function alterarSenha() {
+  // Alterar senha (usa o mesmo AuthService do login/cadastro)
+  async function alterarSenha() {
+    if (!dadosUsuario.senhaAtual) {
+      setMensagem("Informe sua senha atual!");
+      return;
+    }
     if (dadosUsuario.novaSenha !== dadosUsuario.confirmarSenha) {
       setMensagem("As senhas não coincidem!");
       return;
@@ -273,9 +259,20 @@ export default function Configuracoes() {
       setMensagem("A nova senha deve ter pelo menos 6 caracteres!");
       return;
     }
-    
-    // Aqui você implementaria a lógica de alteração de senha
-    localStorage.setItem("senha", dadosUsuario.novaSenha);
+
+    setAlterandoSenha(true);
+    const resultado = await AuthService.changePassword(
+      dadosUsuario.email,
+      dadosUsuario.senhaAtual,
+      dadosUsuario.novaSenha
+    );
+    setAlterandoSenha(false);
+
+    if (!resultado.success) {
+      setMensagem(resultado.error || "Erro ao alterar senha.");
+      return;
+    }
+
     setDadosUsuario(prev => ({
       ...prev,
       senhaAtual: "",
@@ -284,6 +281,12 @@ export default function Configuracoes() {
     }));
     setMensagem("Senha alterada com sucesso!");
     setTimeout(() => setMensagem(""), 3000);
+  }
+
+  function confirmarAssinarPremium() {
+    setConfirmacao(null);
+    window.open(HOTMART_CHECKOUT_URL, "_blank");
+    navigate("/confirmacao-pagamento");
   }
 
   const tabs = [
@@ -407,7 +410,7 @@ export default function Configuracoes() {
                         cursor: "pointer"
                       }}
                     >
-                      Perfil {i + 1} {perfilLaudoAtivo === i && "(ativo)"}
+                      {configLaudoPerfis[i]?.nomeMedico?.trim() || `Perfil ${i + 1}`} {perfilLaudoAtivo === i && "(ativo)"}
                     </button>
                   ))}
                 </div>
@@ -463,7 +466,7 @@ export default function Configuracoes() {
                         />
                       </label>
                       <button
-                        onClick={removerLogo}
+                        onClick={() => setConfirmacao({ tipo: "removerLogo" })}
                         style={{
                           background: "#e74c3c",
                           color: "#fff",
@@ -612,7 +615,7 @@ export default function Configuracoes() {
                         />
                       </label>
                       <button
-                        onClick={removerAssinatura}
+                        onClick={() => setConfirmacao({ tipo: "removerAssinatura" })}
                         style={{
                           background: "#e74c3c",
                           color: "#fff",
@@ -805,6 +808,24 @@ export default function Configuracoes() {
                 <div style={{ display: "grid", gap: 15 }}>
                   <div>
                     <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Senha Atual:
+                    </label>
+                    <input
+                      type="password"
+                      value={dadosUsuario.senhaAtual}
+                      onChange={(e) => setDadosUsuario(prev => ({...prev, senhaAtual: e.target.value}))}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 6,
+                        border: "none",
+                        fontSize: 14
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
                       Nova Senha:
                     </label>
                     <input
@@ -841,6 +862,7 @@ export default function Configuracoes() {
 
                   <button
                     onClick={alterarSenha}
+                    disabled={alterandoSenha}
                     style={{
                       background: "#11b581",
                       color: "#fff",
@@ -848,11 +870,12 @@ export default function Configuracoes() {
                       borderRadius: 6,
                       padding: "10px 20px",
                       fontWeight: 600,
-                      cursor: "pointer",
+                      cursor: alterandoSenha ? "not-allowed" : "pointer",
+                      opacity: alterandoSenha ? 0.7 : 1,
                       alignSelf: "start"
                     }}
                   >
-                    Alterar Senha
+                    {alterandoSenha ? "Alterando..." : "Alterar Senha"}
                   </button>
                 </div>
               </div>
@@ -1132,14 +1155,7 @@ export default function Configuracoes() {
                 <div style={{ display: "grid", gap: 15 }}>
                   {!isPremium ? (
                     <button
-                      onClick={() => {
-                        if (window.confirm(
-                          "Deseja ser redirecionado para a página de pagamento Hotmart para assinar o plano Premium?\n\nApós o pagamento, seu plano será ativado."
-                        )) {
-                          window.open(HOTMART_CHECKOUT_URL, "_blank");
-                          navigate("/confirmacao-pagamento");
-                        }
-                      }}
+                      onClick={() => setConfirmacao({ tipo: "assinarPremium" })}
                       style={{
                         background: "#11b581",
                         color: "#fff",
@@ -1211,31 +1227,73 @@ export default function Configuracoes() {
         >
           <FiSave size={18} /> Salvar Configurações
         </button>
-        
-        <button
-          onClick={() => {
-            const especialidade = localStorage.getItem("especialidade") || localStorage.getItem("especialidadeLaudo") || "";
-            const nomeMedico = localStorage.getItem("nomeMedico") || "";
-            const crm = localStorage.getItem("crm") || "";
-            const nomeClinica = localStorage.getItem("nomeClinica") || "";
-            setMensagem(`Dados salvos: Nome: ${nomeMedico || "(vazio)"} | CRM: ${crm || "(vazio)"} | Especialidade: ${especialidade || "(vazio)"} | Clínica: ${nomeClinica || "(vazio)"}`);
-            setTimeout(() => setMensagem(""), 5000);
-          }}
-          style={{
-            background: "#ff6b35",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "8px 16px",
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: "pointer",
-            marginLeft: 10
-          }}
-        >
-          🔍 Testar Dados
-        </button>
+        <p style={{ marginTop: 10, fontSize: 12.5, color: "#7d8ba1" }}>
+          Este botão salva as informações de todas as abas de uma vez.
+        </p>
       </div>
+
+      {/* Modal de confirmação (substitui window.confirm nativo) */}
+      {confirmacao && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(8,14,22,0.75)", display: "flex",
+            justifyContent: "center", alignItems: "center", zIndex: 1002, padding: "15px"
+          }}
+          onClick={() => setConfirmacao(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#151b26", border: "1px solid #2a3441",
+              borderRadius: "10px", padding: "22px", width: "100%", maxWidth: "420px"
+            }}
+          >
+            {confirmacao.tipo === "assinarPremium" && (
+              <>
+                <h3 style={{ color: "#fff", margin: "0 0 10px 0", fontSize: 17 }}>Assinar Premium</h3>
+                <p style={{ color: "#aab6c2", fontSize: 14, marginBottom: 20 }}>
+                  Você será redirecionado para a página de pagamento da Hotmart. Após o pagamento, seu plano será ativado.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setConfirmacao(null)} style={{ background: "#38445e", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Cancelar</button>
+                  <button onClick={confirmarAssinarPremium} style={{ background: "#11b581", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Continuar</button>
+                </div>
+              </>
+            )}
+
+            {confirmacao.tipo === "removerLogo" && (
+              <>
+                <h3 style={{ color: "#fff", margin: "0 0 10px 0", fontSize: 17, display: "flex", alignItems: "center", gap: 8 }}>
+                  <FiAlertTriangle color="#e74c3c" /> Remover logo?
+                </h3>
+                <p style={{ color: "#aab6c2", fontSize: 14, marginBottom: 20 }}>
+                  O logo será removido dos seus laudos em PDF. Você pode enviar outro a qualquer momento.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setConfirmacao(null)} style={{ background: "#38445e", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Cancelar</button>
+                  <button onClick={confirmarRemoverLogo} style={{ background: "#e74c3c", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Remover</button>
+                </div>
+              </>
+            )}
+
+            {confirmacao.tipo === "removerAssinatura" && (
+              <>
+                <h3 style={{ color: "#fff", margin: "0 0 10px 0", fontSize: 17, display: "flex", alignItems: "center", gap: 8 }}>
+                  <FiAlertTriangle color="#e74c3c" /> Remover assinatura?
+                </h3>
+                <p style={{ color: "#aab6c2", fontSize: 14, marginBottom: 20 }}>
+                  A assinatura será removida dos seus laudos em PDF. Você pode enviar outra a qualquer momento.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setConfirmacao(null)} style={{ background: "#38445e", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Cancelar</button>
+                  <button onClick={confirmarRemoverAssinatura} style={{ background: "#e74c3c", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Remover</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

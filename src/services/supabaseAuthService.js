@@ -374,6 +374,73 @@ class SupabaseAuthService {
 
   // ==================== MÉTODOS PÚBLICOS ====================
 
+  async changePassword(email, currentPassword, newPassword) {
+    const validation = this.validatePasswordStrength(newPassword);
+    if (!validation.isValid) {
+      return { success: false, error: 'A nova senha deve ter pelo menos 6 caracteres.' };
+    }
+
+    if (this.useLocalStorage) {
+      return this.changePasswordLocal(email, currentPassword, newPassword);
+    }
+
+    return this.changePasswordSupabase(email, currentPassword, newPassword);
+  }
+
+  async changePasswordSupabase(email, currentPassword, newPassword) {
+    try {
+      if (!supabase) {
+        throw new Error('Supabase não está configurado');
+      }
+
+      // Reautentica com a senha atual para confirmar que é o próprio usuário antes de trocar
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+      if (signInError) {
+        return { success: false, error: 'Senha atual incorreta.' };
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        return { success: false, error: this.getErrorMessage(error.message) };
+      }
+
+      console.log('✅ Senha alterada no Supabase:', email);
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao alterar senha no Supabase:', error);
+      return { success: false, error: error.message || 'Erro ao alterar senha. Tente novamente.' };
+    }
+  }
+
+  changePasswordLocal(email, currentPassword, newPassword) {
+    try {
+      const users = this.getAllUsers();
+      const normalizedEmail = email.toLowerCase().trim();
+      const user = users[normalizedEmail];
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      if (user.password !== this.hashPassword(currentPassword)) {
+        return { success: false, error: 'Senha atual incorreta.' };
+      }
+
+      user.password = this.hashPassword(newPassword);
+      users[normalizedEmail] = user;
+      localStorage.setItem('venoai_users', JSON.stringify(users));
+
+      console.log('✅ Senha alterada (localStorage):', normalizedEmail);
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao alterar senha (localStorage):', error);
+      return { success: false, error: 'Erro ao alterar senha. Tente novamente.' };
+    }
+  }
+
   async createUser(email, password, userData = {}) {
     if (this.useLocalStorage) {
       return this.createUserLocal(email, password, userData);
