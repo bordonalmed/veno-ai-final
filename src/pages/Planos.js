@@ -2,11 +2,30 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiStar, FiZap, FiAward } from "react-icons/fi";
 
+const FAQ = [
+  {
+    pergunta: "O que acontece quando o trial de 7 dias acaba?",
+    resposta: "Você pode assinar o Premium a qualquer momento para continuar gerando laudos ilimitados. Seus dados e exames salvos continuam disponíveis."
+  },
+  {
+    pergunta: "Preciso de cartão de crédito para o teste gratuito?",
+    resposta: "Não. O Trial Gratuito não pede nenhum dado de pagamento — é só começar a usar."
+  },
+  {
+    pergunta: "Posso cancelar o Premium quando quiser?",
+    resposta: "Sim, sem multa ou fidelidade. Você pode cancelar a assinatura a qualquer momento."
+  },
+  {
+    pergunta: "O pagamento é seguro?",
+    resposta: "Sim, o pagamento do plano Premium é processado pela Hotmart, uma das maiores plataformas de pagamento do Brasil."
+  },
+];
+
 export default function Planos() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
-  
-  const [planoSelecionado, setPlanoSelecionado] = useState("trial");
+
+  const [mostrarConfirmacaoPremium, setMostrarConfirmacaoPremium] = useState(false);
 
   const planos = [
     {
@@ -46,67 +65,43 @@ export default function Planos() {
     }
   ];
 
-  function handleSelecionarPlano(planoId) {
-    setPlanoSelecionado(planoId);
-  }
+  function iniciarTrial() {
+    if (userEmail) {
+      localStorage.setItem(`plano_${userEmail}`, "trial");
+      localStorage.setItem(`trial_${userEmail}`, JSON.stringify({
+        inicio: new Date().toISOString(),
+        laudosGerados: [],
+        status: "ativo"
+      }));
 
-  function handlePagamentoPremium(userEmail) {
-    // Salvar email do usuário para depois da compra
-    localStorage.setItem("emailCompraPendente", userEmail);
-    
-    // Link do Hotmart - Configurado
-    const hotmartLink = "https://pay.hotmart.com/S102049895B";
-    
-    // Confirmar redirecionamento
-    const confirmar = window.confirm(
-      "💎 Plano Premium selecionado!\n\n" +
-      "Você será redirecionado para o pagamento seguro via Hotmart.\n" +
-      "Após o pagamento, seu plano será ativado automaticamente.\n\n" +
-      "Continuar?"
-    );
-    
-    if (confirmar) {
-      // Abrir Hotmart em nova aba
-      window.open(hotmartLink, "_blank");
-      
-      // Redirecionar para página de confirmação
-      navigate("/confirmacao-pagamento");
-    }
-  }
-
-  function handleContratar() {
-    const plano = planos.find(p => p.id === planoSelecionado);
-    const userEmail = localStorage.getItem("userEmail");
-    
-    if (planoSelecionado === "trial") {
-      if (userEmail) {
-        // Salvar plano trial
-        localStorage.setItem(`plano_${userEmail}`, "trial");
-        localStorage.setItem(`trial_${userEmail}`, JSON.stringify({
-          inicio: new Date().toISOString(),
-          laudosGerados: [],
-          status: "ativo"
-        }));
-        
-        alert("🎯 Trial Gratuito iniciado! Você tem 7 dias e 5 laudos para testar todos os recursos.");
-        navigate("/home");
-      } else {
-        // Usuário não logado - redirecionar para login
-        alert("🎯 Trial Gratuito selecionado! Faça login para começar seus 7 dias de teste.");
-        navigate("/login");
-      }
-    } else if (planoSelecionado === "premium") {
-      if (userEmail) {
-        // Redirecionar para Hotmart para pagamento real
-        handlePagamentoPremium(userEmail);
-      } else {
-        // Usuário não logado - redirecionar para login
-        alert("💎 Plano Premium selecionado! Faça login para continuar.");
-        navigate("/login");
-      }
+      alert("🎯 Trial Gratuito iniciado! Você tem 7 dias e 5 laudos para testar todos os recursos.");
+      navigate("/home");
     } else {
-      alert(`Plano ${plano?.nome} selecionado! Em breve você receberá instruções por email.`);
+      alert("🎯 Trial Gratuito selecionado! Faça login para começar seus 7 dias de teste.");
+      navigate("/login");
     }
+  }
+
+  function solicitarPremium() {
+    if (!userEmail) {
+      alert("💎 Plano Premium selecionado! Faça login para continuar.");
+      navigate("/login");
+      return;
+    }
+    setMostrarConfirmacaoPremium(true);
+  }
+
+  function confirmarPagamentoPremium() {
+    localStorage.setItem("emailCompraPendente", userEmail);
+    const hotmartLink = "https://pay.hotmart.com/S102049895B";
+    window.open(hotmartLink, "_blank");
+    setMostrarConfirmacaoPremium(false);
+    navigate("/confirmacao-pagamento");
+  }
+
+  function handleEscolherPlano(planoId) {
+    if (planoId === "trial") iniciarTrial();
+    else if (planoId === "premium") solicitarPremium();
   }
 
   return (
@@ -130,7 +125,7 @@ export default function Planos() {
           {/* Botão Voltar no Cabeçalho */}
           <div style={{ marginBottom: 15 }}>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(userEmail ? '/home' : '/')}
               style={{
                 background: "#0eb8d0",
                 color: "#fff",
@@ -190,19 +185,32 @@ export default function Planos() {
           padding: "0 15px"
         }}>
           {planos.map((plano) => (
-            <div
+            <button
               key={plano.id}
-              onClick={() => handleSelecionarPlano(plano.id)}
+              type="button"
+              className="planoCard"
+              aria-label={`Escolher plano ${plano.nome}`}
+              onClick={() => handleEscolherPlano(plano.id)}
               style={{
-                background: planoSelecionado === plano.id ? "#1a2332" : "#0f1419",
-                border: planoSelecionado === plano.id ? `2px solid ${plano.cor}` : "1px solid #2a3441",
+                background: "#1a2332",
+                border: `2px solid ${plano.cor}`,
                 borderRadius: 12,
                 padding: 24,
                 cursor: "pointer",
-                transition: "all 0.3s ease",
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
                 position: "relative",
                 transform: plano.popular ? "scale(1.05)" : "scale(1)",
-                boxShadow: plano.popular ? `0 8px 32px ${plano.cor}40` : "0 4px 16px rgba(0,0,0,0.3)"
+                boxShadow: plano.popular ? `0 8px 32px ${plano.cor}40` : "0 4px 16px rgba(0,0,0,0.3)",
+                textAlign: "left",
+                width: "100%",
+                fontFamily: "inherit",
+                color: "inherit"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = plano.popular ? "scale(1.07) translateY(-2px)" : "scale(1.02) translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = plano.popular ? "scale(1.05)" : "scale(1)";
               }}
             >
               {/* Badge Popular */}
@@ -286,64 +294,142 @@ export default function Planos() {
                 ))}
               </div>
 
-              {/* Botão Selecionar */}
-              <button
+              {/* Chamada para ação (visual apenas — o card inteiro já é o botão) */}
+              <div
                 style={{
                   width: "100%",
-                  background: planoSelecionado === plano.id ? plano.cor : "transparent",
-                  color: planoSelecionado === plano.id ? "#fff" : plano.cor,
-                  border: `2px solid ${plano.cor}`,
+                  boxSizing: "border-box",
+                  background: plano.cor,
+                  color: "#fff",
                   borderRadius: 8,
                   padding: "12px 20px",
                   fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.3s ease"
+                  textAlign: "center",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8
                 }}
               >
-                {planoSelecionado === plano.id ? "Selecionado" : "Selecionar"}
-              </button>
-            </div>
+                <FiCheck size={16} />
+                {plano.trial ? "Começar Trial Gratuito" : "Assinar Premium"}
+              </div>
+            </button>
           ))}
         </div>
 
-        {/* Botão Contratar */}
-        <div style={{ textAlign: "center", padding: "0 15px" }}>
-          <button
-            onClick={handleContratar}
-            style={{
-              background: "#0eb8d0",
-              color: "#fff",
-              border: "none",
-              borderRadius: 12,
-              padding: "14px 24px",
-              fontSize: "clamp(16px, 4vw, 18px)",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              boxShadow: "0 4px 16px #0eb8d040",
-              transition: "all 0.3s ease",
-              width: "100%",
-              maxWidth: 400,
-              justifyContent: "center"
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = "#0ca8b8";
-              e.target.style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "#0eb8d0";
-              e.target.style.transform = "translateY(0)";
-            }}
-          >
-            <FiCheck size={20} />
-            {planoSelecionado === "trial" ? "Começar Trial Gratuito" : "Contratar Premium"}
-          </button>
+        {/* Perguntas frequentes */}
+        <div style={{ maxWidth: 700, margin: "0 auto", padding: "0 15px" }}>
+          <h2 style={{
+            fontSize: "clamp(18px, 4vw, 22px)",
+            fontWeight: 700,
+            color: "#0eb8d0",
+            textAlign: "center",
+            marginBottom: 20
+          }}>
+            Dúvidas frequentes
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
+            {FAQ.map((item, i) => (
+              <div key={i} style={{
+                background: "#0f1419",
+                border: "1px solid #2a3441",
+                borderRadius: 10,
+                padding: "16px 18px"
+              }}>
+                <div style={{ fontWeight: 600, fontSize: 14.5, color: "#fff", marginBottom: 6 }}>
+                  {item.pergunta}
+                </div>
+                <div style={{ fontSize: 13.5, color: "#9fb3c0", lineHeight: 1.5 }}>
+                  {item.resposta}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-
-
       </div>
+
+      {/* Confirmação antes de ir para o pagamento do Premium (substitui window.confirm) */}
+      {mostrarConfirmacaoPremium && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(8,14,22,0.72)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16
+          }}
+          onClick={() => setMostrarConfirmacaoPremium(false)}
+        >
+          <div
+            style={{
+              background: "#151b26",
+              border: "1px solid #2a3441",
+              borderRadius: 14,
+              maxWidth: 420,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
+              color: "#fff",
+              boxSizing: "border-box"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 22, marginBottom: 8 }}>💎</div>
+            <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: "#0eb8d0" }}>
+              Plano Premium selecionado
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: 14, lineHeight: 1.5, color: "#c7d4db" }}>
+              Você será redirecionado para o pagamento seguro via Hotmart, em uma nova aba.
+              Após o pagamento, seu plano será ativado automaticamente.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setMostrarConfirmacaoPremium(false)}
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  color: "#9fb3c0",
+                  border: "1px solid #2a3441",
+                  borderRadius: 8,
+                  padding: "10px 16px",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarPagamentoPremium}
+                style={{
+                  flex: 1,
+                  background: "#0eb8d0",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "10px 16px",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Continuar para pagamento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>
+        {`
+          .planoCard:focus-visible {
+            outline: 2px solid #4fd8ec;
+            outline-offset: 3px;
+          }
+        `}
+      </style>
     </div>
   );
 }

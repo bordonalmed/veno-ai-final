@@ -1,5 +1,6 @@
 // Webhook do Hotmart para ativar Premium automaticamente no Supabase
 const { createClient } = require('@supabase/supabase-js');
+const { timingSafeEqualStr } = require('./_shared/adminAuth');
 
 exports.handler = async (event, context) => {
   // Permitir CORS
@@ -33,7 +34,40 @@ exports.handler = async (event, context) => {
   // Pegar variáveis de ambiente
   const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-  const HOTMART_WEBHOOK_SECRET = process.env.HOTMART_WEBHOOK_SECRET;
+  // Token único da sua conta Hotmart (aba Webhook > Autenticação, no painel da Hotmart)
+  const HOTMART_HOTTOK = process.env.HOTMART_HOTTOK || process.env.HOTMART_WEBHOOK_SECRET;
+
+  if (!HOTMART_HOTTOK) {
+    console.error('❌ [WEBHOOK] HOTMART_HOTTOK não configurado - recusando requisição por segurança');
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        error: 'Webhook não configurado: defina HOTMART_HOTTOK (o token da aba Webhook > Autenticação no painel Hotmart) nas variáveis de ambiente do Netlify.',
+        success: false
+      })
+    };
+  }
+
+  // Validar o Hottok enviado pela Hotmart no header (nunca processar sem essa checagem)
+  const hottokRecebido = event.headers['x-hotmart-hottok'] || event.headers['X-Hotmart-Hottok'];
+  if (!hottokRecebido || !timingSafeEqualStr(hottokRecebido, HOTMART_HOTTOK)) {
+    console.error('❌ [WEBHOOK] Hottok inválido ou ausente - requisição rejeitada');
+    return {
+      statusCode: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        error: 'Assinatura inválida',
+        success: false
+      })
+    };
+  }
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     console.error('❌ Supabase não configurado');
@@ -60,14 +94,6 @@ exports.handler = async (event, context) => {
 
     console.log('📨 [WEBHOOK] Evento recebido:', webhookEvent);
     console.log('📦 [WEBHOOK] Dados:', JSON.stringify(data, null, 2));
-
-    // Validar HMAC se secret estiver configurado
-    if (HOTMART_WEBHOOK_SECRET) {
-      const hmacHeader = event.headers['x-hotmart-hmac-sha256'];
-      // TODO: Validar HMAC aqui se necessário
-      // Por enquanto, vamos processar mesmo sem validação HMAC
-      console.log('⚠️ [WEBHOOK] HMAC validation skipped (not implemented)');
-    }
 
     // Extrair dados do webhook
     const {

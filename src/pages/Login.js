@@ -3,40 +3,73 @@ import { useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLoader, FiMail, FiLock } from "react-icons/fi";
 import { AuthService } from "../services/supabaseAuthService";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function corForcaSenha(score) {
+  if (score <= 1) return "#e74c3c";
+  if (score <= 3) return "#f39c12";
+  return "#11b581";
+}
+
+function textoForcaSenha(score) {
+  if (score <= 1) return "Fraca";
+  if (score <= 3) return "Média";
+  return "Forte";
+}
+
 export default function Login({ onLogin, onCadastrar }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [erro, setErro] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
-  const [modo, setModo] = useState("login"); // "login" ou "cadastro"
+  const [modo, setModo] = useState("login"); // "login", "cadastro" ou "recuperar"
   const navigate = useNavigate();
+
+  const [emailRecuperacao, setEmailRecuperacao] = useState("");
+  const [mensagemRecuperacao, setMensagemRecuperacao] = useState("");
+  const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
+
+  const forcaSenha = modo === "cadastro" && senha ? AuthService.validatePasswordStrength(senha) : null;
+
+  function trocarModo(novoModo) {
+    setModo(novoModo);
+    setErro("");
+    setSenha("");
+    setConfirmarSenha("");
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (carregando) return;
-    
+
     setErro("");
-    
+
     // Validações básicas
     if (!email || !senha) {
       setErro("Por favor, preencha todos os campos.");
       return;
     }
-    
-    if (!email.includes("@") || !email.includes(".")) {
+
+    if (!EMAIL_REGEX.test(email.trim())) {
       setErro("Por favor, insira um email válido.");
       return;
     }
-    
+
     if (senha.length < 6) {
       setErro("A senha deve ter pelo menos 6 caracteres.");
       return;
     }
-    
+
+    if (modo === "cadastro" && senha !== confirmarSenha) {
+      setErro("As senhas não coincidem.");
+      return;
+    }
+
     setCarregando(true);
-    
+
     try {
       if (modo === "cadastro") {
         await onCadastrar(email, senha);
@@ -49,6 +82,22 @@ export default function Login({ onLogin, onCadastrar }) {
     } finally {
       setCarregando(false);
     }
+  };
+
+  const handleRecuperarSenha = async (e) => {
+    e.preventDefault();
+    if (enviandoRecuperacao) return;
+
+    setMensagemRecuperacao("");
+    if (!EMAIL_REGEX.test(emailRecuperacao.trim())) {
+      setMensagemRecuperacao("Por favor, insira um email válido.");
+      return;
+    }
+
+    setEnviandoRecuperacao(true);
+    await AuthService.resetPassword(emailRecuperacao.trim());
+    setEnviandoRecuperacao(false);
+    setMensagemRecuperacao("Se esse email estiver cadastrado, você vai receber um link para redefinir sua senha.");
   };
 
   return (
@@ -111,8 +160,8 @@ export default function Login({ onLogin, onCadastrar }) {
           textAlign: "center",
           marginBottom: "25px",
           padding: "12px",
-          background: modo === "cadastro" 
-            ? "rgba(14, 184, 208, 0.15)" 
+          background: modo === "cadastro"
+            ? "rgba(14, 184, 208, 0.15)"
             : "rgba(111, 66, 193, 0.15)",
           border: modo === "cadastro"
             ? "1px solid rgba(14, 184, 208, 0.3)"
@@ -125,13 +174,135 @@ export default function Login({ onLogin, onCadastrar }) {
             color: modo === "cadastro" ? "#0eb8d0" : "#aaffee",
             fontWeight: 500
           }}>
-            {modo === "cadastro" 
+            {modo === "cadastro"
               ? "👋 Bem-vindo! Crie sua conta para começar"
+              : modo === "recuperar"
+              ? "🔑 Vamos te ajudar a recuperar o acesso"
               : "🔐 Faça login para acessar o sistema"}
           </p>
         </div>
 
-        {/* Formulário */}
+        {modo === "cadastro" && (
+          <div style={{
+            textAlign: "center",
+            marginBottom: "20px",
+            padding: "10px 12px",
+            background: "rgba(95,206,138,0.1)",
+            border: "1px solid rgba(95,206,138,0.3)",
+            borderRadius: "8px"
+          }}>
+            <p style={{ margin: 0, fontSize: "12.5px", color: "#5fce8a", fontWeight: 600 }}>
+              🎯 7 dias grátis, sem cartão de crédito
+            </p>
+          </div>
+        )}
+
+        {modo === "recuperar" ? (
+          <form onSubmit={handleRecuperarSenha}>
+            <div style={{ marginBottom: "18px" }}>
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#0eb8d0",
+                marginBottom: "8px"
+              }}>
+                Email
+              </label>
+              <div style={{ position: "relative" }}>
+                <FiMail style={{
+                  position: "absolute",
+                  left: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "#6f42c1",
+                  fontSize: "18px",
+                  zIndex: 1
+                }} />
+                <input
+                  type="email"
+                  value={emailRecuperacao}
+                  onChange={(e) => setEmailRecuperacao(e.target.value)}
+                  placeholder="seu@email.com"
+                  disabled={enviandoRecuperacao}
+                  style={{
+                    width: "100%",
+                    padding: "12px 12px 12px 40px",
+                    border: "2px solid rgba(14, 184, 208, 0.3)",
+                    borderRadius: "8px",
+                    fontSize: "16px",
+                    background: "rgba(16, 24, 36, 0.6)",
+                    color: "#fff",
+                    outline: "none",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+            </div>
+
+            {mensagemRecuperacao && (
+              <div style={{
+                padding: "12px",
+                background: mensagemRecuperacao.startsWith("Se esse email")
+                  ? "rgba(17, 181, 129, 0.15)"
+                  : "rgba(244, 67, 54, 0.15)",
+                border: mensagemRecuperacao.startsWith("Se esse email")
+                  ? "1px solid rgba(17, 181, 129, 0.5)"
+                  : "1px solid rgba(244, 67, 54, 0.5)",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                color: mensagemRecuperacao.startsWith("Se esse email") ? "#5fce8a" : "#ff6b6b",
+                fontSize: "14px",
+                textAlign: "center"
+              }}>
+                {mensagemRecuperacao}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={enviandoRecuperacao}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: enviandoRecuperacao ? "rgba(14, 184, 208, 0.3)" : "#0eb8d0",
+                color: "#fff",
+                border: "none",
+                borderRadius: "10px",
+                fontSize: "16px",
+                fontWeight: "600",
+                cursor: enviandoRecuperacao ? "not-allowed" : "pointer",
+                marginBottom: "15px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px"
+              }}
+            >
+              {enviandoRecuperacao && <FiLoader className="spin" size={18} />}
+              {enviandoRecuperacao ? "Enviando..." : "Enviar link de recuperação"}
+            </button>
+
+            <div style={{ textAlign: "center" }}>
+              <button
+                type="button"
+                onClick={() => { trocarModo("login"); setMensagemRecuperacao(""); setEmailRecuperacao(""); }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#0eb8d0",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  textDecoration: "underline",
+                  padding: "4px 8px"
+                }}
+              >
+                Voltar para login
+              </button>
+            </div>
+          </form>
+        ) : (
         <form onSubmit={handleSubmit}>
           {/* Campo Email */}
           <div style={{ marginBottom: "18px" }}>
@@ -175,12 +346,12 @@ export default function Login({ onLogin, onCadastrar }) {
                   boxSizing: "border-box"
                 }}
                 onFocus={(e) => {
-                  if (!erro) e.target.style.borderColor = "#0eb8d0";
-                  e.target.style.background = "rgba(16, 24, 36, 0.8)";
+                  if (!erro) e.currentTarget.style.borderColor = "#0eb8d0";
+                  e.currentTarget.style.background = "rgba(16, 24, 36, 0.8)";
                 }}
                 onBlur={(e) => {
-                  if (!erro) e.target.style.borderColor = "rgba(14, 184, 208, 0.3)";
-                  e.target.style.background = "rgba(16, 24, 36, 0.6)";
+                  if (!erro) e.currentTarget.style.borderColor = "rgba(14, 184, 208, 0.3)";
+                  e.currentTarget.style.background = "rgba(16, 24, 36, 0.6)";
                 }}
               />
             </div>
@@ -228,12 +399,12 @@ export default function Login({ onLogin, onCadastrar }) {
                   boxSizing: "border-box"
                 }}
                 onFocus={(e) => {
-                  if (!erro) e.target.style.borderColor = "#0eb8d0";
-                  e.target.style.background = "rgba(16, 24, 36, 0.8)";
+                  if (!erro) e.currentTarget.style.borderColor = "#0eb8d0";
+                  e.currentTarget.style.background = "rgba(16, 24, 36, 0.8)";
                 }}
                 onBlur={(e) => {
-                  if (!erro) e.target.style.borderColor = "rgba(14, 184, 208, 0.3)";
-                  e.target.style.background = "rgba(16, 24, 36, 0.6)";
+                  if (!erro) e.currentTarget.style.borderColor = "rgba(14, 184, 208, 0.3)";
+                  e.currentTarget.style.background = "rgba(16, 24, 36, 0.6)";
                 }}
               />
               <button
@@ -254,13 +425,97 @@ export default function Login({ onLogin, onCadastrar }) {
                   opacity: 0.7,
                   transition: "opacity 0.2s"
                 }}
-                onMouseEnter={(e) => e.target.style.opacity = "1"}
-                onMouseLeave={(e) => e.target.style.opacity = "0.7"}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.7"}
               >
                 {mostrarSenha ? <FiEyeOff size={20} /> : <FiEye size={20} />}
               </button>
             </div>
+
+            {forcaSenha && (
+              <div style={{ marginTop: "8px" }}>
+                <div style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div key={i} style={{
+                      height: "4px",
+                      flex: 1,
+                      borderRadius: "2px",
+                      background: i < forcaSenha.score ? corForcaSenha(forcaSenha.score) : "rgba(255,255,255,0.15)"
+                    }} />
+                  ))}
+                </div>
+                <span style={{ fontSize: "12px", color: corForcaSenha(forcaSenha.score) }}>
+                  Força da senha: {textoForcaSenha(forcaSenha.score)}
+                </span>
+              </div>
+            )}
+
+            {modo === "login" && (
+              <div style={{ textAlign: "right", marginTop: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => trocarModo("recuperar")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#aaffee",
+                    cursor: "pointer",
+                    fontSize: "12.5px",
+                    padding: "2px",
+                    opacity: 0.8,
+                    textDecoration: "underline"
+                  }}
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
           </div>
+
+          {modo === "cadastro" && (
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#0eb8d0",
+                marginBottom: "8px"
+              }}>
+                Confirmar Senha
+              </label>
+              <div style={{ position: "relative" }}>
+                <FiLock style={{
+                  position: "absolute",
+                  left: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "#6f42c1",
+                  fontSize: "18px",
+                  zIndex: 1
+                }} />
+                <input
+                  type={mostrarSenha ? "text" : "password"}
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  placeholder="Digite a senha novamente"
+                  disabled={carregando}
+                  style={{
+                    width: "100%",
+                    padding: "12px 12px 12px 40px",
+                    border: erro && confirmarSenha !== senha
+                      ? "2px solid #f44336"
+                      : "2px solid rgba(14, 184, 208, 0.3)",
+                    borderRadius: "8px",
+                    fontSize: "16px",
+                    background: "rgba(16, 24, 36, 0.6)",
+                    color: "#fff",
+                    outline: "none",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Mensagem de Erro */}
           {erro && (
@@ -307,14 +562,14 @@ export default function Login({ onLogin, onCadastrar }) {
             }}
             onMouseEnter={(e) => {
               if (!carregando) {
-                e.target.style.transform = "translateY(-2px)";
-                e.target.style.boxShadow = "0 4px 16px rgba(14, 184, 208, 0.6)";
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 4px 16px rgba(14, 184, 208, 0.6)";
               }
             }}
             onMouseLeave={(e) => {
-              e.target.style.transform = "translateY(0)";
+              e.currentTarget.style.transform = "translateY(0)";
               if (!carregando) {
-                e.target.style.boxShadow = "0 2px 12px rgba(14, 184, 208, 0.4)";
+                e.currentTarget.style.boxShadow = "0 2px 12px rgba(14, 184, 208, 0.4)";
               }
             }}
           >
@@ -344,12 +599,7 @@ export default function Login({ onLogin, onCadastrar }) {
             </p>
             <button
               type="button"
-              onClick={() => {
-                setModo(modo === "login" ? "cadastro" : "login");
-                setErro("");
-                setEmail("");
-                setSenha("");
-              }}
+              onClick={() => trocarModo(modo === "login" ? "cadastro" : "login")}
               disabled={carregando}
               style={{
                 background: "none",
@@ -364,10 +614,10 @@ export default function Login({ onLogin, onCadastrar }) {
                 transition: "opacity 0.2s"
               }}
               onMouseEnter={(e) => {
-                if (!carregando) e.target.style.color = "#aaffee";
+                if (!carregando) e.currentTarget.style.color = "#aaffee";
               }}
               onMouseLeave={(e) => {
-                e.target.style.color = "#0eb8d0";
+                e.currentTarget.style.color = "#0eb8d0";
               }}
             >
               {modo === "login" ? "Cadastre-se aqui" : "Faça login aqui"}
@@ -394,13 +644,14 @@ export default function Login({ onLogin, onCadastrar }) {
                 opacity: 0.7,
                 transition: "opacity 0.2s"
               }}
-              onMouseEnter={(e) => e.target.style.opacity = "1"}
-              onMouseLeave={(e) => e.target.style.opacity = "0.7"}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = "0.7"}
             >
               ← Voltar para página inicial
             </button>
           </div>
         </form>
+        )}
       </div>
 
       {/* CSS para animações */}
