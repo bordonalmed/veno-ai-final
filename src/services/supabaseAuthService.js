@@ -374,6 +374,34 @@ class SupabaseAuthService {
 
   // ==================== MÉTODOS PÚBLICOS ====================
 
+  // Solicita o link de redefinição de senha. Sempre retorna sucesso (mesmo se o
+  // email não existir) para não revelar quais emails estão cadastrados.
+  async resetPassword(email) {
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!normalizedEmail) {
+      return { success: false, error: 'Informe seu email.' };
+    }
+
+    if (this.useLocalStorage) {
+      console.warn('⚠️ Recuperação de senha por email indisponível: Supabase não configurado.');
+      return { success: true };
+    }
+
+    try {
+      if (!supabase) throw new Error('Supabase não está configurado');
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+      if (error) {
+        console.error('Erro ao solicitar redefinição de senha:', error);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao solicitar redefinição de senha:', error);
+      return { success: true };
+    }
+  }
+
   async changePassword(email, currentPassword, newPassword) {
     const validation = this.validatePasswordStrength(newPassword);
     if (!validation.isValid) {

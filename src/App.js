@@ -153,8 +153,7 @@ function AppContent() {
       }
       
       console.log('Usuário cadastrado com sucesso:', result.user.email);
-      alert('🎉 Cadastro realizado com sucesso!\n\nBem-vindo ao VenoAI!\n\nVocê tem 7 dias de trial gratuito para testar todos os recursos.');
-      
+
       // Salvar dados no localStorage
       localStorage.setItem("userEmail", result.user.email);
       localStorage.setItem("userUID", result.user.uid || result.user.id);
@@ -210,10 +209,7 @@ function AppContent() {
       
       // Marcar como logado
       setLogado(true);
-      
-      // Mostrar mensagem de boas-vindas
-      alert(`👋 Bem-vindo de volta!\n\nLogin realizado com sucesso!`);
-      
+
       navigate('/home');
       
     } catch (error) {
