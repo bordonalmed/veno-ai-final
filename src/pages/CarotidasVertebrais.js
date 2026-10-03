@@ -85,7 +85,7 @@ function carregarExameEmEdicao() {
 const statusOptions = ["pérvia", "ocluída"];
 const fluxoOptions = ["sem alteração", "hipocinético", "hipercinético"];
 const ateromatoseOptions = ["ausente", "discreta", "moderada", "severa"];
-const estenoseOptions = ["ausente", "<50%", "51% a 70%", ">70%"];
+const estenoseOptions = ["ausente", "<50%", "50% a 70%", ">70%"];
 const tipoPlacaOptions = ["lipídica", "calcificada", "mista"];
 
 // Estrutura inicial dos dados dos vasos
