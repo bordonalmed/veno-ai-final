@@ -720,6 +720,270 @@ function CarotidasVertebrais() {
     }
   }
 
+  // Gera o TXT sempre a partir do estado atual (não do laudoTexto já exibido) -- permite chamar
+  // isso também de dentro do Mapa Interativo, sem precisar visualizar o laudo antes.
+  function handleSalvarTXT() {
+    setErro("");
+    if (!nome || !data) {
+      setErro("Preencha nome e data antes de salvar o exame!");
+      return;
+    }
+    const erroValidacao = validarVasos(todosOsVasos);
+    if (erroValidacao) {
+      setErro(erroValidacao);
+      return;
+    }
+    const laudo = montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais });
+    const blob = new Blob([laudo], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, `Laudo_${nome}_${data}.txt`);
+  }
+
+  // Gera e salva o PDF completo (mesma lógica usada pelo botão "Salvar PDF" do formulário
+  // principal), sempre a partir do estado atual -- permite chamar isso também de dentro do Mapa
+  // Interativo, sem precisar visualizar o laudo antes.
+  async function handleSalvarPDF() {
+    setErro("");
+    if (!nome || !data) {
+      setErro("Preencha nome e data antes de salvar o exame!");
+      return;
+    }
+    const erroValidacao = validarVasos(todosOsVasos);
+    if (erroValidacao) {
+      setErro(erroValidacao);
+      return;
+    }
+    const laudo = montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais });
+
+    const nomeMedico = localStorage.getItem("nomeMedico") || "";
+    const crm = localStorage.getItem("crm") || "";
+    const especialidade = localStorage.getItem("especialidadeLaudo") || "";
+    const nomeClinica = localStorage.getItem("nomeClinica") || "";
+    const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
+    const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
+    const emailClinica = localStorage.getItem("emailClinica") || "";
+    const logoClinica = localStorage.getItem("logoClinica") || null;
+    const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
+
+    const doc = new jsPDF();
+
+    function addCabecalho(y) {
+      let yLogo = 14;
+      const logoHeight = 20; // altura do logo
+      const logoSpacing = 8; // espaço após o logo antes do conteúdo
+
+      if (logoClinica) {
+        try {
+          doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight);
+        } catch (e) {}
+      }
+      doc.setFontSize(9);
+      let cabecalho = [];
+      if (nomeClinica) cabecalho.push(nomeClinica);
+      if (enderecoClinica) cabecalho.push(enderecoClinica);
+      if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
+      if (emailClinica) cabecalho.push(emailClinica);
+      cabecalho.forEach((txt, idx) => {
+        doc.setFont(undefined, "bold");
+        doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+      });
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(11);
+      // Retorna posição Y após logo + espaço + margem superior
+      return yLogo + logoHeight + logoSpacing;
+    }
+
+    function addRodape() {
+      const yRodape = 280;
+      doc.setFontSize(8);
+      if (assinaturaMedico) {
+        try {
+          doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
+        } catch (e) {}
+      }
+      doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
+      let yInfo = yRodape + 5;
+      if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
+      if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
+      if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
+      doc.setFontSize(11);
+    }
+
+    // Função auxiliar para quebrar conclusão por travessões
+    function processarConclusao(texto) {
+      // Se a linha contém múltiplos travessões, quebrar em linhas separadas
+      if (texto.includes('- ') && texto.split('- ').length > 2) {
+        // Remove o primeiro travessão se já existir
+        const partes = texto.split('- ').filter(p => p.trim() !== '');
+        return partes.map(p => p.trim()).filter(p => p !== '');
+      }
+      return [texto];
+    }
+
+    // Função auxiliar para quebrar texto longo respeitando margens
+    function quebrarTexto(texto, maxWidth, x) {
+      if (!texto || texto.trim() === '') return [''];
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margemEsquerda = x || 15;
+      const margemDireita = 15;
+      const larguraDisponivel = pageWidth - margemEsquerda - margemDireita;
+
+      // Usar splitTextToSize do jsPDF - ele calcula automaticamente baseado na fonte atual
+      try {
+        const linhas = doc.splitTextToSize(texto, larguraDisponivel);
+        // Garantir que sempre retorna um array
+        return Array.isArray(linhas) ? linhas : [linhas];
+      } catch (e) {
+        console.warn('Erro ao quebrar texto com splitTextToSize:', e);
+        // Fallback: quebrar manualmente por caracteres
+        const linhas = [];
+        // Aproximação conservadora: ~3mm por caractere para fonte padrão
+        const maxChars = Math.max(1, Math.floor(larguraDisponivel / 3));
+        for (let i = 0; i < texto.length; i += maxChars) {
+          linhas.push(texto.substring(i, i + maxChars));
+        }
+        return linhas.length > 0 ? linhas : [texto];
+      }
+    }
+
+    let y = addCabecalho(12);
+    const linhas = laudo.split("\n");
+    let inConclusao = false;
+    let inObservacoes = false;
+
+    for (let i = 0; i < linhas.length; i++) {
+      let line = linhas[i];
+      if (line.startsWith("PACIENTE:") || line.startsWith("DOPPLER DE CARÓTIDAS")) {
+        doc.setFont(undefined, "bold");
+        const linhasQuebradas = quebrarTexto(line, 0, 15);
+        linhasQuebradas.forEach(linha => {
+          doc.text(linha, 15, y);
+          y += 8;
+        });
+        doc.setFont(undefined, "normal");
+        y -= 8; // Ajuste para não ter espaço extra
+      } else if (line.startsWith("**") && line.endsWith("**")) {
+        doc.setFont(undefined, "bold");
+        const textoLimpo = line.replace(/\*\*/g, "");
+        const linhasQuebradas = quebrarTexto(textoLimpo, 0, 15);
+        linhasQuebradas.forEach(linha => {
+          doc.text(linha, 15, y);
+          y += 8;
+        });
+        doc.setFont(undefined, "normal");
+        y -= 8; // Ajuste para não ter espaço extra
+      } else if (line.startsWith("**CONCLUSÃO:**")) {
+        doc.setFont(undefined, "bold");
+        doc.text("CONCLUSÃO:", 15, y);
+        doc.setFont(undefined, "normal");
+        inConclusao = true;
+        inObservacoes = false;
+        y += 8;
+      } else if (line.startsWith("OBSERVAÇÕES") || line.startsWith("**OBSERVAÇÕES**")) {
+        doc.setFont(undefined, "bold");
+        doc.text("OBSERVAÇÕES:", 15, y);
+        doc.setFont(undefined, "normal");
+        inConclusao = false;
+        inObservacoes = true;
+        y += 8;
+      } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("**") && !line.startsWith("OBSERVAÇÕES")) {
+        // Processar conclusão: quebrar por travessões
+        const linhasConclusao = processarConclusao(line);
+        doc.setFont(undefined, "bold");
+        linhasConclusao.forEach(linhaConclusao => {
+          // Garantir que cada item comece com travessão
+          const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
+          const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            if (y > 265) {
+              addRodape();
+              doc.addPage();
+              y = addCabecalho(12);
+            }
+            doc.text(linha, 15, y);
+            y += 8;
+          });
+        });
+        doc.setFont(undefined, "normal");
+        y -= 8; // Ajuste para não ter espaço extra
+      } else if (inObservacoes && line && line.trim() !== "") {
+        // Quebrar observações longas respeitando margens
+        doc.setFont(undefined, "normal");
+        const linhasQuebradas = quebrarTexto(line, 0, 15);
+        linhasQuebradas.forEach(linha => {
+          if (y > 265) {
+            addRodape();
+            doc.addPage();
+            y = addCabecalho(12);
+          }
+          doc.text(linha, 15, y);
+          y += 8;
+        });
+        y -= 8; // Ajuste para não ter espaço extra
+      } else {
+        doc.setFont(undefined, "normal");
+        // Quebrar linhas longas também
+        const linhasQuebradas = quebrarTexto(line, 0, 15);
+        linhasQuebradas.forEach(linha => {
+          if (y > 265) {
+            addRodape();
+            doc.addPage();
+            y = addCabecalho(12);
+          }
+          doc.text(linha, 15, y);
+          y += 8;
+        });
+        if (inConclusao && line && line.trim() === "") {
+          inConclusao = false;
+        }
+        if (inObservacoes && line && line.trim() === "") {
+          inObservacoes = false;
+        }
+        y -= 8; // Ajuste para não ter espaço extra
+      }
+      y += 8;
+      if (y > 265) {
+        addRodape();
+        doc.addPage();
+        y = addCabecalho(12);
+      }
+    }
+    addRodape();
+    // Adicionar anexos como páginas no final do PDF
+    appendImagesToPdf(doc, anexos);
+
+    if (incluirMapaPdf) {
+      try {
+        await adicionarMapaCarotidasAoPdf(doc, todosOsVasos, { nome, data });
+      } catch (e) {
+        console.error('Erro ao adicionar mapa interativo ao PDF:', e);
+      }
+    }
+
+    doc.save(`Laudo_${nome}_${data}.pdf`);
+
+    setNome("");
+    setIdade("");
+    setData("");
+    setCarotidasDireitas({
+      ACCD: { ...initialVesselData },
+      ACID: { ...initialVesselData },
+      ACED: { ...initialVesselData }
+    });
+    setCarotidasEsquerdas({
+      ACCE: { ...initialVesselData },
+      ACIE: { ...initialVesselData },
+      ACEE: { ...initialVesselData }
+    });
+    setVertebrais({
+      AVD: { ...initialVesselData },
+      AVE: { ...initialVesselData }
+    });
+    setLaudoTexto("");
+    setErro("");
+    setAnexos([]);
+    setIncluirMapaPdf(false);
+  }
+
   function handleVoltarMenu() {
     window.location.href = '/home';
   }
@@ -1307,246 +1571,14 @@ function CarotidasVertebrais() {
               color: "#fff",
               fontSize: 'clamp(10px, 2vw, 12px)',
               padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)"
-            }} onClick={() => {
-              const blob = new Blob([laudoTexto], { type: "text/plain;charset=utf-8" });
-              saveAs(blob, `Laudo_${nome}_${data}.txt`);
-            }}>Salvar TXT</button>
-            <button style={{ 
-              ...buttonStyle, 
-              background: "#0eb8d0", 
-              color: "#fff", 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-            }} onClick={async () => {
-              const nomeMedico = localStorage.getItem("nomeMedico") || "";
-              const crm = localStorage.getItem("crm") || "";
-              const especialidade = localStorage.getItem("especialidadeLaudo") || "";
-              const nomeClinica = localStorage.getItem("nomeClinica") || "";
-              const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
-              const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
-              const emailClinica = localStorage.getItem("emailClinica") || "";
-              const logoClinica = localStorage.getItem("logoClinica") || null;
-              const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
-
-              const doc = new jsPDF();
-
-              function addCabecalho(y) {
-                let yLogo = 14;
-                const logoHeight = 20; // altura do logo
-                const logoSpacing = 8; // espaço após o logo antes do conteúdo
-                
-                if (logoClinica) {
-                  try {
-                    doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight);
-                  } catch (e) {}
-                }
-                doc.setFontSize(9);
-                let cabecalho = [];
-                if (nomeClinica) cabecalho.push(nomeClinica);
-                if (enderecoClinica) cabecalho.push(enderecoClinica);
-                if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
-                if (emailClinica) cabecalho.push(emailClinica);
-                cabecalho.forEach((txt, idx) => {
-                  doc.setFont(undefined, "bold");
-                  doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
-                });
-                doc.setFont(undefined, "normal");
-                doc.setFontSize(11);
-                // Retorna posição Y após logo + espaço + margem superior
-                return yLogo + logoHeight + logoSpacing;
-              }
-
-              function addRodape() {
-                const yRodape = 280;
-                doc.setFontSize(8);
-                if (assinaturaMedico) {
-                  try {
-                    doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
-                  } catch (e) {}
-                }
-                doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
-                let yInfo = yRodape + 5;
-                if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
-                if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
-                if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
-                doc.setFontSize(11);
-              }
-
-              // Função auxiliar para quebrar conclusão por travessões
-              function processarConclusao(texto) {
-                // Se a linha contém múltiplos travessões, quebrar em linhas separadas
-                if (texto.includes('- ') && texto.split('- ').length > 2) {
-                  // Remove o primeiro travessão se já existir
-                  const partes = texto.split('- ').filter(p => p.trim() !== '');
-                  return partes.map(p => p.trim()).filter(p => p !== '');
-                }
-                return [texto];
-              }
-
-              // Função auxiliar para quebrar texto longo respeitando margens
-              function quebrarTexto(texto, maxWidth, x) {
-                if (!texto || texto.trim() === '') return [''];
-                const pageWidth = doc.internal.pageSize.getWidth();
-                const margemEsquerda = x || 15;
-                const margemDireita = 15;
-                const larguraDisponivel = pageWidth - margemEsquerda - margemDireita;
-                
-                // Usar splitTextToSize do jsPDF - ele calcula automaticamente baseado na fonte atual
-                try {
-                  const linhas = doc.splitTextToSize(texto, larguraDisponivel);
-                  // Garantir que sempre retorna um array
-                  return Array.isArray(linhas) ? linhas : [linhas];
-                } catch (e) {
-                  console.warn('Erro ao quebrar texto com splitTextToSize:', e);
-                  // Fallback: quebrar manualmente por caracteres
-                  const linhas = [];
-                  // Aproximação conservadora: ~3mm por caractere para fonte padrão
-                  const maxChars = Math.max(1, Math.floor(larguraDisponivel / 3));
-                  for (let i = 0; i < texto.length; i += maxChars) {
-                    linhas.push(texto.substring(i, i + maxChars));
-                  }
-                  return linhas.length > 0 ? linhas : [texto];
-                }
-              }
-
-              let y = addCabecalho(12);
-              const linhas = laudoTexto.split("\n");
-              let inConclusao = false;
-              let inObservacoes = false;
-              
-              for (let i = 0; i < linhas.length; i++) {
-                let line = linhas[i];
-                if (line.startsWith("PACIENTE:") || line.startsWith("DOPPLER DE CARÓTIDAS")) {
-                  doc.setFont(undefined, "bold");
-                  const linhasQuebradas = quebrarTexto(line, 0, 15);
-                  linhasQuebradas.forEach(linha => {
-                    doc.text(linha, 15, y);
-                    y += 8;
-                  });
-                  doc.setFont(undefined, "normal");
-                  y -= 8; // Ajuste para não ter espaço extra
-                } else if (line.startsWith("**") && line.endsWith("**")) {
-                  doc.setFont(undefined, "bold");
-                  const textoLimpo = line.replace(/\*\*/g, "");
-                  const linhasQuebradas = quebrarTexto(textoLimpo, 0, 15);
-                  linhasQuebradas.forEach(linha => {
-                    doc.text(linha, 15, y);
-                    y += 8;
-                  });
-                  doc.setFont(undefined, "normal");
-                  y -= 8; // Ajuste para não ter espaço extra
-                } else if (line.startsWith("**CONCLUSÃO:**")) {
-                  doc.setFont(undefined, "bold");
-                  doc.text("CONCLUSÃO:", 15, y);
-                  doc.setFont(undefined, "normal");
-                  inConclusao = true;
-                  inObservacoes = false;
-                  y += 8;
-                } else if (line.startsWith("OBSERVAÇÕES") || line.startsWith("**OBSERVAÇÕES**")) {
-                  doc.setFont(undefined, "bold");
-                  doc.text("OBSERVAÇÕES:", 15, y);
-                  doc.setFont(undefined, "normal");
-                  inConclusao = false;
-                  inObservacoes = true;
-                  y += 8;
-                } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("**") && !line.startsWith("OBSERVAÇÕES")) {
-                  // Processar conclusão: quebrar por travessões
-                  const linhasConclusao = processarConclusao(line);
-                  doc.setFont(undefined, "bold");
-                  linhasConclusao.forEach(linhaConclusao => {
-                    // Garantir que cada item comece com travessão
-                    const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
-                    const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
-                    linhasQuebradas.forEach(linha => {
-                      if (y > 265) {
-                        addRodape();
-                        doc.addPage();
-                        y = addCabecalho(12);
-                      }
-                      doc.text(linha, 15, y);
-                      y += 8;
-                    });
-                  });
-                  doc.setFont(undefined, "normal");
-                  y -= 8; // Ajuste para não ter espaço extra
-                } else if (inObservacoes && line && line.trim() !== "") {
-                  // Quebrar observações longas respeitando margens
-                  doc.setFont(undefined, "normal");
-                  const linhasQuebradas = quebrarTexto(line, 0, 15);
-                  linhasQuebradas.forEach(linha => {
-                    if (y > 265) {
-                      addRodape();
-                      doc.addPage();
-                      y = addCabecalho(12);
-                    }
-                    doc.text(linha, 15, y);
-                    y += 8;
-                  });
-                  y -= 8; // Ajuste para não ter espaço extra
-                } else {
-                  doc.setFont(undefined, "normal");
-                  // Quebrar linhas longas também
-                  const linhasQuebradas = quebrarTexto(line, 0, 15);
-                  linhasQuebradas.forEach(linha => {
-                    if (y > 265) {
-                      addRodape();
-                      doc.addPage();
-                      y = addCabecalho(12);
-                    }
-                    doc.text(linha, 15, y);
-                    y += 8;
-                  });
-                  if (inConclusao && line && line.trim() === "") {
-                    inConclusao = false;
-                  }
-                  if (inObservacoes && line && line.trim() === "") {
-                    inObservacoes = false;
-                  }
-                  y -= 8; // Ajuste para não ter espaço extra
-                }
-                y += 8;
-                if (y > 265) {
-                  addRodape();
-                  doc.addPage();
-                  y = addCabecalho(12);
-                }
-              }
-              addRodape();
-              // Adicionar anexos como páginas no final do PDF
-              appendImagesToPdf(doc, anexos);
-
-              if (incluirMapaPdf) {
-                try {
-                  await adicionarMapaCarotidasAoPdf(doc, todosOsVasos, { nome, data });
-                } catch (e) {
-                  console.error('Erro ao adicionar mapa interativo ao PDF:', e);
-                }
-              }
-
-              doc.save(`Laudo_${nome}_${data}.pdf`);
-              
-              setNome("");
-              setIdade("");
-              setData("");
-              setCarotidasDireitas({
-                ACCD: { ...initialVesselData },
-                ACID: { ...initialVesselData },
-                ACED: { ...initialVesselData }
-              });
-              setCarotidasEsquerdas({
-                ACCE: { ...initialVesselData },
-                ACIE: { ...initialVesselData },
-                ACEE: { ...initialVesselData }
-              });
-              setVertebrais({
-                AVD: { ...initialVesselData },
-                AVE: { ...initialVesselData }
-              });
-              setLaudoTexto("");
-              setErro("");
-              setAnexos([]);
-              setIncluirMapaPdf(false);
-            }}>Salvar PDF</button>
+            }} onClick={handleSalvarTXT}>Salvar TXT</button>
+            <button style={{
+              ...buttonStyle,
+              background: "#0eb8d0",
+              color: "#fff",
+              fontSize: 'clamp(10px, 2vw, 12px)',
+              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)"
+            }} onClick={handleSalvarPDF}>Salvar PDF</button>
             </div>
           </div>
           {laudoTexto}
@@ -1714,6 +1746,11 @@ function CarotidasVertebrais() {
         onChange={handleChangeVasoMapa}
         nome={nome}
         data={data}
+        onSalvarExame={handleSalvarExame}
+        onSalvarTXT={handleSalvarTXT}
+        onSalvarPDF={handleSalvarPDF}
+        incluirMapaPdf={incluirMapaPdf}
+        onIncluirMapaPdf={setIncluirMapaPdf}
       />
     </div>
   );

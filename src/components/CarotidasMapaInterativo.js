@@ -376,7 +376,20 @@ function CampoSelect({ label, value, onChange, options }) {
   );
 }
 
-export default function CarotidasMapaInterativo({ aberto, onFechar, vessels, onChange, nome, data }) {
+function mapaBotaoStyle(background) {
+  return {
+    padding: "8px 16px", borderRadius: 8, border: "none", background, color: "#fff",
+    cursor: "pointer", fontWeight: 700, fontSize: 13,
+  };
+}
+
+// Estrutura de coluna única (igual ao Mapa Interativo do MMII): ilustração compacta no topo,
+// seguida imediatamente do painel de edição do vaso selecionado e dos botões de salvar — sem
+// precisar rolar a página pra preencher, tanto no desktop quanto no celular.
+export default function CarotidasMapaInterativo({
+  aberto, onFechar, vessels, onChange, nome, data,
+  onSalvarExame, onSalvarTXT, onSalvarPDF, incluirMapaPdf, onIncluirMapaPdf
+}) {
   const [selected, setSelected] = useState("ACCD");
 
   if (!aberto) return null;
@@ -405,8 +418,15 @@ export default function CarotidasMapaInterativo({ aberto, onFechar, vessels, onC
     }
   }
 
+  function handleSalvarExameClick() {
+    if (!nome || !data) {
+      alert("Preencha nome e data no formulário antes de salvar o exame!");
+      return;
+    }
+    onSalvarExame();
+  }
+
   const svgIlustracao = construirSvgCarotidas(vessels, { detalhado: true });
-  const svgMini = construirSvgCarotidas(vessels, { detalhado: false });
 
   return (
     <div
@@ -419,250 +439,206 @@ export default function CarotidasMapaInterativo({ aberto, onFechar, vessels, onC
         alignItems: "flex-start",
         justifyContent: "center",
         overflowY: "auto",
-        padding: "clamp(12px, 2vw, 28px) 12px"
+        padding: "clamp(8px, 2vw, 24px) 12px"
       }}
       onClick={onFechar}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: 1360,
+          maxWidth: 820,
           background: "linear-gradient(120deg,#101824 0%,#1c2740 100%)",
           color: "#fff",
           borderRadius: 16,
           boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
-          padding: "clamp(16px, 3vw, 28px)",
+          padding: "clamp(12px, 2vw, 20px)",
           display: "flex",
           flexDirection: "column",
-          gap: 14
+          gap: 10
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <div style={{ fontSize: "clamp(16px, 2.5vw, 20px)", fontWeight: 700, color: "#4fd8ec" }}>Mapa Interativo — Carótidas e Vertebrais</div>
-            <div style={{ fontSize: 12.5, color: "#8fb3bd", marginTop: 4 }}>
-              Origem real dos vasos (arco aórtico → tronco braquiocefálico / subclávias) até a bifurcação cervical. Clique numa etiqueta pra editar o vaso.
-            </div>
+            <div style={{ fontSize: "clamp(15px, 2.5vw, 18px)", fontWeight: 700, color: "#4fd8ec" }}>Mapa Interativo — Carótidas e Vertebrais</div>
+            <div style={{ fontSize: 12, color: "#8fb3bd", marginTop: 2 }}>Toque no vaso abaixo pra editar — o laudo é atualizado em tempo real.</div>
           </div>
           <button
             onClick={onFechar}
-            style={{ background: "rgba(79,216,236,0.12)", border: "1px solid rgba(79,216,236,0.4)", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, color: "#4fd8ec", fontWeight: 600, cursor: "pointer" }}
+            style={{ background: "#c0392b", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, color: "#fff", fontWeight: 600, cursor: "pointer" }}
           >
             Fechar
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-          {/* LEFT: illustration + legend */}
-          <div style={{ flex: "1 1 520px", maxWidth: 860, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: 830, aspectRatio: "830 / 800", background: "#fff", border: "1px solid #d7dee3", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.35)", overflow: "hidden" }}>
-              <div style={{ position: "absolute", inset: 0 }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
-              {Object.keys(CHIP_POS).map((key) => {
-                const isSel = selected === key;
-                const v = vessels[key] || defaultVessel();
+        {/* Ilustração: compacta e centralizada, igual ao MMII */}
+        <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: 460, aspectRatio: "850 / 820", background: "#fff", border: "1px solid #d7dee3", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.3)", overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0 }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
+            {/* Área de toque: clica direto no traçado do vaso (igual ao Mapa Interativo do MMII) —
+                nada de caixa fixa sobreposta, que não cabe em tela estreita. AVD/AVE (mais finos)
+                são desenhados por último, pra ficarem por cima no cruzamento com a ACCD/ACCE —
+                sem isso, a "bolha" grossa da bifurcação rouba o toque dos vasos vertebrais ali perto. */}
+            <svg viewBox="0 0 850 820" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+              {["ACID", "ACED", "ACCD", "ACIE", "ACEE", "ACCE", "AVD", "AVE"].map((key) => {
+                const shape = VESSEL_SHAPE[key];
+                if (!shape) return null;
+                const ativo = selected === key;
                 return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSelected(key)}
-                    aria-label={CAROTIDAS_VESSEL_NAMES[key]}
-                    style={{
-                      position: "absolute",
-                      left: `${(CHIP_POS[key].x / 830) * 100}%`,
-                      top: `${(CHIP_POS[key].y / 800) * 100}%`,
-                      width: 130,
-                      height: 34,
-                      borderRadius: 8,
-                      background: "#1a2434",
-                      border: isSel ? "2px solid #ffffff" : "1px solid #3a4a64",
-                      boxShadow: isSel ? "0 0 0 4px rgba(255,255,255,0.2), 0 2px 8px rgba(0,0,0,0.4)" : "0 2px 6px rgba(0,0,0,0.3)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "0 10px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: colorFor(v), flexShrink: 0 }}></span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#eaf3f6" }}>{key}</span>
-                  </button>
+                  <g key={key} onClick={() => setSelected(key)} style={{ cursor: "pointer" }} aria-label={CAROTIDAS_VESSEL_NAMES[key]}>
+                    {shape.paths.map((p, i) => (
+                      <path
+                        key={i}
+                        d={p.d}
+                        fill="none"
+                        stroke={ativo ? "#0eb8d0" : "#000"}
+                        strokeOpacity={ativo ? 0.4 : 0.001}
+                        strokeWidth={Math.max(p.width + 6, 14)}
+                        strokeLinecap="round"
+                      />
+                    ))}
+                  </g>
                 );
               })}
-            </div>
+            </svg>
+          </div>
+        </div>
 
-            {/* Legend */}
-            <div style={{ width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 6, background: "#fff", border: "1px solid #d7dee3", borderRadius: 10, padding: "12px 16px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#5c6b78" }}>LEGENDA</div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9aa5b1", textTransform: "uppercase", letterSpacing: 0.4 }}>Cor do vaso — status / fluxo</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                <LegendDot cor="#c0392b" label="Pérvia / normal" />
-                <LegendDot cor="#e57373" label="Fluxo hipocinético" />
-                <LegendDot cor="#7b241c" label="Fluxo hipercinético" />
-                <LegendDot cor="#000000" label="Oclusão" />
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 16, height: 3, background: "#9aa5b1", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#6b7684" }}>Estrutura de contexto (não editável)</span>
-                </span>
-              </div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9aa5b1", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4 }}>Cor do ícone de estrangulamento — tipo de placa</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: "#ffffff", border: "1.5px solid #c7ced6", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Lipídica (branco)</span>
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: "#9aa5b1", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Calcificada (cinza)</span>
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: "#ffffff", border: "1.5px solid #6b7684", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Mista (branco, contorno cinza)</span>
-                </span>
-              </div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9aa5b1", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4 }}>Stent</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{
-                    width: 20, height: 12, borderRadius: 3, display: "inline-block",
-                    background: "#c0392b",
-                    backgroundImage: "repeating-linear-gradient(45deg, #f3f6f8 0, #f3f6f8 1px, transparent 1px, transparent 4px), repeating-linear-gradient(-45deg, #f3f6f8 0, #f3f6f8 1px, transparent 1px, transparent 4px)"
-                  }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Malha cobrindo o vaso = stent</span>
-                </span>
-              </div>
-              <div style={{ fontSize: 11.5, color: "#6b7684", marginTop: 4, lineHeight: 1.5 }}>
-                <b style={{ color: "#2d3a4a" }}>Ateromatose</b> não muda cor nenhuma — aparece como textura só nas paredes internas do vaso (nunca cruza o centro): discreta é rente à borda e leve, moderada é média, severa avança mais pro lúmen e é densa/áspera. <b style={{ color: "#2d3a4a" }}>Estenose</b> não muda a cor do vaso — o quanto o ícone de estrangulamento aperta vem da faixa de %, e a cor do ícone vem do tipo de placa (acima). <b style={{ color: "#2d3a4a" }}>Stent</b> aparece como uma malha cobrindo todo o trecho do vaso.
-              </div>
-            </div>
+        {/* Atalho rápido pra selecionar o vaso, sem precisar acertar o traçado */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+          {Object.keys(CHIP_POS).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSelected(key)}
+              style={{
+                background: selected === key ? "#0eb8d0" : "#1a2434",
+                color: "#fff",
+                border: "1px solid #2a3548",
+                borderRadius: 6,
+                padding: "3px 9px",
+                fontSize: 11,
+                cursor: "pointer"
+              }}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+
+        {/* Legenda compacta */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", alignItems: "center" }}>
+          <LegendDot cor="#c0392b" label="Pérvia" />
+          <LegendDot cor="#e57373" label="Hipocinético" />
+          <LegendDot cor="#7b241c" label="Hipercinético" />
+          <LegendDot cor="#000000" label="Oclusão" />
+        </div>
+        <div style={{ fontSize: 11, color: "#8fb3bd", lineHeight: 1.4, textAlign: "center" }}>
+          Textura = ateromatose · triângulo = estenose (branco=lipídica, cinza=calcificada, contorno cinza=mista) · malha = stent.
+        </div>
+
+        {/* Painel de edição do vaso selecionado — logo abaixo da ilustração, sem precisar rolar */}
+        <div style={{ background: "#18243a", border: "1px solid rgba(79,216,236,0.3)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#4fd8ec" }}>{CAROTIDAS_VESSEL_NAMES[selected]}</div>
+
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            <CampoSelect label="Status" value={selectedVessel.status} onChange={handleStatusChange} options={["pérvia", "ocluída"]} />
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 140 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Stent</span>
+              <button
+                type="button"
+                onClick={() => onChange(selected, "stent", selectedVessel.stent === "presente" ? "ausente" : "presente")}
+                style={{
+                  padding: "9px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #4fd8ec",
+                  background: selectedVessel.stent === "presente" ? "#0eb8d0" : "#fff",
+                  color: selectedVessel.stent === "presente" ? "#fff" : "#222",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer"
+                }}
+              >
+                {selectedVessel.stent === "presente" ? "Presente" : "Ausente"}
+              </button>
+            </label>
           </div>
 
-          {/* RIGHT: form for selected vessel + mini PDF preview */}
-          <div style={{ flex: "1 1 380px", display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-            <div style={{ background: "#18243a", border: "1px solid rgba(79,216,236,0.3)", borderRadius: 12, padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#4fd8ec" }}>{CAROTIDAS_VESSEL_NAMES[selected]}</div>
+          {isOccluded && (
+            <div style={{ background: "rgba(0,0,0,0.3)", border: "1px solid #3a3a3a", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#cfd3d8" }}>
+              Vaso ocluído — fluxo, ateromatose, estenose e tipo de placa não se aplicam e ficam ocultos.
+            </div>
+          )}
 
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                <CampoSelect label="Status" value={selectedVessel.status} onChange={handleStatusChange} options={["pérvia", "ocluída"]} />
-                <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Stent</span>
-                  <button
-                    type="button"
-                    onClick={() => onChange(selected, "stent", selectedVessel.stent === "presente" ? "ausente" : "presente")}
-                    style={{
-                      padding: "9px 10px",
-                      borderRadius: 6,
-                      border: "1px solid #4fd8ec",
-                      background: selectedVessel.stent === "presente" ? "#0eb8d0" : "#fff",
-                      color: selectedVessel.stent === "presente" ? "#fff" : "#222",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer"
-                    }}
-                  >
-                    {selectedVessel.stent === "presente" ? "Presente" : "Ausente"}
-                  </button>
-                </label>
-              </div>
-
-              {isOccluded && (
-                <div style={{ background: "rgba(0,0,0,0.3)", border: "1px solid #3a3a3a", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#cfd3d8" }}>
-                  Vaso ocluído — fluxo, ateromatose, estenose e tipo de placa não se aplicam e ficam ocultos.
-                </div>
-              )}
-
-              {showClinicalFields && (
-                <>
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                    <CampoSelect
-                      label="Fluxo"
-                      value={selectedVessel.fluxo}
-                      onChange={(e) => onChange(selected, "fluxo", e.target.value)}
-                      options={["sem alteração", "hipocinético", "hipercinético"]}
-                    />
-                    <CampoSelect
-                      label="Ateromatose"
-                      value={selectedVessel.ateromatose}
-                      onChange={(e) => onChange(selected, "ateromatose", e.target.value)}
-                      options={["ausente", "discreta", "moderada", "severa"]}
-                    />
-                    <CampoSelect
-                      label="Estenose"
-                      value={selectedVessel.estenose}
-                      onChange={handleEstenoseChange}
-                      options={["ausente", "<50%", "50% a 70%", ">70%"]}
-                    />
-                  </div>
-
-                  {showEstenoseCampos && (
-                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                      <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Tipo de placa</span>
-                        <select
-                          value={selectedVessel.tipoPlaca || ""}
-                          onChange={(e) => onChange(selected, "tipoPlaca", e.target.value)}
-                          style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid #4fd8ec", background: "#fff", color: "#222", fontSize: 13 }}
-                        >
-                          <option value="">Selecione...</option>
-                          <option value="lipídica">lipídica</option>
-                          <option value="calcificada">calcificada</option>
-                          <option value="mista">mista</option>
-                        </select>
-                      </label>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Observação</span>
-                <input
-                  type="text"
-                  value={selectedVessel.observacao || ""}
-                  onChange={(e) => onChange(selected, "observacao", e.target.value)}
-                  placeholder="Anotações livres..."
-                  style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid #4fd8ec", background: "#fff", color: "#222", fontSize: 13 }}
+          {showClinicalFields && (
+            <>
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                <CampoSelect
+                  label="Fluxo"
+                  value={selectedVessel.fluxo}
+                  onChange={(e) => onChange(selected, "fluxo", e.target.value)}
+                  options={["sem alteração", "hipocinético", "hipercinético"]}
                 />
-              </label>
-            </div>
-
-            <div style={{ background: "rgba(79,216,236,0.08)", border: "1px solid rgba(79,216,236,0.25)", borderRadius: 10, padding: "12px 16px", fontSize: 12.5, color: "#bfe4ec", lineHeight: 1.5 }}>
-              O tronco braquiocefálico, as subclávias e o arco da aorta aparecem só como referência anatômica, sempre em vermelho — não são campos do laudo. Nos 8 vasos editáveis, a cor do vaso reflete só status/fluxo. Estenose e ateromatose não mudam essa cor — aparecem como ícone de estrangulamento e textura na parede, cada um com sua própria cor/intensidade.
-            </div>
-
-            <div style={{ display: "flex", gap: 20, alignItems: "center", background: "#18243a", border: "1px solid #2a3548", borderRadius: 10, padding: "14px 18px", flexWrap: "wrap" }}>
-              <div style={{ width: 150, height: 144, flexShrink: 0, background: "#fff", border: "1px solid #d7dee3", borderRadius: 8, overflow: "hidden" }} dangerouslySetInnerHTML={{ __html: svgMini }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#4fd8ec" }}>Mesmo esquema no laudo em PDF</div>
-                <div style={{ fontSize: 12.5, color: "#9fc3cc", lineHeight: 1.5 }}>
-                  Marque "Incluir Mapeamento Visual no PDF" (ao lado do laudo) pra anexar este mesmo desenho ao PDF final.
-                </div>
+                <CampoSelect
+                  label="Ateromatose"
+                  value={selectedVessel.ateromatose}
+                  onChange={(e) => onChange(selected, "ateromatose", e.target.value)}
+                  options={["ausente", "discreta", "moderada", "severa"]}
+                />
+                <CampoSelect
+                  label="Estenose"
+                  value={selectedVessel.estenose}
+                  onChange={handleEstenoseChange}
+                  options={["ausente", "<50%", "50% a 70%", ">70%"]}
+                />
               </div>
-            </div>
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {Object.keys(CHIP_POS).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSelected(key)}
-                  style={{
-                    background: selected === key ? "#0eb8d0" : "#1a2434",
-                    color: "#fff",
-                    border: "1px solid #2a3548",
-                    borderRadius: 6,
-                    padding: "4px 10px",
-                    fontSize: 11.5,
-                    cursor: "pointer"
-                  }}
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-          </div>
+              {showEstenoseCampos && (
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Tipo de placa</span>
+                    <select
+                      value={selectedVessel.tipoPlaca || ""}
+                      onChange={(e) => onChange(selected, "tipoPlaca", e.target.value)}
+                      style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid #4fd8ec", background: "#fff", color: "#222", fontSize: 13 }}
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="lipídica">lipídica</option>
+                      <option value="calcificada">calcificada</option>
+                      <option value="mista">mista</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+            </>
+          )}
+
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Observação</span>
+            <input
+              type="text"
+              value={selectedVessel.observacao || ""}
+              onChange={(e) => onChange(selected, "observacao", e.target.value)}
+              placeholder="Anotações livres..."
+              style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid #4fd8ec", background: "#fff", color: "#222", fontSize: 13 }}
+            />
+          </label>
+        </div>
+
+        {/* Salvar direto daqui, sem precisar fechar o mapa e voltar ao formulário. */}
+        <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12.5, color: "#bfe4ec", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={incluirMapaPdf}
+            onChange={(e) => onIncluirMapaPdf(e.target.checked)}
+          />
+          Incluir Mapeamento Visual no PDF
+        </label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+          <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
+          <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>
+          <button onClick={handleSalvarExameClick} style={mapaBotaoStyle("#28a745")}>Salvar Exame</button>
         </div>
       </div>
     </div>
