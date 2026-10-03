@@ -133,7 +133,20 @@ function pinchFor(key, v) {
   return { left, right };
 }
 
-const defaultVessel = () => ({ status: "pérvia", fluxo: "sem alteração", ateromatose: "ausente", estenose: "ausente", tipoPlaca: "", observacao: "" });
+const defaultVessel = () => ({ status: "pérvia", fluxo: "sem alteração", ateromatose: "ausente", estenose: "ausente", tipoPlaca: "", stent: "ausente", observacao: "" });
+
+// Traçado (mesmo "d") e espessura de cada vaso editável, usados só pra desenhar a malha do stent
+// por cima do vaso (overlay com a mesma geometria do próprio vaso, "preenchendo" a artéria).
+const VESSEL_SHAPE = {
+  ACCD: { paths: [{ d: "M 320,480 C 318,400 316,320 315,255", width: 22 }], ellipse: { cx: 315, cy: 255, rx: 16, ry: 21 } },
+  ACID: { paths: [{ d: "M 315,255 C 308,190 302,120 300,70", width: 15 }] },
+  ACED: { paths: [{ d: "M 315,255 C 330,220 342,185 350,160", width: 12 }, { d: "M 342,168 C 338,160 336,148 335,138", width: 5 }] },
+  ACCE: { paths: [{ d: "M 445,712 C 462,550 480,380 485,255", width: 22 }], ellipse: { cx: 485, cy: 255, rx: 16, ry: 21 } },
+  ACIE: { paths: [{ d: "M 485,255 C 492,190 498,120 500,70", width: 15 }] },
+  ACEE: { paths: [{ d: "M 485,255 C 470,220 458,185 450,160", width: 12 }, { d: "M 458,168 C 462,160 464,148 465,138", width: 5 }] },
+  AVD: { paths: [{ d: "M 280,465 Q 310,380 350,290 Q 360,180 358,80", width: 9 }] },
+  AVE: { paths: [{ d: "M 548,695 Q 505,500 490,290 Q 475,180 472,80", width: 9 }] }
+};
 
 // Monta o SVG completo (string) da ilustração. detalhado=false pula textura/estrangulamento
 // (usado na miniatura "mesmo esquema no laudo em PDF").
@@ -148,9 +161,25 @@ export function construirSvgCarotidas(vessels, { detalhado = true, width = "100%
   const colorAVD = colorFor(v("AVD"));
   const colorAVE = colorFor(v("AVE"));
 
+  const chaves = Object.keys(CHIP_POS);
+
+  // Stent: malha (crosshatch) por cima do próprio traçado do vaso, preenchendo-o — independe de
+  // detalhado, igual à cor do vaso, pra aparecer tanto na ilustração principal quanto na miniatura.
+  const stentsSvg = chaves.map((k) => {
+    if (v(k).stent !== "presente") return "";
+    const shape = VESSEL_SHAPE[k];
+    if (!shape) return "";
+    let s = shape.paths.map((p) =>
+      `<path d="${p.d}" fill="none" stroke="url(#veno-stent-mesh)" stroke-width="${p.width}" stroke-linecap="round"></path>`
+    ).join("");
+    if (shape.ellipse) {
+      s += `<ellipse cx="${shape.ellipse.cx}" cy="${shape.ellipse.cy}" rx="${shape.ellipse.rx}" ry="${shape.ellipse.ry}" fill="url(#veno-stent-mesh)"></ellipse>`;
+    }
+    return s;
+  }).join("");
+
   let detalhesSvg = "";
   if (detalhado) {
-    const chaves = Object.keys(CHIP_POS);
     const texturas = chaves.map((k) => {
       const tex = textureFor(k, v(k));
       if (!tex.d) return "";
@@ -179,6 +208,12 @@ export function construirSvgCarotidas(vessels, { detalhado = true, width = "100%
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 850 820" style="display:block;">
+    <defs>
+      <pattern id="veno-stent-mesh" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y1="0" x2="0" y2="6" stroke="#f3f6f8" stroke-width="1.6"></line>
+        <line x1="0" y1="0" x2="6" y2="0" stroke="#f3f6f8" stroke-width="1.6"></line>
+      </pattern>
+    </defs>
     <text x="145" y="50" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1" fill="#5c6b78">DIREITA</text>
     <text x="705" y="50" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1" fill="#5c6b78">ESQUERDA</text>
 
@@ -212,6 +247,8 @@ export function construirSvgCarotidas(vessels, { detalhado = true, width = "100%
     <path d="M 485,255 C 492,190 498,120 500,70" style="stroke:${colorACIE}; stroke-width:15; stroke-linecap:round; fill:none;"></path>
     <path d="M 485,255 C 470,220 458,185 450,160" style="stroke:${colorACEE}; stroke-width:12; stroke-linecap:round; fill:none;"></path>
     <path d="M 458,168 C 462,160 464,148 465,138" style="stroke:${colorACEE}; stroke-width:5; stroke-linecap:round; fill:none;"></path>
+
+    ${stentsSvg}
 
     ${detalhado ? `
     <line x1="150" y1="97" x2="303" y2="130" stroke="#9aa5b1" stroke-width="1.5"></line>
@@ -281,7 +318,7 @@ function desenharLegendaCarotidasPdf(doc, pageWidth, yInicial) {
 
   let fonteExplicativa = 7.5;
   doc.setFontSize(fonteExplicativa);
-  const textoExplicativo = "Textura na parede = ateromatose   ·   triângulo nas bordas = estenose (cor conforme o tipo de placa)";
+  const textoExplicativo = "Textura na parede = ateromatose   ·   triângulo nas bordas = estenose (cor conforme o tipo de placa)   ·   malha cobrindo o vaso = stent";
   if (doc.getTextWidth(textoExplicativo) > pageWidth - 20) {
     doc.setFontSize(6.5);
   }
@@ -485,8 +522,19 @@ export default function CarotidasMapaInterativo({ aberto, onFechar, vessels, onC
                   <span style={{ fontSize: 12, color: "#2d3a4a" }}>Mista (branco, contorno cinza)</span>
                 </span>
               </div>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9aa5b1", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4 }}>Stent</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{
+                    width: 20, height: 12, borderRadius: 3, display: "inline-block",
+                    background: "#c0392b",
+                    backgroundImage: "repeating-linear-gradient(45deg, #f3f6f8 0, #f3f6f8 1px, transparent 1px, transparent 4px), repeating-linear-gradient(-45deg, #f3f6f8 0, #f3f6f8 1px, transparent 1px, transparent 4px)"
+                  }}></span>
+                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Malha cobrindo o vaso = stent</span>
+                </span>
+              </div>
               <div style={{ fontSize: 11.5, color: "#6b7684", marginTop: 4, lineHeight: 1.5 }}>
-                <b style={{ color: "#2d3a4a" }}>Ateromatose</b> não muda cor nenhuma — aparece como textura só nas paredes internas do vaso (nunca cruza o centro): discreta é rente à borda e leve, moderada é média, severa avança mais pro lúmen e é densa/áspera. <b style={{ color: "#2d3a4a" }}>Estenose</b> não muda a cor do vaso — o quanto o ícone de estrangulamento aperta vem da faixa de %, e a cor do ícone vem do tipo de placa (acima).
+                <b style={{ color: "#2d3a4a" }}>Ateromatose</b> não muda cor nenhuma — aparece como textura só nas paredes internas do vaso (nunca cruza o centro): discreta é rente à borda e leve, moderada é média, severa avança mais pro lúmen e é densa/áspera. <b style={{ color: "#2d3a4a" }}>Estenose</b> não muda a cor do vaso — o quanto o ícone de estrangulamento aperta vem da faixa de %, e a cor do ícone vem do tipo de placa (acima). <b style={{ color: "#2d3a4a" }}>Stent</b> aparece como uma malha cobrindo todo o trecho do vaso.
               </div>
             </div>
           </div>
@@ -498,6 +546,25 @@ export default function CarotidasMapaInterativo({ aberto, onFechar, vessels, onC
 
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 <CampoSelect label="Status" value={selectedVessel.status} onChange={handleStatusChange} options={["pérvia", "ocluída"]} />
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Stent</span>
+                  <button
+                    type="button"
+                    onClick={() => onChange(selected, "stent", selectedVessel.stent === "presente" ? "ausente" : "presente")}
+                    style={{
+                      padding: "9px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #4fd8ec",
+                      background: selectedVessel.stent === "presente" ? "#0eb8d0" : "#fff",
+                      color: selectedVessel.stent === "presente" ? "#fff" : "#222",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {selectedVessel.stent === "presente" ? "Presente" : "Ausente"}
+                  </button>
+                </label>
               </div>
 
               {isOccluded && (

@@ -96,6 +96,7 @@ const initialVesselData = {
   ateromatose: "ausente",
   estenose: "ausente",
   tipoPlaca: "",
+  stent: "ausente",
   imt: "",
   observacao: ""
 };
@@ -118,7 +119,8 @@ function gerarConclusaoCarotidas(data) {
     return vessel.status !== "pérvia"
       || vessel.fluxo !== "sem alteração"
       || vessel.ateromatose !== "ausente"
-      || (vessel.estenose && vessel.estenose !== "ausente");
+      || (vessel.estenose && vessel.estenose !== "ausente")
+      || vessel.stent === "presente";
   };
 
   const allVessels = [data.ACCD, data.ACID, data.ACED, data.ACCE, data.ACIE, data.ACEE, data.AVD, data.AVE];
@@ -152,11 +154,15 @@ function gerarConclusaoCarotidas(data) {
         }
       }
 
-      if (vessel.fluxo !== "sem alteração" && 
-          vessel.ateromatose === "ausente" && 
+      if (vessel.fluxo !== "sem alteração" &&
+          vessel.ateromatose === "ausente" &&
           vessel.estenose === "ausente") {
         descriptions.push(`Fluxo ${vessel.fluxo} em ${vesselName}`);
       }
+    }
+
+    if (vessel.stent === "presente") {
+      descriptions.push(descriptions.length > 0 ? "com stent" : `Stent em ${vesselName}`);
     }
 
     return descriptions.length > 0 ? descriptions.join(", ") + "." : null;
@@ -194,10 +200,11 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
     const vesselName = vesselNames[vesselKey];
     
     // Se a artéria está normal, retornar apenas "pérvia, fluxo sem alteração"
-    if (vessel.status === "pérvia" && 
-        vessel.fluxo === "sem alteração" && 
-        vessel.ateromatose === "ausente" && 
-        vessel.estenose === "ausente") {
+    if (vessel.status === "pérvia" &&
+        vessel.fluxo === "sem alteração" &&
+        vessel.ateromatose === "ausente" &&
+        vessel.estenose === "ausente" &&
+        vessel.stent !== "presente") {
       return `${vesselName}: pérvia, fluxo sem alteração.`;
     }
 
@@ -216,6 +223,10 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
         estenoseDesc += ` com placa ${vessel.tipoPlaca}`;
       }
       descricoes.push(estenoseDesc);
+    }
+
+    if (vessel.stent === "presente") {
+      descricoes.push("presença de stent");
     }
 
     // IMT (apenas para carótidas comuns)
@@ -337,6 +348,32 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
+          <label style={{
+            fontSize: 'clamp(11px, 2.2vw, 13px)',
+            color: '#fff',
+            fontWeight: 'bold',
+            minWidth: 'clamp(80px, 15vw, 100px)'
+          }}>Stent:</label>
+          <button
+            type="button"
+            onClick={() => onChange(vesselKey, 'stent', vessel.stent === "presente" ? "ausente" : "presente")}
+            style={{
+              padding: 'clamp(8px, 1.5vw, 10px)',
+              borderRadius: 'clamp(4px, 1vw, 6px)',
+              fontSize: 'clamp(11px, 2.2vw, 13px)',
+              fontWeight: 'bold',
+              background: vessel.stent === "presente" ? '#0eb8d0' : '#ffffff',
+              border: '1px solid #0eb8d0',
+              color: vessel.stent === "presente" ? '#ffffff' : '#222',
+              minWidth: 'clamp(120px, 20vw, 150px)',
+              cursor: 'pointer'
+            }}
+          >
+            {vessel.stent === "presente" ? "Presente" : "Ausente"}
+          </button>
         </div>
 
         {showIMT && (
