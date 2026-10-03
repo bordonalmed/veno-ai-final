@@ -83,9 +83,9 @@ function carregarExameEmEdicao() {
 
 // Opções para os campos
 const statusOptions = ["pérvia", "ocluída"];
-const fluxoOptions = ["sem alteração", "hipocinético", "hipercinético", "ausente"];
+const fluxoOptions = ["sem alteração", "hipocinético", "hipercinético"];
 const ateromatoseOptions = ["ausente", "discreta", "moderada", "severa"];
-const estenoseOptions = ["ausente", "presente"];
+const estenoseOptions = ["ausente", "<50%", "51% a 70%", ">70%"];
 const tipoPlacaOptions = ["lipídica", "calcificada", "mista"];
 
 // Estrutura inicial dos dados dos vasos
@@ -94,7 +94,6 @@ const initialVesselData = {
   fluxo: "sem alteração",
   ateromatose: "ausente",
   estenose: "ausente",
-  estenosePercentual: "",
   tipoPlaca: "",
   imt: "",
   observacao: ""
@@ -103,8 +102,8 @@ const initialVesselData = {
 // Função para gerar conclusão automática
 function gerarConclusaoCarotidas(data) {
   const vesselNames = {
-    ACD: "artéria carótida comum direita",
-    ACE: "artéria carótida comum esquerda",
+    ACCD: "artéria carótida comum direita",
+    ACCE: "artéria carótida comum esquerda",
     ACID: "artéria carótida interna direita",
     ACIE: "artéria carótida interna esquerda",
     ACED: "artéria carótida externa direita",
@@ -115,10 +114,13 @@ function gerarConclusaoCarotidas(data) {
 
   // Verifica se o vaso tem alterações (não é pérvio OU não tem fluxo sem alteração)
   const hasAlterations = (vessel) => {
-    return vessel.status !== "pérvia" || vessel.fluxo !== "sem alteração";
+    return vessel.status !== "pérvia"
+      || vessel.fluxo !== "sem alteração"
+      || vessel.ateromatose !== "ausente"
+      || (vessel.estenose && vessel.estenose !== "ausente");
   };
 
-  const allVessels = [data.ACD, data.ACID, data.ACED, data.ACE, data.ACIE, data.ACEE, data.AVD, data.AVE];
+  const allVessels = [data.ACCD, data.ACID, data.ACED, data.ACCE, data.ACIE, data.ACEE, data.AVD, data.AVE];
   const hasAnyAlterations = allVessels.some(hasAlterations);
 
   // Se não há alterações, retorna a conclusão padrão
@@ -133,8 +135,8 @@ function gerarConclusaoCarotidas(data) {
     if (vessel.status === "ocluída") {
       descriptions.push(`Oclusão de ${vesselName}`);
     } else {
-      if (vessel.estenose === "presente" && vessel.estenosePercentual && vessel.estenosePercentual.toString().trim() !== "") {
-        let estenoseDesc = `Estenose de ${vessel.estenosePercentual}% em ${vesselName}`;
+      if (vessel.estenose && vessel.estenose !== "ausente") {
+        let estenoseDesc = `Estenose ${vessel.estenose} em ${vesselName}`;
         if (vessel.tipoPlaca && vessel.tipoPlaca.trim && vessel.tipoPlaca.trim() !== "") {
           estenoseDesc += ` com placa ${vessel.tipoPlaca}`;
         }
@@ -177,8 +179,8 @@ function gerarConclusaoCarotidas(data) {
 // Função para gerar relatório completo
 function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais }) {
   const vesselNames = {
-    ACD: "Artéria carótida comum direita",
-    ACE: "Artéria carótida comum esquerda",
+    ACCD: "Artéria carótida comum direita",
+    ACCE: "Artéria carótida comum esquerda",
     ACID: "Artéria carótida interna direita",
     ACIE: "Artéria carótida interna esquerda",
     ACED: "Artéria carótida externa direita",
@@ -207,8 +209,8 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
       descricoes.push(`ateromatose ${vessel.ateromatose}`);
     }
     
-    if (vessel.estenose === "presente" && vessel.estenosePercentual && vessel.estenosePercentual.toString().trim() !== "") {
-      let estenoseDesc = `estenose ${vessel.estenosePercentual}%`;
+    if (vessel.estenose && vessel.estenose !== "ausente") {
+      let estenoseDesc = `estenose ${vessel.estenose}`;
       if (vessel.tipoPlaca && vessel.tipoPlaca.trim && vessel.tipoPlaca.trim() !== "") {
         estenoseDesc += ` com placa ${vessel.tipoPlaca}`;
       }
@@ -216,7 +218,7 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
     }
 
     // IMT (apenas para carótidas comuns)
-    if ((vesselKey === "ACD" || vesselKey === "ACE") && vessel.imt) {
+    if ((vesselKey === "ACCD" || vesselKey === "ACCE") && vessel.imt) {
       descricoes.push(`IMT ${vessel.imt} mm`);
     }
 
@@ -235,13 +237,13 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
 
   // Sistema Carotídeo Direito
   relatorio += `**Sistema Carotídeo Direito**\n`;
-  relatorio += formatarVesselDescricao(carotidasDireitas.ACD, "ACD") + "\n";
+  relatorio += formatarVesselDescricao(carotidasDireitas.ACCD, "ACCD") + "\n";
   relatorio += formatarVesselDescricao(carotidasDireitas.ACID, "ACID") + "\n";
   relatorio += formatarVesselDescricao(carotidasDireitas.ACED, "ACED") + "\n\n";
 
   // Sistema Carotídeo Esquerdo
   relatorio += `**Sistema Carotídeo Esquerdo**\n`;
-  relatorio += formatarVesselDescricao(carotidasEsquerdas.ACE, "ACE") + "\n";
+  relatorio += formatarVesselDescricao(carotidasEsquerdas.ACCE, "ACCE") + "\n";
   relatorio += formatarVesselDescricao(carotidasEsquerdas.ACIE, "ACIE") + "\n";
   relatorio += formatarVesselDescricao(carotidasEsquerdas.ACEE, "ACEE") + "\n\n";
 
@@ -255,6 +257,18 @@ function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas,
   relatorio += gerarConclusaoCarotidas({ ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais });
 
   return relatorio;
+}
+
+// Validação compartilhada: quando a estenose não está ausente, o tipo de placa é obrigatório
+function validarVasos(todosVasos) {
+  for (const [vesselKey, vessel] of Object.entries(todosVasos)) {
+    if (vessel.estenose && vessel.estenose !== "ausente") {
+      if (!vessel.tipoPlaca || !vessel.tipoPlaca.trim || vessel.tipoPlaca.trim() === "") {
+        return `Campo "Tipo Placa" é obrigatório para ${vesselKey} quando há estenose!`;
+      }
+    }
+  }
+  return null;
 }
 
 // Componente para um vaso individual
@@ -298,7 +312,16 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
           }}>Status:</label>
           <select
             value={vessel.status}
-            onChange={(e) => onChange(vesselKey, 'status', e.target.value)}
+            onChange={(e) => {
+              const novoStatus = e.target.value;
+              onChange(vesselKey, 'status', novoStatus);
+              if (novoStatus === "ocluída") {
+                onChange(vesselKey, 'fluxo', 'sem alteração');
+                onChange(vesselKey, 'ateromatose', 'ausente');
+                onChange(vesselKey, 'estenose', 'ausente');
+                onChange(vesselKey, 'tipoPlaca', '');
+              }
+            }}
             style={{
               padding: 'clamp(8px, 1.5vw, 10px)',
               borderRadius: 'clamp(4px, 1vw, 6px)',
@@ -310,84 +333,6 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
             }}
           >
             {statusOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-          <label style={{
-            fontSize: 'clamp(11px, 2.2vw, 13px)',
-            color: '#fff',
-            fontWeight: 'bold',
-            minWidth: 'clamp(80px, 15vw, 100px)'
-          }}>Fluxo:</label>
-          <select
-            value={vessel.fluxo}
-            onChange={(e) => onChange(vesselKey, 'fluxo', e.target.value)}
-            style={{
-              padding: 'clamp(8px, 1.5vw, 10px)',
-              borderRadius: 'clamp(4px, 1vw, 6px)',
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              background: '#ffffff',
-              border: '1px solid #0eb8d0',
-              color: '#222',
-              minWidth: 'clamp(120px, 20vw, 150px)'
-            }}
-          >
-            {fluxoOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-          <label style={{
-            fontSize: 'clamp(11px, 2.2vw, 13px)',
-            color: '#fff',
-            fontWeight: 'bold',
-            minWidth: 'clamp(80px, 15vw, 100px)'
-          }}>Ateromatose:</label>
-          <select
-            value={vessel.ateromatose}
-            onChange={(e) => onChange(vesselKey, 'ateromatose', e.target.value)}
-            style={{
-              padding: 'clamp(8px, 1.5vw, 10px)',
-              borderRadius: 'clamp(4px, 1vw, 6px)',
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              background: '#ffffff',
-              border: '1px solid #0eb8d0',
-              color: '#222',
-              minWidth: 'clamp(120px, 20vw, 150px)'
-            }}
-          >
-            {ateromatoseOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-          <label style={{
-            fontSize: 'clamp(11px, 2.2vw, 13px)',
-            color: '#fff',
-            fontWeight: 'bold',
-            minWidth: 'clamp(80px, 15vw, 100px)'
-          }}>Estenose:</label>
-          <select
-            value={vessel.estenose}
-            onChange={(e) => onChange(vesselKey, 'estenose', e.target.value)}
-            style={{
-              padding: 'clamp(8px, 1.5vw, 10px)',
-              borderRadius: 'clamp(4px, 1vw, 6px)',
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              background: '#ffffff',
-              border: '1px solid #0eb8d0',
-              color: '#222',
-              minWidth: 'clamp(120px, 20vw, 150px)'
-            }}
-          >
-            {estenoseOptions.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
@@ -420,8 +365,22 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
         )}
       </div>
 
-      {/* Campos condicionais: % Estenose e Tipo Placa (quando Estenose = "presente") */}
-      {vessel.estenose === "presente" && (
+      {/* Vaso ocluído: fluxo/ateromatose/estenose/placa não se aplicam */}
+      {vessel.status === "ocluída" && (
+        <div style={{
+          background: 'rgba(0,0,0,0.25)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: 'clamp(4px, 1vw, 6px)',
+          padding: 'clamp(8px, 1.5vw, 10px) clamp(10px, 2vw, 14px)',
+          fontSize: 'clamp(11px, 2.2vw, 13px)',
+          color: '#cfd3d8'
+        }}>
+          Vaso ocluído — fluxo, ateromatose, estenose e tipo de placa não se aplicam.
+        </div>
+      )}
+
+      {/* Fluxo, Ateromatose e Estenose (só fazem sentido se o vaso está pérvio) */}
+      {vessel.status !== "ocluída" && (
         <div style={{
           display: 'flex',
           gap: 'clamp(12px, 2.5vw, 16px)',
@@ -434,15 +393,10 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
               color: '#fff',
               fontWeight: 'bold',
               minWidth: 'clamp(80px, 15vw, 100px)'
-            }}>% Estenose:</label>
-            <input
-              type="number"
-              value={vessel.estenosePercentual || ''}
-              onChange={(e) => onChange(vesselKey, 'estenosePercentual', e.target.value)}
-              placeholder="%"
-              required={vessel.estenose === "presente"}
-              min="0"
-              max="100"
+            }}>Fluxo:</label>
+            <select
+              value={vessel.fluxo}
+              onChange={(e) => onChange(vesselKey, 'fluxo', e.target.value)}
               style={{
                 padding: 'clamp(8px, 1.5vw, 10px)',
                 borderRadius: 'clamp(4px, 1vw, 6px)',
@@ -452,9 +406,81 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
                 color: '#222',
                 minWidth: 'clamp(120px, 20vw, 150px)'
               }}
-            />
+            >
+              {fluxoOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </div>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
+            <label style={{
+              fontSize: 'clamp(11px, 2.2vw, 13px)',
+              color: '#fff',
+              fontWeight: 'bold',
+              minWidth: 'clamp(80px, 15vw, 100px)'
+            }}>Ateromatose:</label>
+            <select
+              value={vessel.ateromatose}
+              onChange={(e) => onChange(vesselKey, 'ateromatose', e.target.value)}
+              style={{
+                padding: 'clamp(8px, 1.5vw, 10px)',
+                borderRadius: 'clamp(4px, 1vw, 6px)',
+                fontSize: 'clamp(11px, 2.2vw, 13px)',
+                background: '#ffffff',
+                border: '1px solid #0eb8d0',
+                color: '#222',
+                minWidth: 'clamp(120px, 20vw, 150px)'
+              }}
+            >
+              {ateromatoseOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
+            <label style={{
+              fontSize: 'clamp(11px, 2.2vw, 13px)',
+              color: '#fff',
+              fontWeight: 'bold',
+              minWidth: 'clamp(80px, 15vw, 100px)'
+            }}>Estenose:</label>
+            <select
+              value={vessel.estenose}
+              onChange={(e) => {
+                const novaEstenose = e.target.value;
+                onChange(vesselKey, 'estenose', novaEstenose);
+                if (novaEstenose === "ausente") {
+                  onChange(vesselKey, 'tipoPlaca', '');
+                }
+              }}
+              style={{
+                padding: 'clamp(8px, 1.5vw, 10px)',
+                borderRadius: 'clamp(4px, 1vw, 6px)',
+                fontSize: 'clamp(11px, 2.2vw, 13px)',
+                background: '#ffffff',
+                border: '1px solid #0eb8d0',
+                color: '#222',
+                minWidth: 'clamp(120px, 20vw, 150px)'
+              }}
+            >
+              {estenoseOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Tipo de placa (só quando a estenose não está ausente) */}
+      {vessel.status !== "ocluída" && vessel.estenose && vessel.estenose !== "ausente" && (
+        <div style={{
+          display: 'flex',
+          gap: 'clamp(12px, 2.5vw, 16px)',
+          flexWrap: 'wrap',
+          alignItems: 'center'
+        }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
             <label style={{
               fontSize: 'clamp(11px, 2.2vw, 13px)',
@@ -465,7 +491,7 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
             <select
               value={vessel.tipoPlaca || ''}
               onChange={(e) => onChange(vesselKey, 'tipoPlaca', e.target.value)}
-              required={vessel.estenose === "presente"}
+              required={vessel.estenose !== "ausente"}
               style={{
                 padding: 'clamp(8px, 1.5vw, 10px)',
                 borderRadius: 'clamp(4px, 1vw, 6px)',
@@ -523,13 +549,13 @@ function CarotidasVertebrais() {
   const [anexos, setAnexos] = useState([]);
 
   const [carotidasDireitas, setCarotidasDireitas] = useState({
-    ACD: { ...initialVesselData },
+    ACCD: { ...initialVesselData },
     ACID: { ...initialVesselData },
     ACED: { ...initialVesselData }
   });
 
   const [carotidasEsquerdas, setCarotidasEsquerdas] = useState({
-    ACE: { ...initialVesselData },
+    ACCE: { ...initialVesselData },
     ACIE: { ...initialVesselData },
     ACEE: { ...initialVesselData }
   });
@@ -586,27 +612,13 @@ function CarotidasVertebrais() {
       return;
     }
     
-            // Validar campos obrigatórios quando estenose é "presente"
-    const todosVasos = { ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais };
-    for (const [vesselKey, vessel] of Object.entries(todosVasos)) {
-      if (vessel.estenose === "presente") {
-        if (!vessel.estenosePercentual || !vessel.estenosePercentual.toString || vessel.estenosePercentual.toString().trim() === "") {
-          setErro(`Campo "% Estenose" é obrigatório para ${vesselKey} quando estenose é presente (primeira validação)!`);
-          return;
-        }
-        if (!vessel.tipoPlaca || !vessel.tipoPlaca.trim || vessel.tipoPlaca.trim() === "") {
-          setErro(`Campo "Tipo Placa" é obrigatório para ${vesselKey} quando estenose é presente (primeira validação)!`);
-          return;
-        }
-        // Validar se a porcentagem está entre 0 e 100
-        const percentual = parseFloat(vessel.estenosePercentual);
-        if (isNaN(percentual) || percentual < 0 || percentual > 100) {
-          setErro(`Campo "% Estenose" deve ser um número entre 0 e 100 para ${vesselKey} (primeira função)!`);
-          return;
-        }
-      }
+            const todosVasos = { ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais };
+    const erroValidacao = validarVasos(todosVasos);
+    if (erroValidacao) {
+      setErro(erroValidacao);
+      return;
     }
-    
+
     const laudo = montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais });
     setLaudoTexto(laudo);
   }
@@ -618,27 +630,13 @@ function CarotidasVertebrais() {
       return;
     }
     
-    // Validar campos obrigatórios quando estenose é "presente"
     const todosVasos = { ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais };
-    for (const [vesselKey, vessel] of Object.entries(todosVasos)) {
-      if (vessel.estenose === "presente") {
-        if (!vessel.estenosePercentual || !vessel.estenosePercentual.toString || vessel.estenosePercentual.toString().trim() === "") {
-          setErro(`Campo "% Estenose" é obrigatório para ${vesselKey} quando estenose é presente (segunda validação)!`);
-          return;
-        }
-        if (!vessel.tipoPlaca || !vessel.tipoPlaca.trim || vessel.tipoPlaca.trim() === "") {
-          setErro(`Campo "Tipo Placa" é obrigatório para ${vesselKey} quando estenose é presente (segunda validação)!`);
-          return;
-        }
-        // Validar se a porcentagem está entre 0 e 100
-        const percentual = parseFloat(vessel.estenosePercentual);
-        if (isNaN(percentual) || percentual < 0 || percentual > 100) {
-          setErro(`Campo "% Estenose" deve ser um número entre 0 e 100 para ${vesselKey} (segunda função)!`);
-          return;
-        }
-      }
+    const erroValidacao = validarVasos(todosVasos);
+    if (erroValidacao) {
+      setErro(erroValidacao);
+      return;
     }
-    
+
     let laudo = laudoTexto;
     if (!laudo) {
       laudo = montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais });
@@ -1096,8 +1094,8 @@ function CarotidasVertebrais() {
                 SISTEMA CAROTÍDEO DIREITO
               </div>
               <VesselField 
-                vessel={carotidasDireitas.ACD}
-                vesselKey="ACD"
+                vessel={carotidasDireitas.ACCD}
+                vesselKey="ACCD"
                 onChange={(key, field, value) => setCarotidasDireitas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
                 title="Artéria carótida comum direita"
                 showIMT={true}
@@ -1142,8 +1140,8 @@ function CarotidasVertebrais() {
                 SISTEMA CAROTÍDEO ESQUERDO
               </div>
               <VesselField 
-                vessel={carotidasEsquerdas.ACE}
-                vesselKey="ACE"
+                vessel={carotidasEsquerdas.ACCE}
+                vesselKey="ACCE"
                 onChange={(key, field, value) => setCarotidasEsquerdas(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))}
                 title="Artéria carótida comum esquerda"
                 showIMT={true}
@@ -1445,12 +1443,12 @@ function CarotidasVertebrais() {
               setIdade("");
               setData("");
               setCarotidasDireitas({
-                ACD: { ...initialVesselData },
+                ACCD: { ...initialVesselData },
                 ACID: { ...initialVesselData },
                 ACED: { ...initialVesselData }
               });
               setCarotidasEsquerdas({
-                ACE: { ...initialVesselData },
+                ACCE: { ...initialVesselData },
                 ACIE: { ...initialVesselData },
                 ACEE: { ...initialVesselData }
               });
