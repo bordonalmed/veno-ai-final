@@ -148,11 +148,6 @@ export function construirSvgCarotidas(vessels, { detalhado = true, width = "100%
   const colorAVD = colorFor(v("AVD"));
   const colorAVE = colorFor(v("AVE"));
 
-  const corPorVaso = {
-    ACCD: colorACCD, ACID: colorACID, ACED: colorACED, ACCE: colorACCE,
-    ACIE: colorACIE, ACEE: colorACEE, AVD: colorAVD, AVE: colorAVE
-  };
-
   let detalhesSvg = "";
   if (detalhado) {
     const chaves = Object.keys(CHIP_POS);
@@ -168,22 +163,17 @@ export function construirSvgCarotidas(vessels, { detalhado = true, width = "100%
       return `<path d="${pinch.left}" fill="${style.fill}" stroke="${style.stroke}" stroke-width="1.5"></path>`
         + `<path d="${pinch.right}" fill="${style.fill}" stroke="${style.stroke}" stroke-width="1.5"></path>`;
     }).join("");
-    // Etiquetas com o código do vaso (mesmo texto dos botões clicáveis do modal, que ficam por
-    // cima e as escondem na tela — aqui garantem que o nome do vaso apareça quando o SVG é
-    // rasterizado sozinho, como no mapa exportado pro PDF).
+    // Etiqueta com o código do vaso (mesmo texto dos botões clicáveis do modal, que ficam por
+    // cima e a escondem na tela — aqui garante que o nome do vaso apareça quando o SVG é
+    // rasterizado sozinho, como no mapa exportado pro PDF). Texto simples em preto, sem caixa.
     // CHIP_POS foi calibrado pra uma caixa de 830x800 (é o que o overlay HTML do modal usa pra
     // posicionar os botões como % daquele tamanho); o viewBox real do SVG é 850x820, então as
     // coordenadas precisam ser escaladas pra esse espaço pra bater pixel a pixel com os botões.
     const etiquetas = chaves.map((k) => {
       const x = (CHIP_POS[k].x / 830) * 850;
       const y = (CHIP_POS[k].y / 800) * 820;
-      const w = (130 / 830) * 850;
       const h = (34 / 800) * 820;
-      return `<g>
-        <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="8" fill="#1a2434" stroke="#3a4a64" stroke-width="1"></rect>
-        <circle cx="${(x + 20).toFixed(1)}" cy="${(y + h / 2).toFixed(1)}" r="5" fill="${corPorVaso[k]}"></circle>
-        <text x="${(x + 34).toFixed(1)}" y="${(y + h / 2 + 4.5).toFixed(1)}" font-size="13" font-weight="700" fill="#eaf3f6">${k}</text>
-      </g>`;
+      return `<text x="${x.toFixed(1)}" y="${(y + h / 2 + 4.5).toFixed(1)}" font-size="13" font-weight="700" fill="#000000">${k}</text>`;
     }).join("");
     detalhesSvg = texturas + estrangulamentos + etiquetas;
   }
