@@ -5,6 +5,7 @@ import { FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
+import CarotidasMapaInterativo, { adicionarMapaCarotidasAoPdf } from "../components/CarotidasMapaInterativo";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesCarotidasVertebrais";
@@ -565,6 +566,22 @@ function CarotidasVertebrais() {
     AVE: { ...initialVesselData }
   });
 
+  const [mostrarMapa, setMostrarMapa] = useState(false);
+  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
+
+  // Objeto combinado dos 8 vasos (usado pelo Mapa Interativo) e um onChange único que
+  // encaminha pro setter certo, conforme o vaso pertence ao sistema direito, esquerdo ou vertebral.
+  const todosOsVasos = { ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais };
+  function handleChangeVasoMapa(vesselKey, field, value) {
+    if (vesselKey in carotidasDireitas) {
+      setCarotidasDireitas(prev => ({ ...prev, [vesselKey]: { ...prev[vesselKey], [field]: value } }));
+    } else if (vesselKey in carotidasEsquerdas) {
+      setCarotidasEsquerdas(prev => ({ ...prev, [vesselKey]: { ...prev[vesselKey], [field]: value } }));
+    } else if (vesselKey in vertebrais) {
+      setVertebrais(prev => ({ ...prev, [vesselKey]: { ...prev[vesselKey], [field]: value } }));
+    }
+  }
+
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -1052,7 +1069,19 @@ function CarotidasVertebrais() {
           disabled={!formReady}
         >Salvar Exame</button>
       </div>
-      
+
+      {formReady && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(8px, 2vw, 10px)' }}>
+          <button
+            type="button"
+            onClick={() => setMostrarMapa(true)}
+            style={{ ...buttonStyle, background: "#3d5a80", minWidth: 'clamp(140px, 25vw, 160px)', fontSize: 'clamp(12px, 2.5vw, 14px)', padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)" }}
+          >
+            🖱️ Mapa Interativo
+          </button>
+        </div>
+      )}
+
       {/* Campos do exame - só aparecem após preencher dados básicos */}
       {formReady && (
         <div style={{ 
@@ -1222,13 +1251,25 @@ function CarotidasVertebrais() {
           overflowY: "auto",
           marginTop: 'clamp(12px, 2vw, 16px)'
         }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
-            <button style={{ 
-              ...buttonStyle, 
-              background: "#0eb8d0", 
-              color: "#fff", 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 'clamp(10px, 2vw, 12px)', color: "#333", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={incluirMapaPdf}
+                onChange={(e) => setIncluirMapaPdf(e.target.checked)}
+              />
+              Incluir Mapeamento Visual no PDF
+            </label>
+            <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
+            <button style={{ ...buttonStyle, background: "#3d5a80", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarMapa(true)}>
+              🖱️ Mapa Interativo
+            </button>
+            <button style={{
+              ...buttonStyle,
+              background: "#0eb8d0",
+              color: "#fff",
+              fontSize: 'clamp(10px, 2vw, 12px)',
+              padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)"
             }} onClick={() => {
               const blob = new Blob([laudoTexto], { type: "text/plain;charset=utf-8" });
               saveAs(blob, `Laudo_${nome}_${data}.txt`);
@@ -1239,7 +1280,7 @@ function CarotidasVertebrais() {
               color: "#fff", 
               fontSize: 'clamp(10px, 2vw, 12px)', 
               padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-            }} onClick={() => {
+            }} onClick={async () => {
               const nomeMedico = localStorage.getItem("nomeMedico") || "";
               const crm = localStorage.getItem("crm") || "";
               const especialidade = localStorage.getItem("especialidadeLaudo") || "";
@@ -1436,7 +1477,15 @@ function CarotidasVertebrais() {
               addRodape();
               // Adicionar anexos como páginas no final do PDF
               appendImagesToPdf(doc, anexos);
-              
+
+              if (incluirMapaPdf) {
+                try {
+                  await adicionarMapaCarotidasAoPdf(doc, todosOsVasos, { nome, data });
+                } catch (e) {
+                  console.error('Erro ao adicionar mapa interativo ao PDF:', e);
+                }
+              }
+
               doc.save(`Laudo_${nome}_${data}.pdf`);
               
               setNome("");
@@ -1459,7 +1508,9 @@ function CarotidasVertebrais() {
               setLaudoTexto("");
               setErro("");
               setAnexos([]);
+              setIncluirMapaPdf(false);
             }}>Salvar PDF</button>
+            </div>
           </div>
           {laudoTexto}
         </div>
@@ -1618,6 +1669,15 @@ function CarotidasVertebrais() {
           }
         }
       `}</style>
+
+      <CarotidasMapaInterativo
+        aberto={mostrarMapa}
+        onFechar={() => setMostrarMapa(false)}
+        vessels={todosOsVasos}
+        onChange={handleChangeVasoMapa}
+        nome={nome}
+        data={data}
+      />
     </div>
   );
 }
