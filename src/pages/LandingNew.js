@@ -1,5 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { GiBiceps, GiBrain } from "react-icons/gi";
+import { PiFootprintsFill } from "react-icons/pi";
 
 export default function LandingNew() {
   console.log("LandingNew component is rendering - NO VER PLANOS BUTTON");
@@ -71,19 +73,19 @@ export default function LandingNew() {
       <div style={{ display: "flex", gap: 14, marginBottom: 22 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <div style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid #3f93e0", background: "rgba(63,147,224,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 18, filter: "grayscale(1) contrast(1.15)" }}>🦵</span>
+            <PiFootprintsFill size={18} color="#ffffff" style={{ filter: "grayscale(1) contrast(1.15)" }} />
           </div>
           <span style={{ fontSize: 10, color: "#8fb3bd" }}>Venoso</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <div style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid #e0574a", background: "rgba(224,87,74,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 18, filter: "grayscale(1) contrast(1.15)" }}>💪</span>
+            <GiBiceps size={18} color="#ffffff" style={{ filter: "grayscale(1) contrast(1.15)" }} />
           </div>
           <span style={{ fontSize: 10, color: "#8fb3bd" }}>Arterial</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
           <div style={{ width: 42, height: 42, borderRadius: "50%", border: "1.5px solid #4fd8ec", background: "rgba(14,184,208,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 18, filter: "grayscale(1) contrast(1.15)" }}>🧠</span>
+            <GiBrain size={18} color="#ffffff" style={{ filter: "grayscale(1) contrast(1.15)" }} />
           </div>
           <span style={{ fontSize: 10, color: "#8fb3bd" }}>Carótidas</span>
         </div>

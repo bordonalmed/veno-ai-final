@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiSettings, FiList } from "react-icons/fi";
+import { GiBiceps, GiBrain } from "react-icons/gi";
+import { PiFootprintsFill } from "react-icons/pi";
 import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
 import { TrialManager } from "../utils/trialManager";
@@ -11,12 +13,16 @@ const COLOR_STYLES = {
   cyan: { border: "#4fd8ec", ring: "rgba(14,184,208,0.1)", glow: "rgba(14,184,208,0.55)" },
 };
 
+// Ícones vetoriais (react-icons) em vez de emoji: emoji depende da fonte do sistema operacional
+// e em vários desktops (Windows sem fonte de emoji colorida, principalmente) simplesmente não
+// aparece -- some mesmo, não é só uma questão de estilo. Ícone SVG sempre renderiza igual, em
+// qualquer navegador/SO, com ou sem o filtro grayscale que já dava o visual que a gente queria.
 const EXAMES = [
-  { label: "Doppler Venoso de Membros Inferiores", rota: "/mmii-venoso", emoji: "🦵", cor: "blue", regiao: "Membros inferiores" },
-  { label: "Doppler Arterial de Membros Inferiores", rota: "/mmii-arterial", emoji: "🦵", cor: "red", regiao: "Membros inferiores" },
-  { label: "Doppler Venoso de Membros Superiores", rota: "/mmss-venoso", emoji: "💪", cor: "blue", regiao: "Membros superiores" },
-  { label: "Doppler Arterial de Membros Superiores", rota: "/mmss-arterial", emoji: "💪", cor: "red", regiao: "Membros superiores" },
-  { label: "Doppler de Carótidas e Vertebrais", rota: "/carotidas-vertebrais", emoji: "🧠", cor: "cyan", regiao: "Pescoço" },
+  { label: "Doppler Venoso de Membros Inferiores", rota: "/mmii-venoso", Icone: PiFootprintsFill, cor: "blue", regiao: "Membros inferiores" },
+  { label: "Doppler Arterial de Membros Inferiores", rota: "/mmii-arterial", Icone: PiFootprintsFill, cor: "red", regiao: "Membros inferiores" },
+  { label: "Doppler Venoso de Membros Superiores", rota: "/mmss-venoso", Icone: GiBiceps, cor: "blue", regiao: "Membros superiores" },
+  { label: "Doppler Arterial de Membros Superiores", rota: "/mmss-arterial", Icone: GiBiceps, cor: "red", regiao: "Membros superiores" },
+  { label: "Doppler de Carótidas e Vertebrais", rota: "/carotidas-vertebrais", Icone: GiBrain, cor: "cyan", regiao: "Pescoço" },
 ];
 
 export default function Home({ onLogout }) {
@@ -322,7 +328,7 @@ function ExamTile({ exame, isMobile, onClick }) {
         justifyContent: "center",
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: isMobile ? 20 : 24, filter: "grayscale(1) contrast(1.15)" }}>{exame.emoji}</span>
+        <exame.Icone size={isMobile ? 20 : 24} color="#ffffff" style={{ filter: "grayscale(1) contrast(1.15)" }} />
       </div>
       <span style={{
         fontWeight: 600,
