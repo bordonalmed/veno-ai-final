@@ -443,7 +443,7 @@ export default function CarotidasMapaInterativo({ aberto, onFechar, vessels, onC
           <div>
             <div style={{ fontSize: "clamp(16px, 2.5vw, 20px)", fontWeight: 700, color: "#4fd8ec" }}>Mapa Interativo — Carótidas e Vertebrais</div>
             <div style={{ fontSize: 12.5, color: "#8fb3bd", marginTop: 4 }}>
-              Origem real dos vasos (arco aórtico → tronco braquiocefálico / subclávias) até a bifurcação cervical. Clique numa etiqueta pra editar o vaso.
+              Origem real dos vasos (arco aórtico → tronco braquiocefálico / subclávias) até a bifurcação cervical. Toque no vaso pra editar.
             </div>
           </div>
           <button
@@ -458,83 +458,48 @@ export default function CarotidasMapaInterativo({ aberto, onFechar, vessels, onC
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           {/* LEFT: illustration + legend */}
           <div style={{ flex: "1 1 520px", maxWidth: 860, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: 830, aspectRatio: "830 / 800", background: "#fff", border: "1px solid #d7dee3", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.35)", overflow: "hidden" }}>
+            <div style={{ position: "relative", width: "100%", maxWidth: 830, aspectRatio: "850 / 820", background: "#fff", border: "1px solid #d7dee3", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.35)", overflow: "hidden" }}>
               <div style={{ position: "absolute", inset: 0 }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
-              {Object.keys(CHIP_POS).map((key) => {
-                const isSel = selected === key;
-                const v = vessels[key] || defaultVessel();
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSelected(key)}
-                    aria-label={CAROTIDAS_VESSEL_NAMES[key]}
-                    style={{
-                      position: "absolute",
-                      left: `${(CHIP_POS[key].x / 830) * 100}%`,
-                      top: `${(CHIP_POS[key].y / 800) * 100}%`,
-                      width: 130,
-                      height: 34,
-                      borderRadius: 8,
-                      background: "#1a2434",
-                      border: isSel ? "2px solid #ffffff" : "1px solid #3a4a64",
-                      boxShadow: isSel ? "0 0 0 4px rgba(255,255,255,0.2), 0 2px 8px rgba(0,0,0,0.4)" : "0 2px 6px rgba(0,0,0,0.3)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "0 10px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: colorFor(v), flexShrink: 0 }}></span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#eaf3f6" }}>{key}</span>
-                  </button>
-                );
-              })}
+              {/* Área de toque: clica direto no traçado do vaso (igual ao Mapa Interativo do MMII) —
+                  nada de caixa fixa sobreposta, que não cabe em tela estreita. AVD/AVE (mais finos)
+                  são desenhados por último, pra ficarem por cima no cruzamento com a ACCD/ACCE —
+                  sem isso, a "bolha" grossa da bifurcação rouba o toque dos vasos vertebrais ali perto. */}
+              <svg viewBox="0 0 850 820" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+                {["ACID", "ACED", "ACCD", "ACIE", "ACEE", "ACCE", "AVD", "AVE"].map((key) => {
+                  const shape = VESSEL_SHAPE[key];
+                  if (!shape) return null;
+                  const ativo = selected === key;
+                  return (
+                    <g key={key} onClick={() => setSelected(key)} style={{ cursor: "pointer" }} aria-label={CAROTIDAS_VESSEL_NAMES[key]}>
+                      {shape.paths.map((p, i) => (
+                        <path
+                          key={i}
+                          d={p.d}
+                          fill="none"
+                          stroke={ativo ? "#0eb8d0" : "#000"}
+                          strokeOpacity={ativo ? 0.4 : 0.001}
+                          strokeWidth={Math.max(p.width + 6, 14)}
+                          strokeLinecap="round"
+                        />
+                      ))}
+                    </g>
+                  );
+                })}
+              </svg>
             </div>
 
             {/* Legend */}
             <div style={{ width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 6, background: "#fff", border: "1px solid #d7dee3", borderRadius: 10, padding: "12px 16px" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#5c6b78" }}>LEGENDA</div>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9aa5b1", textTransform: "uppercase", letterSpacing: 0.4 }}>Cor do vaso — status / fluxo</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                <LegendDot cor="#c0392b" label="Pérvia / normal" />
-                <LegendDot cor="#e57373" label="Fluxo hipocinético" />
-                <LegendDot cor="#7b241c" label="Fluxo hipercinético" />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <LegendDot cor="#c0392b" label="Pérvia" />
+                <LegendDot cor="#e57373" label="Hipocinético" />
+                <LegendDot cor="#7b241c" label="Hipercinético" />
                 <LegendDot cor="#000000" label="Oclusão" />
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 16, height: 3, background: "#9aa5b1", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#6b7684" }}>Estrutura de contexto (não editável)</span>
-                </span>
               </div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9aa5b1", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4 }}>Cor do ícone de estrangulamento — tipo de placa</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: "#ffffff", border: "1.5px solid #c7ced6", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Lipídica (branco)</span>
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: "#9aa5b1", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Calcificada (cinza)</span>
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: "#ffffff", border: "1.5px solid #6b7684", display: "inline-block" }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Mista (branco, contorno cinza)</span>
-                </span>
-              </div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9aa5b1", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4 }}>Stent</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{
-                    width: 20, height: 12, borderRadius: 3, display: "inline-block",
-                    background: "#c0392b",
-                    backgroundImage: "repeating-linear-gradient(45deg, #f3f6f8 0, #f3f6f8 1px, transparent 1px, transparent 4px), repeating-linear-gradient(-45deg, #f3f6f8 0, #f3f6f8 1px, transparent 1px, transparent 4px)"
-                  }}></span>
-                  <span style={{ fontSize: 12, color: "#2d3a4a" }}>Malha cobrindo o vaso = stent</span>
-                </span>
-              </div>
-              <div style={{ fontSize: 11.5, color: "#6b7684", marginTop: 4, lineHeight: 1.5 }}>
-                <b style={{ color: "#2d3a4a" }}>Ateromatose</b> não muda cor nenhuma — aparece como textura só nas paredes internas do vaso (nunca cruza o centro): discreta é rente à borda e leve, moderada é média, severa avança mais pro lúmen e é densa/áspera. <b style={{ color: "#2d3a4a" }}>Estenose</b> não muda a cor do vaso — o quanto o ícone de estrangulamento aperta vem da faixa de %, e a cor do ícone vem do tipo de placa (acima). <b style={{ color: "#2d3a4a" }}>Stent</b> aparece como uma malha cobrindo todo o trecho do vaso.
+              <div style={{ fontSize: 11, color: "#6b7684", lineHeight: 1.5 }}>
+                Textura na parede = ateromatose · triângulo nas bordas = estenose (branco=lipídica, cinza=calcificada, contorno cinza=mista) · malha cobrindo o vaso = stent.
               </div>
             </div>
           </div>
