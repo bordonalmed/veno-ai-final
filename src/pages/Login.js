@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiEye, FiEyeOff, FiLoader, FiMail, FiLock } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiLoader, FiMail, FiLock, FiKey, FiTarget, FiUserPlus } from "react-icons/fi";
 import { AuthService } from "../services/supabaseAuthService";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -172,13 +172,17 @@ export default function Login({ onLogin, onCadastrar }) {
             margin: "0",
             fontSize: "13px",
             color: modo === "cadastro" ? "#0eb8d0" : "#aaffee",
-            fontWeight: 500
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6
           }}>
             {modo === "cadastro"
-              ? "👋 Bem-vindo! Crie sua conta para começar"
+              ? <><FiUserPlus /> Bem-vindo! Crie sua conta para começar</>
               : modo === "recuperar"
-              ? "🔑 Vamos te ajudar a recuperar o acesso"
-              : "🔐 Faça login para acessar o sistema"}
+              ? <><FiKey /> Vamos te ajudar a recuperar o acesso</>
+              : <><FiLock /> Faça login para acessar o sistema</>}
           </p>
         </div>
 
@@ -191,8 +195,8 @@ export default function Login({ onLogin, onCadastrar }) {
             border: "1px solid rgba(95,206,138,0.3)",
             borderRadius: "8px"
           }}>
-            <p style={{ margin: 0, fontSize: "12.5px", color: "#5fce8a", fontWeight: 600 }}>
-              🎯 7 dias grátis, sem cartão de crédito
+            <p style={{ margin: 0, fontSize: "12.5px", color: "#5fce8a", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <FiTarget /> 7 dias grátis, sem cartão de crédito
             </p>
           </div>
         )}

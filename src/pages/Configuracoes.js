@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiSave, FiUser, FiFileText, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2, FiMail, FiAlertTriangle } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiUser, FiFileText, FiCreditCard, FiMessageCircle, FiDatabase, FiUpload, FiTrash2, FiMail, FiAlertTriangle, FiSettings, FiEdit3, FiLink } from "react-icons/fi";
+import { MdPalette } from "react-icons/md";
+import { FaGem, FaHospital } from "react-icons/fa";
 import { TrialManager } from "../utils/trialManager";
 import { AuthService } from "../services/supabaseAuthService";
 
@@ -330,13 +332,16 @@ export default function Configuracoes() {
           <FiArrowLeft size={18}/> Voltar
         </button>
         
-        <h1 style={{ 
-          fontSize: 28, 
-          fontWeight: 800, 
+        <h1 style={{
+          fontSize: 28,
+          fontWeight: 800,
           color: "#0eb8d0",
-          margin: 0
+          margin: 0,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10
         }}>
-          ⚙️ Configurações
+          <FiSettings /> Configurações
         </h1>
       </div>
 
@@ -381,14 +386,14 @@ export default function Configuracoes() {
         {/* Personalização do Laudo */}
         {activeTab === "personalizacao" && (
           <div>
-            <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20 }}>
-              🎨 Personalização do Laudo
+            <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20, display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <MdPalette /> Personalização do Laudo
             </h3>
 
             {isPremium && (
               <div style={{ marginBottom: 24 }}>
-                <p style={{ color: "#aaa", fontSize: 14, marginBottom: 12 }}>
-                  💎 Premium: cadastre até 3 usuários (cada um com logo, nome, CRM, especialidade, assinatura e dados da clínica). O perfil ativo é usado nos laudos.
+                <p style={{ color: "#aaa", fontSize: 14, marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                  <FaGem style={{ flexShrink: 0, marginTop: 3 }} /> <span>Premium: cadastre até 3 usuários (cada um com logo, nome, CRM, especialidade, assinatura e dados da clínica). O perfil ativo é usado nos laudos.</span>
                 </p>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {[0, 1, 2].map(i => (
@@ -425,7 +430,7 @@ export default function Configuracoes() {
                 borderRadius: 8,
                 border: "2px dashed #0eb8d033"
               }}>
-                <h4 style={{ color: "#0eb8d0", marginBottom: 15 }}>🏥 Logo da Clínica/Médico</h4>
+                <h4 style={{ color: "#0eb8d0", marginBottom: 15, display: "inline-flex", alignItems: "center", gap: 7 }}><FaHospital /> Logo da Clínica/Médico</h4>
                 <p style={{ marginBottom: 15, color: "#ccc", fontSize: 14 }}>
                   O logo aparecerá no topo centralizado dos laudos em PDF. Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 2MB.
                 </p>
@@ -574,7 +579,7 @@ export default function Configuracoes() {
                 borderRadius: 8,
                 border: "2px dashed #0eb8d033"
               }}>
-                <h4 style={{ color: "#0eb8d0", marginBottom: 15 }}>✍️ Assinatura do Médico</h4>
+                <h4 style={{ color: "#0eb8d0", marginBottom: 15, display: "inline-flex", alignItems: "center", gap: 7 }}><FiEdit3 /> Assinatura do Médico</h4>
                 <p style={{ marginBottom: 15, color: "#ccc", fontSize: 14 }}>
                   A assinatura aparecerá centralizada no final dos laudos em PDF, abaixo da conclusão. Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 1MB.
                 </p>
@@ -742,8 +747,8 @@ export default function Configuracoes() {
         {/* Dados do Usuário */}
         {activeTab === "usuario" && (
           <div>
-            <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20 }}>
-              👤 Dados do Usuário
+            <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20, display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <FiUser /> Dados do Usuário
             </h3>
             
             <div style={{ display: "grid", gap: 20 }}>
@@ -912,8 +917,8 @@ export default function Configuracoes() {
         {/* Integrações */}
         {activeTab === "integracoes" && (
           <div>
-            <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20 }}>
-              🔗 Integrações
+            <h3 style={{ color: "#0eb8d0", marginBottom: 20, fontSize: 20, display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <FiLink /> Integrações
             </h3>
             {!temAcesso ? (
               <div style={{
@@ -947,7 +952,7 @@ export default function Configuracoes() {
                   Ative o envio de exames por WhatsApp. Após ativar e clicar em &quot;Salvar Configurações&quot;, o botão verde WhatsApp ficará visível em Exames Realizados. Apenas exames salvos podem ser enviados, e somente em formato PDF (por segurança).
                 </p>
                 <p style={{ marginBottom: 15, fontSize: 13, color: "#999" }}>
-                  <strong>Como usar:</strong> Marque &quot;Ativar integração com WhatsApp&quot;, informe o número (seu ou da clínica) e salve. Gere o PDF do exame (botão 🖨️ PDF) e use o botão WhatsApp para enviar o laudo em PDF ao paciente.
+                  <strong>Como usar:</strong> Marque &quot;Ativar integração com WhatsApp&quot;, informe o número (seu ou da clínica) e salve. Gere o PDF do exame (botão PDF) e use o botão WhatsApp para enviar o laudo em PDF ao paciente.
                 </p>
                 
                 <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 15, cursor: "pointer" }}>
@@ -1022,7 +1027,7 @@ export default function Configuracoes() {
                   Ative o envio de exames por e-mail. Após ativar e clicar em &quot;Salvar Configurações&quot;, o botão azul E-mail ficará visível em Exames Realizados. Apenas exames salvos podem ser enviados, e somente em formato PDF (por segurança).
                 </p>
                 <p style={{ marginBottom: 15, fontSize: 13, color: "#999" }}>
-                  <strong>Como usar:</strong> Marque &quot;Ativar envio de exames via e-mail&quot;, opcionalmente informe seu e-mail (ou da clínica) e salve. Gere o PDF do exame (botão 🖨️ PDF) e use o botão E-mail para enviar o laudo em PDF ao paciente.
+                  <strong>Como usar:</strong> Marque &quot;Ativar envio de exames via e-mail&quot;, opcionalmente informe seu e-mail (ou da clínica) e salve. Gere o PDF do exame (botão PDF) e use o botão E-mail para enviar o laudo em PDF ao paciente.
                 </p>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 15, cursor: "pointer" }}>
                   <input
@@ -1090,8 +1095,8 @@ export default function Configuracoes() {
         {activeTab === "plano" && (
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <h3 style={{ color: "#0eb8d0", fontSize: 20, margin: 0 }}>
-                💳 Plano e Assinatura
+              <h3 style={{ color: "#0eb8d0", fontSize: 20, margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <FiCreditCard /> Plano e Assinatura
               </h3>
               <button
                 onClick={() => navigate('/home')}

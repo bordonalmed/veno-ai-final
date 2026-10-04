@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiCheck, FiClock, FiRefreshCw } from "react-icons/fi";
+import { FiCheck, FiClock, FiRefreshCw, FiZap, FiAward } from "react-icons/fi";
 import { TrialManager } from "../utils/trialManager";
 import { HotmartService } from "../services/hotmartService";
 
@@ -306,24 +306,31 @@ export default function ConfirmacaoPagamento() {
           <p style={{
             fontSize: 16,
             opacity: 0.8,
-            marginBottom: 20
+            marginBottom: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8
           }}>
-            🚀 Seu trial foi convertido para Premium com sucesso!
+            <FiZap /> Seu trial foi convertido para Premium com sucesso!
           </p>
-          
+
           <div style={{
             background: "#11b58120",
             borderRadius: 8,
             padding: 16,
             fontSize: 14,
             opacity: 0.9,
-            marginBottom: 20
+            marginBottom: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6
           }}>
-            ✅ Trial convertido para Premium<br/>
-            ✅ Laudos ilimitados<br/>
-            ✅ Todos os templates<br/>
-            ✅ Suporte prioritário<br/>
-            ✅ Armazenamento em nuvem
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Trial convertido para Premium</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Laudos ilimitados</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Todos os templates</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Suporte prioritário</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Armazenamento em nuvem</span>
           </div>
           
           <p style={{
@@ -376,23 +383,30 @@ export default function ConfirmacaoPagamento() {
           <p style={{
             fontSize: 16,
             opacity: 0.8,
-            marginBottom: 20
+            marginBottom: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8
           }}>
-            🎉 Seu plano Premium foi ativado com sucesso!
+            <FiAward /> Seu plano Premium foi ativado com sucesso!
           </p>
-          
+
           <div style={{
             background: "#11b58120",
             borderRadius: 8,
             padding: 16,
             fontSize: 14,
             opacity: 0.9,
-            marginBottom: 20
+            marginBottom: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6
           }}>
-            ✅ Laudos ilimitados<br/>
-            ✅ Todos os templates<br/>
-            ✅ Suporte prioritário<br/>
-            ✅ Armazenamento em nuvem
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Laudos ilimitados</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Todos os templates</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Suporte prioritário</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Armazenamento em nuvem</span>
           </div>
           
           <p style={{

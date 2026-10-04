@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiCheck, FiStar, FiZap, FiAward } from "react-icons/fi";
+import { FiArrowLeft, FiCheck, FiStar, FiZap, FiAward, FiCreditCard } from "react-icons/fi";
+import { FaGem } from "react-icons/fa";
 
 const FAQ = [
   {
@@ -159,9 +160,13 @@ export default function Planos() {
             fontSize: "clamp(24px, 6vw, 32px)",
             fontWeight: 700,
             color: "#0eb8d0",
-            marginBottom: 8
+            marginBottom: 8,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10
           }}>
-            💳 Escolha seu Plano
+            <FiCreditCard /> Escolha seu Plano
           </h1>
           <p style={{
             fontSize: "clamp(14px, 4vw, 18px)",
@@ -378,7 +383,7 @@ export default function Planos() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ fontSize: 22, marginBottom: 8 }}>💎</div>
+            <div style={{ fontSize: 22, marginBottom: 8, display: "flex" }}><FaGem /></div>
             <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: "#0eb8d0" }}>
               Plano Premium selecionado
             </h3>
