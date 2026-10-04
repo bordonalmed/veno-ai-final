@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
+import { FaStethoscope } from "react-icons/fa";
 import ExamHeader from "../components/ExamHeader";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
@@ -1008,9 +1010,9 @@ function MMIIVenoso() {
           <button
             type="button"
             onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
-            style={{ ...buttonStyle, background: "#3d5a80" }}
+            style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            🖱️ Mapeamento Interativo
+            <FiMousePointer /> Mapeamento Interativo
           </button>
         </div>
       )}
@@ -1100,8 +1102,8 @@ function MMIIVenoso() {
                       Incluir Mapeamento Visual no PDF
                     </label>
                     <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
-                    <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarEsquema(true)}>
-                      🩺 Mapeamento Visual
+                    <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setMostrarEsquema(true)}>
+                      <FaStethoscope /> Mapeamento Visual
                     </button>
                     <button style={{
                       ...buttonStyle,
@@ -1145,9 +1147,12 @@ function MMIIVenoso() {
                       margin: 0,
                       color: '#0eb8d0',
                       fontSize: 'clamp(12px, 2vw, 14px)',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
                     }}>
-                      📎 Anexos
+                      <FiPaperclip /> Anexos
                     </h3>
                     <span style={{
                       color: '#888',
@@ -1253,12 +1258,14 @@ function MMIIVenoso() {
                               fontSize: 'clamp(9px, 1.4vw, 11px)',
                               cursor: 'pointer',
                               fontWeight: 500,
+                              display: 'inline-flex',
+                              alignItems: 'center',
                               transition: 'background 0.2s ease'
                             }}
-                            onMouseOver={(e) => e.target.style.background = '#cc3333'}
-                            onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                            onMouseOver={(e) => e.currentTarget.style.background = '#cc3333'}
+                            onMouseOut={(e) => e.currentTarget.style.background = '#ff4444'}
                           >
-                            ✕
+                            <FiX />
                           </button>
                         </div>
                       ))}
@@ -1377,8 +1384,8 @@ function MMIIVenoso() {
               Incluir Mapeamento Visual no PDF
             </label>
             <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
-            <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarEsquema(true)}>
-              🩺 Mapeamento Visual
+            <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setMostrarEsquema(true)}>
+              <FaStethoscope /> Mapeamento Visual
             </button>
             <button style={{
               ...buttonStyle,
@@ -1422,9 +1429,12 @@ function MMIIVenoso() {
               margin: 0,
               color: '#0eb8d0',
               fontSize: 'clamp(12px, 2vw, 14px)',
-              fontWeight: 600
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
             }}>
-              📎 Anexos
+              <FiPaperclip /> Anexos
             </h3>
             <span style={{
               color: '#888',
@@ -1530,12 +1540,14 @@ function MMIIVenoso() {
                       fontSize: 'clamp(9px, 1.4vw, 11px)',
                       cursor: 'pointer',
                       fontWeight: 500,
+                      display: 'inline-flex',
+                      alignItems: 'center',
                       transition: 'background 0.2s ease'
                     }}
-                    onMouseOver={(e) => e.target.style.background = '#cc3333'}
-                    onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                    onMouseOver={(e) => e.currentTarget.style.background = '#cc3333'}
+                    onMouseOut={(e) => e.currentTarget.style.background = '#ff4444'}
                   >
-                    ✕
+                    <FiX />
                   </button>
                 </div>
               ))}

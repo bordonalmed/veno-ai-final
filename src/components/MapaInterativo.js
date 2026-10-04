@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { FiPaperclip, FiX } from "react-icons/fi";
+import { FaStethoscope } from "react-icons/fa";
 import {
   MEDIAL_SILHOUETTE,
   POSTERIOR_SILHOUETTE,
@@ -338,20 +340,24 @@ export default function MapaInterativo({
           </svg>
         </div>
 
+        {/* ● (círculo geométrico comum) em vez de emoji de bolinha colorida (🔴🔵⚫🟠⚪): emoji
+            de cor ignora o "color" do CSS e depende da fonte de emoji do sistema -- em vários
+            desktops (Windows sem fonte de emoji colorida, principalmente) a cor simplesmente não
+            aparece. ● é texto comum, sempre respeita a cor que a gente define, em qualquer SO. */}
         <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center" }}>
-          <span>🔵 suficiente</span>
-          <span>🔴 insuficiente</span>
-          <span>⚫ trombose</span>
-          <span>🟠 recanalização parcial</span>
-          <span>⚪ ausente</span>
+          <span style={{ color: CORES["pérvia e competente"] }}>● suficiente</span>
+          <span style={{ color: CORES["pérvia e incompetente"] }}>● insuficiente</span>
+          <span style={{ color: CORES["não compressível e sem fluxo (trombose)"] }}>● trombose</span>
+          <span style={{ color: CORES["recanalização parcial"] }}>● recanalização parcial</span>
+          <span style={{ color: CORES["ausente"] }}>● ausente</span>
           <span style={{ marginLeft: 8, color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
           <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
           <span>Varizes (toque nos ícones tracejados na coxa/perna/tornozelo/pé):</span>
-          <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>〰️ superficiais</span>
-          <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>▦ reticulares</span>
-          <span style={{ color: VARIZ_CORES["Microvarizes"] }}>✦ microvarizes</span>
+          <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>● superficiais</span>
+          <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>● reticulares</span>
+          <span style={{ color: VARIZ_CORES["Microvarizes"] }}>● microvarizes</span>
         </div>
 
         {/* Painel contextual do vaso selecionado */}
@@ -507,7 +513,7 @@ export default function MapaInterativo({
         {/* Anexos: mesmas imagens (PNG/JPG) que o formulário principal anexa ao PDF */}
         <div style={{ marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>📎 Anexos:</div>
+            <div style={{ fontWeight: 700, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}><FiPaperclip /> Anexos:</div>
             <span style={{ fontSize: 11, color: "#5c6b78" }}>{anexos.length} arquivo(s)</span>
           </div>
           <div
@@ -531,7 +537,7 @@ export default function MapaInterativo({
                     <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{anexo.name}</div>
                     <div style={{ fontSize: 10, color: "#5c6b78" }}>{formatFileSize(anexo.size)}</div>
                   </div>
-                  <button onClick={() => onRemoveAnexo(anexo.id)} style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer" }}>✕</button>
+                  <button onClick={() => onRemoveAnexo(anexo.id)} style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer", display: "inline-flex", alignItems: "center" }}><FiX /></button>
                 </div>
               ))}
             </div>
@@ -561,7 +567,7 @@ export default function MapaInterativo({
           Incluir Mapeamento Visual no PDF
         </label>
         <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
-          <button onClick={onAbrirMapeamentoVisual} style={mapaBotaoStyle("#6f42c1")}>🩺 Mapeamento Visual</button>
+          <button onClick={onAbrirMapeamentoVisual} style={{ ...mapaBotaoStyle("#6f42c1"), display: "inline-flex", alignItems: "center", gap: 6 }}><FaStethoscope /> Mapeamento Visual</button>
           <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
           <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>
           <button onClick={() => {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { FiClipboard, FiCalendar, FiUser, FiClock, FiEdit2, FiTrash2, FiPaperclip, FiX } from "react-icons/fi";
+import { GiLeg } from "react-icons/gi";
 import ExamHeader from "../components/ExamHeader";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
@@ -543,11 +545,12 @@ function ExamesSalvosList({ onCarregar, onEditar, onExcluir, onFechar }) {
         color: '#666'
       }}>
         <div style={{
-          fontSize: 'clamp(48px, 8vw, 64px)',
+          display: 'flex',
+          justifyContent: 'center',
           marginBottom: 'clamp(16px, 3vw, 24px)',
           opacity: 0.5
         }}>
-          📋
+          <FiClipboard size={56} />
         </div>
         <h3 style={{
           margin: '0 0 clamp(12px, 2.5vw, 16px) 0',
@@ -640,10 +643,10 @@ function ExamesSalvosList({ onCarregar, onEditar, onExcluir, onFechar }) {
                   fontSize: 'clamp(12px, 2.2vw, 14px)',
                   color: '#666'
                 }}>
-                  <span>📅 {exame.data}</span>
-                  <span>👤 {exame.idade} anos</span>
-                  <span>🦵 {exame.lado}</span>
-                  <span>🕐 {formatarData(exame.timestamp)}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FiCalendar size={13} /> {exame.data}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FiUser size={13} /> {exame.idade} anos</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><GiLeg size={13} /> {exame.lado}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FiClock size={13} /> {formatarData(exame.timestamp)}</span>
                 </div>
               </div>
             </div>
@@ -667,19 +670,23 @@ function ExamesSalvosList({ onCarregar, onEditar, onExcluir, onFechar }) {
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   flex: '1',
-                  minWidth: 'clamp(80px, 15vw, 100px)'
+                  minWidth: 'clamp(80px, 15vw, 100px)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.05)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(14, 184, 208, 0.4)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(14, 184, 208, 0.4)';
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.boxShadow = 'none';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
                 title="Carregar exame"
               >
-                📋 Carregar
+                <FiClipboard /> Carregar
               </button>
               
               <button
@@ -695,19 +702,23 @@ function ExamesSalvosList({ onCarregar, onEditar, onExcluir, onFechar }) {
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   flex: '1',
-                  minWidth: 'clamp(80px, 15vw, 100px)'
+                  minWidth: 'clamp(80px, 15vw, 100px)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.05)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(255, 193, 7, 0.4)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 193, 7, 0.4)';
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.boxShadow = 'none';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
                 title="Editar exame"
               >
-                ✏️ Editar
+                <FiEdit2 /> Editar
               </button>
               
               <button
@@ -723,19 +734,23 @@ function ExamesSalvosList({ onCarregar, onEditar, onExcluir, onFechar }) {
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   flex: '1',
-                  minWidth: 'clamp(80px, 15vw, 100px)'
+                  minWidth: 'clamp(80px, 15vw, 100px)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.05)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.4)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.4)';
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.boxShadow = 'none';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
                 title="Excluir exame"
               >
-                🗑️ Excluir
+                <FiTrash2 /> Excluir
               </button>
             </div>
           </div>
@@ -1891,9 +1906,12 @@ function MMIIArterial() {
                   margin: 0,
                   color: '#0eb8d0',
                   fontSize: 'clamp(12px, 2vw, 14px)',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
                 }}>
-                  📎 Anexos
+                  <FiPaperclip /> Anexos
                 </h3>
                 <span style={{
                   color: '#888',
@@ -1999,12 +2017,14 @@ function MMIIArterial() {
                           fontSize: 'clamp(9px, 1.4vw, 11px)',
                           cursor: 'pointer',
                           fontWeight: 500,
+                          display: 'inline-flex',
+                          alignItems: 'center',
                           transition: 'background 0.2s ease'
                         }}
-                        onMouseOver={(e) => e.target.style.background = '#cc3333'}
-                        onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                        onMouseOver={(e) => e.currentTarget.style.background = '#cc3333'}
+                        onMouseOut={(e) => e.currentTarget.style.background = '#ff4444'}
                       >
-                        ✕
+                        <FiX />
                       </button>
                     </div>
                   ))}

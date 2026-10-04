@@ -549,11 +549,11 @@ export default function EsquemaMapeamentoModal({
               justifyContent: "center",
             }}
           >
-            <span>🔵 suficiente</span>
-            <span>🔴 insuficiente</span>
-            <span>⚫ trombose</span>
-            <span>🟠 recanalização parcial</span>
-            <span>⚪ ausente (tracejado)</span>
+            <span style={{ color: CORES["pérvia e competente"] }}>● suficiente</span>
+            <span style={{ color: CORES["pérvia e incompetente"] }}>● insuficiente</span>
+            <span style={{ color: CORES["não compressível e sem fluxo (trombose)"] }}>● trombose</span>
+            <span style={{ color: CORES["recanalização parcial"] }}>● recanalização parcial</span>
+            <span style={{ color: CORES["ausente"] }}>● ausente (tracejado)</span>
             <span style={{ color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
             <span style={{ marginLeft: 8 }}>Ø = diâmetro (mm) · traço = limite do trecho com refluxo</span>
           </div>
