@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiLogOut, FiSettings, FiList } from "react-icons/fi";
+import { FiLogOut, FiSettings, FiList, FiZap } from "react-icons/fi";
 import { GiBiceps, GiBrain, GiLeg } from "react-icons/gi";
 import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
@@ -203,7 +203,7 @@ export default function Home({ onLogout }) {
           textAlign: "center",
           fontSize: 14
         }}>
-          <span style={{ fontWeight: 600 }}>🚀 Upgrade para Premium</span>
+          <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiZap /> Upgrade para Premium</span>
           <span style={{ opacity: 0.8, marginLeft: 8 }}>• Laudos ilimitados</span>
           <button
             onClick={handleUpgrade}

@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { GiBiceps, GiBrain, GiLeg } from "react-icons/gi";
+import { FiTarget } from "react-icons/fi";
 
 export default function LandingNew() {
   console.log("LandingNew component is rendering - NO VER PLANOS BUTTON");
@@ -102,7 +103,7 @@ export default function LandingNew() {
         padding: "12px 16px",
         textAlign: "center"
       }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: "#5fce8a" }}>🎯 Teste grátis por 7 dias</div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: "#5fce8a", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><FiTarget size={13} /> Teste grátis por 7 dias</div>
         <div style={{ marginTop: 3, fontSize: 12, color: "#9fc7b3" }}>5 laudos inclusos · sem cartão de crédito</div>
       </div>
 

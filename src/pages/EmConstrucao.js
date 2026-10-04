@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
+import { FiArrowLeft, FiSettings, FiHome, FiList, FiLogOut, FiTool } from "react-icons/fi";
 
 export default function EmConstrucao() {
   const navigate = useNavigate();
@@ -176,14 +176,17 @@ export default function EmConstrucao() {
         flex: 1,
         textAlign: "center"
       }}>
-        <h1 style={{ 
-          fontSize: "clamp(32px, 6vw, 42px)", 
-          fontWeight: 800, 
-          marginBottom: "clamp(12px, 2vw, 18px)", 
-          color: "#0eb8d0", 
-          letterSpacing: 2 
+        <h1 style={{
+          fontSize: "clamp(32px, 6vw, 42px)",
+          fontWeight: 800,
+          marginBottom: "clamp(12px, 2vw, 18px)",
+          color: "#0eb8d0",
+          letterSpacing: 2,
+          display: "flex",
+          alignItems: "center",
+          gap: "clamp(8px, 1.5vw, 12px)"
         }}>
-          Em Construção 🚧
+          Em Construção <FiTool />
         </h1>
         <div style={{ 
           fontSize: "clamp(16px, 3vw, 20px)", 
