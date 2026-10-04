@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { saveAs } from "file-saver";
-import { FiArrowLeft, FiTrash2, FiX, FiWifi, FiWifiOff, FiMessageCircle, FiMail, FiMoreVertical, FiAlertTriangle } from "react-icons/fi";
+import { FiArrowLeft, FiTrash2, FiX, FiWifi, FiWifiOff, FiMessageCircle, FiMail, FiMoreVertical, FiAlertTriangle, FiClipboard, FiRefreshCw, FiCheckSquare, FiSquare, FiSearch, FiCalendar, FiEye, FiEdit2, FiPrinter } from "react-icons/fi";
+import { MdSort } from "react-icons/md";
+import { FaHospital } from "react-icons/fa";
+import { GiLeg } from "react-icons/gi";
 import examesRealtimeService from "../services/examesRealtimeService";
 import { TrialManager } from "../utils/trialManager";
 
@@ -486,13 +489,16 @@ export default function ExamesRealizados() {
           </button>
           
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1 }}>
-            <h1 style={{ 
-              fontSize: "clamp(18px, 4vw, 24px)", 
-              fontWeight: 800, 
+            <h1 style={{
+              fontSize: "clamp(18px, 4vw, 24px)",
+              fontWeight: 800,
               color: "#0eb8d0",
-              margin: 0
+              margin: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8
             }}>
-              📋 Exames Realizados ({examesFiltrados.length})
+              <FiClipboard /> Exames Realizados ({examesFiltrados.length})
             </h1>
             
             {/* Status de sincronização compacto */}
@@ -584,7 +590,7 @@ export default function ExamesRealizados() {
               boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)"
             }}
           >
-            🔄 Sync
+            <FiRefreshCw /> Sync
           </button>
           
           {/* Botão principal: Selecionar */}
@@ -605,7 +611,7 @@ export default function ExamesRealizados() {
               transition: "all 0.3s ease"
             }}
           >
-            {modoSelecao ? "❌ Cancelar" : "☑️ Selecionar"}
+            {modoSelecao ? <><FiX /> Cancelar</> : <><FiCheckSquare /> Selecionar</>}
           </button>
           
           {/* Botões de seleção (apenas no modo seleção) */}
@@ -623,10 +629,13 @@ export default function ExamesRealizados() {
                   cursor: examesFiltrados.length === 0 ? "not-allowed" : "pointer",
                   fontSize: "11px",
                   fontWeight: "bold",
-                  opacity: examesFiltrados.length === 0 ? 0.5 : 1
+                  opacity: examesFiltrados.length === 0 ? 0.5 : 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5
                 }}
               >
-                ☑️ Todos
+                <FiCheckSquare /> Todos
               </button>
 
               <button
@@ -641,10 +650,13 @@ export default function ExamesRealizados() {
                   cursor: examesSelecionados.length === 0 || carregando ? "not-allowed" : "pointer",
                   fontSize: "11px",
                   fontWeight: "bold",
-                  opacity: examesSelecionados.length === 0 || carregando ? 0.5 : 1
+                  opacity: examesSelecionados.length === 0 || carregando ? 0.5 : 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5
                 }}
               >
-                🗑️ Excluir ({examesSelecionados.length})
+                <FiTrash2 /> Excluir ({examesSelecionados.length})
               </button>
             </>
           )}
@@ -691,13 +703,15 @@ export default function ExamesRealizados() {
         }}>
           {/* Busca */}
           <div>
-            <label style={{ 
-              display: "block", 
-              marginBottom: "4px", 
+            <label style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              marginBottom: "4px",
               fontSize: "12px",
               color: "#aaa"
             }}>
-              🔍 Buscar:
+              <FiSearch size={13} /> Buscar:
             </label>
             <input
               type="text"
@@ -718,13 +732,15 @@ export default function ExamesRealizados() {
           
           {/* Filtro por tipo */}
           <div>
-            <label style={{ 
-              display: "block", 
-              marginBottom: "4px", 
+            <label style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              marginBottom: "4px",
               fontSize: "12px",
               color: "#aaa"
             }}>
-              📋 Tipo:
+              <FiClipboard size={13} /> Tipo:
             </label>
             <select
               value={filtroTipo}
@@ -749,12 +765,14 @@ export default function ExamesRealizados() {
           {/* Ordenação */}
           <div>
             <label style={{
-              display: "block",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
               marginBottom: "4px",
               fontSize: "12px",
               color: "#aaa"
             }}>
-              ↕️ Ordenar por:
+              <MdSort size={14} /> Ordenar por:
             </label>
             <select
               value={ordenacao}
@@ -882,9 +900,9 @@ export default function ExamesRealizados() {
                     fontSize: "12px",
                     color: "#aaa"
                   }}>
-                    <span>📅 {formatarDataDiaMesAno(exame.data) || exame.data}</span>
-                    <span>🏥 {exame.tipoNome}</span>
-                    {exame.lado && <span>🦵 {exame.lado}</span>}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><FiCalendar size={12} /> {formatarDataDiaMesAno(exame.data) || exame.data}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><FaHospital size={12} /> {exame.tipoNome}</span>
+                    {exame.lado && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><GiLeg size={12} /> {exame.lado}</span>}
                   </div>
                 </div>
 
@@ -912,7 +930,7 @@ export default function ExamesRealizados() {
                         gap: "4px"
                       }}
                     >
-                      👁️ Ver
+                      <FiEye /> Ver
                     </button>
 
                     <button
@@ -930,7 +948,7 @@ export default function ExamesRealizados() {
                         gap: "4px"
                       }}
                     >
-                      ✏️ Editar
+                      <FiEdit2 /> Editar
                     </button>
 
                     <button
@@ -948,7 +966,7 @@ export default function ExamesRealizados() {
                         gap: "4px"
                       }}
                     >
-                      🖨️ PDF
+                      <FiPrinter /> PDF
                     </button>
 
                     <button
@@ -1047,12 +1065,15 @@ export default function ExamesRealizados() {
                     color: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d0",
                     fontSize: "12px",
                     fontWeight: "bold",
-                    textAlign: "center",
                     padding: "8px",
                     background: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c20" : "#0eb8d020",
-                    borderRadius: "4px"
+                    borderRadius: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 5
                   }}>
-                    {examesSelecionados.find(e => e.id === exame.id) ? "☑️ Selecionado" : "☐ Não selecionado"}
+                    {examesSelecionados.find(e => e.id === exame.id) ? <><FiCheckSquare /> Selecionado</> : <><FiSquare /> Não selecionado</>}
                   </div>
                 )}
               </div>
@@ -1094,12 +1115,15 @@ export default function ExamesRealizados() {
               borderBottom: "2px solid #0eb8d0",
               paddingBottom: "8px"
             }}>
-              <h3 style={{ 
-                color: "#0eb8d0", 
+              <h3 style={{
+                color: "#0eb8d0",
                 margin: 0,
-                fontSize: "16px"
+                fontSize: "16px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6
               }}>
-                👁️ {exameVisualizando.nome}
+                <FiEye /> {exameVisualizando.nome}
               </h3>
               <button
                 onClick={() => setExameVisualizando(null)}
@@ -1150,10 +1174,14 @@ export default function ExamesRealizados() {
                   padding: "10px 15px",
                   fontWeight: 600,
                   cursor: "pointer",
-                  fontSize: "14px"
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6
                 }}
               >
-                ✏️ Editar Exame
+                <FiEdit2 /> Editar Exame
               </button>
               <button
                 onClick={() => gerarPDFExame(exameVisualizando)}
@@ -1165,10 +1193,14 @@ export default function ExamesRealizados() {
                   padding: "10px 15px",
                   fontWeight: 600,
                   cursor: "pointer",
-                  fontSize: "14px"
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6
                 }}
               >
-                🖨️ Imprimir PDF
+                <FiPrinter /> Imprimir PDF
               </button>
             </div>
           </div>
@@ -1213,7 +1245,7 @@ export default function ExamesRealizados() {
               Paciente: <strong style={{ color: "#0eb8d0" }}>{whatsappExame.nome}</strong> — {whatsappExame.tipoNome}
             </p>
             <div style={{ background: "rgba(255,193,7,0.15)", border: "1px solid rgba(255,193,7,0.5)", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 13, color: "#e6d68a" }}>
-              <strong>Segurança:</strong> Apenas envio em PDF é aceito. Gere o PDF deste exame (botão 🖨️ PDF) antes de enviar e anexe o arquivo na conversa do WhatsApp.
+              <strong>Segurança:</strong> Apenas envio em PDF é aceito. Gere o PDF deste exame (botão PDF) antes de enviar e anexe o arquivo na conversa do WhatsApp.
             </div>
             <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#fff" }}>
               Número do paciente (com DDD):
@@ -1320,7 +1352,7 @@ export default function ExamesRealizados() {
               Paciente: <strong style={{ color: "#0eb8d0" }}>{emailExame.nome}</strong> — {emailExame.tipoNome}
             </p>
             <div style={{ background: "rgba(255,193,7,0.15)", border: "1px solid rgba(255,193,7,0.5)", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 13, color: "#e6d68a" }}>
-              <strong>Segurança:</strong> Apenas envio em PDF é aceito. Gere o PDF deste exame (botão 🖨️ PDF) antes de enviar e anexe o arquivo no e-mail ao paciente.
+              <strong>Segurança:</strong> Apenas envio em PDF é aceito. Gere o PDF deste exame (botão PDF) antes de enviar e anexe o arquivo no e-mail ao paciente.
             </div>
             <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#fff" }}>
               E-mail do paciente:
