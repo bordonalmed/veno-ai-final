@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiSettings, FiList } from "react-icons/fi";
-import { GiBiceps, GiBrain } from "react-icons/gi";
-import { PiFootprintsFill } from "react-icons/pi";
+import { GiBiceps, GiBrain, GiLeg } from "react-icons/gi";
 import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
 import { TrialManager } from "../utils/trialManager";
@@ -18,8 +17,8 @@ const COLOR_STYLES = {
 // aparece -- some mesmo, não é só uma questão de estilo. Ícone SVG sempre renderiza igual, em
 // qualquer navegador/SO, com ou sem o filtro grayscale que já dava o visual que a gente queria.
 const EXAMES = [
-  { label: "Doppler Venoso de Membros Inferiores", rota: "/mmii-venoso", Icone: PiFootprintsFill, cor: "blue", regiao: "Membros inferiores" },
-  { label: "Doppler Arterial de Membros Inferiores", rota: "/mmii-arterial", Icone: PiFootprintsFill, cor: "red", regiao: "Membros inferiores" },
+  { label: "Doppler Venoso de Membros Inferiores", rota: "/mmii-venoso", Icone: GiLeg, cor: "blue", regiao: "Membros inferiores" },
+  { label: "Doppler Arterial de Membros Inferiores", rota: "/mmii-arterial", Icone: GiLeg, cor: "red", regiao: "Membros inferiores" },
   { label: "Doppler Venoso de Membros Superiores", rota: "/mmss-venoso", Icone: GiBiceps, cor: "blue", regiao: "Membros superiores" },
   { label: "Doppler Arterial de Membros Superiores", rota: "/mmss-arterial", Icone: GiBiceps, cor: "red", regiao: "Membros superiores" },
   { label: "Doppler de Carótidas e Vertebrais", rota: "/carotidas-vertebrais", Icone: GiBrain, cor: "cyan", regiao: "Pescoço" },
@@ -328,7 +327,7 @@ function ExamTile({ exame, isMobile, onClick }) {
         justifyContent: "center",
         flexShrink: 0,
       }}>
-        <exame.Icone size={isMobile ? 20 : 24} color="#ffffff" style={{ filter: "grayscale(1) contrast(1.15)" }} />
+        <exame.Icone size={isMobile ? 26 : 30} color="#ffffff" style={{ filter: "grayscale(1) contrast(1.15)" }} />
       </div>
       <span style={{
         fontWeight: 600,
