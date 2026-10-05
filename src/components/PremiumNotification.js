@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FaCrown } from 'react-icons/fa';
 import { TrialManager } from '../utils/trialManager';
 
 export default function PremiumNotification({ userEmail }) {
@@ -55,7 +56,7 @@ export default function PremiumNotification({ userEmail }) {
     onClick={() => setMostrarNotificacao(false)}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ fontSize: 24 }}>👑</div>
+        <div style={{ fontSize: 24, display: 'flex' }}><FaCrown /></div>
         <div>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>
             Status Premium Detectado!

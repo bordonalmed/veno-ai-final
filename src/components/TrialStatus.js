@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { FiRefreshCw, FiTarget, FiAlertTriangle } from 'react-icons/fi';
+import { FaCrown } from 'react-icons/fa';
 import { TrialManager } from '../utils/trialManager';
 
 export default function TrialStatus({ userEmail, onUpgrade }) {
@@ -42,7 +44,7 @@ export default function TrialStatus({ userEmail, onUpgrade }) {
         textAlign: "center",
         fontSize: 14
       }}>
-        <span style={{ fontWeight: 600 }}>🔄 Verificando status...</span>
+        <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiRefreshCw /> Verificando status...</span>
       </div>
     );
   }
@@ -60,7 +62,7 @@ export default function TrialStatus({ userEmail, onUpgrade }) {
         textAlign: "center",
         fontSize: 14
       }}>
-        <span style={{ fontWeight: 600 }}>👑 Plano Premium Ativo</span>
+        <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FaCrown /> Plano Premium Ativo</span>
         <span style={{ opacity: 0.8, marginLeft: 8 }}>• Laudos ilimitados</span>
       </div>
     );
@@ -79,7 +81,7 @@ export default function TrialStatus({ userEmail, onUpgrade }) {
         textAlign: "center",
         fontSize: 14
       }}>
-        <span style={{ fontWeight: 600 }}>🎯 Teste Gratuito Disponível</span>
+        <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiTarget /> Teste Gratuito Disponível</span>
         <span style={{ opacity: 0.8, marginLeft: 8 }}>• 7 dias + 5 laudos</span>
       </div>
     );
@@ -118,8 +120,8 @@ export default function TrialStatus({ userEmail, onUpgrade }) {
         textAlign: "center",
         boxShadow: "0 4px 15px rgba(255, 107, 53, 0.3)"
       }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
-          ⚠️ Trial Expirado
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <FiAlertTriangle /> Trial Expirado
         </div>
         <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
           {trial.motivo === 'tempo' ? 'Seus 7 dias acabaram!' : 'Você usou todos os 5 laudos!'}

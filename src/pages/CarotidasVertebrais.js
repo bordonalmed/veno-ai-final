@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
+import { FiSettings, FiHome, FiList, FiLogOut, FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
@@ -1376,9 +1376,9 @@ function CarotidasVertebrais() {
           <button
             type="button"
             onClick={() => setMostrarMapa(true)}
-            style={{ ...buttonStyle, background: "#3d5a80", minWidth: 'clamp(140px, 25vw, 160px)', fontSize: 'clamp(12px, 2.5vw, 14px)', padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)" }}
+            style={{ ...buttonStyle, background: "#3d5a80", minWidth: 'clamp(140px, 25vw, 160px)', fontSize: 'clamp(12px, 2.5vw, 14px)', padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            🖱️ Mapa Interativo
+            <FiMousePointer /> Mapa Interativo
           </button>
         </div>
       )}
@@ -1562,8 +1562,8 @@ function CarotidasVertebrais() {
               Incluir Mapeamento Visual no PDF
             </label>
             <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
-            <button style={{ ...buttonStyle, background: "#3d5a80", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" }} onClick={() => setMostrarMapa(true)}>
-              🖱️ Mapa Interativo
+            <button style={{ ...buttonStyle, background: "#3d5a80", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setMostrarMapa(true)}>
+              <FiMousePointer /> Mapa Interativo
             </button>
             <button style={{
               ...buttonStyle,
@@ -1607,9 +1607,12 @@ function CarotidasVertebrais() {
               margin: 0,
               color: '#0eb8d0',
               fontSize: 'clamp(12px, 2vw, 14px)',
-              fontWeight: 600
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
             }}>
-              📎 Anexos
+              <FiPaperclip /> Anexos
             </h3>
             <span style={{
               color: '#888',
@@ -1715,12 +1718,14 @@ function CarotidasVertebrais() {
                       fontSize: 'clamp(9px, 1.4vw, 11px)',
                       cursor: 'pointer',
                       fontWeight: 500,
+                      display: 'inline-flex',
+                      alignItems: 'center',
                       transition: 'background 0.2s ease'
                     }}
-                    onMouseOver={(e) => e.target.style.background = '#cc3333'}
-                    onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                    onMouseOver={(e) => e.currentTarget.style.background = '#cc3333'}
+                    onMouseOut={(e) => e.currentTarget.style.background = '#ff4444'}
                   >
-                    ✕
+                    <FiX />
                   </button>
                 </div>
               ))}

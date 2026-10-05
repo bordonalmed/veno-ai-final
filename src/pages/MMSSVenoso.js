@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { FiPaperclip, FiX } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
@@ -759,9 +760,12 @@ function MMSSVenoso() {
                       margin: 0,
                       color: '#0eb8d0',
                       fontSize: 'clamp(12px, 2vw, 14px)',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
                     }}>
-                      📎 Anexos
+                      <FiPaperclip /> Anexos
                     </h3>
                     <span style={{
                       color: '#888',
@@ -867,12 +871,14 @@ function MMSSVenoso() {
                               fontSize: 'clamp(9px, 1.4vw, 11px)',
                               cursor: 'pointer',
                               fontWeight: 500,
+                              display: 'inline-flex',
+                              alignItems: 'center',
                               transition: 'background 0.2s ease'
                             }}
-                            onMouseOver={(e) => e.target.style.background = '#cc3333'}
-                            onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                            onMouseOver={(e) => e.currentTarget.style.background = '#cc3333'}
+                            onMouseOut={(e) => e.currentTarget.style.background = '#ff4444'}
                           >
-                            ✕
+                            <FiX />
                           </button>
                         </div>
                       ))}
@@ -1242,9 +1248,12 @@ function MMSSVenoso() {
                 margin: 0,
                 color: '#0eb8d0',
                 fontSize: 'clamp(12px, 2vw, 14px)',
-                fontWeight: 600
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
               }}>
-                📎 Anexos
+                <FiPaperclip /> Anexos
               </h3>
               <span style={{
                 color: '#888',
@@ -1350,12 +1359,14 @@ function MMSSVenoso() {
                         fontSize: 'clamp(9px, 1.4vw, 11px)',
                         cursor: 'pointer',
                         fontWeight: 500,
+                        display: 'inline-flex',
+                        alignItems: 'center',
                         transition: 'background 0.2s ease'
                       }}
-                      onMouseOver={(e) => e.target.style.background = '#cc3333'}
-                      onMouseOut={(e) => e.target.style.background = '#ff4444'}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#cc3333'}
+                      onMouseOut={(e) => e.currentTarget.style.background = '#ff4444'}
                     >
-                      ✕
+                      <FiX />
                     </button>
                   </div>
                 ))}

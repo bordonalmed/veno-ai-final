@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { enviarCodigoDesenvolvimento, enviarCodigoVerificacao } from "../services/emailService";
+import { FiAlertTriangle } from "react-icons/fi";
 
 // Inicializar EmailJS
 import emailjs from '@emailjs/browser';
@@ -230,8 +231,8 @@ export default function VerificacaoEmail({ email, onVerificacaoCompleta }) {
                 marginBottom: "20px",
                 textAlign: "center"
               }}>
-                <p style={{ margin: 0, fontSize: 14, color: "#856404", fontWeight: 600 }}>
-                  ⚠️ TEMPORÁRIO: Código de verificação (até configurar email real):
+                <p style={{ margin: 0, fontSize: 14, color: "#856404", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <FiAlertTriangle /> TEMPORÁRIO: Código de verificação (até configurar email real):
                 </p>
                 <p style={{ 
                   margin: "10px 0 0 0", 
