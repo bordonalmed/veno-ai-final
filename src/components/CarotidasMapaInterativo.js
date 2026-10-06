@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import jsPDF from "jspdf";
+import { FiEye } from "react-icons/fi";
 
 // Nomes completos dos 8 vasos editáveis (iguais aos usados no formulário e no laudo).
 export const CAROTIDAS_VESSEL_NAMES = {
@@ -87,20 +88,21 @@ function sampleCurve(key, n) {
   return pts;
 }
 
-// Posição segura dentro do vaso: 72% do meio-calibre é a "parede interna" (já com folga da
-// borda real), e towardCenter (0 a 1) aproxima do centro a partir dali. Usada pela textura da
-// ateromatose e pelo ícone de estrangulamento da estenose.
+// Posição dentro do vaso: 92% do meio-calibre encosta na parede/periferia real do vaso, e
+// towardCenter (0 a 1) aproxima do centro a partir dali. Usada pela textura da ateromatose e
+// pelo ícone de estrangulamento da estenose.
 function wallPos(hw, towardCenter) {
-  return hw * 0.72 * (1 - towardCenter);
+  return hw * 0.92 * (1 - towardCenter);
 }
 
-// Ateromatose: textura em pontos nas paredes internas (nunca cruza o centro/lúmen), sem mudar a
-// cor do vaso. Leve = pontos pequenos e esparsos, bem rentes à parede; severa = pontos maiores,
-// densos e avançando mais pro lúmen (áspero).
+// Ateromatose: textura em pontos nas paredes internas, sempre contida na periferia/parede do
+// vaso (nunca chega perto do centro/lúmen), sem mudar a cor do vaso. Os pontos têm sempre a
+// mesma espessura (igual à discreta); o que muda entre os graus é o espaçamento entre eles
+// (severa = espaçamento menor, mais pontos) e o quanto avançam rumo ao centro.
 function textureFor(key, v) {
-  const cfg = v.ateromatose === "severa" ? { everyN: 1, toward: 0.7, dot: 3.2, opacity: 0.85 }
-    : v.ateromatose === "moderada" ? { everyN: 2, toward: 0.4, dot: 2.2, opacity: 0.6 }
-    : v.ateromatose === "discreta" ? { everyN: 4, toward: 0.12, dot: 1.4, opacity: 0.35 }
+  const cfg = v.ateromatose === "severa" ? { everyN: 1, toward: 0.42, dot: 1.4, opacity: 0.85 }
+    : v.ateromatose === "moderada" ? { everyN: 2, toward: 0.3, dot: 1.4, opacity: 0.6 }
+    : v.ateromatose === "discreta" ? { everyN: 4, toward: 0.15, dot: 1.4, opacity: 0.35 }
     : null;
   if (!cfg) return { d: "", width: 0, opacity: 0 };
   const hw = (ANCHORS[key] && ANCHORS[key].hw) || 6;
@@ -119,12 +121,13 @@ function textureFor(key, v) {
   return { d, width: cfg.dot, opacity: cfg.opacity };
 }
 
-// Estenose: um triângulo em cada parede interna do vaso (base rente à parede, igual à textura
-// da ateromatose), com o ápice se aproximando do centro conforme a faixa de %.
+// Estenose: um triângulo em cada parede interna do vaso. A base sempre encosta na
+// periferia/parede do vaso (igual pra qualquer %); o ápice é que avança rumo ao centro conforme
+// a faixa de % -- quanto maior a estenose, mais perto um ápice fica do outro.
 function pinchFor(key, v) {
   const a = ANCHORS[key];
   if (!a || v.estenose === "ausente") return { left: "", right: "" };
-  const apexToward = v.estenose === ">70%" ? 0.95 : v.estenose === "50% a 70%" ? 0.8 : 0.55;
+  const apexToward = v.estenose === ">70%" ? 0.78 : v.estenose === "50% a 70%" ? 0.48 : 0.15;
   const base = wallPos(a.hw, 0);
   const apex = wallPos(a.hw, apexToward);
   const span = a.hw * 1.6;
@@ -391,6 +394,7 @@ export default function CarotidasMapaInterativo({
   onSalvarExame, onSalvarTXT, onSalvarPDF, incluirMapaPdf, onIncluirMapaPdf
 }) {
   const [selected, setSelected] = useState("ACCD");
+  const [mostrarPreview, setMostrarPreview] = useState(false);
 
   if (!aberto) return null;
 
@@ -636,11 +640,54 @@ export default function CarotidasMapaInterativo({
           Incluir Mapeamento Visual no PDF
         </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+          <button onClick={() => setMostrarPreview(true)} style={{ ...mapaBotaoStyle("#6f42c1"), display: "inline-flex", alignItems: "center", gap: 6 }}><FiEye /> Visualizar Mapeamento</button>
           <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
           <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>
           <button onClick={handleSalvarExameClick} style={mapaBotaoStyle("#28a745")}>Salvar Exame</button>
         </div>
       </div>
+
+      {mostrarPreview && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(8, 14, 22, 0.88)",
+            zIndex: 2100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "clamp(8px, 3vw, 32px)"
+          }}
+          onClick={() => setMostrarPreview(false)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 820,
+              background: "#fff",
+              borderRadius: 14,
+              boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1c2740" }}>Mapeamento — Carótidas e Vertebrais</div>
+              <button
+                onClick={() => setMostrarPreview(false)}
+                style={{ background: "#c0392b", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, color: "#fff", fontWeight: 600, cursor: "pointer" }}
+              >
+                Fechar
+              </button>
+            </div>
+            <div style={{ width: "100%", aspectRatio: "850 / 820" }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
