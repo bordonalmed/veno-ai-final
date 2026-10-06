@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import jsPDF from "jspdf";
+import { FiEye } from "react-icons/fi";
 
 // Nomes completos dos 8 vasos editáveis (iguais aos usados no formulário e no laudo).
 export const CAROTIDAS_VESSEL_NAMES = {
@@ -393,6 +394,7 @@ export default function CarotidasMapaInterativo({
   onSalvarExame, onSalvarTXT, onSalvarPDF, incluirMapaPdf, onIncluirMapaPdf
 }) {
   const [selected, setSelected] = useState("ACCD");
+  const [mostrarPreview, setMostrarPreview] = useState(false);
 
   if (!aberto) return null;
 
@@ -638,11 +640,54 @@ export default function CarotidasMapaInterativo({
           Incluir Mapeamento Visual no PDF
         </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+          <button onClick={() => setMostrarPreview(true)} style={{ ...mapaBotaoStyle("#6f42c1"), display: "inline-flex", alignItems: "center", gap: 6 }}><FiEye /> Visualizar Mapeamento</button>
           <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
           <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>
           <button onClick={handleSalvarExameClick} style={mapaBotaoStyle("#28a745")}>Salvar Exame</button>
         </div>
       </div>
+
+      {mostrarPreview && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(8, 14, 22, 0.88)",
+            zIndex: 2100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "clamp(8px, 3vw, 32px)"
+          }}
+          onClick={() => setMostrarPreview(false)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 820,
+              background: "#fff",
+              borderRadius: 14,
+              boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1c2740" }}>Mapeamento — Carótidas e Vertebrais</div>
+              <button
+                onClick={() => setMostrarPreview(false)}
+                style={{ background: "#c0392b", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, color: "#fff", fontWeight: 600, cursor: "pointer" }}
+              >
+                Fechar
+              </button>
+            </div>
+            <div style={{ width: "100%", aspectRatio: "850 / 820" }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
