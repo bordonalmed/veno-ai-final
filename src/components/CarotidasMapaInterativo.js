@@ -87,11 +87,11 @@ function sampleCurve(key, n) {
   return pts;
 }
 
-// Posição segura dentro do vaso: 72% do meio-calibre é a "parede interna" (já com folga da
-// borda real), e towardCenter (0 a 1) aproxima do centro a partir dali. Usada pela textura da
-// ateromatose e pelo ícone de estrangulamento da estenose.
+// Posição dentro do vaso: 92% do meio-calibre encosta na parede/periferia real do vaso, e
+// towardCenter (0 a 1) aproxima do centro a partir dali. Usada pela textura da ateromatose e
+// pelo ícone de estrangulamento da estenose.
 function wallPos(hw, towardCenter) {
-  return hw * 0.72 * (1 - towardCenter);
+  return hw * 0.92 * (1 - towardCenter);
 }
 
 // Ateromatose: textura em pontos nas paredes internas, sempre contida na periferia/parede do
