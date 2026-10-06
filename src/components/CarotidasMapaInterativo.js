@@ -120,13 +120,13 @@ function textureFor(key, v) {
   return { d, width: cfg.dot, opacity: cfg.opacity };
 }
 
-// Estenose: um triângulo em cada parede interna do vaso (base rente à parede, igual à textura
-// da ateromatose), com o ápice avançando um pouco mais conforme a faixa de % -- mas sempre
-// contido na periferia/parede do vaso, nunca chegando perto do centro/lúmen.
+// Estenose: um triângulo em cada parede interna do vaso. A base sempre encosta na
+// periferia/parede do vaso (igual pra qualquer %); o ápice é que avança rumo ao centro conforme
+// a faixa de % -- quanto maior a estenose, mais perto um ápice fica do outro.
 function pinchFor(key, v) {
   const a = ANCHORS[key];
   if (!a || v.estenose === "ausente") return { left: "", right: "" };
-  const apexToward = v.estenose === ">70%" ? 0.42 : v.estenose === "50% a 70%" ? 0.3 : 0.15;
+  const apexToward = v.estenose === ">70%" ? 0.78 : v.estenose === "50% a 70%" ? 0.48 : 0.15;
   const base = wallPos(a.hw, 0);
   const apex = wallPos(a.hw, apexToward);
   const span = a.hw * 1.6;
