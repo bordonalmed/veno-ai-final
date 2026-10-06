@@ -95,12 +95,12 @@ function wallPos(hw, towardCenter) {
 }
 
 // Ateromatose: textura em pontos nas paredes internas, sempre contida na periferia/parede do
-// vaso (nunca chega perto do centro/lúmen), sem mudar a cor do vaso. Leve = pontos pequenos e
-// esparsos, bem rentes à parede; severa = pontos maiores e densos, um pouco mais pra dentro da
-// parede, mas ainda na periferia.
+// vaso (nunca chega perto do centro/lúmen), sem mudar a cor do vaso. Os pontos têm sempre a
+// mesma espessura (igual à discreta); o que muda entre os graus é o espaçamento entre eles
+// (severa = espaçamento menor, mais pontos) e o quanto avançam rumo ao centro.
 function textureFor(key, v) {
-  const cfg = v.ateromatose === "severa" ? { everyN: 1, toward: 0.42, dot: 3.2, opacity: 0.85 }
-    : v.ateromatose === "moderada" ? { everyN: 2, toward: 0.3, dot: 2.2, opacity: 0.6 }
+  const cfg = v.ateromatose === "severa" ? { everyN: 1, toward: 0.42, dot: 1.4, opacity: 0.85 }
+    : v.ateromatose === "moderada" ? { everyN: 2, toward: 0.3, dot: 1.4, opacity: 0.6 }
     : v.ateromatose === "discreta" ? { everyN: 4, toward: 0.15, dot: 1.4, opacity: 0.35 }
     : null;
   if (!cfg) return { d: "", width: 0, opacity: 0 };
