@@ -1,13 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiClipboard, FiCalendar, FiUser, FiClock, FiEdit2, FiTrash2, FiPaperclip, FiX } from "react-icons/fi";
-import { GiLeg } from "react-icons/gi";
+import { FiPaperclip, FiX } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
-import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
+import {
+  ARTERIAS,
+  statusOptions,
+  localizacaoOclusaoOptions,
+  localizacaoPlacaOptions,
+  ateromatoseOptions,
+  velocidadeOptions,
+  tipoOndaOptions,
+  sentidoOptions,
+  placaOptions,
+  caracteristicaPlacaOptions,
+  stentOptions,
+  enxertoTipoOptions,
+  enxertoStatusOptions,
+  enxertoPadrao,
+  arteriasPadrao,
+  normalizarArterias,
+  gerarLaudoCompleto,
+  gerarCabecalhoLaudo,
+  gerarBlocoMembro,
+  ladosDoExame,
+} from "../utils/mmiiArterialLaudo";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIArterial";
@@ -71,28 +91,6 @@ function carregarExameEmEdicao() {
   }
 }
 
-// Opções para os campos das artérias
-const statusOptions = ["Pérvia", "Ocluída"];
-const localizacaoOclusaoOptions = ["Proximal", "Medial", "Distal", "Total"];
-const ateromatoseOptions = ["Ausente", "Discreta", "Moderada", "Severa"];
-const velocidadeOptions = ["Normocinético", "Hipercinético", "Hipocinético"];
-const tipoOndaOptions = ["Trifásico", "Bifásico", "Monofásico"];
-const sentidoOptions = ["Anterógrado", "Retrógrado"];
-const placaOptions = ["Ausente", "Presente"];
-const caracteristicaPlacaOptions = ["Calcificada", "Lipídica", "Mista"];
-const lados = ["Direito", "Esquerdo", "Ambos"];
-
-// Lista das artérias
-const arterias = [
-  "Artéria Femoral Comum",
-  "Artéria Femoral Profunda", 
-  "Artéria Femoral Superficial",
-  "Artéria Poplítea",
-  "Artéria Tibial Anterior",
-  "Artéria Fibular",
-  "Artéria Tibial Posterior"
-];
-
 // Estilos globais
 const inputStyle = {
   background: "#f7fbff",
@@ -154,304 +152,163 @@ const textareaStyle = {
   minHeight: "clamp(60px, 8vw, 80px)"
 };
 
-// Estrutura padrão para cada artéria
-const estruturaArteria = {
-  status: "Pérvia",
-  localizacaoOclusao: "",
-  ateromatose: "Ausente",
-  velocidade: "Normocinético",
-  tipoOnda: "Trifásico",
-  sentido: "Anterógrado",
-  placa: "Ausente",
-  estenosePercentual: "",
-  caracteristicaPlaca: "",
-  observacao: ""
+const labelStyle = {
+  fontSize: 'clamp(10px, 2vw, 12px)',
+  marginBottom: '3px',
+  display: 'block',
+  color: '#0eb8d0',
+  fontWeight: 600
 };
 
-// Componente para campos de uma artéria
+const cardStyle = {
+  marginBottom: 'clamp(16px, 3vw, 20px)',
+  padding: 'clamp(12px, 2.5vw, 16px)',
+  background: 'rgba(0,0,0,0.10)',
+  borderRadius: 'clamp(8px, 1.5vw, 12px)',
+  boxShadow: '0 2px 16px 0 #0002'
+};
+
+const tituloCardStyle = {
+  fontWeight: 700,
+  fontSize: 'clamp(13px, 2.5vw, 15px)',
+  color: '#0eb8d0',
+  marginBottom: 'clamp(8px, 2vw, 12px)'
+};
+
+const gradeCampos = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+  gap: 'clamp(8px, 2vw, 12px)',
+  marginBottom: 'clamp(8px, 2vw, 12px)'
+};
+
+const gradeDestaque = {
+  ...gradeCampos,
+  padding: 'clamp(8px, 2vw, 12px)',
+  background: 'rgba(14, 184, 208, 0.1)',
+  borderRadius: 'clamp(4px, 1vw, 6px)',
+  border: '1px solid rgba(14, 184, 208, 0.3)'
+};
+
+function CampoSelect({ label, value, options, onChange, placeholder }) {
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <select value={value || ""} onChange={e => onChange(e.target.value)} style={selectStyle}>
+        {placeholder !== undefined && <option value="">{placeholder}</option>}
+        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function CampoCheck({ label, checked, onChange }) {
+  return (
+    <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 0 }}>
+      <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} />
+      {label}
+    </label>
+  );
+}
+
+// Campos de uma artéria
 function CamposArteria({ arteria, valores, onChange, lado }) {
-  const [showPlacaExtra, setShowPlacaExtra] = useState(false);
-
-  useEffect(() => {
-    setShowPlacaExtra(valores.placa === "Presente");
-  }, [valores.placa]);
-
-  // Helper para verificar se a artéria está ocluída
   const isOcluida = valores.status === "Ocluída";
 
-  // Função para lidar com mudanças nos campos
-  function handleFieldChange(field, value) {
-    let newValores = { ...valores, [field]: value };
-    
-    // Se Status mudou para "Ocluída", limpar todos os campos relacionados e definir fluxo como "Ausência de fluxo"
-    if (field === "status" && value === "Ocluída") {
-      newValores = {
-        ...newValores,
+  function set(field, value) {
+    let novos = { ...valores, [field]: value };
+    // Trocar a perviedade zera os campos que só fazem sentido no outro estado
+    // (a ateromatose, stent, aneurisma e dissecção valem nos dois e ficam).
+    if (field === "status") {
+      novos = {
+        ...novos,
         localizacaoOclusao: "",
-        ateromatose: "Ausente",
-        velocidade: "Ausência de fluxo",
-        tipoOnda: "Trifásico",
-        sentido: "Anterógrado",
-        placa: "Ausente",
-        estenosePercentual: "",
-        caracteristicaPlaca: ""
-      };
-    }
-    
-    // Se Status voltou para "Pérvia", resetar valores padrão
-    if (field === "status" && value === "Pérvia") {
-      newValores = {
-        ...newValores,
-        localizacaoOclusao: "",
-        ateromatose: "Ausente",
         velocidade: "Normocinético",
         tipoOnda: "Trifásico",
         sentido: "Anterógrado",
+        reabitada: false,
         placa: "Ausente",
         estenosePercentual: "",
-        caracteristicaPlaca: ""
+        caracteristicaPlaca: "",
+        localizacaoPlaca: ""
       };
     }
-    
-    // Se Placa mudou para "Ausente", limpar campos extras
     if (field === "placa" && value === "Ausente") {
-      newValores.estenosePercentual = "";
-      newValores.caracteristicaPlaca = "";
+      novos.estenosePercentual = "";
+      novos.caracteristicaPlaca = "";
+      novos.localizacaoPlaca = "";
     }
-    
-    // Se % Estenose foi limpa, limpar característica da placa
-    if (field === "estenosePercentual" && (!value || !value.trim || value.trim() === "")) {
-      newValores.caracteristicaPlaca = "";
-    }
-    
-    onChange(newValores);
+    if (field === "aneurisma" && !value) novos.aneurismaDiametro = "";
+    onChange(novos);
   }
 
   return (
-    <div style={{
-      marginBottom: 'clamp(16px, 3vw, 20px)',
-      padding: 'clamp(12px, 2.5vw, 16px)',
-      background: 'rgba(0,0,0,0.10)',
-      borderRadius: 'clamp(8px, 1.5vw, 12px)',
-      boxShadow: '0 2px 16px 0 #0002'
-    }}>
-      <div style={{
-        fontWeight: 700,
-        fontSize: 'clamp(13px, 2.5vw, 15px)',
-        color: '#0eb8d0',
-        marginBottom: 'clamp(8px, 2vw, 12px)'
-      }}>
-        {arteria.toUpperCase()} ({lado.toUpperCase()}):
-      </div>
-      
-      {/* Linha 1 - Campos distribuídos igualmente */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isOcluida ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 'clamp(8px, 2vw, 12px)'
-      }}>
-        <div>
-          <label style={{ 
-            fontSize: 'clamp(10px, 2vw, 12px)', 
-            marginBottom: '3px', 
-            display: 'block',
-            color: '#0eb8d0',
-            fontWeight: 600
-          }}>Perviedade:</label>
-          <select
-            value={valores.status}
-            onChange={e => handleFieldChange('status', e.target.value)}
-            style={selectStyle}
-          >
-            {statusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
-        </div>
-        
-        {/* Localização da Oclusão - só aparece se estiver ocluída */}
+    <div style={cardStyle}>
+      <div style={tituloCardStyle}>{arteria.toUpperCase()} ({lado.toUpperCase()}):</div>
+
+      <div style={gradeCampos}>
+        <CampoSelect label="Perviedade:" value={valores.status} options={statusOptions} onChange={v => set('status', v)} />
         {isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Localização:</label>
-            <select
-              value={valores.localizacaoOclusao}
-              onChange={e => handleFieldChange('localizacaoOclusao', e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">Selecione</option>
-              {localizacaoOclusaoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
+          <CampoSelect label="Localização da oclusão:" value={valores.localizacaoOclusao} options={localizacaoOclusaoOptions} placeholder="Selecione" onChange={v => set('localizacaoOclusao', v)} />
         )}
-        
-        {/* Ateromatose - só aparece se não estiver ocluída */}
+        <CampoSelect label="Ateromatose:" value={valores.ateromatose} options={ateromatoseOptions} onChange={v => set('ateromatose', v)} />
         {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Ateromatose:</label>
-            <select
-              value={valores.ateromatose}
-              onChange={e => handleFieldChange('ateromatose', e.target.value)}
-              style={selectStyle}
-            >
-              {ateromatoseOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
+          <>
+            <CampoSelect label="Velocidade:" value={valores.velocidade} options={velocidadeOptions} onChange={v => set('velocidade', v)} />
+            <CampoSelect label="Tipo de Onda:" value={valores.tipoOnda} options={tipoOndaOptions} onChange={v => set('tipoOnda', v)} />
+            <CampoSelect label="Sentido:" value={valores.sentido} options={sentidoOptions} onChange={v => set('sentido', v)} />
+            <CampoSelect label="Placa:" value={valores.placa} options={placaOptions} onChange={v => set('placa', v)} />
+          </>
         )}
-        
-        {/* Velocidade - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Velocidade:</label>
-            <select
-              value={valores.velocidade}
-              onChange={e => handleFieldChange('velocidade', e.target.value)}
-              style={selectStyle}
-            >
-              {velocidadeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Tipo de Onda - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Tipo de Onda:</label>
-            <select
-              value={valores.tipoOnda}
-              onChange={e => handleFieldChange('tipoOnda', e.target.value)}
-              style={selectStyle}
-            >
-              {tipoOndaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Sentido - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Sentido:</label>
-            <select
-              value={valores.sentido}
-              onChange={e => handleFieldChange('sentido', e.target.value)}
-              style={selectStyle}
-            >
-              {sentidoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Placa - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Placa:</label>
-            <select
-              value={valores.placa}
-              onChange={e => handleFieldChange('placa', e.target.value)}
-              style={selectStyle}
-            >
-              {placaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
+        <CampoSelect label="Stent:" value={valores.stent} options={stentOptions} onChange={v => set('stent', v)} />
       </div>
 
-      {/* Campos extras para placa - só aparecem se não estiver ocluída e placa = "Presente" */}
-      {!isOcluida && showPlacaExtra && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: 'clamp(8px, 2vw, 12px)',
-          marginBottom: 'clamp(8px, 2vw, 12px)',
-          padding: 'clamp(8px, 2vw, 12px)',
-          background: 'rgba(14, 184, 208, 0.1)',
-          borderRadius: 'clamp(4px, 1vw, 6px)',
-          border: '1px solid rgba(14, 184, 208, 0.3)'
-        }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(10px, 2.5vw, 18px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
+        {!isOcluida && <CampoCheck label="Reabitada por colaterais" checked={valores.reabitada} onChange={v => set('reabitada', v)} />}
+        <CampoCheck label="Aneurisma" checked={valores.aneurisma} onChange={v => set('aneurisma', v)} />
+        <CampoCheck label="Dissecção" checked={valores.disseccao} onChange={v => set('disseccao', v)} />
+      </div>
+
+      {!isOcluida && valores.placa === "Presente" && (
+        <div style={gradeDestaque}>
           <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>% Estenose:</label>
+            <label style={labelStyle}>% Estenose:</label>
             <input
               type="number"
               min="0"
               max="100"
               value={valores.estenosePercentual}
-              onChange={e => handleFieldChange('estenosePercentual', e.target.value)}
+              onChange={e => set('estenosePercentual', e.target.value)}
               placeholder="%"
               style={inputStyle}
             />
           </div>
+          <CampoSelect label="Característica da Placa:" value={valores.caracteristicaPlaca} options={caracteristicaPlacaOptions} placeholder="Selecione" onChange={v => set('caracteristicaPlaca', v)} />
+          <CampoSelect label="Localização da Placa:" value={valores.localizacaoPlaca} options={localizacaoPlacaOptions} placeholder="Selecione" onChange={v => set('localizacaoPlaca', v)} />
+        </div>
+      )}
+
+      {valores.aneurisma && (
+        <div style={gradeDestaque}>
           <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Característica da Placa:</label>
-            <select
-              value={valores.caracteristicaPlaca}
-              onChange={e => handleFieldChange('caracteristicaPlaca', e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">Selecione</option>
-              {caracteristicaPlacaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
+            <label style={labelStyle}>Diâmetro do aneurisma (mm):</label>
+            <input
+              type="number"
+              min="0"
+              value={valores.aneurismaDiametro}
+              onChange={e => set('aneurismaDiametro', e.target.value)}
+              placeholder="mm"
+              style={inputStyle}
+            />
           </div>
         </div>
       )}
 
-      {/* Linha 2 - Observação (sempre visível) */}
       <div>
-        <label style={{ 
-          fontSize: 'clamp(10px, 2vw, 12px)', 
-          marginBottom: '3px', 
-          display: 'block',
-          color: '#0eb8d0',
-          fontWeight: 600
-        }}>Observação:</label>
+        <label style={labelStyle}>Observação:</label>
         <textarea
           value={valores.observacao}
-          onChange={e => handleFieldChange('observacao', e.target.value)}
+          onChange={e => set('observacao', e.target.value)}
           placeholder={`Digite observações para ${arteria}...`}
           style={textareaStyle}
         />
@@ -461,33 +318,33 @@ function CamposArteria({ arteria, valores, onChange, lado }) {
 }
 
 // Bloco de campos por lado
-function BlocoCampos({ lado, arteriasValores, onChange }) {
+function BlocoCampos({ lado, arteriasValores, onChange, enxerto, onEnxertoChange }) {
   return (
     <div style={{
-      marginBottom: 'clamp(12px, 2vw, 16px)', 
-      width: '100%', 
-      padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 3vw, 20px)', 
-      boxSizing: 'border-box', 
-      background: 'rgba(0,0,0,0.10)', 
-      borderRadius: 'clamp(8px, 1.5vw, 12px)', 
-      boxShadow: '0 2px 16px 0 #0002', 
-      marginLeft: 'auto', 
-      marginRight: 'auto', 
-      display: 'flex', 
-      flexDirection: 'column', 
+      marginBottom: 'clamp(12px, 2vw, 16px)',
+      width: '100%',
+      padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 3vw, 20px)',
+      boxSizing: 'border-box',
+      background: 'rgba(0,0,0,0.10)',
+      borderRadius: 'clamp(8px, 1.5vw, 12px)',
+      boxShadow: '0 2px 16px 0 #0002',
+      marginLeft: 'auto',
+      marginRight: 'auto',
+      display: 'flex',
+      flexDirection: 'column',
       gap: 'clamp(8px, 1.5vw, 12px)'
     }}>
       <div style={{
         marginTop: 'clamp(4px, 1vw, 8px)',
         marginBottom: 'clamp(8px, 2vw, 12px)',
-        fontWeight: 700, 
+        fontWeight: 700,
         fontSize: 'clamp(14px, 2.5vw, 16px)',
         color: '#0eb8d0'
       }}>
         MEMBRO INFERIOR {lado.toUpperCase()}:
       </div>
-      
-      {arterias.map(arteria => (
+
+      {ARTERIAS.map(arteria => (
         <CamposArteria
           key={arteria}
           arteria={arteria}
@@ -496,279 +353,27 @@ function BlocoCampos({ lado, arteriasValores, onChange }) {
           lado={lado}
         />
       ))}
-    </div>
-  );
-}
 
-// Componente para listar exames salvos
-function ExamesSalvosList({ onCarregar, onEditar, onExcluir, onFechar }) {
-  const [exames, setExames] = useState([]);
-  const [filtro, setFiltro] = useState("");
-
-  useEffect(() => {
-    carregarExames();
-  }, []);
-
-  function carregarExames() {
-    try {
-      const examesSalvos = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      setExames(examesSalvos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
-    } catch (error) {
-      console.error('Erro ao carregar exames:', error);
-      setExames([]);
-    }
-  }
-
-  function formatarData(timestamp) {
-    try {
-      const data = new Date(timestamp);
-      return data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    } catch (error) {
-      return 'Data inválida';
-    }
-  }
-
-  const examesFiltrados = exames.filter(exame => 
-    exame.nome?.toLowerCase().includes(filtro.toLowerCase()) ||
-    exame.data?.includes(filtro) ||
-    exame.lado?.toLowerCase().includes(filtro.toLowerCase())
-  );
-
-  if (exames.length === 0) {
-    return (
-      <div style={{
-        textAlign: 'center',
-        padding: 'clamp(40px, 8vw, 60px)',
-        color: '#666'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: 'clamp(16px, 3vw, 24px)',
-          opacity: 0.5
-        }}>
-          <FiClipboard size={56} />
+      <div style={cardStyle}>
+        <div style={tituloCardStyle}>ENXERTO / PONTE ({lado.toUpperCase()}):</div>
+        <div style={gradeCampos}>
+          <CampoSelect
+            label="Tipo:"
+            value={enxerto.tipo}
+            options={enxertoTipoOptions}
+            placeholder="Nenhum"
+            onChange={v => onEnxertoChange({ tipo: v, status: v ? enxerto.status : "" })}
+          />
+          {enxerto.tipo && (
+            <CampoSelect
+              label="Situação:"
+              value={enxerto.status}
+              options={enxertoStatusOptions}
+              placeholder="Selecione"
+              onChange={v => onEnxertoChange({ ...enxerto, status: v })}
+            />
+          )}
         </div>
-        <h3 style={{
-          margin: '0 0 clamp(12px, 2.5vw, 16px) 0',
-          fontSize: 'clamp(18px, 3.5vw, 22px)',
-          color: '#333'
-        }}>
-          Nenhum exame salvo
-        </h3>
-        <p style={{
-          margin: 0,
-          fontSize: 'clamp(14px, 2.5vw, 16px)',
-          color: '#666'
-        }}>
-          Os exames salvos aparecerão aqui
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {/* Filtro de busca */}
-      <div style={{
-        marginBottom: 'clamp(20px, 4vw, 32px)'
-      }}>
-        <input
-          type="text"
-          placeholder="Buscar por nome, data ou lado..."
-          value={filtro}
-          onChange={(e) => setFiltro(e.target.value)}
-          style={{
-            width: '100%',
-            padding: 'clamp(12px, 2.5vw, 16px)',
-            border: '2px solid #e9ecef',
-            borderRadius: 'clamp(8px, 1.5vw, 12px)',
-            fontSize: 'clamp(14px, 2.5vw, 16px)',
-            outline: 'none',
-            transition: 'border-color 0.2s ease'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#0eb8d0'}
-          onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
-        />
-      </div>
-
-      {/* Lista de exames */}
-      <div style={{
-        maxHeight: 'clamp(300px, 50vh, 400px)',
-        overflowY: 'auto'
-      }}>
-        {examesFiltrados.map((exame) => (
-          <div
-            key={exame.id}
-            style={{
-              background: '#f8f9fa',
-              border: '1px solid #e9ecef',
-              borderRadius: 'clamp(8px, 1.5vw, 12px)',
-              padding: 'clamp(16px, 3vw, 20px)',
-              marginBottom: 'clamp(12px, 2.5vw, 16px)',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-              e.target.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.boxShadow = 'none';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            {/* Cabeçalho do exame */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              marginBottom: 'clamp(12px, 2.5vw, 16px)'
-            }}>
-              <div style={{ flex: 1 }}>
-                <h4 style={{
-                  margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
-                  fontSize: 'clamp(16px, 3vw, 18px)',
-                  color: '#333',
-                  fontWeight: 600
-                }}>
-                  {exame.nome}
-                </h4>
-                <div style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 'clamp(8px, 1.5vw, 12px)',
-                  fontSize: 'clamp(12px, 2.2vw, 14px)',
-                  color: '#666'
-                }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FiCalendar size={13} /> {exame.data}</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FiUser size={13} /> {exame.idade} anos</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><GiLeg size={13} /> {exame.lado}</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FiClock size={13} /> {formatarData(exame.timestamp)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Botões de ação */}
-            <div style={{
-              display: 'flex',
-              gap: 'clamp(8px, 1.5vw, 12px)',
-              flexWrap: 'wrap'
-            }}>
-              <button
-                onClick={() => onCarregar(exame)}
-                style={{
-                  background: 'linear-gradient(135deg, #0eb8d0 0%, #00e0ff 100%)',
-                  border: 'none',
-                  borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                  padding: 'clamp(8px, 2vw, 12px) clamp(16px, 3vw, 20px)',
-                  color: '#fff',
-                  fontSize: 'clamp(12px, 2.2vw, 14px)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  flex: '1',
-                  minWidth: 'clamp(80px, 15vw, 100px)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(14, 184, 208, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                title="Carregar exame"
-              >
-                <FiClipboard /> Carregar
-              </button>
-              
-              <button
-                onClick={() => onEditar(exame)}
-                style={{
-                  background: 'linear-gradient(135deg, #ffc107 0%, #ffca2c 100%)',
-                  border: 'none',
-                  borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                  padding: 'clamp(8px, 2vw, 12px) clamp(16px, 3vw, 20px)',
-                  color: '#fff',
-                  fontSize: 'clamp(12px, 2.2vw, 14px)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  flex: '1',
-                  minWidth: 'clamp(80px, 15vw, 100px)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 193, 7, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                title="Editar exame"
-              >
-                <FiEdit2 /> Editar
-              </button>
-              
-              <button
-                onClick={() => onExcluir(exame.id)}
-                style={{
-                  background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
-                  border: 'none',
-                  borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                  padding: 'clamp(8px, 2vw, 12px) clamp(16px, 3vw, 20px)',
-                  color: '#fff',
-                  fontSize: 'clamp(12px, 2.2vw, 14px)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  flex: '1',
-                  minWidth: 'clamp(80px, 15vw, 100px)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                title="Excluir exame"
-              >
-                <FiTrash2 /> Excluir
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Estatísticas */}
-      <div style={{
-        marginTop: 'clamp(20px, 4vw, 32px)',
-        padding: 'clamp(16px, 3vw, 20px)',
-        background: '#e9ecef',
-        borderRadius: 'clamp(8px, 1.5vw, 12px)',
-        textAlign: 'center',
-        fontSize: 'clamp(12px, 2.2vw, 14px)',
-        color: '#666'
-      }}>
-        <strong>{examesFiltrados.length}</strong> de <strong>{exames.length}</strong> exames
-        {filtro && ` (filtrados por "${filtro}")`}
       </div>
     </div>
   );
@@ -784,28 +389,18 @@ function MMIIArterial() {
   const [erro, setErro] = useState("");
   const [mostrarLaudo, setMostrarLaudo] = useState(false);
   const [anexos, setAnexos] = useState([]);
-  
-  // Estado para as artérias de cada lado
-  const [arteriasDireito, setArteriasDireito] = useState(
-    Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }]))
-  );
-  const [arteriasEsquerdo, setArteriasEsquerdo] = useState(
-    Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }]))
-  );
 
-  // Hook para detectar mudanças no tamanho da tela
+  const [arteriasDireito, setArteriasDireito] = useState(arteriasPadrao);
+  const [arteriasEsquerdo, setArteriasEsquerdo] = useState(arteriasPadrao);
+  const [enxertos, setEnxertos] = useState({ Direito: { ...enxertoPadrao }, Esquerdo: { ...enxertoPadrao } });
+
   useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
+    const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
     checkIsMobile();
     window.addEventListener('resize', checkIsMobile);
-    
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  // Hook para carregar exame em edição
   useEffect(() => {
     const exameEmEdicao = carregarExameEmEdicao();
     if (exameEmEdicao) {
@@ -813,13 +408,12 @@ function MMIIArterial() {
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
       setLado(exameEmEdicao.lado || "");
-      
-      if (exameEmEdicao.arteriasDireito) {
-        setArteriasDireito(exameEmEdicao.arteriasDireito);
-      }
-      if (exameEmEdicao.arteriasEsquerdo) {
-        setArteriasEsquerdo(exameEmEdicao.arteriasEsquerdo);
-      }
+      setArteriasDireito(normalizarArterias(exameEmEdicao.arteriasDireito));
+      setArteriasEsquerdo(normalizarArterias(exameEmEdicao.arteriasEsquerdo));
+      setEnxertos({
+        Direito: { ...enxertoPadrao, ...exameEmEdicao.enxertos?.Direito },
+        Esquerdo: { ...enxertoPadrao, ...exameEmEdicao.enxertos?.Esquerdo },
+      });
     }
   }, []);
 
@@ -839,6 +433,10 @@ function MMIIArterial() {
     }
   }
 
+  function handleEnxertoChange(lado, enxerto) {
+    setEnxertos(prev => ({ ...prev, [lado]: enxerto }));
+  }
+
   function handleVoltarMenu() {
     window.location.href = '/home';
   }
@@ -855,390 +453,9 @@ function MMIIArterial() {
     window.location.href = '/';
   }
 
-  // Função para gerar o texto do laudo
   function gerarTextoLaudo() {
     if (!deveMostrarCampos) return "";
-
-    let laudo = "";
-    
-    // Cabeçalho
-    laudo += `${nome}, ${idade} anos.\n`;
-    laudo += `Data: ${data}\n`;
-    laudo += `DOPPLER ARTERIAL DE MMII\n\n`;
-
-    // Função auxiliar para gerar texto de uma artéria
-    function gerarTextoArteria(arteria, valores, lado) {
-      let texto = "";
-      
-      // Nome da artéria com lado
-      const nomeArteria = arteria;
-      const ladoTexto = lado === "Direito" ? "direita" : "esquerda";
-      texto += `${nomeArteria} ${ladoTexto}: `;
-      
-      // Se estiver ocluída, exibir oclusão com localização e ausência de fluxo
-      if (valores.status === "Ocluída") {
-        if (valores.localizacaoOclusao) {
-          texto += `oclusão ${valores.localizacaoOclusao.toLowerCase()}, ausência de fluxo.`;
-        } else {
-          texto += "oclusão, ausência de fluxo.";
-        }
-        return texto;
-      }
-      
-      // Status
-      texto += "pérvia, ";
-      
-      // Ateromatose
-      if (valores.ateromatose !== "Ausente") {
-        texto += `ateromatose ${valores.ateromatose.toLowerCase()}, `;
-      }
-      
-      // Velocidade
-      if (valores.velocidade !== "Normocinético") {
-        texto += `fluxo ${valores.velocidade.toLowerCase()}, `;
-      } else {
-        texto += "fluxo normocinético, ";
-      }
-      
-      // Tipo de Onda
-      if (valores.tipoOnda !== "Trifásico") {
-        texto += `padrão ${valores.tipoOnda.toLowerCase()}, `;
-      } else {
-        texto += "padrão trifásico, ";
-      }
-      
-      // Sentido
-      if (valores.sentido === "Retrógrado") {
-        texto += `sentido retrógrado, `;
-      } else {
-        texto += "sentido anterógrado, ";
-      }
-      
-      // Placa
-      if (valores.placa === "Presente" && valores.estenosePercentual && valores.caracteristicaPlaca) {
-        texto += `estenose de ${valores.estenosePercentual}%, placa ${valores.caracteristicaPlaca.toLowerCase()}, `;
-      }
-      
-      // Remover vírgula e espaço do final e adicionar ponto
-      texto = texto.replace(/,\s*$/, ".");
-      
-      return texto;
-    }
-
-    // Membro Inferior Direito
-    if (lado === "Direito" || lado === "Ambos") {
-      laudo += "DOPPLER ARTERIAL DE MEMBRO INFERIOR DIREITO\n";
-      arterias.forEach(arteria => {
-        laudo += gerarTextoArteria(arteria, arteriasDireito[arteria], "Direito") + "\n";
-        
-        // Observação (se houver)
-        if (arteriasDireito[arteria].observacao && arteriasDireito[arteria].observacao.trim && arteriasDireito[arteria].observacao.trim()) {
-          laudo += `  ${arteriasDireito[arteria].observacao}\n`;
-        }
-      });
-      
-      // Conclusão do Membro Direito
-      laudo += "\nCONCLUSÃO\n";
-      const conclusaoDireito = getConclusaoMMIIArterialPorMembro(arteriasDireito, "Direito");
-      laudo += conclusaoDireito + "\n\n";
-    }
-
-    // Separador entre membros (apenas quando ambos são selecionados)
-    if (lado === "Ambos") {
-      laudo += "=".repeat(80) + "\n";
-    }
-
-    // Membro Inferior Esquerdo
-    if (lado === "Esquerdo" || lado === "Ambos") {
-      laudo += "DOPPLER ARTERIAL DE MEMBRO INFERIOR ESQUERDO\n";
-      arterias.forEach(arteria => {
-        laudo += gerarTextoArteria(arteria, arteriasEsquerdo[arteria], "Esquerdo") + "\n";
-        
-        // Observação (se houver)
-        if (arteriasEsquerdo[arteria].observacao && arteriasEsquerdo[arteria].observacao.trim && arteriasEsquerdo[arteria].observacao.trim()) {
-          laudo += `  ${arteriasEsquerdo[arteria].observacao}\n`;
-        }
-      });
-      
-      // Conclusão do Membro Esquerdo
-      laudo += "\nCONCLUSÃO\n";
-      const conclusaoEsquerdo = getConclusaoMMIIArterialPorMembro(arteriasEsquerdo, "Esquerdo");
-      laudo += conclusaoEsquerdo + "\n";
-    }
-
-    return laudo;
-  }
-
-  // Função para copiar o laudo
-  function copiarLaudo() {
-    const textoLaudo = gerarTextoLaudo();
-    if (textoLaudo) {
-      navigator.clipboard.writeText(textoLaudo).then(() => {
-        // Feedback visual temporário
-        const btn = document.getElementById('btnCopiarLaudo');
-        if (btn) {
-          const textoOriginal = btn.textContent;
-          btn.textContent = "Copiado!";
-          btn.style.background = "linear-gradient(135deg, #28a745 0%, #20c997 100%)";
-          setTimeout(() => {
-            btn.textContent = textoOriginal;
-            btn.style.background = "linear-gradient(135deg, #6c757d 0%, #495057 100%)";
-          }, 2000);
-        }
-      }).catch(err => {
-        console.error('Erro ao copiar:', err);
-      });
-    }
-  }
-
-  // Função para gerar PDF
-  function gerarPDF() {
-    try {
-      // Carregar configurações da clínica
-      const config = JSON.parse(localStorage.getItem('configuracoesClinica') || '{}');
-      
-      // Criar novo documento PDF
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.width;
-      const pageHeight = doc.internal.pageSize.height;
-      const margin = 20;
-      const contentWidth = pageWidth - (2 * margin);
-      
-      // Função para adicionar texto com quebra automática
-      function addWrappedText(text, x, y, maxWidth, fontSize = 12, fontStyle = 'normal') {
-        doc.setFontSize(fontSize);
-        doc.setFont(undefined, fontStyle);
-        
-        const lines = doc.splitTextToSize(text, maxWidth);
-        doc.text(lines, x, y);
-        
-        return y + (lines.length * fontSize * 0.4);
-      }
-      
-      // Função para adicionar título
-      function addTitle(text, y) {
-        doc.setFontSize(16);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 0, 0); // Preto
-        doc.text(text, pageWidth / 2, y, { align: 'center' });
-        return y + 12;
-      }
-      
-      // Função para adicionar subtítulo
-      function addSubtitle(text, y) {
-        doc.setFontSize(14);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 0, 0); // Preto
-        doc.text(text, margin, y);
-        return y + 10;
-      }
-      
-      // Função para adicionar texto normal
-      function addNormalText(text, y) {
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(0, 0, 0); // Preto
-        return addWrappedText(text, margin, y, contentWidth, 12, 'normal');
-      }
-      
-      // Função para adicionar texto em negrito
-      function addBoldText(text, y) {
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 0, 0); // Preto
-        return addWrappedText(text, margin, y, contentWidth, 12, 'bold');
-      }
-      
-      // Função para gerar texto de uma artéria no PDF
-      function gerarTextoArteriaPDF(arteria, valores, lado) {
-        let texto = "";
-        
-        // Nome da artéria com lado
-        const nomeArteria = arteria;
-        const ladoTexto = lado === "Direito" ? "direita" : "esquerda";
-        texto += `${nomeArteria} ${ladoTexto}: `;
-        
-              // Se estiver ocluída, exibir oclusão com localização e ausência de fluxo
-      if (valores.status === "Ocluída") {
-        if (valores.localizacaoOclusao) {
-          texto += `oclusão ${valores.localizacaoOclusao.toLowerCase()}, ausência de fluxo.`;
-        } else {
-          texto += "oclusão, ausência de fluxo.";
-        }
-        return texto;
-      }
-        
-        // Status
-        texto += "pérvia, ";
-        
-        // Ateromatose
-        if (valores.ateromatose !== "Ausente") {
-          texto += `ateromatose ${valores.ateromatose.toLowerCase()}, `;
-        }
-        
-        // Velocidade
-        if (valores.velocidade !== "Normocinético") {
-          texto += `fluxo ${valores.velocidade.toLowerCase()}, `;
-        } else {
-          texto += "fluxo normocinético, ";
-        }
-        
-        // Tipo de Onda
-        if (valores.tipoOnda !== "Trifásico") {
-          texto += `padrão ${valores.tipoOnda.toLowerCase()}, `;
-        } else {
-          texto += "padrão trifásico, ";
-        }
-        
-        // Sentido
-        if (valores.sentido === "Retrógrado") {
-          texto += `sentido retrógrado, `;
-        } else {
-          texto += "sentido anterógrado, ";
-        }
-        
-        // Placa
-        if (valores.placa === "Presente" && valores.estenosePercentual && valores.caracteristicaPlaca) {
-          texto += `estenose de ${valores.estenosePercentual}%, placa ${valores.caracteristicaPlaca.toLowerCase()}, `;
-        }
-        
-        // Remover vírgula e espaço do final e adicionar ponto
-        texto = texto.replace(/,\s*$/, ".");
-        
-        return texto;
-      }
-      
-      // Função para gerar página de um membro
-      function gerarPaginaMembro(lado, arteriasValores, isFirstPage = false) {
-        let yPosition = margin;
-        
-        // Cabeçalho da clínica (logo e dados) - em todas as páginas
-        if (config.logo) {
-          try {
-            const img = new Image();
-            img.onload = () => {
-              const logoWidth = 40;
-              const logoHeight = (img.height * logoWidth) / img.width;
-              const logoX = margin;
-              const logoY = yPosition;
-              
-              doc.addImage(img, 'JPEG', logoX, logoY, logoWidth, logoHeight);
-              yPosition = logoY + logoHeight + 10;
-            };
-            img.src = config.logo;
-          } catch (error) {
-            console.log('Logo não pôde ser carregada');
-          }
-        }
-        
-        // Dados da clínica - em todas as páginas
-        if (config.nomeClinica) {
-          yPosition = addNormalText(config.nomeClinica, yPosition);
-          yPosition += 5;
-        }
-        
-        if (config.endereco) {
-          yPosition = addNormalText(config.endereco, yPosition);
-          yPosition += 5;
-        }
-        
-        if (config.telefone) {
-          yPosition = addNormalText(`Tel: ${config.telefone}`, yPosition);
-          yPosition += 5;
-        }
-        
-        if (config.cnpj) {
-          yPosition = addNormalText(`CNPJ: ${config.cnpj}`, yPosition);
-          yPosition += 10;
-        }
-        
-        // Dados do paciente
-        yPosition = addNormalText(`${nome}, ${idade} anos`, yPosition);
-        yPosition += 5;
-        yPosition = addNormalText(`Data: ${data}`, yPosition);
-        yPosition += 10;
-        
-        // Título principal
-        yPosition = addTitle("DOPPLER ARTERIAL DE MMII", yPosition);
-        yPosition += 15;
-        
-        // Título do membro
-        yPosition = addSubtitle(`MEMBRO INFERIOR ${lado.toUpperCase()}:`, yPosition);
-        yPosition += 5;
-        
-        // Artérias
-        arterias.forEach(arteria => {
-          const textoArteria = gerarTextoArteriaPDF(arteria, arteriasValores[arteria], lado);
-          yPosition = addNormalText(textoArteria, yPosition);
-          yPosition += 3;
-          
-          // Observação (se houver)
-          if (arteriasValores[arteria].observacao && arteriasValores[arteria].observacao.trim && arteriasValores[arteria].observacao.trim()) {
-            const observacao = `  ${arteriasValores[arteria].observacao}`;
-            yPosition = addNormalText(observacao, yPosition);
-            yPosition += 3;
-          }
-        });
-        
-        yPosition += 10;
-        
-        // Conclusão
-        yPosition = addBoldText("CONCLUSÃO:", yPosition);
-        yPosition += 5;
-        
-        const conclusao = getConclusaoMMIIArterialPorMembro(arteriasValores, lado);
-        const linhasConclusao = conclusao.split('\n');
-        
-        linhasConclusao.forEach(linha => {
-          if (linha && linha.trim && linha.trim()) {
-            yPosition = addBoldText(linha, yPosition);
-            yPosition += 3;
-          }
-        });
-        
-        // Rodapé com dados do médico
-        yPosition += 15;
-        
-        if (config.nomeMedico) {
-          yPosition = addNormalText(`Médico: ${config.nomeMedico}`, yPosition);
-          yPosition += 5;
-        }
-        
-        if (config.crm) {
-          yPosition = addNormalText(`CRM: ${config.crm}`, yPosition);
-          yPosition += 5;
-        }
-        
-        if (config.especialidade) {
-          yPosition = addNormalText(`Especialidade: ${config.especialidade}`, yPosition);
-          yPosition += 5;
-        }
-      }
-      
-      // Gerar primeira página (Membro Direito)
-      if (lado === "Direito" || lado === "Ambos") {
-        gerarPaginaMembro("Direito", arteriasDireito, true);
-      }
-      
-      // Gerar segunda página (Membro Esquerdo)
-      if (lado === "Esquerdo" || lado === "Ambos") {
-        if (lado === "Ambos") {
-          doc.addPage();
-        }
-        gerarPaginaMembro("Esquerdo", arteriasEsquerdo, false);
-      }
-      
-      // Salvar PDF
-      const nomeArquivo = `Doppler_Arterial_MMII_${nome.replace(/\s+/g, '_')}_${data.replace(/\//g, '-')}.pdf`;
-      doc.save(nomeArquivo);
-      
-      // Limpar o campo Nome do Paciente após gerar PDF
-      setNome("");
-      
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
-    }
+    return gerarLaudoCompleto({ nome, idade, data, lado, arteriasDireito, arteriasEsquerdo, enxertos });
   }
 
   // Validação dos campos obrigatórios
@@ -1246,31 +463,18 @@ function MMIIArterial() {
   const idadeValida = idade && !isNaN(idade) && parseInt(idade) > 0 && parseInt(idade) <= 120;
   const dataValida = data && data.trim && data.trim().length > 0;
   const ladoValido = lado && ["Direito", "Esquerdo", "Ambos"].includes(lado);
-  
-  // Verificar se deve mostrar os campos das artérias
   const deveMostrarCampos = nomeValido && idadeValida && dataValida && ladoValido;
 
-  // Função para salvar o exame atual
-  // Função para visualizar o laudo
   function handleVisualizar() {
     if (!deveMostrarCampos) return;
     setMostrarLaudo(!mostrarLaudo);
   }
 
   async function handleSalvarExame() {
-    console.log('🔍 MMIIArterial: handleSalvarExame chamado');
-    console.log('📋 MMIIArterial: deveMostrarCampos:', deveMostrarCampos);
-    console.log('📋 MMIIArterial: nome:', nome, 'idade:', idade, 'data:', data, 'lado:', lado);
-    
     if (!deveMostrarCampos) {
-      console.log('❌ MMIIArterial: Campos não preenchidos, não salvando');
       alert('Preencha todos os campos obrigatórios antes de salvar!');
       return;
     }
-
-    // Gerar o laudo antes de salvar
-    const laudo = gerarTextoLaudo();
-    console.log('📄 MMIIArterial: Laudo gerado:', laudo ? 'Sim' : 'Não');
 
     const dadosExame = {
       nome,
@@ -1279,72 +483,18 @@ function MMIIArterial() {
       lado,
       arteriasDireito,
       arteriasEsquerdo,
-      laudo, // Incluir o laudo gerado
+      enxertos,
+      laudo: gerarTextoLaudo(),
       timestamp: new Date().toISOString(),
       tipoNome: "MMII Arterial"
     };
 
-    console.log('📝 MMIIArterial: Dados do exame:', dadosExame);
-
     try {
-      console.log('🔄 MMIIArterial: Chamando salvarExame...');
       const sucesso = await salvarExame(dadosExame);
-      console.log('✅ MMIIArterial: Resultado do salvamento:', sucesso);
-      
-      if (sucesso) {
-        alert("Exame salvo com sucesso!");
-      } else {
-        alert('Erro ao salvar o exame. Tente novamente.');
-      }
+      alert(sucesso ? "Exame salvo com sucesso!" : 'Erro ao salvar o exame. Tente novamente.');
     } catch (error) {
-      console.error("❌ MMIIArterial: Erro ao salvar exame:", error);
+      console.error("Erro ao salvar exame:", error);
       alert('Erro ao salvar o exame. Tente novamente.');
-    }
-  }
-
-  // Função para carregar um exame salvo
-  function handleCarregarExame(exame) {
-    setNome(exame.nome || "");
-    setIdade(exame.idade || "");
-    setData(exame.data || "");
-    setLado(exame.lado || "");
-    
-    if (exame.arteriasDireito) {
-      setArteriasDireito(exame.arteriasDireito);
-    }
-    if (exame.arteriasEsquerdo) {
-      setArteriasEsquerdo(exame.arteriasEsquerdo);
-    }
-    
-    // Fechar modal se estiver aberto
-    setMostrarLaudo(false);
-  }
-
-  // Função para editar um exame salvo
-  function handleEditarExame(exame) {
-    // Salvar exame atual em localStorage para edição
-    localStorage.setItem("exameEmEdicao", JSON.stringify(exame));
-    
-    // Redirecionar para a página de edição (que é esta mesma)
-    window.location.reload();
-  }
-
-  // Função para excluir um exame salvo
-  function handleExcluirExame(idExame) {
-    if (confirm('Tem certeza que deseja excluir este exame?')) {
-      try {
-        const examesExistentes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-        const examesFiltrados = examesExistentes.filter(exame => exame.id !== idExame);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(examesFiltrados));
-        
-        // Atualizar a lista se estiver sendo exibida
-        // (implementar se necessário)
-        
-        alert('Exame excluído com sucesso!');
-      } catch (error) {
-        console.error('Erro ao excluir exame:', error);
-        alert('Erro ao excluir o exame. Tente novamente.');
-      }
     }
   }
 
@@ -1430,92 +580,6 @@ function MMIIArterial() {
     setAnexos(prev => prev.filter(anexo => anexo.id !== id));
   }
 
-  // Função para verificar se uma artéria está normal
-  function isArteriaNormal(valores) {
-    return (
-      valores.status === "Pérvia" &&
-      valores.velocidade === "Normocinético" &&
-      valores.tipoOnda === "Trifásico" &&
-      valores.sentido === "Anterógrado" &&
-      valores.ateromatose === "Ausente" &&
-      valores.placa === "Ausente"
-    );
-  }
-
-  // Função para gerar descrição da estenose baseada na porcentagem
-  function getDescricaoEstenose(percentual, nomeArteria) {
-    const percentualNum = parseFloat(percentual);
-    
-    if (percentualNum < 50) {
-      return `Estenose menor que 50% em Artéria ${nomeArteria}`;
-    } else if (percentualNum >= 50 && percentualNum <= 70) {
-      return `Estenose de 50-70% em Artéria ${nomeArteria}`;
-    } else if (percentualNum > 70 && percentualNum <= 90) {
-      return `Estenose maior que 70% em Artéria ${nomeArteria}`;
-    } else if (percentualNum > 90) {
-      return `Estenose crítica maior que 90% em Artéria ${nomeArteria}`;
-    }
-    
-    return `Estenose de ${percentualNum}% em Artéria ${nomeArteria}`;
-  }
-
-  // Função para gerar conclusão de um membro específico
-  function getConclusaoMMIIArterialPorMembro(arteriasValores, lado) {
-    // Calcular flags conforme requisitos especificados
-    const temAtero = Object.values(arteriasValores).some(v => ['Discreta', 'Moderada', 'Severa'].includes(v.ateromatose));
-    const oclusoes = [];
-    const estenoses = [];
-    let isNormal = true;
-    
-    // Verificar cada artéria
-    Object.entries(arteriasValores).forEach(([nomeArteria, valores]) => {
-      const ladoTexto = lado === "Direito" ? "direita" : "esquerda";
-      
-      // Verificar normalidade da artéria
-      if (!isArteriaNormal(valores)) {
-        isNormal = false;
-      }
-      
-      // Verificar se a artéria está ocluída
-      if (valores.status === "Ocluída") {
-        let linhaOclusao = `Oclusão de Artéria ${nomeArteria} ${ladoTexto}`;
-        if (valores.localizacaoOclusao) {
-          linhaOclusao += ` (${valores.localizacaoOclusao.toLowerCase()})`;
-        }
-        oclusoes.push(linhaOclusao);
-        return; // Pular outras verificações para artéria ocluída
-      }
-      
-      // Verificar se há placa/estenose
-      if (valores.placa === "Presente" && valores.estenosePercentual && valores.caracteristicaPlaca) {
-        // Corrigir bug de duplicação "Artéria Artéria"
-        const nomeLimpo = nomeArteria.replace(/^Artéria\s+/i, '');
-        const linhaEstenose = getDescricaoEstenose(valores.estenosePercentual, `${nomeLimpo} ${ladoTexto}`);
-        estenoses.push(linhaEstenose);
-      }
-    });
-    
-    // Montar array linhas conforme requisitos
-    const linhas = [];
-    
-    if (isNormal) {
-      linhas.push('Exame compatível com normalidade.');
-    } else {
-      // 1) Ateromatose (sempre aparece se existir, mesmo com outros achados)
-      if (temAtero) {
-        linhas.push('Ateromatose.');
-      }
-      
-      // 2) Oclusões
-      linhas.push(...oclusoes);
-      
-      // 3) Estenoses
-      linhas.push(...estenoses);
-    }
-    
-    // Retornar todas as linhas, cada uma separada por quebra de linha
-    return linhas.join('\n');
-  }
 
   return (
     <div style={{
@@ -1578,6 +642,8 @@ function MMIIArterial() {
                   lado={lado}
                   arteriasValores={lado === "Direito" ? arteriasDireito : arteriasEsquerdo}
                   onChange={(arteria, valores) => handleArteriaChange(lado, arteria, valores)}
+                  enxerto={enxertos[lado]}
+                  onEnxertoChange={(enx) => handleEnxertoChange(lado, enx)}
                 />
               </div>
             )}
@@ -1596,6 +662,8 @@ function MMIIArterial() {
                     lado="Direito"
                     arteriasValores={arteriasDireito}
                     onChange={(arteria, valores) => handleArteriaChange("Direito", arteria, valores)}
+                    enxerto={enxertos.Direito}
+                    onEnxertoChange={(enx) => handleEnxertoChange("Direito", enx)}
                   />
                 </div>
                 <div style={{
@@ -1609,6 +677,8 @@ function MMIIArterial() {
                     lado="Esquerdo"
                     arteriasValores={arteriasEsquerdo}
                     onChange={(arteria, valores) => handleArteriaChange("Esquerdo", arteria, valores)}
+                    enxerto={enxertos.Esquerdo}
+                    onEnxertoChange={(enx) => handleEnxertoChange("Esquerdo", enx)}
                   />
                 </div>
               </>
@@ -1665,8 +735,8 @@ function MMIIArterial() {
                   const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
 
                   const doc = new jsPDF();
-                  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
-                  const blocos = gerarTextoLaudo().split("=".repeat(80));
+                  const lados = ladosDoExame(lado);
+                  const cabecalhoPaciente = gerarCabecalhoLaudo({ nome, idade, data });
 
                   function addCabecalho(y) {
                     let yLogo = 14; // topo do logo
@@ -1753,7 +823,10 @@ function MMIIArterial() {
                   lados.forEach((ladoAtual, idx) => {
                     if (pagina > 0) doc.addPage();
                     let y = addCabecalho(12);
-                    const bloco = blocos[idx] ? blocos[idx].trim().split("\n") : [];
+                    // Cada página (membro) leva a identificação do paciente.
+                    const bloco = (cabecalhoPaciente + "\n" +
+                      gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos[ladoAtual])
+                    ).trim().split("\n");
                     let inConclusao = false;
                     let inObservacoes = false;
                     for (let i = 0; i < bloco.length; i++) {
@@ -1868,16 +941,6 @@ function MMIIArterial() {
                   
                   doc.save(`Laudo_${nome}_${data}.pdf`);
                   
-                  // RESET APÓS SALVAR PDF - Item 7
-                  setNome("");
-                  setIdade("");
-                  setData("");
-                  setLado("");
-                  setArteriasDireito(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
-                  setArteriasEsquerdo(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
-                  setMostrarLaudo(false);
-                  setErro("");
-                  setAnexos([]);
                 }}>Salvar PDF</button>
               </div>
               {gerarTextoLaudo()}
