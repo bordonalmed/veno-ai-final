@@ -828,8 +828,7 @@ function MMIIVenoso() {
           parva,
           perfurantes,
           profundas,
-          jsfDiametro,
-          jspDiametro,
+          varizes,
           observacoes,
         });
       } catch (e) {
@@ -1566,8 +1565,7 @@ function MMIIVenoso() {
         parva={parva}
         perfurantes={perfurantes}
         profundas={profundas}
-        jsfDiametro={jsfDiametro}
-        jspDiametro={jspDiametro}
+        varizes={varizes}
         observacoes={observacoes}
       />
       <MapaInterativo

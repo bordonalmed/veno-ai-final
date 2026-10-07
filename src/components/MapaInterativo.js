@@ -34,12 +34,12 @@ import {
 // separadas ali colide com a Safena Parva e entre si).
 const COL_WIDTH = 320;
 const COLS = [
-  { key: "medial", label: "medial", tx: -75 },
+  { key: "medial", label: "medial", tx: -68 },
   { key: "posterior", label: "posterior", tx: COL_WIDTH - 75 },
 ];
 const VIEW_TY = 16;
-const VIEW_W = COL_WIDTH * 2;
-const VIEW_H = 660;
+export const VIEW_W = COL_WIDTH * 2;
+export const VIEW_H = 660;
 
 function mapaBotaoStyle(background) {
   return {
@@ -77,7 +77,7 @@ const CALF_DOTS = [
 // Cores próprias para os "adesivos" de variz (diferentes das cores de status
 // dos vasos, pra não confundir o usuário: variz não é achado de status de
 // veia, é um achado de pele à parte).
-const VARIZ_CORES = {
+export const VARIZ_CORES = {
   "Varizes Superficiais": "#6f42c1",
   "Varizes Reticulares": "#2f7dd1",
   "Microvarizes": "#c0392b",
@@ -157,34 +157,23 @@ const PROFUNDA_LABELS = {
   "Veias Soleares": "Veias Soleares",
 };
 
-export default function MapaInterativo({
-  aberto, onFechar,
-  lado, ladoAtivo, onTrocarLado,
-  nome, data,
-  profundas, superficiais, magna, parva, perfurantes, observacoes, varizes,
-  jsfDiametro, jspDiametro,
-  onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
-  onJsfDiametro, onJspDiametro, onVarizes, onObservacao,
-  onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
-  incluirMapeamentoVisualPdf, onIncluirMapeamentoVisualPdf,
-  anexos = [], onFileUpload, onDrop, onDragOver, onRemoveAnexo, formatFileSize,
+// Desenho das duas vistas (anterior + posterior) de UM membro. O Mapa Interativo
+// usa com onSelecionar (clicável); o Mapeamento Visual e o PDF usam sem ele
+// (estático) — é o mesmo desenho, então o PDF impresso sai igual ao Mapa Interativo.
+export function DesenhoMMIIVenoso({
+  lado, profundas, superficiais, magna, parva, perfurantes, varizes,
+  onSelecionar, chaveAtiva = null, width = "100%", height, style,
 }) {
-  const [selecionado, setSelecionado] = useState(null);
-
-  if (!aberto) return null;
-
-  const l = ladoAtivo;
-  const p = profundas?.[l] || {};
-  const s = superficiais?.[l] || {};
-  const m = magna?.[l] || {};
-  const pv = parva?.[l] || {};
-  const perfs = Array.isArray(perfurantes?.[l]) ? perfurantes[l] : [];
-  const vz = varizes?.[l] || {};
-
-  function selecionar(tipo, key) {
-    setSelecionado({ tipo, key });
-  }
-  const chaveAtiva = selecionado ? `${selecionado.tipo}:${selecionado.key}` : null;
+  const l = lado;
+  const p = profundas || {};
+  const s = superficiais || {};
+  const m = magna || {};
+  const pv = parva || {};
+  const perfs = Array.isArray(perfurantes) ? perfurantes : [];
+  const vz = varizes || {};
+  const interativo = typeof onSelecionar === "function";
+  const selecionar = (tipo, key) => { if (interativo) onSelecionar(tipo, key); };
+  const clicavel = interativo ? { cursor: "pointer" } : undefined;
 
   // A geometria (silhuetas, veias) foi desenhada para a perna ESQUERDA.
   // Para a perna DIREITA, espelha o desenho (a perna direita é a imagem
@@ -234,6 +223,111 @@ export default function MapaInterativo({
   const colMedial = COLS[0], colPosterior = COLS[1];
 
   return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width={width} height={height} style={style}>
+      {/* MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda + perfurantes */}
+      <g transform={`translate(${colMedial.tx},${VIEW_TY})`}>
+        <g transform={mirrorTransform}>
+          <path d={MEDIAL_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
+          <path d={profundaFemD} fill={corStatusProfundo(p["Veia Femoral Profunda"])} pointerEvents="none" />
+          {interativo && hitPath(profundaFemD, () => selecionar("profunda", "Veia Femoral Profunda"), "profunda:Veia Femoral Profunda", chaveAtiva, 8)}
+          <path d={comumD} fill={corStatusProfundo(p["Veia Femoral Comum"])} pointerEvents="none" />
+          {interativo && hitPath(comumD, () => selecionar("profunda", "Veia Femoral Comum"), "profunda:Veia Femoral Comum", chaveAtiva, 8)}
+          <path d={superficialD} fill={corStatusProfundo(p["Veia Femoral Superficial"])} pointerEvents="none" />
+          {interativo && hitPath(superficialD, () => selecionar("profunda", "Veia Femoral Superficial"), "profunda:Veia Femoral Superficial", chaveAtiva, 8)}
+          {magnaResult.segments.map((seg, i) => (
+            <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
+          ))}
+          {interativo && hitPath(magnaHitD, () => selecionar("superficial", "Safena Magna"), "superficial:Safena Magna", chaveAtiva)}
+          <circle cx={VSM_SPINE[0][0]} cy={VSM_SPINE[0][1]} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={clicavel} onClick={() => selecionar("superficial", "JSF")} />
+          {perfMarkers.map((mk, i) => (
+            <polygon key={i} points={trianguloPontos(mk.x, mk.y, PERFURANTE_TRIANGULO_RAIO)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
+          ))}
+          {VARIZ_SPOTS.filter((spot) => spot.view === "medial" && (interativo || vz[spot.regiao])).map((spot) => {
+            const chave = `variz:${spot.regiao}`;
+            const ativo = chaveAtiva === chave;
+            return (
+              <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
+                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
+              </g>
+            );
+          })}
+        </g>
+        <text x={mx(212.7)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSF</text>
+        <text x={mx(111)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>Femoral</text>
+        <text x={mx(187)} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSM</text>
+        <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">anterior</text>
+      </g>
+
+      {/* POSTERIOR: JSP + Veia Poplítea + Safena Parva + panturrilha */}
+      <g transform={`translate(${colPosterior.tx},${VIEW_TY})`}>
+        <g transform={mirrorTransform}>
+          <path d={POSTERIOR_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
+          <path d={POPLITEA_RIBBON} fill={corStatusProfundo(p["Veia Poplítea"])} style={clicavel} onClick={() => selecionar("profunda", "Veia Poplítea")} opacity={chaveAtiva === "profunda:Veia Poplítea" ? 0.7 : 1} stroke={chaveAtiva === "profunda:Veia Poplítea" ? "#0eb8d0" : "none"} strokeWidth={2} />
+          {parvaResult.segments.map((seg, i) => (
+            <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
+          ))}
+          {interativo && hitPath(parvaHitD, () => selecionar("superficial", "Safena Parva"), "superficial:Safena Parva", chaveAtiva)}
+          <circle cx={150} cy={314} r={8} fill={jspCor} stroke="#fff" strokeWidth={1.5} style={clicavel} onClick={() => selecionar("superficial", "JSP")} />
+          {CALF_DOTS.map((dot) => {
+            const chave = `profunda:${dot.key}`;
+            const ativo = chaveAtiva === chave;
+            return (
+              <g key={dot.key} style={clicavel} onClick={() => selecionar("profunda", dot.key)}>
+                <circle cx={dot.x} cy={dot.y} r={7} fill={corStatusProfundo(p[dot.key])} stroke={ativo ? "#0eb8d0" : "#fff"} strokeWidth={ativo ? 2.5 : 1.5} />
+                <text x={dot.x} y={dot.y + 3} fontFamily="monospace" fontSize="7.5" fill="#fff" textAnchor="middle" pointerEvents="none" transform={mirrored ? `translate(${2 * dot.x},0) scale(-1,1)` : undefined}>{dot.label}</text>
+              </g>
+            );
+          })}
+          {VARIZ_SPOTS.filter((spot) => spot.view === "posterior" && (interativo || vz[spot.regiao])).map((spot) => {
+            const chave = `variz:${spot.regiao}`;
+            const ativo = chaveAtiva === chave;
+            return (
+              <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
+                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
+              </g>
+            );
+          })}
+        </g>
+        <text x={mx(230)} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSP</text>
+        <text x={mx(135)} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>V. Poplítea</text>
+        <text x={mx(115)} y={430} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSP</text>
+        <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">posterior</text>
+      </g>
+    </svg>
+  );
+}
+
+export default function MapaInterativo({
+  aberto, onFechar,
+  lado, ladoAtivo, onTrocarLado,
+  nome, data,
+  profundas, superficiais, magna, parva, perfurantes, observacoes, varizes,
+  jsfDiametro, jspDiametro,
+  onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
+  onJsfDiametro, onJspDiametro, onVarizes, onObservacao,
+  onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
+  incluirMapeamentoVisualPdf, onIncluirMapeamentoVisualPdf,
+  anexos = [], onFileUpload, onDrop, onDragOver, onRemoveAnexo, formatFileSize,
+}) {
+  const [selecionado, setSelecionado] = useState(null);
+
+  if (!aberto) return null;
+
+  const l = ladoAtivo;
+  const p = profundas?.[l] || {};
+  const s = superficiais?.[l] || {};
+  const m = magna?.[l] || {};
+  const pv = parva?.[l] || {};
+  const perfs = Array.isArray(perfurantes?.[l]) ? perfurantes[l] : [];
+  const vz = varizes?.[l] || {};
+
+  function selecionar(tipo, key) {
+    setSelecionado({ tipo, key });
+  }
+  const chaveAtiva = selecionado ? `${selecionado.tipo}:${selecionado.key}` : null;
+
+
+  return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000,
       display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "clamp(8px,2vw,24px)",
@@ -267,77 +361,11 @@ export default function MapaInterativo({
         </p>
 
         <div style={{ width: "100%", display: "flex", justifyContent: "center", border: "1px solid #dfe6ec", borderRadius: 8, background: "#fbfbfb" }}>
-          <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width="100%" style={{ maxWidth: 480, display: "block" }}>
-            {/* MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda + perfurantes */}
-            <g transform={`translate(${colMedial.tx},${VIEW_TY})`}>
-              <g transform={mirrorTransform}>
-                <path d={MEDIAL_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
-                <path d={profundaFemD} fill={corStatusProfundo(p["Veia Femoral Profunda"])} pointerEvents="none" />
-                {hitPath(profundaFemD, () => selecionar("profunda", "Veia Femoral Profunda"), "profunda:Veia Femoral Profunda", chaveAtiva, 8)}
-                <path d={comumD} fill={corStatusProfundo(p["Veia Femoral Comum"])} pointerEvents="none" />
-                {hitPath(comumD, () => selecionar("profunda", "Veia Femoral Comum"), "profunda:Veia Femoral Comum", chaveAtiva, 8)}
-                <path d={superficialD} fill={corStatusProfundo(p["Veia Femoral Superficial"])} pointerEvents="none" />
-                {hitPath(superficialD, () => selecionar("profunda", "Veia Femoral Superficial"), "profunda:Veia Femoral Superficial", chaveAtiva, 8)}
-                {magnaResult.segments.map((seg, i) => (
-                  <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
-                ))}
-                {hitPath(magnaHitD, () => selecionar("superficial", "Safena Magna"), "superficial:Safena Magna", chaveAtiva)}
-                <circle cx={VSM_SPINE[0][0]} cy={VSM_SPINE[0][1]} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSF")} />
-                {perfMarkers.map((mk, i) => (
-                  <polygon key={i} points={trianguloPontos(mk.x, mk.y, PERFURANTE_TRIANGULO_RAIO)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
-                ))}
-                {VARIZ_SPOTS.filter((spot) => spot.view === "medial").map((spot) => {
-                  const chave = `variz:${spot.regiao}`;
-                  const ativo = chaveAtiva === chave;
-                  return (
-                    <g key={spot.regiao} style={{ cursor: "pointer" }} onClick={() => selecionar("variz", spot.regiao)}>
-                      <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
-                    </g>
-                  );
-                })}
-              </g>
-              <text x={mx(212.7)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSF</text>
-              <text x={mx(111)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>Femoral</text>
-              <text x={mx(187)} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSM</text>
-              <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">anterior</text>
-            </g>
-
-            {/* POSTERIOR: JSP + Veia Poplítea + Safena Parva + panturrilha */}
-            <g transform={`translate(${colPosterior.tx},${VIEW_TY})`}>
-              <g transform={mirrorTransform}>
-                <path d={POSTERIOR_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
-                <path d={POPLITEA_RIBBON} fill={corStatusProfundo(p["Veia Poplítea"])} style={{ cursor: "pointer" }} onClick={() => selecionar("profunda", "Veia Poplítea")} opacity={chaveAtiva === "profunda:Veia Poplítea" ? 0.7 : 1} stroke={chaveAtiva === "profunda:Veia Poplítea" ? "#0eb8d0" : "none"} strokeWidth={2} />
-                {parvaResult.segments.map((seg, i) => (
-                  <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
-                ))}
-                {hitPath(parvaHitD, () => selecionar("superficial", "Safena Parva"), "superficial:Safena Parva", chaveAtiva)}
-                <circle cx={150} cy={314} r={8} fill={jspCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSP")} />
-                {CALF_DOTS.map((dot) => {
-                  const chave = `profunda:${dot.key}`;
-                  const ativo = chaveAtiva === chave;
-                  return (
-                    <g key={dot.key} style={{ cursor: "pointer" }} onClick={() => selecionar("profunda", dot.key)}>
-                      <circle cx={dot.x} cy={dot.y} r={7} fill={corStatusProfundo(p[dot.key])} stroke={ativo ? "#0eb8d0" : "#fff"} strokeWidth={ativo ? 2.5 : 1.5} />
-                      <text x={dot.x} y={dot.y + 3} fontFamily="monospace" fontSize="7.5" fill="#fff" textAnchor="middle" pointerEvents="none" transform={mirrored ? `translate(${2 * dot.x},0) scale(-1,1)` : undefined}>{dot.label}</text>
-                    </g>
-                  );
-                })}
-                {VARIZ_SPOTS.filter((spot) => spot.view === "posterior").map((spot) => {
-                  const chave = `variz:${spot.regiao}`;
-                  const ativo = chaveAtiva === chave;
-                  return (
-                    <g key={spot.regiao} style={{ cursor: "pointer" }} onClick={() => selecionar("variz", spot.regiao)}>
-                      <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
-                    </g>
-                  );
-                })}
-              </g>
-              <text x={mx(230)} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSP</text>
-              <text x={mx(135)} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>V. Poplítea</text>
-              <text x={mx(115)} y={430} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSP</text>
-              <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">posterior</text>
-            </g>
-          </svg>
+          <DesenhoMMIIVenoso
+            lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
+            onSelecionar={selecionar} chaveAtiva={chaveAtiva}
+            style={{ maxWidth: 480, display: "block" }}
+          />
         </div>
 
         {/* ● (círculo geométrico comum) em vez de emoji de bolinha colorida (🔴🔵⚫🟠⚪): emoji

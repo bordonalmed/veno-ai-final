@@ -1,235 +1,42 @@
 import React, { useMemo, useState } from "react";
 import jsPDF from "jspdf";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
-  MEDIAL_SILHOUETTE,
-  FEMORAL_TRUNK_SPINE,
-  FEMORAL_TRUNK_HALF,
-  FEMORAL_COMUM_TOPO,
-  FEMORAL_COMUM_FIM,
-  FEMORAL_PROFUNDA_SPINE,
-  FEMORAL_PROFUNDA_HALF,
-  fitaVeiaSimples,
-  POSTERIOR_SILHOUETTE,
-  POPLITEA_RIBBON,
-  TIBIAIS_RIBBON,
-  VSM_SPINE,
-  VSM_HALF,
-  VSP_SPINE,
-  VSP_HALF,
-  LANDMARK_MAGNA,
-  LANDMARK_PARVA,
   CORES,
-  construirSegmentosVeia,
   gerarConclusaoVisual,
-  posicaoPerfurante,
-  trianguloPontos,
-  PERFURANTE_TRIANGULO_RAIO,
-  piorCorProfundo,
   conclusoesSistemaProfundo,
-  interpAt,
 } from "../utils/vascularMapping";
+import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_CORES } from "./MapaInterativo";
 
-// Texto com "halo" branco (paint-order) para ficar legível sobre a ilustração,
-// sem precisar desenhar um retângulo de fundo atrás de cada rótulo.
-// Quando a perna está espelhada (Esquerdo), o texto é envolvido num
-// contra-espelhamento local (ao redor do próprio ponto x,y) para não sair
-// com as letras invertidas, já que ele vive dentro do <g scale(-1,1)> da perna.
-function medidaTexto(x, y, texto, align, mirrored) {
-  // No lado espelhado o contra-espelhamento inverte também o sentido em que o
-  // texto cresce; troca a âncora pra ele continuar crescendo pra longe da veia.
-  const anchor = !mirrored ? align : align === "start" ? "end" : align === "end" ? "start" : align;
-  const t = `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="monospace" font-size="9.5" text-anchor="${anchor}" fill="#1a2530" paint-order="stroke" stroke="#ffffff" stroke-width="3">${texto}</text>`;
-  if (!mirrored) return t;
-  return `<g transform="translate(${(2 * x).toFixed(2)},0) scale(-1,1)">${t}</g>`;
-}
+// Monta o desenho (vista anterior + posterior) de UM membro com o mesmo
+// componente do Mapa Interativo, pra o Mapeamento Visual e o PDF saírem
+// iguais ao que o usuário vê/marca no Mapa Interativo.
+function montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes }) {
+  const s = superficiais?.[ladoAtual] || {};
+  const magnaExtra = magna?.[ladoAtual] || {};
+  const parvaExtra = parva?.[ladoAtual] || {};
+  const perfs = perfurantes?.[ladoAtual];
+  const prof = profundas?.[ladoAtual];
 
-// Diâmetro (mm) ao lado da veia, num ponto y aproximado do seu trajeto.
-function diametroMarcador(spine, half, y, valorMm, ladoTexto, mirrored) {
-  if (!valorMm) return "";
-  const [x, , h] = interpAt(spine, half, y);
-  const offset = h + 5;
-  if (ladoTexto === "esquerda") {
-    return medidaTexto(x - offset, y + 3, `Ø ${valorMm}mm`, "end", mirrored);
-  }
-  return medidaTexto(x + offset, y + 3, `Ø ${valorMm}mm`, "start", mirrored);
-}
-
-// Marcadores de início/fim do trecho com refluxo (distância ao longo da veia).
-function distanciaMarcadores(spine, half, refluxo, ladoTexto, mirrored) {
-  if (!refluxo) return "";
-  let svg = "";
-  const tick = (y) => {
-    const [x, , h] = interpAt(spine, half, y);
-    const x1 = ladoTexto === "esquerda" ? x - h : x + h;
-    const x2 = ladoTexto === "esquerda" ? x - h - 8 : x + h + 8;
-    return `<line x1="${x1.toFixed(2)}" y1="${y.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y.toFixed(2)}" stroke="#5c6b78" stroke-width="1"/>`;
-  };
-  if (refluxo.marcarIni) {
-    svg += tick(refluxo.yStart);
-    const [x, , h] = interpAt(spine, half, refluxo.yStart);
-    const offset = h + 10;
-    svg += medidaTexto(
-      ladoTexto === "esquerda" ? x - offset : x + offset,
-      refluxo.yStart + 3,
-      refluxo.iniLabel,
-      ladoTexto === "esquerda" ? "end" : "start",
-      mirrored
-    );
-  }
-  if (refluxo.marcarFim) {
-    svg += tick(refluxo.yEnd);
-    const [x, , h] = interpAt(spine, half, refluxo.yEnd);
-    const offset = h + 10;
-    svg += medidaTexto(
-      ladoTexto === "esquerda" ? x - offset : x + offset,
-      refluxo.yEnd + 3,
-      refluxo.fimLabel,
-      ladoTexto === "esquerda" ? "end" : "start",
-      mirrored
-    );
-  }
-  return svg;
-}
-
-// Monta o SVG (vista medial + vista posterior lado a lado) de UM membro.
-function montarSvgLado(dadosLado) {
-  const { magnaStatus, magnaExtra, parvaStatus, parvaExtra, perfurantes, profundas, mirrored, jsfDiametro, jspDiametro } = dadosLado;
-  const perfurantesInsuficientes = (Array.isArray(perfurantes) ? perfurantes : [])
-    .filter((perf) => perf && perf.status === "pérvia e incompetente" && perf.segmento);
-
-  const p = profundas || {};
-  // Mesmo traçado do Mapa Interativo (separado da Safena Magna), cada veia
-  // com a cor do próprio status.
-  const femoralComumD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_TOPO, FEMORAL_COMUM_FIM);
-  const femoralSuperficialD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, LANDMARK_MAGNA.joelho);
-  const femoralProfundaD = fitaVeiaSimples(
-    FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF,
-    FEMORAL_PROFUNDA_SPINE[0][1], FEMORAL_PROFUNDA_SPINE[FEMORAL_PROFUNDA_SPINE.length - 1][1]
+  const svg = renderToStaticMarkup(
+    <DesenhoMMIIVenoso
+      lado={ladoAtual}
+      profundas={prof}
+      superficiais={s}
+      magna={magnaExtra}
+      parva={parvaExtra}
+      perfurantes={perfs}
+      varizes={varizes?.[ladoAtual]}
+      width={VIEW_W}
+      height={VIEW_H}
+    />
   );
-  const corFemoralComum = piorCorProfundo([p["Veia Femoral Comum"]]);
-  const corFemoralSuperficial = piorCorProfundo([p["Veia Femoral Superficial"]]);
-  const corFemoralProfunda = piorCorProfundo([p["Veia Femoral Profunda"]]);
-  const corPoplitea = piorCorProfundo([p["Veia Poplítea"]]);
-  const corTibiais = piorCorProfundo([
-    p["Veias Tibiais posteriores"],
-    p["Veias Tibiais anteriores"],
-    p["Veias Gastrocnêmicas"],
-    p["Veias Soleares"],
-  ]);
 
-  const magnaResult = construirSegmentosVeia({
-    spine: VSM_SPINE,
-    half: VSM_HALF,
-    landmark: LANDMARK_MAGNA,
-    status: magnaStatus,
-    ini: magnaExtra.inicio,
-    fim: magnaExtra.fim,
-    iniVal: magnaExtra.inicio_valor,
-    fimVal: magnaExtra.fim_valor,
-  });
-  const parvaResult = construirSegmentosVeia({
-    spine: VSP_SPINE,
-    half: VSP_HALF,
-    landmark: LANDMARK_PARVA,
-    status: parvaStatus,
-    ini: parvaExtra.inicio,
-    fim: parvaExtra.fim,
-    iniVal: parvaExtra.inicio_valor,
-    fimVal: parvaExtra.fim_valor,
-  });
-
-  const magnaSegsSvg = magnaResult.segments
-    .map((s) =>
-      s.tracejado
-        ? `<path d="${s.d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round"/>`
-        : `<path d="${s.d}" fill="${s.color}"/>`
-    )
-    .join("");
-  const parvaSegsSvg = parvaResult.segments
-    .map((s) =>
-      s.tracejado
-        ? `<path d="${s.d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round"/>`
-        : `<path d="${s.d}" fill="${s.color}"/>`
-    )
-    .join("");
-
-  const jsfFill = magnaResult.dotColor;
-  const jsfStroke = magnaResult.dotStroke || "#ffffff";
-  const jspFill = parvaResult.dotColor;
-  const jspStroke = parvaResult.dotStroke || "#ffffff";
-
-  const perfMarker = perfurantesInsuficientes
-    .map((perf, idx) => {
-      const pos = posicaoPerfurante(perf.segmento, perf.valor);
-      if (!pos) return "";
-      // Evita sobrepor marcadores quando caem no mesmo ponto, empilhando na
-      // VERTICAL (um deslocamento horizontal maior jogava os marcadores
-      // extras pra fora do desenho perto do joelho, onde a perna afunila).
-      const jitter = idx * 12;
-      const pontos = trianguloPontos(pos.x, pos.y + jitter, PERFURANTE_TRIANGULO_RAIO);
-      return `<polygon points="${pontos}" fill="${CORES["pérvia e incompetente"]}" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>`;
-    })
-    .join("");
-
-  const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
-
-  // Medidas (diâmetros e distâncias do refluxo) sobre a vista medial (safena magna)
-  const [jsfX, jsfY] = VSM_SPINE[0];
-  const jsfLabelSvg = medidaTexto(jsfX + 16, jsfY + 4, "JSF", "start", mirrored);
-  const jsfDiamSvg = jsfDiametro
-    ? medidaTexto(jsfX - 15, jsfY + 4, `Ø ${jsfDiametro}mm`, "end", mirrored)
-    : "";
-  const magnaCoxaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 150, magnaExtra.coxa, "esquerda", mirrored);
-  const magnaPernaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 420, magnaExtra.perna, "esquerda", mirrored);
-  const magnaTornozeloSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 530, magnaExtra.tornozelo, "esquerda", mirrored);
-  const magnaRefluxoSvg = distanciaMarcadores(VSM_SPINE, VSM_HALF, magnaResult.refluxo, "direita", mirrored);
-
-  // Medidas sobre a vista posterior (safena parva)
-  const jspLabelSvg = medidaTexto(150 + 16, 316 + 4, "JSP", "start", mirrored);
-  const jspDiamSvg = jspDiametro
-    ? medidaTexto(150 - 15, 316 + 4, `Ø ${jspDiametro}mm`, "end", mirrored)
-    : "";
-  const parvaProximalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 340, parvaExtra.proximal, "esquerda", mirrored);
-  const parvaDistalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 515, parvaExtra.distal, "esquerda", mirrored);
-  const parvaRefluxoSvg = distanciaMarcadores(VSP_SPINE, VSP_HALF, parvaResult.refluxo, "direita", mirrored);
-
-  const medialInner = `
-    <path d="${MEDIAL_SILHOUETTE}" fill="url(#skinGradM)" stroke="#a97a4e" stroke-width="1.5"/>
-    <path d="${femoralProfundaD}" fill="${corFemoralProfunda}" opacity="0.85"/>
-    <path d="${femoralSuperficialD}" fill="${corFemoralSuperficial}" opacity="0.85"/>
-    <path d="${femoralComumD}" fill="${corFemoralComum}" opacity="0.85"/>
-    ${magnaSegsSvg}
-    <circle cx="${jsfX}" cy="${jsfY}" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
-    ${perfMarker}
-    ${jsfLabelSvg}${jsfDiamSvg}${magnaCoxaSvg}${magnaPernaSvg}${magnaTornozeloSvg}${magnaRefluxoSvg}
-  `;
-  const posteriorInner = `
-    <path d="${POSTERIOR_SILHOUETTE}" fill="url(#skinGradP)" stroke="#a97a4e" stroke-width="1.5"/>
-    <path d="${POPLITEA_RIBBON}" fill="${corPoplitea}" opacity="0.85"/>
-    <path d="${TIBIAIS_RIBBON}" fill="${corTibiais}" opacity="0.85"/>
-    ${parvaSegsSvg}
-    <circle cx="150" cy="316" r="7" fill="${jspFill}" stroke="${jspStroke}" stroke-width="1.5"/>
-    ${jspLabelSvg}${jspDiamSvg}${parvaProximalSvg}${parvaDistalSvg}${parvaRefluxoSvg}
-  `;
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 680" width="640" height="680">
-    <defs>
-      <radialGradient id="skinGradM" cx="${mirrored ? 65 : 35}%" cy="30%" r="80%">
-        <stop offset="0%" stop-color="#f0c9a0"/><stop offset="100%" stop-color="#d9a877"/>
-      </radialGradient>
-      <radialGradient id="skinGradP" cx="50%" cy="25%" r="85%">
-        <stop offset="0%" stop-color="#f0c9a0"/><stop offset="100%" stop-color="#d9a877"/>
-      </radialGradient>
-    </defs>
-    <g transform="translate(0,10)"><g transform="${mirrorTransform}">${medialInner}</g></g>
-    <g transform="translate(330,10)"><g transform="${mirrorTransform}">${posteriorInner}</g></g>
-    <text x="150" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA ANTERIOR</text>
-    <text x="480" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA POSTERIOR</text>
-  </svg>`;
-
-  const conclusoes = [...conclusoesSistemaProfundo(profundas)];
-  const cMagna = gerarConclusaoVisual("magna", "JSF", magnaStatus, magnaExtra.inicio, magnaExtra.fim, magnaExtra.inicio_valor, magnaExtra.fim_valor);
-  const cParva = gerarConclusaoVisual("parva", "JSP", parvaStatus, parvaExtra.inicio, parvaExtra.fim, parvaExtra.inicio_valor, parvaExtra.fim_valor);
+  const perfurantesInsuficientes = (Array.isArray(perfs) ? perfs : [])
+    .filter((perf) => perf && perf.status === "pérvia e incompetente" && perf.segmento);
+  const conclusoes = [...conclusoesSistemaProfundo(prof)];
+  const cMagna = gerarConclusaoVisual("magna", "JSF", s["Safena Magna"], magnaExtra.inicio, magnaExtra.fim, magnaExtra.inicio_valor, magnaExtra.fim_valor);
+  const cParva = gerarConclusaoVisual("parva", "JSP", s["Safena Parva"], parvaExtra.inicio, parvaExtra.fim, parvaExtra.inicio_valor, parvaExtra.fim_valor);
   if (cMagna) conclusoes.push(cMagna);
   if (cParva) conclusoes.push(cParva);
   perfurantesInsuficientes.forEach((perf) => {
@@ -272,16 +79,35 @@ function desenharLegendaPdf(doc, pageWidth, yInicial) {
   const rotuloTriangulo = "Perfurante insuficiente";
   const larguraLinha2 = 6 + doc.getTextWidth(rotuloTriangulo);
   const lx2 = (pageWidth - larguraLinha2) / 2;
-  doc.triangle(lx2 + 2, y - 1, lx2, y - 4.2, lx2 + 4, y - 4.2, "F");
+  doc.triangle(lx2 + 2, y - 4.6, lx2, y - 1, lx2 + 4, y - 1, "F");
   doc.setTextColor(90, 100, 110);
   doc.text(rotuloTriangulo, lx2 + 6, y);
+  doc.setTextColor(0, 0, 0);
+  y += 5.5;
+
+  doc.setFontSize(8.5);
+  const legendaVarizes = [
+    ["Varizes superficiais", VARIZ_CORES["Varizes Superficiais"]],
+    ["Varizes reticulares", VARIZ_CORES["Varizes Reticulares"]],
+    ["Microvarizes", VARIZ_CORES["Microvarizes"]],
+  ];
+  const larguraVarizes = legendaVarizes.reduce((acc, [label]) => acc + 6 + doc.getTextWidth(label) + 8, -8);
+  let lx3 = (pageWidth - larguraVarizes) / 2;
+  legendaVarizes.forEach(([label, cor]) => {
+    const rgb = hexParaRgb(cor);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.circle(lx3 + 2, y - 1.3, 1.4, "F");
+    doc.setTextColor(90, 100, 110);
+    doc.text(label, lx3 + 6, y);
+    lx3 += 6 + doc.getTextWidth(label) + 8;
+  });
   doc.setTextColor(0, 0, 0);
   y += 5.5;
 
   let fonteExplicativa = 7.5;
   doc.setFontSize(fonteExplicativa);
   const textoExplicativo =
-    "Ø = diâmetro (mm)   ·   traço perpendicular à veia = limite do trecho com refluxo detectado";
+    "Gc = Gastrocnêmicas   ·   Ta = Tibiais anteriores   ·   So = Soleares   ·   Tp = Tibiais posteriores";
   if (doc.getTextWidth(textoExplicativo) > pageWidth - 20) {
     fonteExplicativa = 6.5;
     doc.setFontSize(fonteExplicativa);
@@ -349,25 +175,14 @@ export async function adicionarEsquemaAoPdf(doc, {
   parva,
   perfurantes,
   profundas,
-  jsfDiametro,
-  jspDiametro,
+  varizes,
   observacoes,
 }) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   for (const ladoAtual of ladosParaMostrar) {
-    const { svg, conclusoes } = montarSvgLado({
-      magnaStatus: superficiais?.[ladoAtual]?.["Safena Magna"],
-      magnaExtra: magna?.[ladoAtual] || {},
-      parvaStatus: superficiais?.[ladoAtual]?.["Safena Parva"],
-      parvaExtra: parva?.[ladoAtual] || {},
-      perfurantes: perfurantes?.[ladoAtual],
-      profundas: profundas?.[ladoAtual],
-      mirrored: ladoAtual === "Direito",
-      jsfDiametro: jsfDiametro?.[ladoAtual],
-      jspDiametro: jspDiametro?.[ladoAtual],
-    });
-    const dataUrl = await svgParaImagemDataUrl(svg, 640, 680);
+    const { svg, conclusoes } = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
+    const dataUrl = await svgParaImagemDataUrl(svg, VIEW_W, VIEW_H);
 
     doc.addPage();
     let y = 16;
@@ -378,7 +193,7 @@ export async function adicionarEsquemaAoPdf(doc, {
     doc.setFont(undefined, "normal");
 
     const imgWidthMm = 170;
-    const imgHeightMm = imgWidthMm * (680 / 640);
+    const imgHeightMm = imgWidthMm * (VIEW_H / VIEW_W);
     const x = (pageWidth - imgWidthMm) / 2;
     doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
     y += imgHeightMm + 6;
@@ -413,8 +228,7 @@ export default function EsquemaMapeamentoModal({
   parva,
   perfurantes,
   profundas,
-  jsfDiametro,
-  jspDiametro,
+  varizes,
   observacoes,
 }) {
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -424,20 +238,10 @@ export default function EsquemaMapeamentoModal({
   const esquemas = useMemo(() => {
     const out = {};
     ladosParaMostrar.forEach((ladoAtual) => {
-      out[ladoAtual] = montarSvgLado({
-        magnaStatus: superficiais?.[ladoAtual]?.["Safena Magna"],
-        magnaExtra: magna?.[ladoAtual] || {},
-        parvaStatus: superficiais?.[ladoAtual]?.["Safena Parva"],
-        parvaExtra: parva?.[ladoAtual] || {},
-        perfurantes: perfurantes?.[ladoAtual],
-        profundas: profundas?.[ladoAtual],
-        mirrored: ladoAtual === "Direito",
-        jsfDiametro: jsfDiametro?.[ladoAtual],
-        jspDiametro: jspDiametro?.[ladoAtual],
-      });
+      out[ladoAtual] = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
     });
     return out;
-  }, [lado, superficiais, magna, parva, perfurantes, profundas, jsfDiametro, jspDiametro]);
+  }, [lado, superficiais, magna, parva, perfurantes, profundas, varizes]);
 
   if (!aberto) return null;
 
@@ -452,7 +256,7 @@ export default function EsquemaMapeamentoModal({
         const ladoAtual = ladosParaMostrar[i];
         if (i > 0) doc.addPage();
 
-        const dataUrl = await svgParaImagemDataUrl(esquemas[ladoAtual].svg, 640, 680);
+        const dataUrl = await svgParaImagemDataUrl(esquemas[ladoAtual].svg, VIEW_W, VIEW_H);
 
         let y = 16;
         if (nomeClinica) {
@@ -471,7 +275,7 @@ export default function EsquemaMapeamentoModal({
         y += 6;
 
         const imgWidthMm = 170;
-        const imgHeightMm = imgWidthMm * (680 / 640);
+        const imgHeightMm = imgWidthMm * (VIEW_H / VIEW_W);
         const x = (pageWidth - imgWidthMm) / 2;
         doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
         y += imgHeightMm + 6;
@@ -571,9 +375,12 @@ export default function EsquemaMapeamentoModal({
             <span style={{ color: CORES["pérvia e incompetente"] }}>● insuficiente</span>
             <span style={{ color: CORES["não compressível e sem fluxo (trombose)"] }}>● trombose</span>
             <span style={{ color: CORES["recanalização parcial"] }}>● recanalização parcial</span>
-            <span style={{ color: CORES["ausente"] }}>● ausente (tracejado)</span>
+            <span style={{ color: CORES["ausente"] }}>● ausente</span>
             <span style={{ color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
-            <span style={{ marginLeft: 8 }}>Ø = diâmetro (mm) · traço = limite do trecho com refluxo</span>
+            <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
+            <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>● varizes superficiais</span>
+            <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>● reticulares</span>
+            <span style={{ color: VARIZ_CORES["Microvarizes"] }}>● microvarizes</span>
           </div>
         )}
 
