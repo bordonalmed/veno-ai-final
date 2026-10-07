@@ -8,7 +8,7 @@ import {
   VSM_SPINE, VSM_HALF,
   VSP_SPINE, VSP_HALF,
   LANDMARK_MAGNA, LANDMARK_PARVA,
-  FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, FEMORAL_COMUM_TOPO,
+  FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM,
   FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF,
   CORES,
   construirSegmentosVeia,
@@ -203,7 +203,7 @@ export default function MapaInterativo({
   const magnaHitD = fitaVeiaSimples(VSM_SPINE, VSM_HALF, LANDMARK_MAGNA.top, LANDMARK_MAGNA.tornozelo);
   const jsfCor = CORES[s["JSF"]] || CORES["pérvia e competente"];
 
-  const comumD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_TOPO, FEMORAL_COMUM_FIM);
+  const comumD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, LANDMARK_MAGNA.top, FEMORAL_COMUM_FIM);
   const superficialD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, LANDMARK_MAGNA.joelho);
   const profundaFemD = fitaVeiaSimples(FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF, FEMORAL_PROFUNDA_SPINE[0][1], FEMORAL_PROFUNDA_SPINE[FEMORAL_PROFUNDA_SPINE.length - 1][1]);
 
@@ -282,7 +282,7 @@ export default function MapaInterativo({
                   <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
                 ))}
                 {hitPath(magnaHitD, () => selecionar("superficial", "Safena Magna"), "superficial:Safena Magna", chaveAtiva)}
-                <circle cx={161.8} cy={48} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSF")} />
+                <circle cx={150} cy={48} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSF")} />
                 {perfMarkers.map((mk, i) => (
                   <polygon key={i} points={trianguloPontos(mk.x, mk.y, PERFURANTE_TRIANGULO_RAIO)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
                 ))}
