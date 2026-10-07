@@ -212,7 +212,7 @@ export function DesenhoMMIIArterial({ lado, arterias, onSelecionar, selecionada,
       })}
       <text x={mx(14)} y={14} fontFamily="sans-serif" fontSize="9" fill="#5c6b78" textAnchor={mirrored ? "end" : "start"}>medial</text>
       <text x={mx(286)} y={14} fontFamily="sans-serif" fontSize="9" fill="#5c6b78" textAnchor={mirrored ? "start" : "end"}>lateral</text>
-      <text x={DESENHO_W / 2} y={DESENHO_H - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">anterior</text>
+      <text x={DESENHO_W / 2} y={DESENHO_H - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">Visão anterior</text>
     </svg>
   );
 }
