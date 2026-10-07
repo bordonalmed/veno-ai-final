@@ -9,17 +9,9 @@ export const POSTERIOR_SILHOUETTE = "M 118.00,10.00 C 107.13,11.70 117.18,16.80 
 export const POPLITEA_RIBBON = "M 142.00,300.00 C 139.50,303.33 142.75,312.50 143.00,320.00 C 143.25,327.50 143.50,335.00 143.50,345.00 C 143.50,355.00 141.08,374.17 143.00,380.00 C 144.92,385.83 152.75,385.83 155.00,380.00 C 157.25,374.17 156.17,355.00 156.50,345.00 C 156.83,335.00 156.75,327.50 157.00,320.00 C 157.25,312.50 160.50,303.33 158.00,300.00 C 155.50,296.67 144.50,296.67 142.00,300.00 Z";
 export const TIBIAIS_RIBBON = "M 143.00,380.00 C 140.58,388.33 140.17,413.33 140.50,430.00 C 140.83,446.67 143.33,465.00 145.00,480.00 C 146.67,495.00 150.00,508.33 150.50,520.00 C 151.00,531.67 147.08,545.00 148.00,550.00 C 148.92,555.00 154.08,555.00 156.00,550.00 C 157.92,545.00 159.67,531.67 159.50,520.00 C 159.33,508.33 156.33,495.00 155.00,480.00 C 153.67,465.00 151.50,446.67 151.50,430.00 C 151.50,413.33 156.42,388.33 155.00,380.00 C 153.58,371.67 145.42,371.67 143.00,380.00 Z";
 
-// Ponto do topo (JSF) deslocado pra encostar na veia femoral comum (que
-// começa em x=161.8 na mesma altura, ver FEMORAL_TRUNK_SPINE) — a junção
-// safeno-femoral é, anatomicamente, onde a safena magna desemboca na
-// femoral comum, então o traçado deve "chegar" nela, não ficar solto ao lado.
-export const VSM_SPINE = [[161.8, 48], [146, 90], [139, 150], [133, 210], [129, 260], [128, 300], [131, 330], [136, 365], [140, 400], [142, 440], [140, 475], [137, 505], [138, 530], [140, 552]];
+export const VSM_SPINE = [[150, 48], [146, 90], [139, 150], [133, 210], [129, 260], [128, 300], [131, 330], [136, 365], [140, 400], [142, 440], [140, 475], [137, 505], [138, 530], [140, 552]];
 export const VSM_HALF = [5.5, 5.2, 5.0, 4.8, 4.6, 4.4, 4.3, 4.2, 4.0, 3.8, 3.6, 3.4, 3.2, 3.0];
-// Sai posterolateral perto do tornozelo (origem real da safena parva) e vai
-// se centralizando conforme sobe, até chegar praticamente no centro (onde
-// fica a Veia Poplítea) perto do joelho — trajeto invertido do que era antes
-// (que saía central embaixo e em cima, com uma barriga lateral no meio).
-export const VSP_SPINE = [[150, 314], [157, 340], [165, 370], [172, 400], [172, 430], [168, 460], [164, 490], [161, 515], [159, 535]];
+export const VSP_SPINE = [[150, 314], [153, 340], [158, 370], [160, 400], [158, 430], [154, 460], [152, 490], [154, 515], [157, 535]];
 export const VSP_HALF = [5.2, 5.0, 4.8, 4.6, 4.4, 4.2, 4.0, 3.6, 3.2];
 
 export const LANDMARK_MAGNA = { top: 48, joelho: 320, tornozelo: 552, topField: "JSF" };
@@ -38,25 +30,11 @@ export const PX_PER_CM = 6.6;
 //
 // Tronco femoral (Femoral Comum -> Femoral Superficial, é a mesma veia
 // anatomicamente, então usa um único traçado partido em dois trechos).
-// Traçado reaproximado da Safena Magna (mais medial, com folga da pele):
-// perto da virilha (JSF) o espaço é apertado e o afastamento original já
-// era o mínimo possível; a partir daí (coxa abaixo) sobra bastante espaço,
-// então o trajeto se aproxima progressivamente da VSM em vez de ficar
-// colado no contorno lateral da coxa.
-// O trecho de cima (18 a 48) é só a continuação visual da femoral comum
-// subindo em direção à virilha, além do ponto da JSF (que fica sobreposto
-// à veia, não solto acima dela) — a veia não "nasce" na junção com a
-// safena magna, ela já vem de cima (da ilíaca externa).
-export const FEMORAL_COMUM_TOPO = 18;
-export const FEMORAL_TRUNK_SPINE = [[164, 18], [161.8, 48], [159.3, 90], [150.2, 140], [145, 190], [140.6, 240], [138.5, 280], [140, 320]];
-export const FEMORAL_TRUNK_HALF = [4.6, 4.6, 4.4, 4.2, 4.0, 3.8, 3.6, 3.4];
+export const FEMORAL_TRUNK_SPINE = [[161.8, 48], [162, 90], [156.2, 140], [151, 190], [146.6, 240], [144.5, 280], [146, 320]];
+export const FEMORAL_TRUNK_HALF = [4.6, 4.4, 4.2, 4.0, 3.8, 3.6, 3.4];
 export const FEMORAL_COMUM_FIM = 110; // px: acima disso é "Comum", abaixo é "Superficial"
 
-// Começa encostada na femoral comum/superficial (sem vão entre as duas) e
-// vai se afastando conforme desce — representa a veia femoral profunda se
-// unindo à superficial pra formar a femoral comum, não duas veias soltas
-// correndo paralelas.
-export const FEMORAL_PROFUNDA_SPINE = [[160.6, 70], [159.7, 110], [156.1, 160], [155, 210], [150.6, 260], [149.3, 300]];
+export const FEMORAL_PROFUNDA_SPINE = [[163.5, 70], [164.1, 110], [165, 160], [163, 210], [159, 260], [158, 300]];
 export const FEMORAL_PROFUNDA_HALF = [3.4, 3.2, 3.0, 2.8, 2.6, 2.4];
 
 // Trecho (em forma de fita, já pronto para <path fill=.../>) de uma veia

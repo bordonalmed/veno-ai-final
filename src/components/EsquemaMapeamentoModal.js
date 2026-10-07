@@ -2,13 +2,7 @@ import React, { useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import {
   MEDIAL_SILHOUETTE,
-  FEMORAL_TRUNK_SPINE,
-  FEMORAL_TRUNK_HALF,
-  FEMORAL_COMUM_TOPO,
-  FEMORAL_COMUM_FIM,
-  FEMORAL_PROFUNDA_SPINE,
-  FEMORAL_PROFUNDA_HALF,
-  fitaVeiaSimples,
+  FEMORAL_RIBBON,
   POSTERIOR_SILHOUETTE,
   POPLITEA_RIBBON,
   TIBIAIS_RIBBON,
@@ -95,17 +89,11 @@ function montarSvgLado(dadosLado) {
     .filter((perf) => perf && perf.status === "pérvia e incompetente" && perf.segmento);
 
   const p = profundas || {};
-  // Mesmo traçado do Mapa Interativo: femoral comum subindo até a virilha
-  // (com a JSF sobreposta), superficial descendo, e profunda se unindo a ela.
-  const femoralComumD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_TOPO, FEMORAL_COMUM_FIM);
-  const femoralSuperficialD = fitaVeiaSimples(FEMORAL_TRUNK_SPINE, FEMORAL_TRUNK_HALF, FEMORAL_COMUM_FIM, LANDMARK_MAGNA.joelho);
-  const femoralProfundaD = fitaVeiaSimples(
-    FEMORAL_PROFUNDA_SPINE, FEMORAL_PROFUNDA_HALF,
-    FEMORAL_PROFUNDA_SPINE[0][1], FEMORAL_PROFUNDA_SPINE[FEMORAL_PROFUNDA_SPINE.length - 1][1]
-  );
-  const corFemoralComum = piorCorProfundo([p["Veia Femoral Comum"]]);
-  const corFemoralSuperficial = piorCorProfundo([p["Veia Femoral Superficial"]]);
-  const corFemoralProfunda = piorCorProfundo([p["Veia Femoral Profunda"]]);
+  const corFemoral = piorCorProfundo([
+    p["Veia Femoral Comum"],
+    p["Veia Femoral Superficial"],
+    p["Veia Femoral Profunda"],
+  ]);
   const corPoplitea = piorCorProfundo([p["Veia Poplítea"]]);
   const corTibiais = piorCorProfundo([
     p["Veias Tibiais posteriores"],
@@ -171,10 +159,9 @@ function montarSvgLado(dadosLado) {
   const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
 
   // Medidas (diâmetros e distâncias do refluxo) sobre a vista medial (safena magna)
-  const [jsfX, jsfY] = VSM_SPINE[0];
-  const jsfLabelSvg = medidaTexto(jsfX - 16, jsfY + 4, "JSF", "end", mirrored);
+  const jsfLabelSvg = medidaTexto(150 - 16, 48 + 4, "JSF", "end", mirrored);
   const jsfDiamSvg = jsfDiametro
-    ? medidaTexto(jsfX + 15, jsfY + 4, `Ø ${jsfDiametro}mm`, "start", mirrored)
+    ? medidaTexto(150 + 15, 48 + 4, `Ø ${jsfDiametro}mm`, "start", mirrored)
     : "";
   const magnaCoxaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 150, magnaExtra.coxa, "direita", mirrored);
   const magnaPernaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 420, magnaExtra.perna, "direita", mirrored);
@@ -192,11 +179,9 @@ function montarSvgLado(dadosLado) {
 
   const medialInner = `
     <path d="${MEDIAL_SILHOUETTE}" fill="url(#skinGradM)" stroke="#a97a4e" stroke-width="1.5"/>
-    <path d="${femoralProfundaD}" fill="${corFemoralProfunda}" opacity="0.85"/>
-    <path d="${femoralSuperficialD}" fill="${corFemoralSuperficial}" opacity="0.85"/>
-    <path d="${femoralComumD}" fill="${corFemoralComum}" opacity="0.85"/>
+    <path d="${FEMORAL_RIBBON}" fill="${corFemoral}" opacity="0.85"/>
     ${magnaSegsSvg}
-    <circle cx="${jsfX}" cy="${jsfY}" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
+    <circle cx="150" cy="48" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
     ${perfMarker}
     ${jsfLabelSvg}${jsfDiamSvg}${magnaCoxaSvg}${magnaPernaSvg}${magnaTornozeloSvg}${magnaRefluxoSvg}
   `;
