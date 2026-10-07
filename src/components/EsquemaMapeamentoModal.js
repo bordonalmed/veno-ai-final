@@ -6,7 +6,7 @@ import {
   gerarConclusaoVisual,
   conclusoesSistemaProfundo,
 } from "../utils/vascularMapping";
-import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_CORES } from "./MapaInterativo";
+import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_CORES, VARIZ_ICON_RX, VARIZ_ICON_RY_TIPO, VarizLegendaIcone } from "./MapaInterativo";
 
 // Monta o desenho (vista anterior + posterior) de UM membro com o mesmo
 // componente do Mapa Interativo, pra o Mapeamento Visual e o PDF saírem
@@ -52,6 +52,40 @@ function montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, pro
 // mapeamento (compartilhada entre o PDF isolado "Baixar PDF (A4)" e o PDF
 // anexado ao laudo principal via "Incluir Mapeamento Visual no PDF"), para
 // que quem receber o exame impresso saiba o que cada cor/símbolo significa.
+// Desenha no PDF (vetorial) o mesmo ícone de variz do VarizIcon, centrado em
+// (cx, cy) em mm; k converte as coordenadas do desenho (px) para mm.
+function desenharIconeVarizPdf(doc, tipo, cx, cy, k) {
+  const rgb = hexParaRgb(VARIZ_CORES[tipo]);
+  const P = (x, y) => [cx + x * k, cy + y * k];
+  doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+  doc.setFillColor(255, 255, 255);
+  doc.setLineWidth(1.4 * k);
+  doc.ellipse(cx, cy, VARIZ_ICON_RX * k, VARIZ_ICON_RY_TIPO * k, "FD");
+  doc.setLineCap("round");
+  if (tipo === "Varizes Superficiais") {
+    // Curvas quadráticas do squiggle convertidas em cúbicas (relativas), que é o que o jsPDF desenha.
+    const cubica = (p0, c, p2) => [
+      (2 / 3) * (c[0] - p0[0]), (2 / 3) * (c[1] - p0[1]),
+      p2[0] - p0[0] + (2 / 3) * (c[0] - p2[0]), p2[1] - p0[1] + (2 / 3) * (c[1] - p2[1]),
+      p2[0] - p0[0], p2[1] - p0[1],
+    ];
+    const a = [-6.5, 3.9], b = [0, -1.3], c = [6.5, -3.9];
+    doc.setLineWidth(2.4 * k);
+    doc.lines([cubica(a, [-3.25, -5.2], b), cubica(b, [3.25, 3.9], c)], ...P(a[0], a[1]), [k, k], "S", false);
+  } else if (tipo === "Varizes Reticulares") {
+    doc.setLineWidth(1.2 * k);
+    [[-6.5, -3.9, 6.5, -3.9], [-6.5, 3.9, 6.5, 3.9], [-3.9, -6.5, -3.9, 6.5], [3.9, -6.5, 3.9, 6.5]]
+      .forEach(([x1, y1, x2, y2]) => doc.line(...P(x1, y1), ...P(x2, y2)));
+  } else {
+    doc.setLineWidth(1.5 * k);
+    [[-5.2, -2.6, 3.25, 1.95], [1.95, -5.2, 1.3, 3.9], [-1.3, 1.3, 3.9, 2.6], [2.6, 2.6, 2.6, -1.3]]
+      .forEach(([x, y, dx, dy]) => doc.line(...P(x, y), ...P(x + dx, y + dy)));
+  }
+  doc.setLineCap("butt");
+  doc.setLineWidth(0.2);
+  doc.setDrawColor(0, 0, 0);
+}
+
 function desenharLegendaPdf(doc, pageWidth, yInicial) {
   let y = yInicial;
   doc.setFontSize(8.5);
@@ -85,24 +119,28 @@ function desenharLegendaPdf(doc, pageWidth, yInicial) {
   doc.setTextColor(0, 0, 0);
   y += 5.5;
 
+  // Mesmo ícone que aparece no desenho (não uma bolinha), pra não confundir
+  // com as cores de status das veias.
+  y += 2;
   doc.setFontSize(8.5);
   const legendaVarizes = [
-    ["Varizes superficiais", VARIZ_CORES["Varizes Superficiais"]],
-    ["Varizes reticulares", VARIZ_CORES["Varizes Reticulares"]],
-    ["Microvarizes", VARIZ_CORES["Microvarizes"]],
+    ["Varizes superficiais", "Varizes Superficiais"],
+    ["Varizes reticulares", "Varizes Reticulares"],
+    ["Microvarizes", "Microvarizes"],
   ];
-  const larguraVarizes = legendaVarizes.reduce((acc, [label]) => acc + 6 + doc.getTextWidth(label) + 8, -8);
+  const escalaIcone = 0.16;
+  const larguraIcone = 2 * VARIZ_ICON_RX * escalaIcone;
+  const larguraVarizes = legendaVarizes.reduce((acc, [label]) => acc + larguraIcone + 2 + doc.getTextWidth(label) + 8, -8);
   let lx3 = (pageWidth - larguraVarizes) / 2;
-  legendaVarizes.forEach(([label, cor]) => {
-    const rgb = hexParaRgb(cor);
-    doc.setFillColor(rgb.r, rgb.g, rgb.b);
-    doc.circle(lx3 + 2, y - 1.3, 1.4, "F");
-    doc.setTextColor(90, 100, 110);
-    doc.text(label, lx3 + 6, y);
-    lx3 += 6 + doc.getTextWidth(label) + 8;
+  legendaVarizes.forEach(([label, tipo]) => {
+    desenharIconeVarizPdf(doc, tipo, lx3 + larguraIcone / 2, y - 1.3, escalaIcone);
+    const rgb = hexParaRgb(VARIZ_CORES[tipo]);
+    doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    doc.text(label, lx3 + larguraIcone + 2, y);
+    lx3 += larguraIcone + 2 + doc.getTextWidth(label) + 8;
   });
   doc.setTextColor(0, 0, 0);
-  y += 5.5;
+  y += 7;
 
   let fonteExplicativa = 7.5;
   doc.setFontSize(fonteExplicativa);
@@ -181,7 +219,7 @@ export async function adicionarEsquemaAoPdf(doc, {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   for (const ladoAtual of ladosParaMostrar) {
-    const { svg, conclusoes } = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
+    const { svg } = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
     const dataUrl = await svgParaImagemDataUrl(svg, VIEW_W, VIEW_H);
 
     doc.addPage();
@@ -198,20 +236,8 @@ export async function adicionarEsquemaAoPdf(doc, {
     doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
     y += imgHeightMm + 6;
 
+    // Sem "Achados do mapeamento": a conclusão do laudo, logo antes, já traz a mesma informação.
     y = desenharLegendaPdf(doc, pageWidth, y);
-
-    if (conclusoes.length) {
-      doc.setFontSize(9.5);
-      doc.setFont(undefined, "bold");
-      doc.text("Achados do mapeamento:", 20, y);
-      y += 5;
-      doc.setFont(undefined, "normal");
-      conclusoes.forEach((c) => {
-        doc.text(`• ${c}`, 22, y);
-        y += 5;
-      });
-      y += 2;
-    }
 
     desenharObservacoesPdf(doc, pageWidth, y, observacoes?.[ladoAtual]);
   }
@@ -378,9 +404,9 @@ export default function EsquemaMapeamentoModal({
             <span style={{ color: CORES["ausente"] }}>● ausente</span>
             <span style={{ color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
             <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
-            <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>● varizes superficiais</span>
-            <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>● reticulares</span>
-            <span style={{ color: VARIZ_CORES["Microvarizes"] }}>● microvarizes</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Superficiais"] }}><VarizLegendaIcone tipo="Varizes Superficiais" /> varizes superficiais</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Reticulares"] }}><VarizLegendaIcone tipo="Varizes Reticulares" /> reticulares</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Microvarizes"] }}><VarizLegendaIcone tipo="Microvarizes" /> microvarizes</span>
           </div>
         )}
 

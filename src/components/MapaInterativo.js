@@ -74,13 +74,13 @@ const CALF_DOTS = [
   { key: "Veias Tibiais posteriores", label: "Tp", x: 157, y: 428 },
 ];
 
-// Cores próprias para os "adesivos" de variz (diferentes das cores de status
-// dos vasos, pra não confundir o usuário: variz não é achado de status de
-// veia, é um achado de pele à parte).
+// Cores próprias para os "adesivos" de variz, fora da paleta de status dos
+// vasos (azul suficiente, vermelho insuficiente, preto, laranja, cinza) pra
+// não confundir: variz não é achado de status de veia, é achado de pele.
 export const VARIZ_CORES = {
   "Varizes Superficiais": "#6f42c1",
-  "Varizes Reticulares": "#2f7dd1",
-  "Microvarizes": "#c0392b",
+  "Varizes Reticulares": "#138d75",
+  "Microvarizes": "#d63384",
 };
 
 // O contorno do ícone de variz é uma elipse (mais alta que larga, não um
@@ -131,6 +131,15 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
       <ellipse cx={cx} cy={cy} rx={VARIZ_ICON_RX} ry={VARIZ_ICON_RY_TIPO} fill="#fff" stroke={ativo ? "#0eb8d0" : cor} strokeWidth={ativo ? 2.4 : 1.4} />
       <path d={`M ${cx - 5.2},${cy - 2.6} l 3.25,1.95 M ${cx + 1.95},${cy - 5.2} l 1.3,3.9 M ${cx - 1.3},${cy + 1.3} l 3.9,2.6 M ${cx + 2.6},${cy + 2.6} l 2.6,-1.3`} stroke={cor} strokeWidth={1.5} strokeLinecap="round" />
     </g>
+  );
+}
+
+// O mesmo ícone do desenho, em tamanho de legenda.
+export function VarizLegendaIcone({ tipo }) {
+  return (
+    <svg width={10} height={22} viewBox="-9.5 -21.5 19 43" style={{ verticalAlign: "middle", flexShrink: 0 }} aria-hidden="true">
+      <VarizIcon tipo={tipo} cx={0} cy={0} ativo={false} />
+    </svg>
   );
 }
 
@@ -383,9 +392,9 @@ export default function MapaInterativo({
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
           <span>Varizes (toque nos ícones tracejados na coxa/perna/tornozelo/pé):</span>
-          <span style={{ color: VARIZ_CORES["Varizes Superficiais"] }}>● superficiais</span>
-          <span style={{ color: VARIZ_CORES["Varizes Reticulares"] }}>● reticulares</span>
-          <span style={{ color: VARIZ_CORES["Microvarizes"] }}>● microvarizes</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Superficiais"] }}><VarizLegendaIcone tipo="Varizes Superficiais" /> superficiais</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Reticulares"] }}><VarizLegendaIcone tipo="Varizes Reticulares" /> reticulares</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Microvarizes"] }}><VarizLegendaIcone tipo="Microvarizes" /> microvarizes</span>
         </div>
 
         {/* Painel contextual do vaso selecionado */}
