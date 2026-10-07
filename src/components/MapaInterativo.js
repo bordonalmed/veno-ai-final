@@ -68,10 +68,10 @@ function hitPath(d, onClick, key, selecionado, largura = 10) {
 // panturrilha — mais fáceis de tocar num tablet do que 4 linhas finas e
 // coladas, e continuam dentro do contorno da perna.
 const CALF_DOTS = [
-  { key: "Veias Gastrocnêmicas", label: "Gc", x: 123, y: 402 },
-  { key: "Veias Tibiais anteriores", label: "Ta", x: 143, y: 402 },
-  { key: "Veias Soleares", label: "So", x: 123, y: 428 },
-  { key: "Veias Tibiais posteriores", label: "Tp", x: 143, y: 428 },
+  { key: "Veias Gastrocnêmicas", label: "Gc", x: 177, y: 402 },
+  { key: "Veias Tibiais anteriores", label: "Ta", x: 157, y: 402 },
+  { key: "Veias Soleares", label: "So", x: 177, y: 428 },
+  { key: "Veias Tibiais posteriores", label: "Tp", x: 157, y: 428 },
 ];
 
 // Cores próprias para os "adesivos" de variz (diferentes das cores de status
@@ -140,9 +140,9 @@ function VarizIcon({ tipo, cx, cy, ativo }) {
 // pé fica na vista posterior, abaixo do tornozelo, onde o desenho já alarga
 // bastante (bem mais espaço ali do que perto do tornozelo).
 export const VARIZ_SPOTS = [
-  { regiao: "coxa", view: "medial", x: 123, y: 150 },
-  { regiao: "perna", view: "medial", x: 128, y: 420 },
-  { regiao: "tornozelo", view: "posterior", x: 144, y: 540 },
+  { regiao: "coxa", view: "medial", x: 159, y: 150 },
+  { regiao: "perna", view: "medial", x: 171, y: 420 },
+  { regiao: "tornozelo", view: "posterior", x: 156, y: 540 },
   { regiao: "pe", view: "posterior", x: 150, y: 595 },
 ];
 
@@ -282,7 +282,7 @@ export default function MapaInterativo({
                   <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
                 ))}
                 {hitPath(magnaHitD, () => selecionar("superficial", "Safena Magna"), "superficial:Safena Magna", chaveAtiva)}
-                <circle cx={150} cy={48} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSF")} />
+                <circle cx={VSM_SPINE[0][0]} cy={VSM_SPINE[0][1]} r={8} fill={jsfCor} stroke="#fff" strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={() => selecionar("superficial", "JSF")} />
                 {perfMarkers.map((mk, i) => (
                   <polygon key={i} points={trianguloPontos(mk.x, mk.y, PERFURANTE_TRIANGULO_RAIO)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
                 ))}
@@ -296,9 +296,9 @@ export default function MapaInterativo({
                   );
                 })}
               </g>
-              <text x={mx(70)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>JSF</text>
-              <text x={mx(170)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>Femoral</text>
-              <text x={mx(95)} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>VSM</text>
+              <text x={mx(212.7)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSF</text>
+              <text x={mx(111)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>Femoral</text>
+              <text x={mx(187)} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSM</text>
               <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">medial</text>
             </g>
 
@@ -332,9 +332,9 @@ export default function MapaInterativo({
                   );
                 })}
               </g>
-              <text x={mx(70)} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>JSP</text>
-              <text x={mx(165)} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>V. Poplítea</text>
-              <text x={mx(185)} y={430} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "end" : "start"}>VSP</text>
+              <text x={mx(230)} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSP</text>
+              <text x={mx(135)} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>V. Poplítea</text>
+              <text x={mx(115)} y={430} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSP</text>
               <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">posterior</text>
             </g>
           </svg>

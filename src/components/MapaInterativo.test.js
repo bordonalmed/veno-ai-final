@@ -30,9 +30,9 @@ function pontosDaElipse(cx, cy, rx, ry, amostras = 32) {
 
 // Só coxa/perna (vista medial) ficam espremidos contra a Safena Magna — o
 // tornozelo/pé (vista posterior) não têm essa veia por perto naquela altura.
-function ladoEsquerdoDaVeia(y) {
+function bordasDaVeia(y) {
   const [x, , half] = interpAt(VSM_SPINE, VSM_HALF, y);
-  return x - half;
+  return { esquerda: x - half, direita: x + half, centro: x };
 }
 
 describe("VARIZ_SPOTS — 4 regiões definidas (coxa/perna/tornozelo/pé)", () => {
@@ -64,11 +64,13 @@ describe("Ícones de variz — a elipse inteira fica dentro do desenho da perna"
     });
 
     if (spot.view === "medial") {
-      it(`${spot.regiao} não invade a Safena Magna (maior elipse, lado direito do ícone)`, () => {
+      it(`${spot.regiao} não invade a Safena Magna (maior elipse, lado do ícone virado pra veia)`, () => {
+        const iconeADireitaDaVeia = spot.x > bordasDaVeia(spot.y).centro;
         const pontos = pontosDaElipse(spot.x, spot.y, VARIZ_ICON_RX, VARIZ_ICON_RY_TIPO);
         pontos.forEach(([x, y]) => {
-          const limiteVeia = ladoEsquerdoDaVeia(y);
-          expect(x).toBeLessThan(limiteVeia);
+          const veia = bordasDaVeia(y);
+          if (iconeADireitaDaVeia) expect(x).toBeGreaterThan(veia.direita);
+          else expect(x).toBeLessThan(veia.esquerda);
         });
       });
     }

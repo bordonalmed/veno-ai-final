@@ -29,7 +29,10 @@ import {
 // contra-espelhamento local (ao redor do próprio ponto x,y) para não sair
 // com as letras invertidas, já que ele vive dentro do <g scale(-1,1)> da perna.
 function medidaTexto(x, y, texto, align, mirrored) {
-  const t = `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="monospace" font-size="9.5" text-anchor="${align}" fill="#1a2530" paint-order="stroke" stroke="#ffffff" stroke-width="3">${texto}</text>`;
+  // No lado espelhado o contra-espelhamento inverte também o sentido em que o
+  // texto cresce; troca a âncora pra ele continuar crescendo pra longe da veia.
+  const anchor = !mirrored ? align : align === "start" ? "end" : align === "end" ? "start" : align;
+  const t = `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="monospace" font-size="9.5" text-anchor="${anchor}" fill="#1a2530" paint-order="stroke" stroke="#ffffff" stroke-width="3">${texto}</text>`;
   if (!mirrored) return t;
   return `<g transform="translate(${(2 * x).toFixed(2)},0) scale(-1,1)">${t}</g>`;
 }
@@ -159,29 +162,30 @@ function montarSvgLado(dadosLado) {
   const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
 
   // Medidas (diâmetros e distâncias do refluxo) sobre a vista medial (safena magna)
-  const jsfLabelSvg = medidaTexto(150 - 16, 48 + 4, "JSF", "end", mirrored);
+  const [jsfX, jsfY] = VSM_SPINE[0];
+  const jsfLabelSvg = medidaTexto(jsfX + 16, jsfY + 4, "JSF", "start", mirrored);
   const jsfDiamSvg = jsfDiametro
-    ? medidaTexto(150 + 15, 48 + 4, `Ø ${jsfDiametro}mm`, "start", mirrored)
+    ? medidaTexto(jsfX - 15, jsfY + 4, `Ø ${jsfDiametro}mm`, "end", mirrored)
     : "";
-  const magnaCoxaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 150, magnaExtra.coxa, "direita", mirrored);
-  const magnaPernaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 420, magnaExtra.perna, "direita", mirrored);
-  const magnaTornozeloSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 530, magnaExtra.tornozelo, "direita", mirrored);
-  const magnaRefluxoSvg = distanciaMarcadores(VSM_SPINE, VSM_HALF, magnaResult.refluxo, "esquerda", mirrored);
+  const magnaCoxaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 150, magnaExtra.coxa, "esquerda", mirrored);
+  const magnaPernaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 420, magnaExtra.perna, "esquerda", mirrored);
+  const magnaTornozeloSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 530, magnaExtra.tornozelo, "esquerda", mirrored);
+  const magnaRefluxoSvg = distanciaMarcadores(VSM_SPINE, VSM_HALF, magnaResult.refluxo, "direita", mirrored);
 
   // Medidas sobre a vista posterior (safena parva)
-  const jspLabelSvg = medidaTexto(150 - 16, 316 + 4, "JSP", "end", mirrored);
+  const jspLabelSvg = medidaTexto(150 + 16, 316 + 4, "JSP", "start", mirrored);
   const jspDiamSvg = jspDiametro
-    ? medidaTexto(150 + 15, 316 + 4, `Ø ${jspDiametro}mm`, "start", mirrored)
+    ? medidaTexto(150 - 15, 316 + 4, `Ø ${jspDiametro}mm`, "end", mirrored)
     : "";
-  const parvaProximalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 340, parvaExtra.proximal, "direita", mirrored);
-  const parvaDistalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 515, parvaExtra.distal, "direita", mirrored);
-  const parvaRefluxoSvg = distanciaMarcadores(VSP_SPINE, VSP_HALF, parvaResult.refluxo, "esquerda", mirrored);
+  const parvaProximalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 340, parvaExtra.proximal, "esquerda", mirrored);
+  const parvaDistalSvg = diametroMarcador(VSP_SPINE, VSP_HALF, 515, parvaExtra.distal, "esquerda", mirrored);
+  const parvaRefluxoSvg = distanciaMarcadores(VSP_SPINE, VSP_HALF, parvaResult.refluxo, "direita", mirrored);
 
   const medialInner = `
     <path d="${MEDIAL_SILHOUETTE}" fill="url(#skinGradM)" stroke="#a97a4e" stroke-width="1.5"/>
     <path d="${FEMORAL_RIBBON}" fill="${corFemoral}" opacity="0.85"/>
     ${magnaSegsSvg}
-    <circle cx="150" cy="48" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
+    <circle cx="${jsfX}" cy="${jsfY}" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
     ${perfMarker}
     ${jsfLabelSvg}${jsfDiamSvg}${magnaCoxaSvg}${magnaPernaSvg}${magnaTornozeloSvg}${magnaRefluxoSvg}
   `;
@@ -345,7 +349,7 @@ export async function adicionarEsquemaAoPdf(doc, {
       parvaExtra: parva?.[ladoAtual] || {},
       perfurantes: perfurantes?.[ladoAtual],
       profundas: profundas?.[ladoAtual],
-      mirrored: ladoAtual === "Esquerdo",
+      mirrored: ladoAtual === "Direito",
       jsfDiametro: jsfDiametro?.[ladoAtual],
       jspDiametro: jspDiametro?.[ladoAtual],
     });
@@ -413,7 +417,7 @@ export default function EsquemaMapeamentoModal({
         parvaExtra: parva?.[ladoAtual] || {},
         perfurantes: perfurantes?.[ladoAtual],
         profundas: profundas?.[ladoAtual],
-        mirrored: ladoAtual === "Esquerdo",
+        mirrored: ladoAtual === "Direito",
         jsfDiametro: jsfDiametro?.[ladoAtual],
         jspDiametro: jspDiametro?.[ladoAtual],
       });
