@@ -159,9 +159,10 @@ function montarSvgLado(dadosLado) {
   const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : "";
 
   // Medidas (diâmetros e distâncias do refluxo) sobre a vista medial (safena magna)
-  const jsfLabelSvg = medidaTexto(150 - 16, 48 + 4, "JSF", "end", mirrored);
+  const [jsfX, jsfY] = VSM_SPINE[0];
+  const jsfLabelSvg = medidaTexto(jsfX - 16, jsfY + 4, "JSF", "end", mirrored);
   const jsfDiamSvg = jsfDiametro
-    ? medidaTexto(150 + 15, 48 + 4, `Ø ${jsfDiametro}mm`, "start", mirrored)
+    ? medidaTexto(jsfX + 15, jsfY + 4, `Ø ${jsfDiametro}mm`, "start", mirrored)
     : "";
   const magnaCoxaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 150, magnaExtra.coxa, "direita", mirrored);
   const magnaPernaSvg = diametroMarcador(VSM_SPINE, VSM_HALF, 420, magnaExtra.perna, "direita", mirrored);
@@ -181,7 +182,7 @@ function montarSvgLado(dadosLado) {
     <path d="${MEDIAL_SILHOUETTE}" fill="url(#skinGradM)" stroke="#a97a4e" stroke-width="1.5"/>
     <path d="${FEMORAL_RIBBON}" fill="${corFemoral}" opacity="0.85"/>
     ${magnaSegsSvg}
-    <circle cx="150" cy="48" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
+    <circle cx="${jsfX}" cy="${jsfY}" r="7" fill="${jsfFill}" stroke="${jsfStroke}" stroke-width="1.5"/>
     ${perfMarker}
     ${jsfLabelSvg}${jsfDiamSvg}${magnaCoxaSvg}${magnaPernaSvg}${magnaTornozeloSvg}${magnaRefluxoSvg}
   `;
