@@ -7,11 +7,9 @@ export const ARTERIAS = [
   "Artéria Femoral Profunda",
   "Artéria Femoral Superficial",
   "Artéria Poplítea",
-  "Tronco Tibiofibular",
   "Artéria Tibial Anterior",
   "Artéria Fibular",
   "Artéria Tibial Posterior",
-  "Artéria Pediosa",
 ];
 
 export const statusOptions = ["Pérvia", "Ocluída"];
@@ -74,18 +72,6 @@ export function normalizarArterias(salvas) {
   return out;
 }
 
-const ehMasculino = (nome) => nome.startsWith("Tronco");
-
-function ladoTexto(nome, lado) {
-  const m = ehMasculino(nome);
-  if (lado === "Direito") return m ? "direito" : "direita";
-  return m ? "esquerdo" : "esquerda";
-}
-
-export function nomeComLado(nome, lado) {
-  return `${nome} ${ladoTexto(nome, lado)}`;
-}
-
 function preenchido(v) {
   return v !== undefined && v !== null && String(v).trim() !== "";
 }
@@ -128,24 +114,24 @@ function textoExtras(v) {
   return partes;
 }
 
-// Uma linha da descrição, ex.: "Artéria Poplítea direita: pérvia, fluxo normocinético, ..."
-export function descreverArteria(nome, v, lado) {
-  const masc = ehMasculino(nome);
+// Uma linha da descrição, ex.: "Artéria Poplítea: pérvia, fluxo normocinético, ...".
+// Sem o lado: o título do bloco ("...MEMBRO INFERIOR DIREITO") já diz qual é.
+export function descreverArteria(nome, v) {
   const partes = [];
   if (v.status === "Ocluída") {
     partes.push(textoOclusao(v), "ausência de fluxo");
     if (v.ateromatose !== "Ausente") partes.push(`ateromatose ${v.ateromatose.toLowerCase()}`);
   } else {
-    partes.push(masc ? "pérvio" : "pérvia");
+    partes.push("pérvia");
     if (v.ateromatose !== "Ausente") partes.push(`ateromatose ${v.ateromatose.toLowerCase()}`);
     partes.push(`fluxo ${v.velocidade.toLowerCase()}`);
     partes.push(`padrão ${v.tipoOnda.toLowerCase()}`);
     partes.push(`sentido ${v.sentido.toLowerCase()}`);
-    if (v.reabitada) partes.push(masc ? "reabitado por colaterais" : "reabitada por colaterais");
+    if (v.reabitada) partes.push("reabitada por colaterais");
     if (v.placa === "Presente") partes.push(textoPlaca(v));
   }
   partes.push(...textoExtras(v));
-  return `${nomeComLado(nome, lado)}: ${partes.join(", ")}.`;
+  return `${nome}: ${partes.join(", ")}.`;
 }
 
 export function getDescricaoEstenose(percentual, alvo) {
@@ -161,7 +147,7 @@ function sufixoLocal(loc) {
   return preenchido(loc) ? ` (${loc.toLowerCase()})` : "";
 }
 
-export function getConclusaoMembro(arterias, lado, enxerto) {
+export function getConclusaoMembro(arterias, enxerto) {
   const temEnxerto = enxerto && preenchido(enxerto.tipo);
   const valores = ARTERIAS.map((nome) => [nome, arterias[nome] || estruturaArteria]);
   if (!temEnxerto && valores.every(([, v]) => isArteriaNormal(v))) {
@@ -172,19 +158,17 @@ export function getConclusaoMembro(arterias, lado, enxerto) {
   if (valores.some(([, v]) => v.ateromatose !== "Ausente")) linhas.push("Ateromatose.");
 
   valores.forEach(([nome, v]) => {
-    const alvo = nomeComLado(nome, lado);
     if (v.status === "Ocluída") {
-      linhas.push(`Oclusão em ${alvo}${sufixoLocal(v.localizacaoOclusao)}`);
+      linhas.push(`Oclusão em ${nome}${sufixoLocal(v.localizacaoOclusao)}`);
     }
   });
 
   valores.forEach(([nome, v]) => {
     if (v.status === "Ocluída" || v.placa !== "Presente") return;
-    const alvo = nomeComLado(nome, lado);
     if (preenchido(v.estenosePercentual)) {
-      linhas.push(getDescricaoEstenose(v.estenosePercentual, alvo) + sufixoLocal(v.localizacaoPlaca));
+      linhas.push(getDescricaoEstenose(v.estenosePercentual, nome) + sufixoLocal(v.localizacaoPlaca));
     } else {
-      linhas.push(`Placa ateromatosa em ${alvo}${sufixoLocal(v.localizacaoPlaca)}`);
+      linhas.push(`Placa ateromatosa em ${nome}${sufixoLocal(v.localizacaoPlaca)}`);
     }
   });
 
@@ -195,16 +179,15 @@ export function getConclusaoMembro(arterias, lado, enxerto) {
     if (v.tipoOnda !== "Trifásico") partes.push(v.tipoOnda.toLowerCase());
     if (v.sentido !== "Anterógrado") partes.push(v.sentido.toLowerCase());
     if (v.reabitada) partes.push("reabitado por colaterais");
-    if (partes.length) linhas.push(`Fluxo ${partes.join(", ")} em ${nomeComLado(nome, lado)}`);
+    if (partes.length) linhas.push(`Fluxo ${partes.join(", ")} em ${nome}`);
   });
 
   valores.forEach(([nome, v]) => {
-    const alvo = nomeComLado(nome, lado);
-    if (v.stent && v.stent !== "Ausente") linhas.push(`Stent ${v.stent.toLowerCase()} em ${alvo}`);
+    if (v.stent && v.stent !== "Ausente") linhas.push(`Stent ${v.stent.toLowerCase()} em ${nome}`);
     if (v.aneurisma) {
-      linhas.push(`Aneurisma de ${alvo}${preenchido(v.aneurismaDiametro) ? ` (${v.aneurismaDiametro} mm)` : ""}`);
+      linhas.push(`Aneurisma de ${nome}${preenchido(v.aneurismaDiametro) ? ` (${v.aneurismaDiametro} mm)` : ""}`);
     }
-    if (v.disseccao) linhas.push(`Dissecção em ${alvo}`);
+    if (v.disseccao) linhas.push(`Dissecção em ${nome}`);
   });
 
   if (temEnxerto) {
@@ -222,14 +205,14 @@ export function gerarBlocoMembro(lado, arterias, enxerto) {
   let t = `DOPPLER ARTERIAL DE MEMBRO INFERIOR ${lado.toUpperCase()}\n`;
   ARTERIAS.forEach((nome) => {
     const v = arterias[nome] || estruturaArteria;
-    t += descreverArteria(nome, v, lado) + "\n";
+    t += descreverArteria(nome, v) + "\n";
     if (preenchido(v.observacao)) t += `  ${v.observacao.trim()}\n`;
   });
   if (enxerto && preenchido(enxerto.tipo)) {
     t += `Enxerto ${enxerto.tipo.toLowerCase()}: ${preenchido(enxerto.status) ? enxerto.status.toLowerCase() : "situação não informada"}.\n`;
   }
   t += "\nCONCLUSÃO\n";
-  t += getConclusaoMembro(arterias, lado, enxerto).join("\n") + "\n";
+  t += getConclusaoMembro(arterias, enxerto).join("\n") + "\n";
   return t;
 }
 

@@ -1,25 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiPaperclip, FiX } from "react-icons/fi";
+import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
+import { CamposArteria, CamposEnxerto } from "../components/CamposArteriaMMII";
+import MapaInterativoArterial, { adicionarMapaArterialAoPdf } from "../components/MapaInterativoArterial";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
 import examesRealtimeService from '../services/examesRealtimeService';
 import {
   ARTERIAS,
-  statusOptions,
-  localizacaoOclusaoOptions,
-  localizacaoPlacaOptions,
-  ateromatoseOptions,
-  velocidadeOptions,
-  tipoOndaOptions,
-  sentidoOptions,
-  placaOptions,
-  caracteristicaPlacaOptions,
-  stentOptions,
-  enxertoTipoOptions,
-  enxertoStatusOptions,
   enxertoPadrao,
   arteriasPadrao,
   normalizarArterias,
@@ -92,34 +82,6 @@ function carregarExameEmEdicao() {
 }
 
 // Estilos globais
-const inputStyle = {
-  background: "#f7fbff",
-  border: "1.5px solid #0eb8d0",
-  borderRadius: "clamp(5px, 1vw, 7px)",
-  padding: "clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-  fontSize: "clamp(13px, 2.5vw, 15px)",
-  color: "#222",
-  outline: "none",
-  fontFamily: "inherit",
-  fontWeight: 500,
-  width: "clamp(140px, 25vw, 180px)",
-  minWidth: 0
-};
-
-const selectStyle = {
-  background: "#f7fbff",
-  border: "1.5px solid #0eb8d0",
-  borderRadius: "clamp(5px, 1vw, 7px)",
-  padding: "clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-  fontSize: "clamp(13px, 2.5vw, 15px)",
-  color: "#222",
-  outline: "none",
-  fontFamily: "inherit",
-  fontWeight: 500,
-  width: "clamp(140px, 25vw, 180px)",
-  minWidth: 0
-};
-
 const buttonStyle = {
   background: "#0eb8d0",
   color: "#fff",
@@ -135,187 +97,6 @@ const buttonStyle = {
   marginLeft: "clamp(6px, 1.5vw, 8px)",
   minWidth: "clamp(120px, 20vw, 140px)"
 };
-
-const textareaStyle = {
-  background: "#f7fbff",
-  border: "1.5px solid #0eb8d0",
-  borderRadius: "clamp(5px, 1vw, 7px)",
-  padding: "clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-  fontSize: "clamp(13px, 2.5vw, 15px)",
-  color: "#222",
-  outline: "none",
-  fontFamily: "inherit",
-  fontWeight: 500,
-  width: "100%",
-  minWidth: 0,
-  resize: "vertical",
-  minHeight: "clamp(60px, 8vw, 80px)"
-};
-
-const labelStyle = {
-  fontSize: 'clamp(10px, 2vw, 12px)',
-  marginBottom: '3px',
-  display: 'block',
-  color: '#0eb8d0',
-  fontWeight: 600
-};
-
-const cardStyle = {
-  marginBottom: 'clamp(16px, 3vw, 20px)',
-  padding: 'clamp(12px, 2.5vw, 16px)',
-  background: 'rgba(0,0,0,0.10)',
-  borderRadius: 'clamp(8px, 1.5vw, 12px)',
-  boxShadow: '0 2px 16px 0 #0002'
-};
-
-const tituloCardStyle = {
-  fontWeight: 700,
-  fontSize: 'clamp(13px, 2.5vw, 15px)',
-  color: '#0eb8d0',
-  marginBottom: 'clamp(8px, 2vw, 12px)'
-};
-
-const gradeCampos = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-  gap: 'clamp(8px, 2vw, 12px)',
-  marginBottom: 'clamp(8px, 2vw, 12px)'
-};
-
-const gradeDestaque = {
-  ...gradeCampos,
-  padding: 'clamp(8px, 2vw, 12px)',
-  background: 'rgba(14, 184, 208, 0.1)',
-  borderRadius: 'clamp(4px, 1vw, 6px)',
-  border: '1px solid rgba(14, 184, 208, 0.3)'
-};
-
-function CampoSelect({ label, value, options, onChange, placeholder }) {
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <select value={value || ""} onChange={e => onChange(e.target.value)} style={selectStyle}>
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-      </select>
-    </div>
-  );
-}
-
-function CampoCheck({ label, checked, onChange }) {
-  return (
-    <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 0 }}>
-      <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} />
-      {label}
-    </label>
-  );
-}
-
-// Campos de uma artéria
-function CamposArteria({ arteria, valores, onChange, lado }) {
-  const isOcluida = valores.status === "Ocluída";
-
-  function set(field, value) {
-    let novos = { ...valores, [field]: value };
-    // Trocar a perviedade zera os campos que só fazem sentido no outro estado
-    // (a ateromatose, stent, aneurisma e dissecção valem nos dois e ficam).
-    if (field === "status") {
-      novos = {
-        ...novos,
-        localizacaoOclusao: "",
-        velocidade: "Normocinético",
-        tipoOnda: "Trifásico",
-        sentido: "Anterógrado",
-        reabitada: false,
-        placa: "Ausente",
-        estenosePercentual: "",
-        caracteristicaPlaca: "",
-        localizacaoPlaca: ""
-      };
-    }
-    if (field === "placa" && value === "Ausente") {
-      novos.estenosePercentual = "";
-      novos.caracteristicaPlaca = "";
-      novos.localizacaoPlaca = "";
-    }
-    if (field === "aneurisma" && !value) novos.aneurismaDiametro = "";
-    onChange(novos);
-  }
-
-  return (
-    <div style={cardStyle}>
-      <div style={tituloCardStyle}>{arteria.toUpperCase()} ({lado.toUpperCase()}):</div>
-
-      <div style={gradeCampos}>
-        <CampoSelect label="Perviedade:" value={valores.status} options={statusOptions} onChange={v => set('status', v)} />
-        {isOcluida && (
-          <CampoSelect label="Localização da oclusão:" value={valores.localizacaoOclusao} options={localizacaoOclusaoOptions} placeholder="Selecione" onChange={v => set('localizacaoOclusao', v)} />
-        )}
-        <CampoSelect label="Ateromatose:" value={valores.ateromatose} options={ateromatoseOptions} onChange={v => set('ateromatose', v)} />
-        {!isOcluida && (
-          <>
-            <CampoSelect label="Velocidade:" value={valores.velocidade} options={velocidadeOptions} onChange={v => set('velocidade', v)} />
-            <CampoSelect label="Tipo de Onda:" value={valores.tipoOnda} options={tipoOndaOptions} onChange={v => set('tipoOnda', v)} />
-            <CampoSelect label="Sentido:" value={valores.sentido} options={sentidoOptions} onChange={v => set('sentido', v)} />
-            <CampoSelect label="Placa:" value={valores.placa} options={placaOptions} onChange={v => set('placa', v)} />
-          </>
-        )}
-        <CampoSelect label="Stent:" value={valores.stent} options={stentOptions} onChange={v => set('stent', v)} />
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(10px, 2.5vw, 18px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
-        {!isOcluida && <CampoCheck label="Reabitada por colaterais" checked={valores.reabitada} onChange={v => set('reabitada', v)} />}
-        <CampoCheck label="Aneurisma" checked={valores.aneurisma} onChange={v => set('aneurisma', v)} />
-        <CampoCheck label="Dissecção" checked={valores.disseccao} onChange={v => set('disseccao', v)} />
-      </div>
-
-      {!isOcluida && valores.placa === "Presente" && (
-        <div style={gradeDestaque}>
-          <div>
-            <label style={labelStyle}>% Estenose:</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={valores.estenosePercentual}
-              onChange={e => set('estenosePercentual', e.target.value)}
-              placeholder="%"
-              style={inputStyle}
-            />
-          </div>
-          <CampoSelect label="Característica da Placa:" value={valores.caracteristicaPlaca} options={caracteristicaPlacaOptions} placeholder="Selecione" onChange={v => set('caracteristicaPlaca', v)} />
-          <CampoSelect label="Localização da Placa:" value={valores.localizacaoPlaca} options={localizacaoPlacaOptions} placeholder="Selecione" onChange={v => set('localizacaoPlaca', v)} />
-        </div>
-      )}
-
-      {valores.aneurisma && (
-        <div style={gradeDestaque}>
-          <div>
-            <label style={labelStyle}>Diâmetro do aneurisma (mm):</label>
-            <input
-              type="number"
-              min="0"
-              value={valores.aneurismaDiametro}
-              onChange={e => set('aneurismaDiametro', e.target.value)}
-              placeholder="mm"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-      )}
-
-      <div>
-        <label style={labelStyle}>Observação:</label>
-        <textarea
-          value={valores.observacao}
-          onChange={e => set('observacao', e.target.value)}
-          placeholder={`Digite observações para ${arteria}...`}
-          style={textareaStyle}
-        />
-      </div>
-    </div>
-  );
-}
 
 // Bloco de campos por lado
 function BlocoCampos({ lado, arteriasValores, onChange, enxerto, onEnxertoChange }) {
@@ -354,27 +135,7 @@ function BlocoCampos({ lado, arteriasValores, onChange, enxerto, onEnxertoChange
         />
       ))}
 
-      <div style={cardStyle}>
-        <div style={tituloCardStyle}>ENXERTO / PONTE ({lado.toUpperCase()}):</div>
-        <div style={gradeCampos}>
-          <CampoSelect
-            label="Tipo:"
-            value={enxerto.tipo}
-            options={enxertoTipoOptions}
-            placeholder="Nenhum"
-            onChange={v => onEnxertoChange({ tipo: v, status: v ? enxerto.status : "" })}
-          />
-          {enxerto.tipo && (
-            <CampoSelect
-              label="Situação:"
-              value={enxerto.status}
-              options={enxertoStatusOptions}
-              placeholder="Selecione"
-              onChange={v => onEnxertoChange({ ...enxerto, status: v })}
-            />
-          )}
-        </div>
-      </div>
+      <CamposEnxerto lado={lado} enxerto={enxerto} onChange={onEnxertoChange} />
     </div>
   );
 }
@@ -393,6 +154,9 @@ function MMIIArterial() {
   const [arteriasDireito, setArteriasDireito] = useState(arteriasPadrao);
   const [arteriasEsquerdo, setArteriasEsquerdo] = useState(arteriasPadrao);
   const [enxertos, setEnxertos] = useState({ Direito: { ...enxertoPadrao }, Esquerdo: { ...enxertoPadrao } });
+  const [mostrarMapa, setMostrarMapa] = useState(false);
+  const [ladoMapa, setLadoMapa] = useState("Direito");
+  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
@@ -496,6 +260,235 @@ function MMIIArterial() {
       console.error("Erro ao salvar exame:", error);
       alert('Erro ao salvar o exame. Tente novamente.');
     }
+  }
+
+  function handleSalvarTXT() {
+    const blob = new Blob([gerarTextoLaudo()], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, `Laudo_${nome}_${data}.txt`);
+  }
+
+  async function handleSalvarPDF() {
+    // Buscar dados do localStorage
+    const nomeMedico = localStorage.getItem("nomeMedico") || "";
+    const crm = localStorage.getItem("crm") || "";
+    const especialidade = localStorage.getItem("especialidadeLaudo") || "";
+    const nomeClinica = localStorage.getItem("nomeClinica") || "";
+    const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
+    const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
+    const emailClinica = localStorage.getItem("emailClinica") || "";
+    const logoClinica = localStorage.getItem("logoClinica") || null;
+    const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
+
+    const doc = new jsPDF();
+    const lados = ladosDoExame(lado);
+    const cabecalhoPaciente = gerarCabecalhoLaudo({ nome, idade, data });
+
+    function addCabecalho(y) {
+      let yLogo = 14; // topo do logo
+      let yAtual = yLogo;
+      const logoHeight = 20; // altura do logo
+      const logoSpacing = 8; // espaço após o logo antes do conteúdo
+      
+      if (logoClinica) {
+        try {
+          doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight); // quadrado 20x20
+        } catch (e) {}
+      }
+      doc.setFontSize(9);
+      let cabecalho = [];
+      if (nomeClinica) cabecalho.push(nomeClinica);
+      if (enderecoClinica) cabecalho.push(enderecoClinica);
+      if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
+      if (emailClinica) cabecalho.push(emailClinica);
+      // Alinhar o cabeçalho à direita, na mesma altura do logo
+      cabecalho.forEach((txt, idx) => {
+        doc.setFont(undefined, "bold");
+        doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+      });
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(11);
+      // Retorna posição Y após logo + espaço + margem superior
+      return yLogo + logoHeight + logoSpacing;
+    }
+
+    function addRodape() {
+      const yRodape = 280; // margem inferior de 1cm
+      doc.setFontSize(8);
+      if (assinaturaMedico) {
+        try {
+          doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
+        } catch (e) {}
+      }
+      doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
+      let yInfo = yRodape + 5;
+      if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
+      if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
+      if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
+      doc.setFontSize(11);
+    }
+
+    // Função auxiliar para quebrar conclusão por travessões
+    function processarConclusao(texto) {
+      // Se a linha contém múltiplos travessões, quebrar em linhas separadas
+      if (texto.includes('- ') && texto.split('- ').length > 2) {
+        // Remove o primeiro travessão se já existir
+        const partes = texto.split('- ').filter(p => p.trim() !== '');
+        return partes.map(p => p.trim()).filter(p => p !== '');
+      }
+      return [texto];
+    }
+
+    // Função auxiliar para quebrar texto longo respeitando margens
+    function quebrarTexto(texto, maxWidth, x) {
+      if (!texto || texto.trim() === '') return [''];
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margemEsquerda = x || 15;
+      const margemDireita = 15;
+      const larguraDisponivel = pageWidth - margemEsquerda - margemDireita;
+      
+      // Usar splitTextToSize do jsPDF - ele calcula automaticamente baseado na fonte atual
+      try {
+        const linhas = doc.splitTextToSize(texto, larguraDisponivel);
+        // Garantir que sempre retorna um array
+        return Array.isArray(linhas) ? linhas : [linhas];
+      } catch (e) {
+        console.warn('Erro ao quebrar texto com splitTextToSize:', e);
+        // Fallback: quebrar manualmente por caracteres
+        const linhas = [];
+        // Aproximação conservadora: ~3mm por caractere para fonte padrão
+        const maxChars = Math.max(1, Math.floor(larguraDisponivel / 3));
+        for (let i = 0; i < texto.length; i += maxChars) {
+          linhas.push(texto.substring(i, i + maxChars));
+        }
+        return linhas.length > 0 ? linhas : [texto];
+      }
+    }
+
+    let pagina = 0;
+    lados.forEach((ladoAtual, idx) => {
+      if (pagina > 0) doc.addPage();
+      let y = addCabecalho(12);
+      // Cada página (membro) leva a identificação do paciente.
+      const bloco = (cabecalhoPaciente + "\n" +
+        gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos[ladoAtual])
+      ).trim().split("\n");
+      let inConclusao = false;
+      let inObservacoes = false;
+      for (let i = 0; i < bloco.length; i++) {
+        let line = bloco[i];
+        // Negrito para nome do paciente e nome do exame
+        if (line.startsWith("PACIENTE:")) {
+          doc.setFont(undefined, "bold");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            doc.text(linha, 15, y);
+            y += 8;
+          });
+          doc.setFont(undefined, "normal");
+          y -= 8; // Ajuste para não ter espaço extra
+        } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO INFERIOR")) {
+          doc.setFont(undefined, "bold");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            doc.text(linha, 15, y);
+            y += 8;
+          });
+          doc.setFont(undefined, "normal");
+          y -= 8; // Ajuste para não ter espaço extra
+        } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Arterial")) {
+          doc.setFont(undefined, "bold");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            doc.text(linha, 15, y);
+            y += 8;
+          });
+          if (line.startsWith("CONCLUSÃO")) {
+            inConclusao = true;
+            inObservacoes = false;
+          }
+          doc.setFont(undefined, "normal");
+          y -= 8; // Ajuste para não ter espaço extra
+        } else if (line.startsWith("OBSERVAÇÕES")) {
+          doc.setFont(undefined, "bold");
+          doc.text(line, 15, y);
+          doc.setFont(undefined, "normal");
+          inConclusao = false;
+          inObservacoes = true;
+          y += 8;
+        } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
+          // Processar conclusão: quebrar por travessões
+          const linhasConclusao = processarConclusao(line);
+          doc.setFont(undefined, "bold");
+          linhasConclusao.forEach(linhaConclusao => {
+            // Garantir que cada item comece com travessão
+            const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
+            const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
+            linhasQuebradas.forEach(linha => {
+              if (y > 265) {
+                addRodape();
+                doc.addPage();
+                y = addCabecalho(12);
+              }
+              doc.text(linha, 15, y);
+              y += 8;
+            });
+          });
+          doc.setFont(undefined, "normal");
+          y -= 8; // Ajuste para não ter espaço extra
+        } else if (inObservacoes && line && line.trim() !== "") {
+          // Quebrar observações longas respeitando margens
+          doc.setFont(undefined, "normal");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            if (y > 265) {
+              addRodape();
+              doc.addPage();
+              y = addCabecalho(12);
+            }
+            doc.text(linha, 15, y);
+            y += 8;
+          });
+          y -= 8; // Ajuste para não ter espaço extra
+        } else {
+          doc.setFont(undefined, "normal");
+          // Quebrar linhas longas também
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            if (y > 265) {
+              addRodape();
+              doc.addPage();
+              y = addCabecalho(12);
+            }
+            doc.text(linha, 15, y);
+            y += 8;
+          });
+          if (inConclusao && line && line.trim() === "") {
+            inConclusao = false;
+          }
+          if (inObservacoes && line && line.trim() === "") {
+            inObservacoes = false;
+          }
+          y -= 8; // Ajuste para não ter espaço extra
+        }
+        y += 8;
+        if (y > 265) {
+          addRodape();
+          doc.addPage();
+          y = addCabecalho(12);
+        }
+      }
+      addRodape();
+      pagina++;
+    });
+    
+    if (incluirMapaPdf) {
+      await adicionarMapaArterialAoPdf(doc, lados, { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo });
+    }
+
+    // Adicionar anexos como páginas no final do PDF
+    appendImagesToPdf(doc, anexos);
+    
+    doc.save(`Laudo_${nome}_${data}.pdf`);
   }
 
   // Funções para gerenciar anexos de imagens
@@ -610,6 +603,38 @@ function MMIIArterial() {
         erro={erro}
       />
 
+      {deveMostrarCampos && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
+          <button
+            type="button"
+            onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
+            style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <FiMousePointer /> Mapeamento Interativo
+          </button>
+        </div>
+      )}
+
+      <MapaInterativoArterial
+        aberto={mostrarMapa}
+        onFechar={() => setMostrarMapa(false)}
+        lado={lado}
+        ladoAtivo={ladoMapa}
+        onTrocarLado={setLadoMapa}
+        arterias={{ Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }}
+        onArteriaChange={handleArteriaChange}
+        enxertos={enxertos}
+        onEnxertoChange={handleEnxertoChange}
+        laudoMembro={deveMostrarCampos
+          ? gerarBlocoMembro(ladoMapa, ladoMapa === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos[ladoMapa])
+          : ""}
+        incluirMapaPdf={incluirMapaPdf}
+        onIncluirMapaPdf={setIncluirMapaPdf}
+        onSalvarTXT={handleSalvarTXT}
+        onSalvarPDF={handleSalvarPDF}
+        onSalvarExame={handleSalvarExame}
+      />
+
       {/* Aviso de campos obrigatórios removido - validação apenas pelos botões desabilitados */}
 
       {/* Campos das artérias - só aparecem após preencher dados básicos */}
@@ -712,236 +737,14 @@ function MMIIArterial() {
                   color: "#fff", 
                   fontSize: 'clamp(10px, 2vw, 12px)', 
                   padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-                }} onClick={() => {
-                  const blob = new Blob([gerarTextoLaudo()], { type: "text/plain;charset=utf-8" });
-                  saveAs(blob, `Laudo_${nome}_${data}.txt`);
-                }}>Salvar TXT</button>
+                }} onClick={handleSalvarTXT}>Salvar TXT</button>
                 <button style={{ 
                   ...buttonStyle, 
                   background: "#0eb8d0", 
                   color: "#fff", 
                   fontSize: 'clamp(10px, 2vw, 12px)', 
                   padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-                }} onClick={() => {
-                  // Buscar dados do localStorage
-                  const nomeMedico = localStorage.getItem("nomeMedico") || "";
-                  const crm = localStorage.getItem("crm") || "";
-                  const especialidade = localStorage.getItem("especialidadeLaudo") || "";
-                  const nomeClinica = localStorage.getItem("nomeClinica") || "";
-                  const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
-                  const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
-                  const emailClinica = localStorage.getItem("emailClinica") || "";
-                  const logoClinica = localStorage.getItem("logoClinica") || null;
-                  const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
-
-                  const doc = new jsPDF();
-                  const lados = ladosDoExame(lado);
-                  const cabecalhoPaciente = gerarCabecalhoLaudo({ nome, idade, data });
-
-                  function addCabecalho(y) {
-                    let yLogo = 14; // topo do logo
-                    let yAtual = yLogo;
-                    const logoHeight = 20; // altura do logo
-                    const logoSpacing = 8; // espaço após o logo antes do conteúdo
-                    
-                    if (logoClinica) {
-                      try {
-                        doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight); // quadrado 20x20
-                      } catch (e) {}
-                    }
-                    doc.setFontSize(9);
-                    let cabecalho = [];
-                    if (nomeClinica) cabecalho.push(nomeClinica);
-                    if (enderecoClinica) cabecalho.push(enderecoClinica);
-                    if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
-                    if (emailClinica) cabecalho.push(emailClinica);
-                    // Alinhar o cabeçalho à direita, na mesma altura do logo
-                    cabecalho.forEach((txt, idx) => {
-                      doc.setFont(undefined, "bold");
-                      doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
-                    });
-                    doc.setFont(undefined, "normal");
-                    doc.setFontSize(11);
-                    // Retorna posição Y após logo + espaço + margem superior
-                    return yLogo + logoHeight + logoSpacing;
-                  }
-
-                  function addRodape() {
-                    const yRodape = 280; // margem inferior de 1cm
-                    doc.setFontSize(8);
-                    if (assinaturaMedico) {
-                      try {
-                        doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
-                      } catch (e) {}
-                    }
-                    doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
-                    let yInfo = yRodape + 5;
-                    if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
-                    if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
-                    if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
-                    doc.setFontSize(11);
-                  }
-
-                  // Função auxiliar para quebrar conclusão por travessões
-                  function processarConclusao(texto) {
-                    // Se a linha contém múltiplos travessões, quebrar em linhas separadas
-                    if (texto.includes('- ') && texto.split('- ').length > 2) {
-                      // Remove o primeiro travessão se já existir
-                      const partes = texto.split('- ').filter(p => p.trim() !== '');
-                      return partes.map(p => p.trim()).filter(p => p !== '');
-                    }
-                    return [texto];
-                  }
-
-                  // Função auxiliar para quebrar texto longo respeitando margens
-                  function quebrarTexto(texto, maxWidth, x) {
-                    if (!texto || texto.trim() === '') return [''];
-                    const pageWidth = doc.internal.pageSize.getWidth();
-                    const margemEsquerda = x || 15;
-                    const margemDireita = 15;
-                    const larguraDisponivel = pageWidth - margemEsquerda - margemDireita;
-                    
-                    // Usar splitTextToSize do jsPDF - ele calcula automaticamente baseado na fonte atual
-                    try {
-                      const linhas = doc.splitTextToSize(texto, larguraDisponivel);
-                      // Garantir que sempre retorna um array
-                      return Array.isArray(linhas) ? linhas : [linhas];
-                    } catch (e) {
-                      console.warn('Erro ao quebrar texto com splitTextToSize:', e);
-                      // Fallback: quebrar manualmente por caracteres
-                      const linhas = [];
-                      // Aproximação conservadora: ~3mm por caractere para fonte padrão
-                      const maxChars = Math.max(1, Math.floor(larguraDisponivel / 3));
-                      for (let i = 0; i < texto.length; i += maxChars) {
-                        linhas.push(texto.substring(i, i + maxChars));
-                      }
-                      return linhas.length > 0 ? linhas : [texto];
-                    }
-                  }
-
-                  let pagina = 0;
-                  lados.forEach((ladoAtual, idx) => {
-                    if (pagina > 0) doc.addPage();
-                    let y = addCabecalho(12);
-                    // Cada página (membro) leva a identificação do paciente.
-                    const bloco = (cabecalhoPaciente + "\n" +
-                      gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos[ladoAtual])
-                    ).trim().split("\n");
-                    let inConclusao = false;
-                    let inObservacoes = false;
-                    for (let i = 0; i < bloco.length; i++) {
-                      let line = bloco[i];
-                      // Negrito para nome do paciente e nome do exame
-                      if (line.startsWith("PACIENTE:")) {
-                        doc.setFont(undefined, "bold");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO INFERIOR")) {
-                        doc.setFont(undefined, "bold");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Arterial")) {
-                        doc.setFont(undefined, "bold");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        if (line.startsWith("CONCLUSÃO")) {
-                          inConclusao = true;
-                          inObservacoes = false;
-                        }
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (line.startsWith("OBSERVAÇÕES")) {
-                        doc.setFont(undefined, "bold");
-                        doc.text(line, 15, y);
-                        doc.setFont(undefined, "normal");
-                        inConclusao = false;
-                        inObservacoes = true;
-                        y += 8;
-                      } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
-                        // Processar conclusão: quebrar por travessões
-                        const linhasConclusao = processarConclusao(line);
-                        doc.setFont(undefined, "bold");
-                        linhasConclusao.forEach(linhaConclusao => {
-                          // Garantir que cada item comece com travessão
-                          const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
-                          const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
-                          linhasQuebradas.forEach(linha => {
-                            if (y > 265) {
-                              addRodape();
-                              doc.addPage();
-                              y = addCabecalho(12);
-                            }
-                            doc.text(linha, 15, y);
-                            y += 8;
-                          });
-                        });
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (inObservacoes && line && line.trim() !== "") {
-                        // Quebrar observações longas respeitando margens
-                        doc.setFont(undefined, "normal");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          if (y > 265) {
-                            addRodape();
-                            doc.addPage();
-                            y = addCabecalho(12);
-                          }
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else {
-                        doc.setFont(undefined, "normal");
-                        // Quebrar linhas longas também
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          if (y > 265) {
-                            addRodape();
-                            doc.addPage();
-                            y = addCabecalho(12);
-                          }
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        if (inConclusao && line && line.trim() === "") {
-                          inConclusao = false;
-                        }
-                        if (inObservacoes && line && line.trim() === "") {
-                          inObservacoes = false;
-                        }
-                        y -= 8; // Ajuste para não ter espaço extra
-                      }
-                      y += 8;
-                      if (y > 265) {
-                        addRodape();
-                        doc.addPage();
-                        y = addCabecalho(12);
-                      }
-                    }
-                    addRodape();
-                    pagina++;
-                  });
-                  
-                  // Adicionar anexos como páginas no final do PDF
-                  appendImagesToPdf(doc, anexos);
-                  
-                  doc.save(`Laudo_${nome}_${data}.pdf`);
-                  
-                }}>Salvar PDF</button>
+                }} onClick={handleSalvarPDF}>Salvar PDF</button>
               </div>
               {gerarTextoLaudo()}
             </div>
