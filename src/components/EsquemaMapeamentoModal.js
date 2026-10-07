@@ -219,7 +219,7 @@ export async function adicionarEsquemaAoPdf(doc, {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   for (const ladoAtual of ladosParaMostrar) {
-    const { svg, conclusoes } = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
+    const { svg } = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
     const dataUrl = await svgParaImagemDataUrl(svg, VIEW_W, VIEW_H);
 
     doc.addPage();
@@ -236,20 +236,8 @@ export async function adicionarEsquemaAoPdf(doc, {
     doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
     y += imgHeightMm + 6;
 
+    // Sem "Achados do mapeamento": a conclusão do laudo, logo antes, já traz a mesma informação.
     y = desenharLegendaPdf(doc, pageWidth, y);
-
-    if (conclusoes.length) {
-      doc.setFontSize(9.5);
-      doc.setFont(undefined, "bold");
-      doc.text("Achados do mapeamento:", 20, y);
-      y += 5;
-      doc.setFont(undefined, "normal");
-      conclusoes.forEach((c) => {
-        doc.text(`• ${c}`, 22, y);
-        y += 5;
-      });
-      y += 2;
-    }
 
     desenharObservacoesPdf(doc, pageWidth, y, observacoes?.[ladoAtual]);
   }
