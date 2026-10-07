@@ -11,7 +11,11 @@ export const TIBIAIS_RIBBON = "M 143.00,380.00 C 140.58,388.33 140.17,413.33 140
 
 export const VSM_SPINE = [[150, 48], [146, 90], [139, 150], [133, 210], [129, 260], [128, 300], [131, 330], [136, 365], [140, 400], [142, 440], [140, 475], [137, 505], [138, 530], [140, 552]];
 export const VSM_HALF = [5.5, 5.2, 5.0, 4.8, 4.6, 4.4, 4.3, 4.2, 4.0, 3.8, 3.6, 3.4, 3.2, 3.0];
-export const VSP_SPINE = [[150, 314], [153, 340], [158, 370], [160, 400], [158, 430], [154, 460], [152, 490], [154, 515], [157, 535]];
+// Traçado deslocado pro lado lateral da panturrilha (antes saía quase no
+// centro/lado medial do desenho); agora sai mais lateralizado perto do
+// joelho e faz uma curva mais acentuada pro lateral na barriga da perna,
+// voltando a se aproximar da linha média perto do tornozelo.
+export const VSP_SPINE = [[158, 314], [165, 340], [172, 370], [176, 400], [174, 430], [170, 460], [165, 490], [161, 515], [159, 535]];
 export const VSP_HALF = [5.2, 5.0, 4.8, 4.6, 4.4, 4.2, 4.0, 3.6, 3.2];
 
 export const LANDMARK_MAGNA = { top: 48, joelho: 320, tornozelo: 552, topField: "JSF" };
@@ -30,11 +34,16 @@ export const PX_PER_CM = 6.6;
 //
 // Tronco femoral (Femoral Comum -> Femoral Superficial, é a mesma veia
 // anatomicamente, então usa um único traçado partido em dois trechos).
-export const FEMORAL_TRUNK_SPINE = [[161.8, 48], [162, 90], [156.2, 140], [151, 190], [146.6, 240], [144.5, 280], [146, 320]];
+// Traçado reaproximado da Safena Magna (mais medial, com folga da pele):
+// perto da virilha (JSF) o espaço é apertado e o afastamento original já
+// era o mínimo possível; a partir daí (coxa abaixo) sobra bastante espaço,
+// então o trajeto se aproxima progressivamente da VSM em vez de ficar
+// colado no contorno lateral da coxa.
+export const FEMORAL_TRUNK_SPINE = [[161.8, 48], [159.3, 90], [150.2, 140], [145, 190], [140.6, 240], [138.5, 280], [140, 320]];
 export const FEMORAL_TRUNK_HALF = [4.6, 4.4, 4.2, 4.0, 3.8, 3.6, 3.4];
 export const FEMORAL_COMUM_FIM = 110; // px: acima disso é "Comum", abaixo é "Superficial"
 
-export const FEMORAL_PROFUNDA_SPINE = [[163.5, 70], [164.1, 110], [165, 160], [163, 210], [159, 260], [158, 300]];
+export const FEMORAL_PROFUNDA_SPINE = [[163.5, 70], [160.5, 110], [157, 160], [155, 210], [151, 260], [150, 300]];
 export const FEMORAL_PROFUNDA_HALF = [3.4, 3.2, 3.0, 2.8, 2.6, 2.4];
 
 // Trecho (em forma de fita, já pronto para <path fill=.../>) de uma veia
