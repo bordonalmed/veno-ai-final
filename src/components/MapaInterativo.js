@@ -299,7 +299,7 @@ export default function MapaInterativo({
               <text x={mx(212.7)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSF</text>
               <text x={mx(111)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>Femoral</text>
               <text x={mx(187)} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSM</text>
-              <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">medial</text>
+              <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">anterior</text>
             </g>
 
             {/* POSTERIOR: JSP + Veia Poplítea + Safena Parva + panturrilha */}

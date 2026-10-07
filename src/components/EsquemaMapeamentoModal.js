@@ -209,7 +209,7 @@ function montarSvgLado(dadosLado) {
     </defs>
     <g transform="translate(0,10)"><g transform="${mirrorTransform}">${medialInner}</g></g>
     <g transform="translate(330,10)"><g transform="${mirrorTransform}">${posteriorInner}</g></g>
-    <text x="150" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA MEDIAL</text>
+    <text x="150" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA ANTERIOR</text>
     <text x="480" y="660" font-family="monospace" font-size="13" text-anchor="middle" fill="#5c6b78">VISTA POSTERIOR</text>
   </svg>`;
 
