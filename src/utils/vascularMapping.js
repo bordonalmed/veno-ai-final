@@ -43,8 +43,13 @@ export const PX_PER_CM = 6.6;
 // era o mínimo possível; a partir daí (coxa abaixo) sobra bastante espaço,
 // então o trajeto se aproxima progressivamente da VSM em vez de ficar
 // colado no contorno lateral da coxa.
-export const FEMORAL_TRUNK_SPINE = [[161.8, 48], [159.3, 90], [150.2, 140], [145, 190], [140.6, 240], [138.5, 280], [140, 320]];
-export const FEMORAL_TRUNK_HALF = [4.6, 4.4, 4.2, 4.0, 3.8, 3.6, 3.4];
+// O trecho de cima (18 a 48) é só a continuação visual da femoral comum
+// subindo em direção à virilha, além do ponto da JSF (que fica sobreposto
+// à veia, não solto acima dela) — a veia não "nasce" na junção com a
+// safena magna, ela já vem de cima (da ilíaca externa).
+export const FEMORAL_COMUM_TOPO = 18;
+export const FEMORAL_TRUNK_SPINE = [[164, 18], [161.8, 48], [159.3, 90], [150.2, 140], [145, 190], [140.6, 240], [138.5, 280], [140, 320]];
+export const FEMORAL_TRUNK_HALF = [4.6, 4.6, 4.4, 4.2, 4.0, 3.8, 3.6, 3.4];
 export const FEMORAL_COMUM_FIM = 110; // px: acima disso é "Comum", abaixo é "Superficial"
 
 // Começa encostada na femoral comum/superficial (sem vão entre as duas) e
