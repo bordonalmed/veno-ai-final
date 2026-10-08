@@ -13,9 +13,15 @@ import {
   enxertoTipoOptions,
   enxertoStatusOptions,
 } from "../utils/mmiiArterialLaudo";
+import {
+  MANOBRAS,
+  resultadoManobraOptions,
+  arteriaManobraOptions,
+  arcoPalmarOptions,
+} from "../utils/mmssArterialLaudo";
 
-// Campos de uma artéria do Doppler Arterial (MMII e MMSS) e do enxerto (só MMII),
-// usados no formulário das páginas e no Mapa Interativo.
+// Campos de uma artéria do Doppler Arterial (MMII e MMSS), do enxerto (só MMII)
+// e das manobras/pré-FAV (só MMSS), usados nas páginas e no Mapa Interativo.
 
 const inputStyle = {
   background: "#f7fbff",
@@ -248,6 +254,83 @@ export function CamposEnxerto({ lado, enxerto, onChange }) {
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// MMSS: manobras para síndrome do desfiladeiro torácico.
+export function CamposManobras({ lado, manobras, onChange }) {
+  const setResultado = (m, v) => onChange({ ...manobras, resultados: { ...manobras.resultados, [m]: v } });
+  return (
+    <div style={cardStyle}>
+      <div style={tituloCardStyle}>DESFILADEIRO TORÁCICO ({lado.toUpperCase()}):</div>
+      <div style={{ marginBottom: manobras.realizadas ? 'clamp(8px, 2vw, 12px)' : 0 }}>
+        <CampoCheck
+          label="Manobras realizadas"
+          checked={manobras.realizadas}
+          onChange={v => onChange({ ...manobras, realizadas: v })}
+        />
+      </div>
+      {manobras.realizadas && (
+        <div style={gradeDestaque}>
+          <CampoSelect
+            label="Artéria avaliada:"
+            value={manobras.arteria}
+            options={arteriaManobraOptions}
+            onChange={v => onChange({ ...manobras, arteria: v })}
+          />
+          {MANOBRAS.map(m => (
+            <CampoSelect
+              key={m}
+              label={`${m}:`}
+              value={manobras.resultados[m]}
+              options={resultadoManobraOptions}
+              onChange={v => setResultado(m, v)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// MMSS: mapeamento arterial pré-fístula arteriovenosa.
+export function CamposFAV({ lado, fav, onChange }) {
+  const set = (campo, v) => onChange({ ...fav, [campo]: v });
+  const medida = (campo, label) => (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <input
+        type="number"
+        min="0"
+        step="0.1"
+        value={fav[campo]}
+        onChange={e => set(campo, e.target.value)}
+        placeholder="mm"
+        style={inputStyle}
+      />
+    </div>
+  );
+  return (
+    <div style={cardStyle}>
+      <div style={tituloCardStyle}>MAPEAMENTO PRÉ-FAV ({lado.toUpperCase()}):</div>
+      <div style={{ marginBottom: fav.realizado ? 'clamp(8px, 2vw, 12px)' : 0 }}>
+        <CampoCheck label="Mapeamento pré-fístula realizado" checked={fav.realizado} onChange={v => set('realizado', v)} />
+      </div>
+      {fav.realizado && (
+        <div style={gradeDestaque}>
+          {medida('radialPunho', 'Radial no punho (mm):')}
+          {medida('ulnarPunho', 'Ulnar no punho (mm):')}
+          {medida('braquialCotovelo', 'Braquial na fossa cubital (mm):')}
+          <CampoSelect
+            label="Arco palmar:"
+            value={fav.arcoPalmar}
+            options={arcoPalmarOptions}
+            placeholder="Selecione"
+            onChange={v => set('arcoPalmar', v)}
+          />
+        </div>
+      )}
     </div>
   );
 }

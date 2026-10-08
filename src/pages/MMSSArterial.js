@@ -3,12 +3,14 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { FiPaperclip, FiX } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
-import { CamposArteria } from "../components/CamposArteria";
+import { CamposArteria, CamposManobras, CamposFAV } from "../components/CamposArteria";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
 import examesRealtimeService from '../services/examesRealtimeService';
 import {
-  ARTERIAS,
+  arteriasDoLado,
+  extraPadrao,
+  normalizarExtra,
   arteriasPadrao,
   normalizarArterias,
   gerarLaudoCompleto,
@@ -97,7 +99,7 @@ const buttonStyle = {
 };
 
 // Bloco de campos por lado
-function BlocoCampos({ lado, arteriasValores, onChange }) {
+function BlocoCampos({ lado, arteriasValores, onChange, extra, onExtraChange }) {
   return (
     <div style={{
       marginBottom: 'clamp(12px, 2vw, 16px)',
@@ -123,7 +125,7 @@ function BlocoCampos({ lado, arteriasValores, onChange }) {
         MEMBRO SUPERIOR {lado.toUpperCase()}:
       </div>
 
-      {ARTERIAS.map(arteria => (
+      {arteriasDoLado(lado).map(arteria => (
         <CamposArteria
           key={arteria}
           arteria={arteria}
@@ -132,6 +134,9 @@ function BlocoCampos({ lado, arteriasValores, onChange }) {
           lado={lado}
         />
       ))}
+
+      <CamposManobras lado={lado} manobras={extra.manobras} onChange={(m) => onExtraChange({ ...extra, manobras: m })} />
+      <CamposFAV lado={lado} fav={extra.fav} onChange={(f) => onExtraChange({ ...extra, fav: f })} />
 
     </div>
   );
@@ -150,6 +155,7 @@ function MMSSArterial() {
 
   const [arteriasDireito, setArteriasDireito] = useState(arteriasPadrao);
   const [arteriasEsquerdo, setArteriasEsquerdo] = useState(arteriasPadrao);
+  const [extras, setExtras] = useState(() => ({ Direito: extraPadrao(), Esquerdo: extraPadrao() }));
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
@@ -167,6 +173,10 @@ function MMSSArterial() {
       setLado(exameEmEdicao.lado || "");
       setArteriasDireito(normalizarArterias(exameEmEdicao.arteriasDireito));
       setArteriasEsquerdo(normalizarArterias(exameEmEdicao.arteriasEsquerdo));
+      setExtras({
+        Direito: normalizarExtra(exameEmEdicao.extras?.Direito),
+        Esquerdo: normalizarExtra(exameEmEdicao.extras?.Esquerdo),
+      });
     }
   }, []);
 
@@ -184,6 +194,10 @@ function MMSSArterial() {
     } else {
       setArteriasEsquerdo(prev => ({ ...prev, [arteria]: valores }));
     }
+  }
+
+  function handleExtraChange(lado, extra) {
+    setExtras(prev => ({ ...prev, [lado]: extra }));
   }
 
   function handleVoltarMenu() {
@@ -204,7 +218,7 @@ function MMSSArterial() {
 
   function gerarTextoLaudo() {
     if (!deveMostrarCampos) return "";
-    return gerarLaudoCompleto({ nome, idade, data, lado, arteriasDireito, arteriasEsquerdo });
+    return gerarLaudoCompleto({ nome, idade, data, lado, arteriasDireito, arteriasEsquerdo, extras });
   }
 
   // Validação dos campos obrigatórios
@@ -232,6 +246,7 @@ function MMSSArterial() {
       lado,
       arteriasDireito,
       arteriasEsquerdo,
+      extras,
       laudo: gerarTextoLaudo(),
       timestamp: new Date().toISOString(),
       tipoNome: "MMSS Arterial"
@@ -354,8 +369,15 @@ function MMSSArterial() {
       let y = addCabecalho(12);
       // Cada página (membro) leva a identificação do paciente.
       const bloco = (cabecalhoPaciente + "\n" +
-        gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo)
+        gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo, extras[ladoAtual])
       ).trim().split("\n");
+      // Com manobras/pré-FAV o membro pode passar de uma página por poucas
+      // linhas: nesse caso aperta o espaçamento (até 6) para caber.
+      const yInicio = y;
+      doc.setFont(undefined, "bold");
+      const totalLinhas = bloco.reduce((n, l) => n + quebrarTexto(l.startsWith("-") ? l : `- ${l}`, 0, 15).length, 0);
+      doc.setFont(undefined, "normal");
+      const passo = Math.max(6, Math.min(8, (265 - yInicio) / totalLinhas));
       let inConclusao = false;
       let inObservacoes = false;
       for (let i = 0; i < bloco.length; i++) {
@@ -366,39 +388,39 @@ function MMSSArterial() {
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
-        } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO SUPERIOR")) {
+          y -= passo; // Ajuste para não ter espaço extra
+        } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO SUPERIOR") || line.startsWith("MANOBRAS PARA DESFILADEIRO") || line.startsWith("MAPEAMENTO PRÉ-FÍSTULA")) {
           doc.setFont(undefined, "bold");
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Arterial")) {
           doc.setFont(undefined, "bold");
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           if (line.startsWith("CONCLUSÃO")) {
             inConclusao = true;
             inObservacoes = false;
           }
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else if (line.startsWith("OBSERVAÇÕES")) {
           doc.setFont(undefined, "bold");
           doc.text(line, 15, y);
           doc.setFont(undefined, "normal");
           inConclusao = false;
           inObservacoes = true;
-          y += 8;
+          y += passo;
         } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
           // Processar conclusão: quebrar por travessões
           const linhasConclusao = processarConclusao(line);
@@ -414,11 +436,11 @@ function MMSSArterial() {
                 y = addCabecalho(12);
               }
               doc.text(linha, 15, y);
-              y += 8;
+              y += passo;
             });
           });
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else if (inObservacoes && line && line.trim() !== "") {
           // Quebrar observações longas respeitando margens
           doc.setFont(undefined, "normal");
@@ -430,9 +452,9 @@ function MMSSArterial() {
               y = addCabecalho(12);
             }
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else {
           doc.setFont(undefined, "normal");
           // Quebrar linhas longas também
@@ -444,7 +466,7 @@ function MMSSArterial() {
               y = addCabecalho(12);
             }
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           if (inConclusao && line && line.trim() === "") {
             inConclusao = false;
@@ -452,9 +474,9 @@ function MMSSArterial() {
           if (inObservacoes && line && line.trim() === "") {
             inObservacoes = false;
           }
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         }
-        y += 8;
+        y += passo;
         if (y > 265) {
           addRodape();
           doc.addPage();
@@ -615,6 +637,8 @@ function MMSSArterial() {
                   lado={lado}
                   arteriasValores={lado === "Direito" ? arteriasDireito : arteriasEsquerdo}
                   onChange={(arteria, valores) => handleArteriaChange(lado, arteria, valores)}
+                  extra={extras[lado]}
+                  onExtraChange={(ex) => handleExtraChange(lado, ex)}
                 />
               </div>
             )}
@@ -633,6 +657,8 @@ function MMSSArterial() {
                     lado="Direito"
                     arteriasValores={arteriasDireito}
                     onChange={(arteria, valores) => handleArteriaChange("Direito", arteria, valores)}
+                    extra={extras.Direito}
+                    onExtraChange={(ex) => handleExtraChange("Direito", ex)}
                   />
                 </div>
                 <div style={{
@@ -646,6 +672,8 @@ function MMSSArterial() {
                     lado="Esquerdo"
                     arteriasValores={arteriasEsquerdo}
                     onChange={(arteria, valores) => handleArteriaChange("Esquerdo", arteria, valores)}
+                    extra={extras.Esquerdo}
+                    onExtraChange={(ex) => handleExtraChange("Esquerdo", ex)}
                   />
                 </div>
               </>

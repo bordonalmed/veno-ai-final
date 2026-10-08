@@ -36,7 +36,7 @@ export const estruturaArteria = {
 // Exames salvos antes desta versão usavam "Proximal/Medial/Distal".
 const LOCALIZACAO_ANTIGA = { Proximal: "Terço proximal", Medial: "Terço médio", Distal: "Terço distal" };
 
-function preenchido(v) {
+export function preenchido(v) {
   return v !== undefined && v !== null && String(v).trim() !== "";
 }
 
@@ -79,6 +79,7 @@ function textoExtras(v) {
 }
 
 // Uma linha da descrição, ex.: "Artéria Poplítea: pérvia, fluxo normocinético, ...".
+// "Tronco Braquiocefálico" é masculino: "pérvio".
 // Sem o lado: o título do bloco ("...MEMBRO INFERIOR DIREITO") já diz qual é.
 export function descreverArteria(nome, v) {
   const partes = [];
@@ -86,7 +87,7 @@ export function descreverArteria(nome, v) {
     partes.push(textoOclusao(v), "ausência de fluxo");
     if (v.ateromatose !== "Ausente") partes.push(`ateromatose ${v.ateromatose.toLowerCase()}`);
   } else {
-    partes.push("pérvia");
+    partes.push(/^Tronco/.test(nome) ? "pérvio" : "pérvia");
     if (v.ateromatose !== "Ausente") partes.push(`ateromatose ${v.ateromatose.toLowerCase()}`);
     partes.push(`fluxo ${v.velocidade.toLowerCase()}`);
     partes.push(`padrão ${v.tipoOnda.toLowerCase()}`);
@@ -123,8 +124,22 @@ export function ladosDoExame(lado) {
 
 export const SEPARADOR_MEMBROS = "=".repeat(80);
 
-// arterias: nomes na ordem do laudo; membro: "INFERIOR" ou "SUPERIOR".
-export function criarLaudoArterial({ arterias: ARTERIAS, membro }) {
+// Opções de cada exame:
+// - arterias: nomes na ordem do laudo;
+// - membro: "INFERIOR" ou "SUPERIOR";
+// - soDireito: artérias que só existem no lado direito (tronco braquiocefálico);
+// - extra: seções além das artérias (enxerto no MMII, manobras e FAV no MMSS).
+//   descrever(extra) -> linhas antes da conclusão;
+//   concluir(extra) -> { linhas, alterado }: linhas no fim da conclusão;
+//   "alterado" impede o "Exame compatível com normalidade.".
+export function criarLaudoArterial({ arterias: ARTERIAS, membro, soDireito = [], extra = {} }) {
+  const descreverExtra = extra.descrever || (() => []);
+  const concluirExtra = extra.concluir || (() => ({ linhas: [], alterado: false }));
+
+  function arteriasDoLado(lado) {
+    return lado === "Esquerdo" ? ARTERIAS.filter((a) => !soDireito.includes(a)) : ARTERIAS;
+  }
+
   function arteriasPadrao() {
     return Object.fromEntries(ARTERIAS.map((a) => [a, { ...estruturaArteria }]));
   }
@@ -142,11 +157,11 @@ export function criarLaudoArterial({ arterias: ARTERIAS, membro }) {
     return out;
   }
 
-  function getConclusaoMembro(arterias, enxerto) {
-    const temEnxerto = enxerto && preenchido(enxerto.tipo);
-    const valores = ARTERIAS.map((nome) => [nome, arterias[nome] || estruturaArteria]);
-    if (!temEnxerto && valores.every(([, v]) => isArteriaNormal(v))) {
-      return ["Exame compatível com normalidade."];
+  function getConclusaoMembro(arterias, extraMembro, lado) {
+    const ex = concluirExtra(extraMembro);
+    const valores = arteriasDoLado(lado).map((nome) => [nome, arterias[nome] || estruturaArteria]);
+    if (!ex.alterado && valores.every(([, v]) => isArteriaNormal(v))) {
+      return ["Exame compatível com normalidade.", ...ex.linhas];
     }
 
     const linhas = [];
@@ -185,34 +200,38 @@ export function criarLaudoArterial({ arterias: ARTERIAS, membro }) {
       if (v.disseccao) linhas.push(`Dissecção em ${nome}`);
     });
 
-    if (temEnxerto) {
-      linhas.push(`Enxerto ${enxerto.tipo.toLowerCase()}${preenchido(enxerto.status) ? ` ${enxerto.status.toLowerCase()}` : ""}`);
-    }
-
-    return linhas;
+    return [...linhas, ...ex.linhas];
   }
 
-  function gerarBlocoMembro(lado, arterias, enxerto) {
+  function gerarBlocoMembro(lado, arterias, extraMembro) {
     let t = `DOPPLER ARTERIAL DE MEMBRO ${membro} ${lado.toUpperCase()}\n`;
-    ARTERIAS.forEach((nome) => {
+    arteriasDoLado(lado).forEach((nome) => {
       const v = arterias[nome] || estruturaArteria;
       t += descreverArteria(nome, v) + "\n";
       if (preenchido(v.observacao)) t += `  ${v.observacao.trim()}\n`;
     });
-    if (enxerto && preenchido(enxerto.tipo)) {
-      t += `Enxerto ${enxerto.tipo.toLowerCase()}: ${preenchido(enxerto.status) ? enxerto.status.toLowerCase() : "situação não informada"}.\n`;
-    }
+    descreverExtra(extraMembro).forEach((linha) => { t += linha + "\n"; });
     t += "\nCONCLUSÃO\n";
-    t += getConclusaoMembro(arterias, enxerto).join("\n") + "\n";
+    t += getConclusaoMembro(arterias, extraMembro, lado).join("\n") + "\n";
     return t;
   }
 
-  function gerarLaudoCompleto({ nome, idade, data, lado, arteriasDireito, arteriasEsquerdo, enxertos }) {
+  // "extras" por lado ({ Direito, Esquerdo }); "enxertos" é o nome usado pelo MMII.
+  function gerarLaudoCompleto({ nome, idade, data, lado, arteriasDireito, arteriasEsquerdo, extras, enxertos }) {
+    const porLado = extras || enxertos;
     const blocos = ladosDoExame(lado).map((l) =>
-      gerarBlocoMembro(l, l === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos?.[l])
+      gerarBlocoMembro(l, l === "Direito" ? arteriasDireito : arteriasEsquerdo, porLado?.[l])
     );
     return gerarCabecalhoLaudo({ nome, idade, data }) + "\n" + blocos.join(`\n${SEPARADOR_MEMBROS}\n`);
   }
 
-  return { ARTERIAS, arteriasPadrao, normalizarArterias, getConclusaoMembro, gerarBlocoMembro, gerarLaudoCompleto };
+  return {
+    ARTERIAS,
+    arteriasDoLado,
+    arteriasPadrao,
+    normalizarArterias,
+    getConclusaoMembro,
+    gerarBlocoMembro,
+    gerarLaudoCompleto,
+  };
 }
