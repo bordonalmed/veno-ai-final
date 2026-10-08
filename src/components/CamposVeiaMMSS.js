@@ -24,7 +24,8 @@ import {
 
 // Campos do Doppler Venoso de MMSS: uma veia, cateter e mapeamento pré-FAV.
 
-export function CamposVeia({ veia, valores, onChange, lado }) {
+// semMoldura: dentro do Mapa Interativo, que já mostra a caixa com o nome da veia.
+export function CamposVeia({ veia, valores, onChange, lado, semMoldura }) {
   const trombose = valores.status === "Trombose oclusiva" || valores.status === "Trombose parcial (não oclusiva)";
   const mostraFluxo = VEIAS_CENTRAIS.includes(veia) && valores.status === "Pérvia";
 
@@ -38,8 +39,8 @@ export function CamposVeia({ veia, valores, onChange, lado }) {
   }
 
   return (
-    <div style={cardStyle}>
-      <div style={tituloCardStyle}>{veia.toUpperCase()} ({lado.toUpperCase()}):</div>
+    <div style={semMoldura ? undefined : cardStyle}>
+      {!semMoldura && <div style={tituloCardStyle}>{veia.toUpperCase()} ({lado.toUpperCase()}):</div>}
       <div style={gradeCampos}>
         <CampoSelect
           label="Perviedade:"

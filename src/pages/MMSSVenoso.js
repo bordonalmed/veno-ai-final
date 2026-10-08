@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiPaperclip, FiX } from "react-icons/fi";
+import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
+import { MapaInterativoMMSSVenoso, adicionarMapaMMSSVenosoAoPdf } from "../components/MapaMMSS";
 import ExamHeader from "../components/ExamHeader";
 import { CamposVeia, CamposCateter, CamposFAVVenoso } from "../components/CamposVeiaMMSS";
 import { appendImagesToPdf } from "../utils/pdfImages";
@@ -179,6 +180,9 @@ function MMSSVenoso() {
   const [veias, setVeias] = useState(() => ({ Direito: veiasPadrao(), Esquerdo: veiasPadrao() }));
   const [observacoes, setObservacoes] = useState({ Direito: "", Esquerdo: "" });
   const [extras, setExtras] = useState(() => ({ Direito: extraPadrao(), Esquerdo: extraPadrao() }));
+  const [mostrarMapa, setMostrarMapa] = useState(false);
+  const [ladoMapa, setLadoMapa] = useState("Direito");
+  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
@@ -293,7 +297,7 @@ function MMSSVenoso() {
     saveAs(blob, `Laudo_${nome}_${data}.txt`);
   }
 
-  function handleSalvarPDF() {
+  async function handleSalvarPDF() {
     // Buscar dados do localStorage
     const nomeMedico = localStorage.getItem("nomeMedico") || "";
     const crm = localStorage.getItem("crm") || "";
@@ -516,6 +520,10 @@ function MMSSVenoso() {
     });
     
     // Adicionar anexos como páginas no final do PDF
+    if (incluirMapaPdf) {
+      await adicionarMapaMMSSVenosoAoPdf(doc, lados, veias, extras);
+    }
+
     appendImagesToPdf(doc, anexos);
     
     doc.save(`Laudo_${nome}_${data}.pdf`);
@@ -633,7 +641,40 @@ function MMSSVenoso() {
         erro={erro}
       />
 
-      {/* Aviso de campos obrigatórios removido - validação apenas pelos botões desabilitados */}
+      {deveMostrarCampos && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
+          <button
+            type="button"
+            onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
+            style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <FiMousePointer /> Mapeamento Interativo
+          </button>
+        </div>
+      )}
+
+      <MapaInterativoMMSSVenoso
+        aberto={mostrarMapa}
+        onFechar={() => setMostrarMapa(false)}
+        lado={lado}
+        ladoAtivo={ladoMapa}
+        onTrocarLado={setLadoMapa}
+        veias={veias}
+        onVeiaChange={handleVeiaChange}
+        extras={extras}
+        onExtraChange={handleExtraChange}
+        observacoes={observacoes}
+        onObservacao={handleObservacaoChange}
+        laudoMembro={deveMostrarCampos
+          ? gerarBlocoMembro(ladoMapa, veias[ladoMapa], extras[ladoMapa], observacoes[ladoMapa])
+          : ""}
+        incluirMapaPdf={incluirMapaPdf}
+        onIncluirMapaPdf={setIncluirMapaPdf}
+        onSalvarTXT={handleSalvarTXT}
+        onSalvarPDF={handleSalvarPDF}
+        onSalvarExame={handleSalvarExame}
+      />
+
 
       {/* Campos das artérias - só aparecem após preencher dados básicos */}
       {deveMostrarCampos && (

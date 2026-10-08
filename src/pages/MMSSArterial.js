@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiPaperclip, FiX } from "react-icons/fi";
+import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
+import { MapaInterativoMMSSArterial, adicionarMapaMMSSArterialAoPdf } from "../components/MapaMMSS";
 import ExamHeader from "../components/ExamHeader";
 import { CamposArteria, CamposManobras, CamposFAV } from "../components/CamposArteria";
 import { appendImagesToPdf } from "../utils/pdfImages";
@@ -156,6 +157,9 @@ function MMSSArterial() {
   const [arteriasDireito, setArteriasDireito] = useState(arteriasPadrao);
   const [arteriasEsquerdo, setArteriasEsquerdo] = useState(arteriasPadrao);
   const [extras, setExtras] = useState(() => ({ Direito: extraPadrao(), Esquerdo: extraPadrao() }));
+  const [mostrarMapa, setMostrarMapa] = useState(false);
+  const [ladoMapa, setLadoMapa] = useState("Direito");
+  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
@@ -266,7 +270,7 @@ function MMSSArterial() {
     saveAs(blob, `Laudo_${nome}_${data}.txt`);
   }
 
-  function handleSalvarPDF() {
+  async function handleSalvarPDF() {
     // Buscar dados do localStorage
     const nomeMedico = localStorage.getItem("nomeMedico") || "";
     const crm = localStorage.getItem("crm") || "";
@@ -489,6 +493,10 @@ function MMSSArterial() {
     });
     
     // Adicionar anexos como páginas no final do PDF
+    if (incluirMapaPdf) {
+      await adicionarMapaMMSSArterialAoPdf(doc, lados, { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo });
+    }
+
     appendImagesToPdf(doc, anexos);
     
     doc.save(`Laudo_${nome}_${data}.pdf`);
@@ -606,7 +614,38 @@ function MMSSArterial() {
         erro={erro}
       />
 
-      {/* Aviso de campos obrigatórios removido - validação apenas pelos botões desabilitados */}
+      {deveMostrarCampos && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
+          <button
+            type="button"
+            onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
+            style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <FiMousePointer /> Mapeamento Interativo
+          </button>
+        </div>
+      )}
+
+      <MapaInterativoMMSSArterial
+        aberto={mostrarMapa}
+        onFechar={() => setMostrarMapa(false)}
+        lado={lado}
+        ladoAtivo={ladoMapa}
+        onTrocarLado={setLadoMapa}
+        arterias={{ Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }}
+        onArteriaChange={handleArteriaChange}
+        extras={extras}
+        onExtraChange={handleExtraChange}
+        laudoMembro={deveMostrarCampos
+          ? gerarBlocoMembro(ladoMapa, ladoMapa === "Direito" ? arteriasDireito : arteriasEsquerdo, extras[ladoMapa])
+          : ""}
+        incluirMapaPdf={incluirMapaPdf}
+        onIncluirMapaPdf={setIncluirMapaPdf}
+        onSalvarTXT={handleSalvarTXT}
+        onSalvarPDF={handleSalvarPDF}
+        onSalvarExame={handleSalvarExame}
+      />
+
 
       {/* Campos das artérias - só aparecem após preencher dados básicos */}
       {deveMostrarCampos && (
