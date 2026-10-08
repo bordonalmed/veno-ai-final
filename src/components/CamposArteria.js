@@ -23,7 +23,7 @@ import {
 // Campos de uma artéria do Doppler Arterial (MMII e MMSS), do enxerto (só MMII)
 // e das manobras/pré-FAV (só MMSS), usados nas páginas e no Mapa Interativo.
 
-const inputStyle = {
+export const inputStyle = {
   background: "#f7fbff",
   border: "1.5px solid #0eb8d0",
   borderRadius: "clamp(5px, 1vw, 7px)",
@@ -37,7 +37,7 @@ const inputStyle = {
   minWidth: 0
 };
 
-const selectStyle = {
+export const selectStyle = {
   background: "#f7fbff",
   border: "1.5px solid #0eb8d0",
   borderRadius: "clamp(5px, 1vw, 7px)",
@@ -52,7 +52,7 @@ const selectStyle = {
 };
 
 
-const textareaStyle = {
+export const textareaStyle = {
   background: "#f7fbff",
   border: "1.5px solid #0eb8d0",
   borderRadius: "clamp(5px, 1vw, 7px)",
@@ -68,7 +68,7 @@ const textareaStyle = {
   minHeight: "clamp(60px, 8vw, 80px)"
 };
 
-const labelStyle = {
+export const labelStyle = {
   fontSize: 'clamp(10px, 2vw, 12px)',
   marginBottom: '3px',
   display: 'block',
@@ -76,7 +76,7 @@ const labelStyle = {
   fontWeight: 600
 };
 
-const cardStyle = {
+export const cardStyle = {
   marginBottom: 'clamp(16px, 3vw, 20px)',
   padding: 'clamp(12px, 2.5vw, 16px)',
   background: 'rgba(0,0,0,0.10)',
@@ -84,21 +84,21 @@ const cardStyle = {
   boxShadow: '0 2px 16px 0 #0002'
 };
 
-const tituloCardStyle = {
+export const tituloCardStyle = {
   fontWeight: 700,
   fontSize: 'clamp(13px, 2.5vw, 15px)',
   color: '#0eb8d0',
   marginBottom: 'clamp(8px, 2vw, 12px)'
 };
 
-const gradeCampos = {
+export const gradeCampos = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
   gap: 'clamp(8px, 2vw, 12px)',
   marginBottom: 'clamp(8px, 2vw, 12px)'
 };
 
-const gradeDestaque = {
+export const gradeDestaque = {
   ...gradeCampos,
   padding: 'clamp(8px, 2vw, 12px)',
   background: 'rgba(14, 184, 208, 0.1)',
@@ -106,7 +106,7 @@ const gradeDestaque = {
   border: '1px solid rgba(14, 184, 208, 0.3)'
 };
 
-function CampoSelect({ label, value, options, onChange, placeholder }) {
+export function CampoSelect({ label, value, options, onChange, placeholder }) {
   return (
     <div>
       <label style={labelStyle}>{label}</label>
@@ -118,7 +118,7 @@ function CampoSelect({ label, value, options, onChange, placeholder }) {
   );
 }
 
-function CampoCheck({ label, checked, onChange }) {
+export function CampoCheck({ label, checked, onChange }) {
   return (
     <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 0 }}>
       <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} />
