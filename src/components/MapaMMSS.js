@@ -446,7 +446,7 @@ export function MapaInterativoMMSSArterial({
     <>
       <MapaLayout
         embutido={embutido}
-        titulo={`Mapa Interativo — Arterial MMSS (${l})`}
+        titulo="MMSS Arterial"
         onFechar={onFechar}
         lado={lado} ladoAtivo={l}
         onTrocarLado={(op) => { onTrocarLado(op); setSelecionada(null); }}
@@ -503,7 +503,7 @@ export function MapaInterativoMMSSVenoso({
     <>
       <MapaLayout
         embutido={embutido}
-        titulo={`Mapa Interativo — Venoso MMSS (${l})`}
+        titulo="MMSS Venoso"
         subtitulo="Toque numa veia do desenho para marcar o achado. O laudo é atualizado em tempo real."
         onFechar={onFechar}
         lado={lado} ladoAtivo={l}

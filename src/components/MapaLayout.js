@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { FiEye, FiX, FiList } from "react-icons/fi";
+// Fontes da marca "VENO.AI map" empacotadas no app (funcionam offline).
+import "@fontsource/orbitron/latin-600.css";
+import "@fontsource/caveat/latin-700.css";
 
 // Layout comum a todos os Mapas Interativos (MMII venoso, MMII arterial,
 // carótidas): fundo branco e, ao tocar num vaso, a caixa de preenchimento
@@ -58,6 +61,33 @@ const CSS_TEMA_CLARO = `
 }
 `;
 
+// Cores tiradas do logo: azul do "VENO.AI" e vermelho das fibras.
+export const COR_MARCA = { azul: "#1693e0", vermelho: "#e0402a" };
+
+// Marca "VENO.AI map": logo + VENO.AI (letra parecida com a do logo) + "map"
+// escrito à mão em vermelho.
+export function MarcaVenoMap({ escala = 1 }) {
+  const lado = Math.round(40 * escala);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 * escala, whiteSpace: "nowrap" }}>
+      {/* logo transparente: vai num quadradinho escuro, como no fundo da tela inicial */}
+      <span style={{ width: lado, height: lado, borderRadius: 10 * escala, overflow: "hidden", display: "inline-block", flexShrink: 0, background: "linear-gradient(135deg,#101824 0%,#1c2740 100%)", boxShadow: "0 2px 8px rgba(22,147,224,0.35)" }}>
+        <img
+          src={process.env.PUBLIC_URL + "/venoai-logo.png"}
+          alt="VENO.AI"
+          style={{ width: "124%", height: "124%", margin: "-12%", display: "block" }}
+        />
+      </span>
+      <span style={{ fontFamily: "'Orbitron', 'Segoe UI', sans-serif", fontWeight: 600, fontSize: 19 * escala, letterSpacing: 1.6, color: COR_MARCA.azul, textShadow: "0 0 8px rgba(22,147,224,0.30)" }}>
+        VENO.AI
+      </span>
+      <span style={{ fontFamily: "'Caveat', 'Segoe Script', cursive", fontWeight: 700, fontSize: 34 * escala, lineHeight: 0.8, color: COR_MARCA.vermelho, display: "inline-block", transform: "rotate(-7deg) translateY(-3px)", marginLeft: -2 * escala }}>
+        map
+      </span>
+    </span>
+  );
+}
+
 export function PreviewImagemPdf({ titulo, onFechar, children }) {
   return (
     <div
@@ -114,8 +144,15 @@ export default function MapaLayout({
   const cabecalho = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", padding: larga ? "14px 18px 10px" : "10px 12px 8px", borderBottom: `1px solid ${COR.borda}` }}>
       <div style={{ minWidth: 0 }}>
-        <h2 style={{ margin: 0, fontSize: "clamp(15px,2.6vw,19px)", color: COR.texto }}>{titulo}</h2>
-        <div style={{ fontSize: 12, color: COR.suave, marginTop: 2 }}>{subtitulo}</div>
+        <h2 style={{ margin: 0, display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 12, rowGap: 2, fontSize: "clamp(15px,2.6vw,19px)", color: COR.texto }}>
+          <MarcaVenoMap escala={larga ? 1 : 0.85} />
+          <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            {larga && <span style={{ color: "#c9d3db", fontWeight: 400 }}>|</span>}
+            <span style={{ fontWeight: 700 }}>{titulo}</span>
+            {ladoAtivo && <span style={{ fontWeight: 500, color: COR.suave, fontSize: "0.85em" }}>· {ladoAtivo}</span>}
+          </span>
+        </h2>
+        <div style={{ fontSize: 12, color: COR.suave, marginTop: 4 }}>{subtitulo}</div>
       </div>
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         {lado === "Ambos" && onTrocarLado && (

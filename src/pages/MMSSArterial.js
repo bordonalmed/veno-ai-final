@@ -627,7 +627,7 @@ function MMSSArterial() {
             onClick={() => setMostrarMapa(true)}
             style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            <FiMousePointer /> Mapeamento Interativo
+            <FiMousePointer /> Abrir no VENO.AI map
           </button>
         </div>
       )}

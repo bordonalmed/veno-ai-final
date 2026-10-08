@@ -310,7 +310,7 @@ export default function MapaInterativoArterial({
     <>
       <MapaLayout
       embutido={embutido}
-        titulo={`Mapa Interativo — Arterial (${l})`}
+        titulo="MMII Arterial"
         onFechar={onFechar}
         lado={lado}
         ladoAtivo={l}

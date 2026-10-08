@@ -534,7 +534,7 @@ export default function MapaInterativo({
   return (
     <MapaLayout
       embutido={embutido}
-      titulo={`Mapa Interativo — Sistema Venoso (${l})`}
+      titulo="MMII Venoso"
       subtitulo="Toque numa veia do desenho para marcar o achado. O laudo é atualizado em tempo real."
       onFechar={onFechar}
       lado={lado}

@@ -583,7 +583,7 @@ export default function CarotidasMapaInterativo({
     <>
       <MapaLayout
       embutido={embutido}
-        titulo="Mapa Interativo — Carótidas e Vertebrais"
+        titulo="Carótidas e Vertebrais"
         onFechar={onFechar}
         desenho={desenho}
         legenda={legenda}
