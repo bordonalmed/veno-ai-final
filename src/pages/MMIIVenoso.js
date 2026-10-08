@@ -1023,7 +1023,7 @@ function MMIIVenoso() {
             onClick={() => setMostrarMapa(true)}
             style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            <FiMousePointer /> Abrir no VENO.AI map
+            <FiMousePointer /> Abrir no VENO.AI Map
           </button>
         </div>
       )}

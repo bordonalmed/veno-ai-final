@@ -1380,7 +1380,7 @@ function CarotidasVertebrais() {
             onClick={() => setMostrarMapa(true)}
             style={{ ...buttonStyle, background: "#3d5a80", minWidth: 'clamp(140px, 25vw, 160px)', fontSize: 'clamp(12px, 2.5vw, 14px)', padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            <FiMousePointer /> Abrir no VENO.AI map
+            <FiMousePointer /> Abrir no VENO.AI Map
           </button>
         </div>
       )}
@@ -1580,7 +1580,7 @@ function CarotidasVertebrais() {
             </label>
             <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
             <button style={{ ...buttonStyle, background: "#3d5a80", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setMostrarMapa(true)}>
-              <FiMousePointer /> Abrir no VENO.AI map
+              <FiMousePointer /> Abrir no VENO.AI Map
             </button>
             <button style={{
               ...buttonStyle,

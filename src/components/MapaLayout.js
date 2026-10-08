@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FiEye, FiX, FiList } from "react-icons/fi";
-// Fontes da marca "VENO.AI map" empacotadas no app (funcionam offline).
-import "@fontsource/orbitron/latin-600.css";
+// Fonte do "Map" escrito à mão, empacotada no app (funciona offline).
 import "@fontsource/caveat/latin-700.css";
 
 // Layout comum a todos os Mapas Interativos (MMII venoso, MMII arterial,
@@ -64,10 +63,10 @@ const CSS_TEMA_CLARO = `
 // Cores tiradas do logo: azul do "VENO.AI" e vermelho das fibras.
 export const COR_MARCA = { azul: "#1693e0", vermelho: "#e0402a" };
 
-// Marca "VENO.AI map": logo + VENO.AI (letra parecida com a do logo) + "map"
-// escrito à mão em vermelho.
+// Marca "VENO.AI Map": o logo (que já traz o nome VENO.AI) + "Map" escrito à
+// mão em vermelho.
 export function MarcaVenoMap({ escala = 1 }) {
-  const lado = Math.round(40 * escala);
+  const lado = Math.round(48 * escala);
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 * escala, whiteSpace: "nowrap" }}>
       {/* logo transparente: vai num quadradinho escuro, como no fundo da tela inicial */}
@@ -78,11 +77,8 @@ export function MarcaVenoMap({ escala = 1 }) {
           style={{ width: "124%", height: "124%", margin: "-12%", display: "block" }}
         />
       </span>
-      <span style={{ fontFamily: "'Orbitron', 'Segoe UI', sans-serif", fontWeight: 600, fontSize: 19 * escala, letterSpacing: 1.6, color: COR_MARCA.azul, textShadow: "0 0 8px rgba(22,147,224,0.30)" }}>
-        VENO.AI
-      </span>
-      <span style={{ fontFamily: "'Caveat', 'Segoe Script', cursive", fontWeight: 700, fontSize: 34 * escala, lineHeight: 0.8, color: COR_MARCA.vermelho, display: "inline-block", transform: "rotate(-7deg) translateY(-3px)", marginLeft: -2 * escala }}>
-        map
+      <span style={{ fontFamily: "'Caveat', 'Segoe Script', cursive", fontWeight: 700, fontSize: 38 * escala, lineHeight: 0.8, color: COR_MARCA.vermelho, display: "inline-block", transform: "rotate(-7deg) translateY(-3px)" }}>
+        Map
       </span>
     </span>
   );
