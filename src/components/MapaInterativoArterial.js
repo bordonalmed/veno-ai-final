@@ -11,6 +11,7 @@ import {
 } from "../utils/vascularMapping";
 import { ARTERIAS } from "../utils/mmiiArterialLaudo";
 import { CamposArteria, CamposEnxerto } from "./CamposArteria";
+import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 
 // Árvore arterial de UMA perna, vista anterior. Desenhada nativamente para a
 // perna ESQUERDA (mesma convenção do Mapa Interativo venoso): medial = x menor,
@@ -272,7 +273,7 @@ export const ITENS_LEGENDA_ARTERIAL = [
 
 function LegendaArterial() {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", fontSize: 11, color: "#cfe3ea", marginTop: 6 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 10px", justifyContent: "center", fontSize: 11, color: "#5c6b78" }}>
       {ITENS_LEGENDA_ARTERIAL.map(([t, c]) => (
         <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
           <span style={{ width: 14, height: 6, background: c, borderRadius: 3, display: "inline-block" }} /> {t}
@@ -284,10 +285,6 @@ function LegendaArterial() {
       <span>B / M / A = onda bifásica / monofásica / amortecida</span>
     </div>
   );
-}
-
-function botaoStyle(background) {
-  return { padding: "8px 16px", borderRadius: 8, border: "none", background, color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 13 };
 }
 
 // Mapa Interativo do Doppler Arterial de MMII: uma perna por vez. Com o exame
@@ -302,72 +299,70 @@ export default function MapaInterativoArterial({
   onSalvarTXT, onSalvarPDF, onSalvarExame,
 }) {
   const [selecionada, setSelecionada] = useState(null);
+  const [mostrarPreview, setMostrarPreview] = useState(false);
   if (!aberto) return null;
   const l = ladoAtivo;
   const valores = arterias?.[l] || {};
+  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [l];
 
   return (
-    <div
-      style={{ position: "fixed", inset: 0, background: "rgba(8, 14, 22, 0.78)", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "clamp(8px, 2vw, 24px) 12px" }}
-      onClick={onFechar}
-    >
-      <div
-        style={{ width: "100%", maxWidth: 820, background: "linear-gradient(120deg,#101824 0%,#1c2740 100%)", color: "#fff", borderRadius: 16, boxShadow: "0 24px 60px rgba(0,0,0,0.5)", padding: "clamp(12px, 2vw, 20px)", display: "flex", flexDirection: "column", gap: 10 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <div>
-            <div style={{ fontSize: "clamp(15px, 2.5vw, 18px)", fontWeight: 700, color: "#4fd8ec" }}>Mapa Interativo — Arterial ({l})</div>
-            <div style={{ fontSize: 12, color: "#8fb3bd", marginTop: 2 }}>Toque numa artéria do desenho para preencher. O laudo é atualizado em tempo real.</div>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {lado === "Ambos" && ["Direito", "Esquerdo"].map((op) => (
-              <button key={op} onClick={() => { onTrocarLado(op); setSelecionada(null); }} style={{
-                padding: "6px 12px", borderRadius: 6, border: "1px solid #0eb8d0",
-                background: l === op ? "#0eb8d0" : "transparent", color: "#fff", cursor: "pointer", fontWeight: 600, fontSize: 13,
-              }}>{op}</button>
-            ))}
-            <button onClick={onFechar} style={{ background: "#c0392b", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, color: "#fff", fontWeight: 600, cursor: "pointer" }}>Fechar</button>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <div style={{ width: "100%", maxWidth: 360, background: "#fbfbfb", borderRadius: 14, border: "1px solid #d7dee3" }}>
-            <DesenhoMMIIArterial lado={l} arterias={valores} onSelecionar={setSelecionada} selecionada={selecionada} style={{ display: "block" }} />
-          </div>
-        </div>
-        <LegendaArterial />
-
-        {selecionada && valores[selecionada] ? (
+    <>
+      <MapaLayout
+        titulo={`Mapa Interativo — Arterial (${l})`}
+        onFechar={onFechar}
+        lado={lado}
+        ladoAtivo={l}
+        onTrocarLado={(op) => { onTrocarLado(op); setSelecionada(null); }}
+        desenho={
+          <DesenhoMMIIArterial
+            lado={l} arterias={valores} onSelecionar={setSelecionada} selecionada={selecionada}
+            style={{ display: "block", width: "100%", maxWidth: 380, maxHeight: "72vh" }}
+          />
+        }
+        legenda={<LegendaArterial />}
+        painel={selecionada && valores[selecionada] ? (
           <CamposArteria
             arteria={selecionada}
             lado={l}
             valores={valores[selecionada]}
             onChange={(v) => onArteriaChange(l, selecionada, v)}
+            semMoldura
           />
-        ) : (
-          <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 13, color: "#bfe4ec" }}>
-            Toque em uma artéria no desenho acima para registrar o achado.
+        ) : null}
+        tituloPainel={selecionada ? `${selecionada} (${l})` : ""}
+        onFecharPainel={() => setSelecionada(null)}
+        placeholderPainel="Toque em uma artéria no desenho para registrar o achado."
+        conteudo={
+          <>
+            <div className="mapa-claro">
+              <CamposEnxerto lado={l} enxerto={enxertos?.[l] || { tipo: "", status: "" }} onChange={(e) => onEnxertoChange(l, e)} />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Laudo ({l}) — atualizado em tempo real:</div>
+              <pre style={{ background: "#f7f9fa", border: "1px solid #dfe6ec", color: "#222", borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: "pre-wrap", margin: 0, maxHeight: 320, overflowY: "auto" }}>{laudoMembro}</pre>
+            </div>
+          </>
+        }
+        incluirPdf={incluirMapaPdf}
+        onIncluirPdf={onIncluirMapaPdf}
+        onVisualizarImagem={() => setMostrarPreview(true)}
+        onSalvarTXT={onSalvarTXT}
+        onSalvarPDF={onSalvarPDF}
+        onSalvarExame={onSalvarExame}
+      />
+      {mostrarPreview && (
+        <PreviewImagemPdf titulo="Mapeamento Arterial — Membro Inferior" onFechar={() => setMostrarPreview(false)}>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+            {lados.map((ld) => (
+              <div key={ld} style={{ flex: "1 1 260px", maxWidth: 380, textAlign: "center" }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Membro Inferior {ld}</div>
+                <DesenhoMMIIArterial lado={ld} arterias={arterias?.[ld] || {}} style={{ display: "block", width: "100%" }} />
+              </div>
+            ))}
           </div>
-        )}
-
-        <CamposEnxerto lado={l} enxerto={enxertos?.[l] || { tipo: "", status: "" }} onChange={(e) => onEnxertoChange(l, e)} />
-
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea", marginBottom: 4 }}>Laudo ({l}) — atualizado em tempo real:</div>
-          <pre style={{ background: "#fff", color: "#222", borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: "pre-wrap", margin: 0, maxHeight: 260, overflowY: "auto" }}>{laudoMembro}</pre>
-        </div>
-
-        <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12.5, color: "#bfe4ec", cursor: "pointer" }}>
-          <input type="checkbox" checked={!!incluirMapaPdf} onChange={(e) => onIncluirMapaPdf(e.target.checked)} />
-          Incluir Mapeamento no PDF
-        </label>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-          <button onClick={onSalvarTXT} style={botaoStyle("#0eb8d0")}>Salvar TXT</button>
-          <button onClick={onSalvarPDF} style={botaoStyle("#0eb8d0")}>Salvar PDF</button>
-          <button onClick={onSalvarExame} style={botaoStyle("#28a745")}>Salvar Exame</button>
-        </div>
-      </div>
-    </div>
+          <div style={{ marginTop: 8 }}><LegendaArterial /></div>
+        </PreviewImagemPdf>
+      )}
+    </>
   );
 }

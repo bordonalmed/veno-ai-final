@@ -337,8 +337,12 @@ export default function EsquemaMapeamentoModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <style>{`.esquema-svg-tela svg { width: 100%; height: auto; display: block; }`}</style>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: "clamp(16px, 3vw, 20px)", color: "#1c3d5a" }}>Mapeamento Venoso</h2>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "clamp(16px, 3vw, 20px)", color: "#1c3d5a" }}>Mapeamento Venoso</h2>
+            <div style={{ fontSize: 12, color: "#5c6b78" }}>É esta imagem que vai para o PDF.</div>
+          </div>
           <button
             onClick={onFechar}
             style={{
@@ -400,7 +404,10 @@ export default function EsquemaMapeamentoModal({
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#1c3d5a" }}>
               Membro Inferior {ladoAtual}
             </div>
+            {/* O SVG sai com largura/altura fixas (as do PDF); na tela ele
+                acompanha a largura do modal para caber também no celular. */}
             <div
+              className="esquema-svg-tela"
               style={{ width: "100%" }}
               dangerouslySetInnerHTML={{ __html: esquemas[ladoAtual].svg }}
             />

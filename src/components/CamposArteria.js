@@ -127,7 +127,8 @@ export function CampoCheck({ label, checked, onChange }) {
   );
 }
 
-export function CamposArteria({ arteria, valores, onChange, lado }) {
+// semMoldura: dentro do Mapa Interativo, que já mostra a caixa com o nome da artéria.
+export function CamposArteria({ arteria, valores, onChange, lado, semMoldura }) {
   const isOcluida = valores.status === "Ocluída";
 
   function set(field, value) {
@@ -158,8 +159,8 @@ export function CamposArteria({ arteria, valores, onChange, lado }) {
   }
 
   return (
-    <div style={cardStyle}>
-      <div style={tituloCardStyle}>{arteria.toUpperCase()} ({lado.toUpperCase()}):</div>
+    <div style={semMoldura ? undefined : cardStyle}>
+      {!semMoldura && <div style={tituloCardStyle}>{arteria.toUpperCase()} ({lado.toUpperCase()}):</div>}
 
       <div style={gradeCampos}>
         <CampoSelect label="Perviedade:" value={valores.status} options={statusOptions} onChange={v => set('status', v)} />

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FiPaperclip, FiX } from "react-icons/fi";
-import { FaStethoscope } from "react-icons/fa";
+import MapaLayout from "./MapaLayout";
 import {
   MEDIAL_SILHOUETTE,
   POSTERIOR_SILHOUETTE,
@@ -40,13 +40,6 @@ const COLS = [
 const VIEW_TY = 16;
 export const VIEW_W = COL_WIDTH * 2;
 export const VIEW_H = 660;
-
-function mapaBotaoStyle(background) {
-  return {
-    padding: "6px 14px", borderRadius: 6, border: "none", background, color: "#fff",
-    cursor: "pointer", fontWeight: 600, fontSize: 12,
-  };
-}
 
 function hitPath(d, onClick, key, selecionado, largura = 10) {
   const ativo = selecionado === key;
@@ -336,283 +329,238 @@ export default function MapaInterativo({
   const chaveAtiva = selecionado ? `${selecionado.tipo}:${selecionado.key}` : null;
 
 
-  return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000,
-      display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "clamp(8px,2vw,24px)",
-    }}>
-      <div style={{
-        background: "#fff", borderRadius: 12, padding: "clamp(12px,2vw,20px)", maxWidth: 820, width: "100%",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.4)", color: "#1a2530",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: "clamp(16px,3vw,20px)" }}>Mapa Interativo — Sistema Venoso ({l})</h2>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {lado === "Ambos" && (
-              <div style={{ display: "flex", gap: 4 }}>
-                {["Direito", "Esquerdo"].map((op) => (
-                  <button key={op} onClick={() => { onTrocarLado(op); setSelecionado(null); }} style={{
-                    padding: "4px 10px", borderRadius: 6, border: "1px solid #0eb8d0",
-                    background: ladoAtivo === op ? "#0eb8d0" : "#fff", color: ladoAtivo === op ? "#fff" : "#0eb8d0",
-                    cursor: "pointer", fontWeight: 600, fontSize: 13,
-                  }}>{op}</button>
-                ))}
-              </div>
-            )}
-            <button onClick={onFechar} style={{
-              padding: "6px 14px", borderRadius: 6, border: "none", background: "#c0392b", color: "#fff",
-              cursor: "pointer", fontWeight: 600,
-            }}>Fechar</button>
-          </div>
-        </div>
-        <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#5c6b78" }}>
-          Toque numa veia do desenho para marcar o achado. O laudo abaixo é atualizado em tempo real.
-        </p>
+  const selectStyle = { padding: "8px 10px", borderRadius: 6, fontSize: 14, border: "1.5px solid #0eb8d0", background: "#f7fbff", color: "#222", maxWidth: "100%" };
+  const linhaCampo = { display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 };
+  const rotulo = { fontSize: 12, fontWeight: 700, color: "#0a7f91" };
 
-        <div style={{ width: "100%", display: "flex", justifyContent: "center", border: "1px solid #dfe6ec", borderRadius: 8, background: "#fbfbfb" }}>
-          <DesenhoMMIIVenoso
-            lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
-            onSelecionar={selecionar} chaveAtiva={chaveAtiva}
-            style={{ maxWidth: 480, display: "block" }}
-          />
-        </div>
-
-        {/* ● (círculo geométrico comum) em vez de emoji de bolinha colorida (🔴🔵⚫🟠⚪): emoji
-            de cor ignora o "color" do CSS e depende da fonte de emoji do sistema -- em vários
-            desktops (Windows sem fonte de emoji colorida, principalmente) a cor simplesmente não
-            aparece. ● é texto comum, sempre respeita a cor que a gente define, em qualquer SO. */}
-        <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center" }}>
-          <span style={{ color: CORES["pérvia e competente"] }}>● suficiente</span>
-          <span style={{ color: CORES["pérvia e incompetente"] }}>● insuficiente</span>
-          <span style={{ color: CORES["não compressível e sem fluxo (trombose)"] }}>● trombose</span>
-          <span style={{ color: CORES["recanalização parcial"] }}>● recanalização parcial</span>
-          <span style={{ color: CORES["ausente"] }}>● ausente</span>
-          <span style={{ marginLeft: 8, color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
-          <span style={{ marginLeft: 8 }}>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
-        </div>
-        <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-          <span>Varizes (toque nos ícones tracejados na coxa/perna/tornozelo/pé):</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Superficiais"] }}><VarizLegendaIcone tipo="Varizes Superficiais" /> superficiais</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Reticulares"] }}><VarizLegendaIcone tipo="Varizes Reticulares" /> reticulares</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Microvarizes"] }}><VarizLegendaIcone tipo="Microvarizes" /> microvarizes</span>
-        </div>
-
-        {/* Painel contextual do vaso selecionado */}
-        <div style={{ marginTop: 10, padding: "10px 12px", background: "#f0f4f7", borderRadius: 8, minHeight: 40 }}>
-          {!selecionado && (
-            <span style={{ color: "#5c6b78", fontSize: 13 }}>Toque em uma veia no desenho acima para registrar o achado.</span>
-          )}
-          {selecionado?.tipo === "profunda" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <strong style={{ fontSize: 13 }}>{PROFUNDA_LABELS[selecionado.key]}:</strong>
-              <select
-                value={p[selecionado.key]}
-                onChange={(e) => onProfundas(l, { ...p, [selecionado.key]: e.target.value })}
-                style={{ padding: 4, borderRadius: 4, fontSize: 13 }}
-              >
-                {profOptions.map((opt) => <option key={opt}>{opt}</option>)}
-              </select>
-            </div>
-          )}
-          {selecionado?.tipo === "superficial" && (selecionado.key === "JSF" || selecionado.key === "JSP") && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <strong style={{ fontSize: 13 }}>{selecionado.key}:</strong>
-              <select
-                value={s[selecionado.key]}
-                onChange={(e) => onSuperficiais(l, { ...s, [selecionado.key]: e.target.value })}
-                style={{ padding: 4, borderRadius: 4, fontSize: 13 }}
-              >
-                {supOptions.map((opt) => <option key={opt}>{opt}</option>)}
-              </select>
-              <input
-                type="number" min={0} step={0.1} placeholder="Diâmetro (mm)"
-                value={(selecionado.key === "JSF" ? jsfDiametro?.[l] : jspDiametro?.[l]) || ""}
-                onChange={(e) => (selecionado.key === "JSF" ? onJsfDiametro(l, e.target.value) : onJspDiametro(l, e.target.value))}
-                style={{ width: 100, padding: 4, borderRadius: 4, border: "1px solid #0eb8d0", fontSize: 13 }}
-              />
-            </div>
-          )}
-          {selecionado?.tipo === "superficial" && selecionado.key === "Safena Magna" && (
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                <strong style={{ fontSize: 13 }}>Safena Magna:</strong>
-                <select
-                  value={s["Safena Magna"]}
-                  onChange={(e) => onSuperficiais(l, { ...s, "Safena Magna": e.target.value })}
-                  style={{ padding: 4, borderRadius: 4, fontSize: 13 }}
-                >
-                  {supOptions.map((opt) => <option key={opt}>{opt}</option>)}
-                </select>
-              </div>
-              <SafenaMagnaExtra status={s["Safena Magna"]} valores={m} onChange={(val) => onMagna(l, val)} />
-            </div>
-          )}
-          {selecionado?.tipo === "superficial" && selecionado.key === "Safena Parva" && (
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                <strong style={{ fontSize: 13 }}>Safena Parva:</strong>
-                <select
-                  value={s["Safena Parva"]}
-                  onChange={(e) => onSuperficiais(l, { ...s, "Safena Parva": e.target.value })}
-                  style={{ padding: 4, borderRadius: 4, fontSize: 13 }}
-                >
-                  {supOptions.map((opt) => <option key={opt}>{opt}</option>)}
-                </select>
-              </div>
-              <SafenaParvaExtra status={s["Safena Parva"]} valores={pv} onChange={(val) => onParva(l, val)} />
-            </div>
-          )}
-          {selecionado?.tipo === "variz" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <strong style={{ fontSize: 13 }}>Varizes — {varizesRegiaoLabel[selecionado.key]}:</strong>
-              <select
-                value={vz[selecionado.key] || ""}
-                onChange={(e) => onVarizes(l, { ...vz, [selecionado.key]: e.target.value })}
-                style={{ padding: 4, borderRadius: 4, fontSize: 13 }}
-              >
-                <option value="">Nenhuma</option>
-                {varizesTipoOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Veias perfurantes: lista compacta (mesmos campos do formulário) */}
-        <div style={{ marginTop: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Veias Perfurantes ({l}):</div>
-          {perfs.map((perf, idx) => (
-            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
-              <select
-                value={perf.status}
-                onChange={(e) => {
-                  const novoStatus = e.target.value;
-                  const novo = perfs.map((pf, i) => i === idx ? (
-                    novoStatus === "pérvia e incompetente" ? { ...pf, status: novoStatus } : { ...pf, status: novoStatus, segmento: "", valor: "" }
-                  ) : pf);
-                  onPerfurantes(l, novo);
-                }}
-                style={{ padding: 4, borderRadius: 4, fontSize: 12 }}
-              >
-                {perfurantesStatusOptions.map((opt) => <option key={opt}>{opt}</option>)}
-              </select>
-              {perf.status === "pérvia e incompetente" && (
-                <>
-                  <select
-                    value={perf.segmento}
-                    onChange={(e) => onPerfurantes(l, perfs.map((pf, i) => i === idx ? { ...pf, segmento: e.target.value, valor: "" } : pf))}
-                    style={{ padding: 4, borderRadius: 4, fontSize: 12 }}
-                  >
-                    <option value="">Selecione o segmento</option>
-                    {perfurantesSegmentoOptions.map((opt) => <option key={opt}>{opt}</option>)}
-                  </select>
-                  {perf.segmento && (
-                    <input
-                      type="number" min={0} step={0.1} placeholder="cm" value={perf.valor}
-                      onChange={(e) => onPerfurantes(l, perfs.map((pf, i) => i === idx ? { ...pf, valor: e.target.value } : pf))}
-                      style={{ width: 60, padding: 4, borderRadius: 4, border: "1px solid #0eb8d0", fontSize: 12 }}
-                    />
-                  )}
-                </>
-              )}
-              {perfs.length > 1 && (
-                <button type="button" onClick={() => onPerfurantes(l, perfs.filter((_, i) => i !== idx))} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#c0392b", color: "#fff", fontSize: 12, cursor: "pointer" }}>Remover</button>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => onPerfurantes(l, [...perfs, { status: "pérvia e competente", segmento: "", valor: "" }])}
-            style={{ padding: "4px 10px", borderRadius: 4, border: "1.5px solid #0eb8d0", background: "transparent", color: "#0eb8d0", fontWeight: 600, fontSize: 12, cursor: "pointer" }}
-          >+ Adicionar perfurante</button>
-        </div>
-
-        {/* Observações do membro ativo — mesmo campo do formulário escrito.
-            Preenchido aqui, aparece também no Mapeamento Venoso e no PDF. */}
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Observações ({l}):</div>
-          <textarea
-            value={observacoes?.[l] || ""}
-            onChange={(e) => onObservacao(l, e.target.value)}
-            placeholder={`Digite observações adicionais do exame do membro ${l.toLowerCase()}...`}
-            style={{
-              width: "100%",
-              minHeight: 50,
-              fontSize: 12,
-              borderRadius: 6,
-              border: "1.5px solid #0eb8d0",
-              padding: 8,
-              resize: "vertical",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        {/* Anexos: mesmas imagens (PNG/JPG) que o formulário principal anexa ao PDF */}
-        <div style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}><FiPaperclip /> Anexos:</div>
-            <span style={{ fontSize: 11, color: "#5c6b78" }}>{anexos.length} arquivo(s)</span>
-          </div>
-          <div
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onClick={() => document.getElementById('fileInputMapa').click()}
-            style={{
-              border: "1px dashed #0eb8d0", borderRadius: 6, padding: 10, textAlign: "center",
-              background: "rgba(14,184,208,0.05)", cursor: "pointer", fontSize: 12, color: "#0eb8d0",
-            }}
-          >
-            <input id="fileInputMapa" type="file" accept=".png,.jpg,.jpeg" multiple onChange={onFileUpload} style={{ display: "none" }} />
-            Clique ou arraste para anexar (PNG/JPG até 15MB)
-          </div>
-          {anexos.length > 0 && (
-            <div style={{ maxHeight: 120, overflowY: "auto", border: "1px solid #dfe6ec", borderRadius: 6, background: "#f7f9fa", padding: 6, marginTop: 6 }}>
-              {anexos.map((anexo) => (
-                <div key={anexo.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: 4, background: "#fff", borderRadius: 4, marginBottom: 4, border: "1px solid #dfe6ec" }}>
-                  <img src={anexo.thumbnail} alt={anexo.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 3, border: "1px solid #dfe6ec" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{anexo.name}</div>
-                    <div style={{ fontSize: 10, color: "#5c6b78" }}>{formatFileSize(anexo.size)}</div>
-                  </div>
-                  <button onClick={() => onRemoveAnexo(anexo.id)} style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer", display: "inline-flex", alignItems: "center" }}><FiX /></button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Laudo ao vivo */}
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Laudo ({l}) — atualizado em tempo real:</div>
-          <pre style={{
-            background: "#f7f9fa", border: "1px solid #dfe6ec", borderRadius: 8, padding: 10,
-            fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 260, overflowY: "auto", margin: 0,
-          }}>
-            {montarLaudo({ nome, data, lado: l, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes })}
-          </pre>
-        </div>
-
-        {/* Salvar direto daqui, sem precisar fechar o mapa e voltar ao
-            formulário. Salva o exame completo (os dois lados, se "Ambos"),
-            não só o lado ativo no mapa. */}
-        <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 12, fontSize: 12, color: "#333", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={incluirMapeamentoVisualPdf}
-            onChange={(e) => onIncluirMapeamentoVisualPdf(e.target.checked)}
-          />
-          Incluir Mapeamento Visual no PDF
-        </label>
-        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
-          <button onClick={onAbrirMapeamentoVisual} style={{ ...mapaBotaoStyle("#6f42c1"), display: "inline-flex", alignItems: "center", gap: 6 }}><FaStethoscope /> Mapeamento Visual</button>
-          <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
-          <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>
-          <button onClick={() => {
-            if (!nome || !data) { alert("Preencha nome e data no formulário antes de salvar o exame!"); return; }
-            onSalvarExame();
-          }} style={mapaBotaoStyle("#28a745")}>Salvar Exame</button>
-        </div>
+  let tituloPainel = "";
+  let painel = null;
+  if (selecionado?.tipo === "profunda") {
+    tituloPainel = PROFUNDA_LABELS[selecionado.key];
+    painel = (
+      <div style={linhaCampo}>
+        <span style={rotulo}>Achado:</span>
+        <select value={p[selecionado.key]} onChange={(e) => onProfundas(l, { ...p, [selecionado.key]: e.target.value })} style={selectStyle}>
+          {profOptions.map((opt) => <option key={opt}>{opt}</option>)}
+        </select>
       </div>
-    </div>
+    );
+  } else if (selecionado?.tipo === "superficial" && (selecionado.key === "JSF" || selecionado.key === "JSP")) {
+    tituloPainel = selecionado.key === "JSF" ? "Junção safeno-femoral (JSF)" : "Junção safeno-poplítea (JSP)";
+    painel = (
+      <>
+        <div style={linhaCampo}>
+          <span style={rotulo}>Achado:</span>
+          <select value={s[selecionado.key]} onChange={(e) => onSuperficiais(l, { ...s, [selecionado.key]: e.target.value })} style={selectStyle}>
+            {supOptions.map((opt) => <option key={opt}>{opt}</option>)}
+          </select>
+        </div>
+        <div style={linhaCampo}>
+          <span style={rotulo}>Diâmetro (mm):</span>
+          <input
+            type="number" min={0} step={0.1} placeholder="mm"
+            value={(selecionado.key === "JSF" ? jsfDiametro?.[l] : jspDiametro?.[l]) || ""}
+            onChange={(e) => (selecionado.key === "JSF" ? onJsfDiametro(l, e.target.value) : onJspDiametro(l, e.target.value))}
+            style={{ ...selectStyle, width: 140 }}
+          />
+        </div>
+      </>
+    );
+  } else if (selecionado?.tipo === "superficial" && selecionado.key === "Safena Magna") {
+    tituloPainel = "Safena Magna";
+    painel = (
+      <>
+        <div style={linhaCampo}>
+          <span style={rotulo}>Achado:</span>
+          <select value={s["Safena Magna"]} onChange={(e) => onSuperficiais(l, { ...s, "Safena Magna": e.target.value })} style={selectStyle}>
+            {supOptions.map((opt) => <option key={opt}>{opt}</option>)}
+          </select>
+        </div>
+        <SafenaMagnaExtra status={s["Safena Magna"]} valores={m} onChange={(val) => onMagna(l, val)} />
+      </>
+    );
+  } else if (selecionado?.tipo === "superficial" && selecionado.key === "Safena Parva") {
+    tituloPainel = "Safena Parva";
+    painel = (
+      <>
+        <div style={linhaCampo}>
+          <span style={rotulo}>Achado:</span>
+          <select value={s["Safena Parva"]} onChange={(e) => onSuperficiais(l, { ...s, "Safena Parva": e.target.value })} style={selectStyle}>
+            {supOptions.map((opt) => <option key={opt}>{opt}</option>)}
+          </select>
+        </div>
+        <SafenaParvaExtra status={s["Safena Parva"]} valores={pv} onChange={(val) => onParva(l, val)} />
+      </>
+    );
+  } else if (selecionado?.tipo === "variz") {
+    tituloPainel = `Varizes — ${varizesRegiaoLabel[selecionado.key]}`;
+    painel = (
+      <div style={linhaCampo}>
+        <span style={rotulo}>Tipo:</span>
+        <select value={vz[selecionado.key] || ""} onChange={(e) => onVarizes(l, { ...vz, [selecionado.key]: e.target.value })} style={selectStyle}>
+          <option value="">Nenhuma</option>
+          {varizesTipoOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      </div>
+    );
+  }
+
+  // ● (círculo geométrico comum) em vez de emoji de bolinha colorida: emoji de
+  // cor ignora o "color" do CSS e depende da fonte de emoji do sistema.
+  const legenda = (
+    <>
+      <div style={{ display: "flex", gap: 8, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center" }}>
+        <span style={{ color: CORES["pérvia e competente"] }}>● suficiente</span>
+        <span style={{ color: CORES["pérvia e incompetente"] }}>● insuficiente</span>
+        <span style={{ color: CORES["não compressível e sem fluxo (trombose)"] }}>● trombose</span>
+        <span style={{ color: CORES["recanalização parcial"] }}>● recanalização parcial</span>
+        <span style={{ color: CORES["ausente"] }}>● ausente</span>
+        <span style={{ color: CORES["pérvia e incompetente"] }}>▲ perfurante insuficiente</span>
+        <span>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
+        <span>Varizes (toque nos ícones tracejados):</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Superficiais"] }}><VarizLegendaIcone tipo="Varizes Superficiais" /> superficiais</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Reticulares"] }}><VarizLegendaIcone tipo="Varizes Reticulares" /> reticulares</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Microvarizes"] }}><VarizLegendaIcone tipo="Microvarizes" /> microvarizes</span>
+      </div>
+    </>
+  );
+
+  const conteudo = (
+    <>
+      {/* Veias perfurantes: lista compacta (mesmos campos do formulário) */}
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Veias Perfurantes ({l}):</div>
+        {perfs.map((perf, idx) => (
+          <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+            <select
+              value={perf.status}
+              onChange={(e) => {
+                const novoStatus = e.target.value;
+                const novo = perfs.map((pf, i) => i === idx ? (
+                  novoStatus === "pérvia e incompetente" ? { ...pf, status: novoStatus } : { ...pf, status: novoStatus, segmento: "", valor: "" }
+                ) : pf);
+                onPerfurantes(l, novo);
+              }}
+              style={{ ...selectStyle, fontSize: 13, padding: 6 }}
+            >
+              {perfurantesStatusOptions.map((opt) => <option key={opt}>{opt}</option>)}
+            </select>
+            {perf.status === "pérvia e incompetente" && (
+              <>
+                <select
+                  value={perf.segmento}
+                  onChange={(e) => onPerfurantes(l, perfs.map((pf, i) => i === idx ? { ...pf, segmento: e.target.value, valor: "" } : pf))}
+                  style={{ ...selectStyle, fontSize: 13, padding: 6 }}
+                >
+                  <option value="">Selecione o segmento</option>
+                  {perfurantesSegmentoOptions.map((opt) => <option key={opt}>{opt}</option>)}
+                </select>
+                {perf.segmento && (
+                  <input
+                    type="number" min={0} step={0.1} placeholder="cm" value={perf.valor}
+                    onChange={(e) => onPerfurantes(l, perfs.map((pf, i) => i === idx ? { ...pf, valor: e.target.value } : pf))}
+                    style={{ ...selectStyle, fontSize: 13, padding: 6, width: 70 }}
+                  />
+                )}
+              </>
+            )}
+            {perfs.length > 1 && (
+              <button type="button" onClick={() => onPerfurantes(l, perfs.filter((_, i) => i !== idx))} style={{ padding: "5px 10px", borderRadius: 4, border: "none", background: "#c0392b", color: "#fff", fontSize: 12, cursor: "pointer" }}>Remover</button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onPerfurantes(l, [...perfs, { status: "pérvia e competente", segmento: "", valor: "" }])}
+          style={{ padding: "6px 12px", borderRadius: 4, border: "1.5px solid #0eb8d0", background: "transparent", color: "#0a7f91", fontWeight: 600, fontSize: 12, cursor: "pointer" }}
+        >+ Adicionar perfurante</button>
+      </div>
+
+      {/* Observações do membro ativo — mesmo campo do formulário escrito. */}
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Observações ({l}):</div>
+        <textarea
+          value={observacoes?.[l] || ""}
+          onChange={(e) => onObservacao(l, e.target.value)}
+          placeholder={`Digite observações adicionais do exame do membro ${l.toLowerCase()}...`}
+          style={{ width: "100%", minHeight: 50, fontSize: 13, borderRadius: 6, border: "1.5px solid #0eb8d0", padding: 8, resize: "vertical", boxSizing: "border-box" }}
+        />
+      </div>
+
+      {/* Anexos: mesmas imagens (PNG/JPG) que o formulário principal anexa ao PDF */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}><FiPaperclip /> Anexos:</div>
+          <span style={{ fontSize: 11, color: "#5c6b78" }}>{anexos.length} arquivo(s)</span>
+        </div>
+        <div
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onClick={() => document.getElementById('fileInputMapa').click()}
+          style={{ border: "1px dashed #0eb8d0", borderRadius: 6, padding: 10, textAlign: "center", background: "rgba(14,184,208,0.05)", cursor: "pointer", fontSize: 12, color: "#0a7f91" }}
+        >
+          <input id="fileInputMapa" type="file" accept=".png,.jpg,.jpeg" multiple onChange={onFileUpload} style={{ display: "none" }} />
+          Clique ou arraste para anexar (PNG/JPG até 15MB)
+        </div>
+        {anexos.length > 0 && (
+          <div style={{ maxHeight: 120, overflowY: "auto", border: "1px solid #dfe6ec", borderRadius: 6, background: "#f7f9fa", padding: 6, marginTop: 6 }}>
+            {anexos.map((anexo) => (
+              <div key={anexo.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: 4, background: "#fff", borderRadius: 4, marginBottom: 4, border: "1px solid #dfe6ec" }}>
+                <img src={anexo.thumbnail} alt={anexo.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 3, border: "1px solid #dfe6ec" }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{anexo.name}</div>
+                  <div style={{ fontSize: 10, color: "#5c6b78" }}>{formatFileSize(anexo.size)}</div>
+                </div>
+                <button onClick={() => onRemoveAnexo(anexo.id)} style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer", display: "inline-flex", alignItems: "center" }}><FiX /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Laudo ao vivo */}
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Laudo ({l}) — atualizado em tempo real:</div>
+        <pre style={{ background: "#f7f9fa", border: "1px solid #dfe6ec", borderRadius: 8, padding: 10, fontSize: 11.5, whiteSpace: "pre-wrap", maxHeight: 320, overflowY: "auto", margin: 0 }}>
+          {montarLaudo({ nome, data, lado: l, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes })}
+        </pre>
+      </div>
+    </>
+  );
+
+  return (
+    <MapaLayout
+      titulo={`Mapa Interativo — Sistema Venoso (${l})`}
+      subtitulo="Toque numa veia do desenho para marcar o achado. O laudo é atualizado em tempo real."
+      onFechar={onFechar}
+      lado={lado}
+      ladoAtivo={ladoAtivo}
+      onTrocarLado={(op) => { onTrocarLado(op); setSelecionado(null); }}
+      desenho={
+        <DesenhoMMIIVenoso
+          lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
+          onSelecionar={selecionar} chaveAtiva={chaveAtiva}
+          style={{ width: "100%", maxWidth: 560, maxHeight: "74vh", display: "block" }}
+        />
+      }
+      legenda={legenda}
+      painel={painel}
+      tituloPainel={`${tituloPainel} (${l})`}
+      onFecharPainel={() => setSelecionado(null)}
+      placeholderPainel="Toque em uma veia no desenho para registrar o achado."
+      conteudo={conteudo}
+      incluirPdf={incluirMapeamentoVisualPdf}
+      onIncluirPdf={onIncluirMapeamentoVisualPdf}
+      labelIncluirPdf="Incluir Mapeamento Visual no PDF"
+      onVisualizarImagem={onAbrirMapeamentoVisual}
+      onSalvarTXT={onSalvarTXT}
+      onSalvarPDF={onSalvarPDF}
+      onSalvarExame={() => {
+        if (!nome || !data) { alert("Preencha nome e data no formulário antes de salvar o exame!"); return; }
+        onSalvarExame();
+      }}
+    />
   );
 }
