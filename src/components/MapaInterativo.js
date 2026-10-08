@@ -310,6 +310,7 @@ export default function MapaInterativo({
   onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
   incluirMapeamentoVisualPdf, onIncluirMapeamentoVisualPdf,
   anexos = [], onFileUpload, onDrop, onDragOver, onRemoveAnexo, formatFileSize,
+  embutido,
 }) {
   const [selecionado, setSelecionado] = useState(null);
 
@@ -532,7 +533,8 @@ export default function MapaInterativo({
 
   return (
     <MapaLayout
-      titulo={`Mapa Interativo — Sistema Venoso (${l})`}
+      embutido={embutido}
+      titulo="MMII Venoso"
       subtitulo="Toque numa veia do desenho para marcar o achado. O laudo é atualizado em tempo real."
       onFechar={onFechar}
       lado={lado}

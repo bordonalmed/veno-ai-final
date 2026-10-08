@@ -410,8 +410,16 @@ function MMIIVenoso() {
   const [anexos, setAnexos] = useState([]);
   const [mostrarEsquema, setMostrarEsquema] = useState(false);
   const [incluirEsquemaPdf, setIncluirEsquemaPdf] = useState(false);
-  const [mostrarMapa, setMostrarMapa] = useState(false);
+  // O Mapa Interativo é a tela principal do exame: abre sozinho assim que o
+  // cabeçalho (nome, idade, data e lado) está completo. "Ver formulário"
+  // mostra os quadros de preenchimento no lugar dele.
+  const [mostrarMapa, setMostrarMapa] = useState(true);
   const [ladoMapa, setLadoMapa] = useState("Direito");
+  useEffect(() => {
+    setLadoMapa(lado === "Esquerdo" ? "Esquerdo" : "Direito");
+  }, [lado]);
+  const cabecalhoCompleto = !!(nome && nome.trim() && idade && data && lado);
+  const mapaAtivo = cabecalhoCompleto && mostrarMapa;
 
   // Hook para detectar mudanças no tamanho da tela
   useEffect(() => {
@@ -995,7 +1003,11 @@ function MMIIVenoso() {
         data={data}
         lado={lado}
         onInputChange={handleChange}
-        onVisualizar={handleVisualizar}
+        onVisualizar={() => {
+          // Lado único: o laudo aparece junto do formulário; no mapa ele já está ao vivo.
+          if (mapaAtivo && lado !== "Ambos") setMostrarMapa(false);
+          handleVisualizar();
+        }}
         onSalvar={handleSalvarExame}
         onVoltarMenu={handleVoltarMenu}
         onConfiguracao={handleConfiguracao}
@@ -1004,18 +1016,61 @@ function MMIIVenoso() {
         erro={erro}
       />
 
-      {lado && (
+      {lado && !mapaAtivo && (
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
           <button
             type="button"
-            onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
+            onClick={() => setMostrarMapa(true)}
             style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            <FiMousePointer /> Mapeamento Interativo
+            <FiMousePointer /> Abrir no VENO.AI Map
           </button>
         </div>
       )}
 
+      <MapaInterativo
+        aberto={mapaAtivo}
+        embutido
+        onFechar={() => setMostrarMapa(false)}
+        lado={lado}
+        ladoAtivo={ladoMapa}
+        onTrocarLado={setLadoMapa}
+        nome={nome}
+        data={data}
+        profundas={profundas}
+        superficiais={superficiais}
+        magna={magna}
+        parva={parva}
+        perfurantes={perfurantes}
+        observacoes={observacoes}
+        varizes={varizes}
+        jsfDiametro={jsfDiametro}
+        jspDiametro={jspDiametro}
+        onProfundas={(l, val) => setProfundas(prev => ({ ...prev, [l]: val }))}
+        onSuperficiais={(l, val) => setSuperficiais(prev => ({ ...prev, [l]: val }))}
+        onMagna={(l, val) => setMagna(prev => ({ ...prev, [l]: val }))}
+        onParva={(l, val) => setParva(prev => ({ ...prev, [l]: val }))}
+        onPerfurantes={(l, val) => setPerfurantes(prev => ({ ...prev, [l]: val }))}
+        onJsfDiametro={(l, val) => setJsfDiametro(prev => ({ ...prev, [l]: val }))}
+        onJspDiametro={(l, val) => setJspDiametro(prev => ({ ...prev, [l]: val }))}
+        onVarizes={(l, val) => setVarizes(prev => ({ ...prev, [l]: val }))}
+        onObservacao={(l, val) => setObservacoes(prev => ({ ...prev, [l]: val }))}
+        onSalvarExame={handleSalvarExame}
+        onSalvarTXT={handleSalvarTXT}
+        onSalvarPDF={handleSalvarPDF}
+        onAbrirMapeamentoVisual={() => setMostrarEsquema(true)}
+        incluirMapeamentoVisualPdf={incluirEsquemaPdf}
+        onIncluirMapeamentoVisualPdf={setIncluirEsquemaPdf}
+        anexos={anexos}
+        onFileUpload={handleFileUpload}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onRemoveAnexo={removeAnexo}
+        formatFileSize={formatFileSize}
+      />
+
+      {/* Quadros de preenchimento: só no modo formulário */}
+      {!mapaAtivo && (
       <div style={{
         width: '100%',
         maxWidth: 'min(1200px, 98vw)',
@@ -1347,6 +1402,7 @@ function MMIIVenoso() {
         </div>
 
       </div>
+      )}
       {/* Exibição do laudo ao lado (lado único) ou embaixo (ambos) */}
       {laudoTexto && lado === "Ambos" && (
         <div style={{
@@ -1567,45 +1623,6 @@ function MMIIVenoso() {
         profundas={profundas}
         varizes={varizes}
         observacoes={observacoes}
-      />
-      <MapaInterativo
-        aberto={mostrarMapa}
-        onFechar={() => setMostrarMapa(false)}
-        lado={lado}
-        ladoAtivo={ladoMapa}
-        onTrocarLado={setLadoMapa}
-        nome={nome}
-        data={data}
-        profundas={profundas}
-        superficiais={superficiais}
-        magna={magna}
-        parva={parva}
-        perfurantes={perfurantes}
-        observacoes={observacoes}
-        varizes={varizes}
-        jsfDiametro={jsfDiametro}
-        jspDiametro={jspDiametro}
-        onProfundas={(l, val) => setProfundas(prev => ({ ...prev, [l]: val }))}
-        onSuperficiais={(l, val) => setSuperficiais(prev => ({ ...prev, [l]: val }))}
-        onMagna={(l, val) => setMagna(prev => ({ ...prev, [l]: val }))}
-        onParva={(l, val) => setParva(prev => ({ ...prev, [l]: val }))}
-        onPerfurantes={(l, val) => setPerfurantes(prev => ({ ...prev, [l]: val }))}
-        onJsfDiametro={(l, val) => setJsfDiametro(prev => ({ ...prev, [l]: val }))}
-        onJspDiametro={(l, val) => setJspDiametro(prev => ({ ...prev, [l]: val }))}
-        onVarizes={(l, val) => setVarizes(prev => ({ ...prev, [l]: val }))}
-        onObservacao={(l, val) => setObservacoes(prev => ({ ...prev, [l]: val }))}
-        onSalvarExame={handleSalvarExame}
-        onSalvarTXT={handleSalvarTXT}
-        onSalvarPDF={handleSalvarPDF}
-        onAbrirMapeamentoVisual={() => setMostrarEsquema(true)}
-        incluirMapeamentoVisualPdf={incluirEsquemaPdf}
-        onIncluirMapeamentoVisualPdf={setIncluirEsquemaPdf}
-        anexos={anexos}
-        onFileUpload={handleFileUpload}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onRemoveAnexo={removeAnexo}
-        formatFileSize={formatFileSize}
       />
       <style>{`
         @keyframes logoGlow {

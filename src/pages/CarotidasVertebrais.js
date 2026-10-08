@@ -603,7 +603,9 @@ function CarotidasVertebrais() {
     AVE: { ...initialVesselData }
   });
 
-  const [mostrarMapa, setMostrarMapa] = useState(false);
+  // O Mapa Interativo é a tela principal do exame: abre sozinho assim que
+  // nome, idade e data estão preenchidos. "Ver formulário" mostra os quadros.
+  const [mostrarMapa, setMostrarMapa] = useState(true);
   const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   // Objeto combinado dos 8 vasos (usado pelo Mapa Interativo) e um onChange único que
@@ -1371,20 +1373,35 @@ function CarotidasVertebrais() {
         >Salvar Exame</button>
       </div>
 
-      {formReady && (
+      {formReady && !mostrarMapa && (
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(8px, 2vw, 10px)' }}>
           <button
             type="button"
             onClick={() => setMostrarMapa(true)}
             style={{ ...buttonStyle, background: "#3d5a80", minWidth: 'clamp(140px, 25vw, 160px)', fontSize: 'clamp(12px, 2.5vw, 14px)', padding: "clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            <FiMousePointer /> Mapa Interativo
+            <FiMousePointer /> Abrir no VENO.AI Map
           </button>
         </div>
       )}
 
-      {/* Campos do exame - só aparecem após preencher dados básicos */}
-      {formReady && (
+      <CarotidasMapaInterativo
+        aberto={formReady && mostrarMapa}
+        embutido
+        onFechar={() => setMostrarMapa(false)}
+        vessels={todosOsVasos}
+        onChange={handleChangeVasoMapa}
+        nome={nome}
+        data={data}
+        onSalvarExame={handleSalvarExame}
+        onSalvarTXT={handleSalvarTXT}
+        onSalvarPDF={handleSalvarPDF}
+        incluirMapaPdf={incluirMapaPdf}
+        onIncluirMapaPdf={setIncluirMapaPdf}
+      />
+
+      {/* Campos do exame - só no modo formulário (o mapa é a tela principal) */}
+      {formReady && !mostrarMapa && (
         <div style={{ 
           width: '100%', 
           maxWidth: 'min(1200px, 98vw)', 
@@ -1563,7 +1580,7 @@ function CarotidasVertebrais() {
             </label>
             <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
             <button style={{ ...buttonStyle, background: "#3d5a80", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setMostrarMapa(true)}>
-              <FiMousePointer /> Mapa Interativo
+              <FiMousePointer /> Abrir no VENO.AI Map
             </button>
             <button style={{
               ...buttonStyle,
@@ -1744,19 +1761,6 @@ function CarotidasVertebrais() {
         }
       `}</style>
 
-      <CarotidasMapaInterativo
-        aberto={mostrarMapa}
-        onFechar={() => setMostrarMapa(false)}
-        vessels={todosOsVasos}
-        onChange={handleChangeVasoMapa}
-        nome={nome}
-        data={data}
-        onSalvarExame={handleSalvarExame}
-        onSalvarTXT={handleSalvarTXT}
-        onSalvarPDF={handleSalvarPDF}
-        incluirMapaPdf={incluirMapaPdf}
-        onIncluirMapaPdf={setIncluirMapaPdf}
-      />
     </div>
   );
 }

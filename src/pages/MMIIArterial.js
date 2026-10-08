@@ -154,8 +154,14 @@ function MMIIArterial() {
   const [arteriasDireito, setArteriasDireito] = useState(arteriasPadrao);
   const [arteriasEsquerdo, setArteriasEsquerdo] = useState(arteriasPadrao);
   const [enxertos, setEnxertos] = useState({ Direito: { ...enxertoPadrao }, Esquerdo: { ...enxertoPadrao } });
-  const [mostrarMapa, setMostrarMapa] = useState(false);
+  // O Mapa Interativo é a tela principal do exame: abre sozinho assim que o
+  // cabeçalho (nome, idade, data e lado) está completo. "Ver formulário"
+  // mostra os quadros de preenchimento no lugar dele.
+  const [mostrarMapa, setMostrarMapa] = useState(true);
   const [ladoMapa, setLadoMapa] = useState("Direito");
+  useEffect(() => {
+    setLadoMapa(lado === "Esquerdo" ? "Esquerdo" : "Direito");
+  }, [lado]);
   const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
@@ -604,20 +610,21 @@ function MMIIArterial() {
         erro={erro}
       />
 
-      {deveMostrarCampos && (
+      {deveMostrarCampos && !mostrarMapa && (
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
           <button
             type="button"
-            onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
+            onClick={() => setMostrarMapa(true)}
             style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
-            <FiMousePointer /> Mapeamento Interativo
+            <FiMousePointer /> Abrir no VENO.AI Map
           </button>
         </div>
       )}
 
       <MapaInterativoArterial
-        aberto={mostrarMapa}
+        aberto={deveMostrarCampos && mostrarMapa}
+        embutido
         onFechar={() => setMostrarMapa(false)}
         lado={lado}
         ladoAtivo={ladoMapa}
@@ -649,6 +656,8 @@ function MMIIArterial() {
           alignItems: 'center', 
           gap: 'clamp(12px, 2vw, 16px)' 
         }}>
+          {/* Quadros de preenchimento: só no modo formulário */}
+          {!mostrarMapa && (
           <div style={{ 
             width: '100%', 
             display: 'grid',
@@ -710,8 +719,7 @@ function MMIIArterial() {
               </>
             )}
           </div>
-
-
+          )}
 
           {/* Preview do Laudo */}
           {mostrarLaudo && (
