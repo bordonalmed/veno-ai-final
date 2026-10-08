@@ -10,7 +10,7 @@ import {
   sliceSpine,
 } from "../utils/vascularMapping";
 import { ARTERIAS } from "../utils/mmiiArterialLaudo";
-import { CamposArteria, CamposEnxerto } from "./CamposArteriaMMII";
+import { CamposArteria, CamposEnxerto } from "./CamposArteria";
 
 // Árvore arterial de UMA perna, vista anterior. Desenhada nativamente para a
 // perna ESQUERDA (mesma convenção do Mapa Interativo venoso): medial = x menor,

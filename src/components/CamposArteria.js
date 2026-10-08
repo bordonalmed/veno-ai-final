@@ -14,8 +14,8 @@ import {
   enxertoStatusOptions,
 } from "../utils/mmiiArterialLaudo";
 
-// Campos de uma artéria (e do enxerto) do Doppler Arterial de MMII, usados
-// tanto no formulário da página quanto no Mapa Interativo.
+// Campos de uma artéria do Doppler Arterial (MMII e MMSS) e do enxerto (só MMII),
+// usados no formulário das páginas e no Mapa Interativo.
 
 const inputStyle = {
   background: "#f7fbff",

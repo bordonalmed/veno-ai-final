@@ -3,7 +3,7 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
-import { CamposArteria, CamposEnxerto } from "../components/CamposArteriaMMII";
+import { CamposArteria, CamposEnxerto } from "../components/CamposArteria";
 import MapaInterativoArterial, { adicionarMapaArterialAoPdf } from "../components/MapaInterativoArterial";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
