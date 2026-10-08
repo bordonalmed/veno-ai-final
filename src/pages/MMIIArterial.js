@@ -3,7 +3,7 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
-import { CamposArteria, CamposEnxerto } from "../components/CamposArteriaMMII";
+import { CamposArteria, CamposEnxerto } from "../components/CamposArteria";
 import MapaInterativoArterial, { adicionarMapaArterialAoPdf } from "../components/MapaInterativoArterial";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
@@ -471,7 +471,8 @@ function MMIIArterial() {
           y -= 8; // Ajuste para não ter espaço extra
         }
         y += 8;
-        if (y > 265) {
+        // Só abre página nova se ainda houver linhas (evita página em branco).
+        if (y > 265 && i < bloco.length - 1) {
           addRodape();
           doc.addPage();
           y = addCabecalho(12);

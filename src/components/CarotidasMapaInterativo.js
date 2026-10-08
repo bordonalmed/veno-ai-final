@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import jsPDF from "jspdf";
-import { FiEye } from "react-icons/fi";
+import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 
 // Nomes completos dos 8 vasos editáveis (iguais aos usados no formulário e no laudo).
 export const CAROTIDAS_VESSEL_NAMES = {
@@ -362,15 +362,14 @@ export async function adicionarMapaCarotidasAoPdf(doc, vessels, { nome, data } =
   desenharLegendaCarotidasPdf(doc, pageWidth, y);
 }
 
+const CAMPO_LABEL = { fontSize: 12, fontWeight: 700, color: "#0a7f91" };
+const CAMPO_INPUT = { padding: "9px 10px", borderRadius: 6, border: "1.5px solid #0eb8d0", background: "#f7fbff", color: "#222", fontSize: 14 };
+
 function CampoSelect({ label, value, onChange, options }) {
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
-      <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>{label}</span>
-      <select
-        value={value}
-        onChange={onChange}
-        style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid #4fd8ec", background: "#fff", color: "#222", fontSize: 13 }}
-      >
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 150, flex: "1 1 150px" }}>
+      <span style={CAMPO_LABEL}>{label}</span>
+      <select value={value} onChange={onChange} style={CAMPO_INPUT}>
         {options.map((o) => (
           <option key={o} value={o}>{o}</option>
         ))}
@@ -379,26 +378,34 @@ function CampoSelect({ label, value, onChange, options }) {
   );
 }
 
-function mapaBotaoStyle(background) {
-  return {
-    padding: "8px 16px", borderRadius: 8, border: "none", background, color: "#fff",
-    cursor: "pointer", fontWeight: 700, fontSize: 13,
-  };
+function LegendaCarotidas() {
+  return (
+    <>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", alignItems: "center" }}>
+        <LegendDot cor="#c0392b" label="Pérvia" />
+        <LegendDot cor="#e57373" label="Hipocinético" />
+        <LegendDot cor="#7b241c" label="Hipercinético" />
+        <LegendDot cor="#000000" label="Oclusão" />
+      </div>
+      <div style={{ fontSize: 11, color: "#5c6b78", lineHeight: 1.4, textAlign: "center", marginTop: 4 }}>
+        Textura = ateromatose · triângulo = estenose (branco=lipídica, cinza=calcificada, contorno cinza=mista) · malha = stent.
+      </div>
+    </>
+  );
 }
 
-// Estrutura de coluna única (igual ao Mapa Interativo do MMII): ilustração compacta no topo,
-// seguida imediatamente do painel de edição do vaso selecionado e dos botões de salvar — sem
-// precisar rolar a página pra preencher, tanto no desktop quanto no celular.
+// Mesmo layout de todos os Mapas Interativos (MapaLayout): fundo branco e a
+// caixa do vaso ao lado do desenho (ou subindo da parte de baixo no celular).
 export default function CarotidasMapaInterativo({
   aberto, onFechar, vessels, onChange, nome, data,
   onSalvarExame, onSalvarTXT, onSalvarPDF, incluirMapaPdf, onIncluirMapaPdf
 }) {
-  const [selected, setSelected] = useState("ACCD");
+  const [selected, setSelected] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
 
   if (!aberto) return null;
 
-  const selectedVessel = vessels[selected] || defaultVessel();
+  const selectedVessel = (selected && vessels[selected]) || defaultVessel();
   const isOccluded = selectedVessel.status === "ocluída";
   const showClinicalFields = !isOccluded;
   const showEstenoseCampos = selectedVessel.estenose && selectedVessel.estenose !== "ausente";
@@ -432,263 +439,171 @@ export default function CarotidasMapaInterativo({
 
   const svgIlustracao = construirSvgCarotidas(vessels, { detalhado: true });
 
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(8, 14, 22, 0.78)",
-        zIndex: 2000,
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        overflowY: "auto",
-        padding: "clamp(8px, 2vw, 24px) 12px"
-      }}
-      onClick={onFechar}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 820,
-          background: "linear-gradient(120deg,#101824 0%,#1c2740 100%)",
-          color: "#fff",
-          borderRadius: 16,
-          boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
-          padding: "clamp(12px, 2vw, 20px)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <div>
-            <div style={{ fontSize: "clamp(15px, 2.5vw, 18px)", fontWeight: 700, color: "#4fd8ec" }}>Mapa Interativo — Carótidas e Vertebrais</div>
-            <div style={{ fontSize: 12, color: "#8fb3bd", marginTop: 2 }}>Toque no vaso abaixo pra editar — o laudo é atualizado em tempo real.</div>
-          </div>
+  const desenho = (
+    <div style={{ position: "relative", width: "100%", maxWidth: 560, aspectRatio: "850 / 820" }}>
+      <div style={{ position: "absolute", inset: 0 }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
+      {/* Área de toque: clica direto no traçado do vaso. AVD/AVE (mais finos)
+          são desenhados por último, pra ficarem por cima no cruzamento com a ACCD/ACCE. */}
+      <svg viewBox="0 0 850 820" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        {["ACID", "ACED", "ACCD", "ACIE", "ACEE", "ACCE", "AVD", "AVE"].map((key) => {
+          const shape = VESSEL_SHAPE[key];
+          if (!shape) return null;
+          const ativo = selected === key;
+          return (
+            <g key={key} onClick={() => setSelected(key)} style={{ cursor: "pointer" }} aria-label={CAROTIDAS_VESSEL_NAMES[key]}>
+              {shape.paths.map((p, i) => (
+                <path
+                  key={i}
+                  d={p.d}
+                  fill="none"
+                  stroke={ativo ? "#0eb8d0" : "#000"}
+                  strokeOpacity={ativo ? 0.4 : 0.001}
+                  strokeWidth={Math.max(p.width + 6, 14)}
+                  strokeLinecap="round"
+                />
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+
+  const legenda = (
+    <>
+      {/* Atalho rápido pra selecionar o vaso, sem precisar acertar o traçado */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 8 }}>
+        {Object.keys(CHIP_POS).map((key) => (
           <button
-            onClick={onFechar}
-            style={{ background: "#c0392b", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, color: "#fff", fontWeight: 600, cursor: "pointer" }}
+            key={key}
+            type="button"
+            onClick={() => setSelected(key)}
+            style={{
+              background: selected === key ? "#0eb8d0" : "#fff",
+              color: selected === key ? "#fff" : "#0a7f91",
+              border: "1px solid #0eb8d0",
+              borderRadius: 6,
+              padding: "5px 10px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
           >
-            Fechar
+            {key}
           </button>
-        </div>
+        ))}
+      </div>
+      <LegendaCarotidas />
+    </>
+  );
 
-        {/* Ilustração: compacta e centralizada, igual ao MMII */}
-        <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-          <div style={{ position: "relative", width: "100%", maxWidth: 460, aspectRatio: "850 / 820", background: "#fff", border: "1px solid #d7dee3", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.3)", overflow: "hidden" }}>
-            <div style={{ position: "absolute", inset: 0 }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
-            {/* Área de toque: clica direto no traçado do vaso (igual ao Mapa Interativo do MMII) —
-                nada de caixa fixa sobreposta, que não cabe em tela estreita. AVD/AVE (mais finos)
-                são desenhados por último, pra ficarem por cima no cruzamento com a ACCD/ACCE —
-                sem isso, a "bolha" grossa da bifurcação rouba o toque dos vasos vertebrais ali perto. */}
-            <svg viewBox="0 0 850 820" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-              {["ACID", "ACED", "ACCD", "ACIE", "ACEE", "ACCE", "AVD", "AVE"].map((key) => {
-                const shape = VESSEL_SHAPE[key];
-                if (!shape) return null;
-                const ativo = selected === key;
-                return (
-                  <g key={key} onClick={() => setSelected(key)} style={{ cursor: "pointer" }} aria-label={CAROTIDAS_VESSEL_NAMES[key]}>
-                    {shape.paths.map((p, i) => (
-                      <path
-                        key={i}
-                        d={p.d}
-                        fill="none"
-                        stroke={ativo ? "#0eb8d0" : "#000"}
-                        strokeOpacity={ativo ? 0.4 : 0.001}
-                        strokeWidth={Math.max(p.width + 6, 14)}
-                        strokeLinecap="round"
-                      />
-                    ))}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        </div>
-
-        {/* Atalho rápido pra selecionar o vaso, sem precisar acertar o traçado */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
-          {Object.keys(CHIP_POS).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setSelected(key)}
-              style={{
-                background: selected === key ? "#0eb8d0" : "#1a2434",
-                color: "#fff",
-                border: "1px solid #2a3548",
-                borderRadius: 6,
-                padding: "3px 9px",
-                fontSize: 11,
-                cursor: "pointer"
-              }}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
-
-        {/* Legenda compacta */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", alignItems: "center" }}>
-          <LegendDot cor="#c0392b" label="Pérvia" />
-          <LegendDot cor="#e57373" label="Hipocinético" />
-          <LegendDot cor="#7b241c" label="Hipercinético" />
-          <LegendDot cor="#000000" label="Oclusão" />
-        </div>
-        <div style={{ fontSize: 11, color: "#8fb3bd", lineHeight: 1.4, textAlign: "center" }}>
-          Textura = ateromatose · triângulo = estenose (branco=lipídica, cinza=calcificada, contorno cinza=mista) · malha = stent.
-        </div>
-
-        {/* Painel de edição do vaso selecionado — logo abaixo da ilustração, sem precisar rolar */}
-        <div style={{ background: "#18243a", border: "1px solid rgba(79,216,236,0.3)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#4fd8ec" }}>{CAROTIDAS_VESSEL_NAMES[selected]}</div>
-
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-            <CampoSelect label="Status" value={selectedVessel.status} onChange={handleStatusChange} options={["pérvia", "ocluída"]} />
-            <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 140 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Stent</span>
-              <button
-                type="button"
-                onClick={() => onChange(selected, "stent", selectedVessel.stent === "presente" ? "ausente" : "presente")}
-                style={{
-                  padding: "9px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #4fd8ec",
-                  background: selectedVessel.stent === "presente" ? "#0eb8d0" : "#fff",
-                  color: selectedVessel.stent === "presente" ? "#fff" : "#222",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer"
-                }}
-              >
-                {selectedVessel.stent === "presente" ? "Presente" : "Ausente"}
-              </button>
-            </label>
-          </div>
-
-          {isOccluded && (
-            <div style={{ background: "rgba(0,0,0,0.3)", border: "1px solid #3a3a3a", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#cfd3d8" }}>
-              Vaso ocluído — fluxo, ateromatose, estenose e tipo de placa não se aplicam e ficam ocultos.
-            </div>
-          )}
-
-          {showClinicalFields && (
-            <>
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                <CampoSelect
-                  label="Fluxo"
-                  value={selectedVessel.fluxo}
-                  onChange={(e) => onChange(selected, "fluxo", e.target.value)}
-                  options={["sem alteração", "hipocinético", "hipercinético"]}
-                />
-                <CampoSelect
-                  label="Ateromatose"
-                  value={selectedVessel.ateromatose}
-                  onChange={(e) => onChange(selected, "ateromatose", e.target.value)}
-                  options={["ausente", "discreta", "moderada", "severa"]}
-                />
-                <CampoSelect
-                  label="Estenose"
-                  value={selectedVessel.estenose}
-                  onChange={handleEstenoseChange}
-                  options={["ausente", "<50%", "50% a 70%", ">70%"]}
-                />
-              </div>
-
-              {showEstenoseCampos && (
-                <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Tipo de placa</span>
-                    <select
-                      value={selectedVessel.tipoPlaca || ""}
-                      onChange={(e) => onChange(selected, "tipoPlaca", e.target.value)}
-                      style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid #4fd8ec", background: "#fff", color: "#222", fontSize: 13 }}
-                    >
-                      <option value="">Selecione...</option>
-                      <option value="lipídica">lipídica</option>
-                      <option value="calcificada">calcificada</option>
-                      <option value="mista">mista</option>
-                    </select>
-                  </label>
-                </div>
-              )}
-            </>
-          )}
-
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#cfe3ea" }}>Observação</span>
-            <input
-              type="text"
-              value={selectedVessel.observacao || ""}
-              onChange={(e) => onChange(selected, "observacao", e.target.value)}
-              placeholder="Anotações livres..."
-              style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid #4fd8ec", background: "#fff", color: "#222", fontSize: 13 }}
-            />
-          </label>
-        </div>
-
-        {/* Salvar direto daqui, sem precisar fechar o mapa e voltar ao formulário. */}
-        <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12.5, color: "#bfe4ec", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={incluirMapaPdf}
-            onChange={(e) => onIncluirMapaPdf(e.target.checked)}
-          />
-          Incluir Mapeamento Visual no PDF
+  const painel = selected && (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <CampoSelect label="Status" value={selectedVessel.status} onChange={handleStatusChange} options={["pérvia", "ocluída"]} />
+        <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 140, flex: "1 1 140px" }}>
+          <span style={CAMPO_LABEL}>Stent</span>
+          <button
+            type="button"
+            onClick={() => onChange(selected, "stent", selectedVessel.stent === "presente" ? "ausente" : "presente")}
+            style={{
+              ...CAMPO_INPUT,
+              background: selectedVessel.stent === "presente" ? "#0eb8d0" : "#f7fbff",
+              color: selectedVessel.stent === "presente" ? "#fff" : "#222",
+              fontWeight: 700,
+              cursor: "pointer"
+            }}
+          >
+            {selectedVessel.stent === "presente" ? "Presente" : "Ausente"}
+          </button>
         </label>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-          <button onClick={() => setMostrarPreview(true)} style={{ ...mapaBotaoStyle("#6f42c1"), display: "inline-flex", alignItems: "center", gap: 6 }}><FiEye /> Visualizar Mapeamento</button>
-          <button onClick={onSalvarTXT} style={mapaBotaoStyle("#0eb8d0")}>Salvar TXT</button>
-          <button onClick={onSalvarPDF} style={mapaBotaoStyle("#0eb8d0")}>Salvar PDF</button>
-          <button onClick={handleSalvarExameClick} style={mapaBotaoStyle("#28a745")}>Salvar Exame</button>
-        </div>
       </div>
 
-      {mostrarPreview && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(8, 14, 22, 0.88)",
-            zIndex: 2100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "clamp(8px, 3vw, 32px)"
-          }}
-          onClick={() => setMostrarPreview(false)}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 820,
-              background: "#fff",
-              borderRadius: 14,
-              boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
-              padding: 16,
-              display: "flex",
-              flexDirection: "column",
-              gap: 12
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#1c2740" }}>Mapeamento — Carótidas e Vertebrais</div>
-              <button
-                onClick={() => setMostrarPreview(false)}
-                style={{ background: "#c0392b", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, color: "#fff", fontWeight: 600, cursor: "pointer" }}
-              >
-                Fechar
-              </button>
-            </div>
-            <div style={{ width: "100%", aspectRatio: "850 / 820" }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
-          </div>
+      {isOccluded && (
+        <div style={{ background: "#f0f4f7", border: "1px solid #dfe6ec", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#5c6b78" }}>
+          Vaso ocluído — fluxo, ateromatose, estenose e tipo de placa não se aplicam e ficam ocultos.
         </div>
       )}
+
+      {showClinicalFields && (
+        <>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <CampoSelect
+              label="Fluxo"
+              value={selectedVessel.fluxo}
+              onChange={(e) => onChange(selected, "fluxo", e.target.value)}
+              options={["sem alteração", "hipocinético", "hipercinético"]}
+            />
+            <CampoSelect
+              label="Ateromatose"
+              value={selectedVessel.ateromatose}
+              onChange={(e) => onChange(selected, "ateromatose", e.target.value)}
+              options={["ausente", "discreta", "moderada", "severa"]}
+            />
+            <CampoSelect
+              label="Estenose"
+              value={selectedVessel.estenose}
+              onChange={handleEstenoseChange}
+              options={["ausente", "<50%", "50% a 70%", ">70%"]}
+            />
+          </div>
+
+          {showEstenoseCampos && (
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 260 }}>
+              <span style={CAMPO_LABEL}>Tipo de placa</span>
+              <select
+                value={selectedVessel.tipoPlaca || ""}
+                onChange={(e) => onChange(selected, "tipoPlaca", e.target.value)}
+                style={CAMPO_INPUT}
+              >
+                <option value="">Selecione...</option>
+                <option value="lipídica">lipídica</option>
+                <option value="calcificada">calcificada</option>
+                <option value="mista">mista</option>
+              </select>
+            </label>
+          )}
+        </>
+      )}
+
+      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={CAMPO_LABEL}>Observação</span>
+        <input
+          type="text"
+          value={selectedVessel.observacao || ""}
+          onChange={(e) => onChange(selected, "observacao", e.target.value)}
+          placeholder="Anotações livres..."
+          style={CAMPO_INPUT}
+        />
+      </label>
     </div>
+  );
+
+  return (
+    <>
+      <MapaLayout
+        titulo="Mapa Interativo — Carótidas e Vertebrais"
+        onFechar={onFechar}
+        desenho={desenho}
+        legenda={legenda}
+        painel={painel}
+        tituloPainel={selected ? CAROTIDAS_VESSEL_NAMES[selected] : ""}
+        onFecharPainel={() => setSelected(null)}
+        incluirPdf={incluirMapaPdf}
+        onIncluirPdf={onIncluirMapaPdf}
+        labelIncluirPdf="Incluir Mapeamento Visual no PDF"
+        onVisualizarImagem={() => setMostrarPreview(true)}
+        onSalvarTXT={onSalvarTXT}
+        onSalvarPDF={onSalvarPDF}
+        onSalvarExame={handleSalvarExameClick}
+      />
+      {mostrarPreview && (
+        <PreviewImagemPdf titulo="Mapeamento — Carótidas e Vertebrais" onFechar={() => setMostrarPreview(false)}>
+          <div style={{ width: "100%", maxWidth: 700, margin: "0 auto", aspectRatio: "850 / 820" }} dangerouslySetInnerHTML={{ __html: svgIlustracao }} />
+          <div style={{ marginTop: 8 }}><LegendaCarotidas /></div>
+        </PreviewImagemPdf>
+      )}
+    </>
   );
 }
 

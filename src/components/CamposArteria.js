@@ -13,11 +13,17 @@ import {
   enxertoTipoOptions,
   enxertoStatusOptions,
 } from "../utils/mmiiArterialLaudo";
+import {
+  MANOBRAS,
+  resultadoManobraOptions,
+  arteriaManobraOptions,
+  arcoPalmarOptions,
+} from "../utils/mmssArterialLaudo";
 
-// Campos de uma artéria (e do enxerto) do Doppler Arterial de MMII, usados
-// tanto no formulário da página quanto no Mapa Interativo.
+// Campos de uma artéria do Doppler Arterial (MMII e MMSS), do enxerto (só MMII)
+// e das manobras/pré-FAV (só MMSS), usados nas páginas e no Mapa Interativo.
 
-const inputStyle = {
+export const inputStyle = {
   background: "#f7fbff",
   border: "1.5px solid #0eb8d0",
   borderRadius: "clamp(5px, 1vw, 7px)",
@@ -31,7 +37,7 @@ const inputStyle = {
   minWidth: 0
 };
 
-const selectStyle = {
+export const selectStyle = {
   background: "#f7fbff",
   border: "1.5px solid #0eb8d0",
   borderRadius: "clamp(5px, 1vw, 7px)",
@@ -46,7 +52,7 @@ const selectStyle = {
 };
 
 
-const textareaStyle = {
+export const textareaStyle = {
   background: "#f7fbff",
   border: "1.5px solid #0eb8d0",
   borderRadius: "clamp(5px, 1vw, 7px)",
@@ -62,7 +68,7 @@ const textareaStyle = {
   minHeight: "clamp(60px, 8vw, 80px)"
 };
 
-const labelStyle = {
+export const labelStyle = {
   fontSize: 'clamp(10px, 2vw, 12px)',
   marginBottom: '3px',
   display: 'block',
@@ -70,7 +76,7 @@ const labelStyle = {
   fontWeight: 600
 };
 
-const cardStyle = {
+export const cardStyle = {
   marginBottom: 'clamp(16px, 3vw, 20px)',
   padding: 'clamp(12px, 2.5vw, 16px)',
   background: 'rgba(0,0,0,0.10)',
@@ -78,21 +84,21 @@ const cardStyle = {
   boxShadow: '0 2px 16px 0 #0002'
 };
 
-const tituloCardStyle = {
+export const tituloCardStyle = {
   fontWeight: 700,
   fontSize: 'clamp(13px, 2.5vw, 15px)',
   color: '#0eb8d0',
   marginBottom: 'clamp(8px, 2vw, 12px)'
 };
 
-const gradeCampos = {
+export const gradeCampos = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
   gap: 'clamp(8px, 2vw, 12px)',
   marginBottom: 'clamp(8px, 2vw, 12px)'
 };
 
-const gradeDestaque = {
+export const gradeDestaque = {
   ...gradeCampos,
   padding: 'clamp(8px, 2vw, 12px)',
   background: 'rgba(14, 184, 208, 0.1)',
@@ -100,7 +106,7 @@ const gradeDestaque = {
   border: '1px solid rgba(14, 184, 208, 0.3)'
 };
 
-function CampoSelect({ label, value, options, onChange, placeholder }) {
+export function CampoSelect({ label, value, options, onChange, placeholder }) {
   return (
     <div>
       <label style={labelStyle}>{label}</label>
@@ -112,7 +118,7 @@ function CampoSelect({ label, value, options, onChange, placeholder }) {
   );
 }
 
-function CampoCheck({ label, checked, onChange }) {
+export function CampoCheck({ label, checked, onChange }) {
   return (
     <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 0 }}>
       <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} />
@@ -121,7 +127,8 @@ function CampoCheck({ label, checked, onChange }) {
   );
 }
 
-export function CamposArteria({ arteria, valores, onChange, lado }) {
+// semMoldura: dentro do Mapa Interativo, que já mostra a caixa com o nome da artéria.
+export function CamposArteria({ arteria, valores, onChange, lado, semMoldura }) {
   const isOcluida = valores.status === "Ocluída";
 
   function set(field, value) {
@@ -152,8 +159,8 @@ export function CamposArteria({ arteria, valores, onChange, lado }) {
   }
 
   return (
-    <div style={cardStyle}>
-      <div style={tituloCardStyle}>{arteria.toUpperCase()} ({lado.toUpperCase()}):</div>
+    <div style={semMoldura ? undefined : cardStyle}>
+      {!semMoldura && <div style={tituloCardStyle}>{arteria.toUpperCase()} ({lado.toUpperCase()}):</div>}
 
       <div style={gradeCampos}>
         <CampoSelect label="Perviedade:" value={valores.status} options={statusOptions} onChange={v => set('status', v)} />
@@ -248,6 +255,83 @@ export function CamposEnxerto({ lado, enxerto, onChange }) {
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// MMSS: manobras para síndrome do desfiladeiro torácico.
+export function CamposManobras({ lado, manobras, onChange }) {
+  const setResultado = (m, v) => onChange({ ...manobras, resultados: { ...manobras.resultados, [m]: v } });
+  return (
+    <div style={cardStyle}>
+      <div style={tituloCardStyle}>DESFILADEIRO TORÁCICO ({lado.toUpperCase()}):</div>
+      <div style={{ marginBottom: manobras.realizadas ? 'clamp(8px, 2vw, 12px)' : 0 }}>
+        <CampoCheck
+          label="Manobras realizadas"
+          checked={manobras.realizadas}
+          onChange={v => onChange({ ...manobras, realizadas: v })}
+        />
+      </div>
+      {manobras.realizadas && (
+        <div style={gradeDestaque}>
+          <CampoSelect
+            label="Artéria avaliada:"
+            value={manobras.arteria}
+            options={arteriaManobraOptions}
+            onChange={v => onChange({ ...manobras, arteria: v })}
+          />
+          {MANOBRAS.map(m => (
+            <CampoSelect
+              key={m}
+              label={`${m}:`}
+              value={manobras.resultados[m]}
+              options={resultadoManobraOptions}
+              onChange={v => setResultado(m, v)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// MMSS: mapeamento arterial pré-fístula arteriovenosa.
+export function CamposFAV({ lado, fav, onChange }) {
+  const set = (campo, v) => onChange({ ...fav, [campo]: v });
+  const medida = (campo, label) => (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <input
+        type="number"
+        min="0"
+        step="0.1"
+        value={fav[campo]}
+        onChange={e => set(campo, e.target.value)}
+        placeholder="mm"
+        style={inputStyle}
+      />
+    </div>
+  );
+  return (
+    <div style={cardStyle}>
+      <div style={tituloCardStyle}>MAPEAMENTO PRÉ-FAV ({lado.toUpperCase()}):</div>
+      <div style={{ marginBottom: fav.realizado ? 'clamp(8px, 2vw, 12px)' : 0 }}>
+        <CampoCheck label="Mapeamento pré-fístula realizado" checked={fav.realizado} onChange={v => set('realizado', v)} />
+      </div>
+      {fav.realizado && (
+        <div style={gradeDestaque}>
+          {medida('radialPunho', 'Radial no punho (mm):')}
+          {medida('ulnarPunho', 'Ulnar no punho (mm):')}
+          {medida('braquialCotovelo', 'Braquial na fossa cubital (mm):')}
+          <CampoSelect
+            label="Arco palmar:"
+            value={fav.arcoPalmar}
+            options={arcoPalmarOptions}
+            placeholder="Selecione"
+            onChange={v => set('arcoPalmar', v)}
+          />
+        </div>
+      )}
     </div>
   );
 }

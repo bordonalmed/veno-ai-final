@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import { FiPaperclip, FiX } from "react-icons/fi";
+import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
+import { MapaInterativoMMSSArterial, adicionarMapaMMSSArterialAoPdf } from "../components/MapaMMSS";
 import ExamHeader from "../components/ExamHeader";
+import { CamposArteria, CamposManobras, CamposFAV } from "../components/CamposArteria";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
-import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
+import {
+  arteriasDoLado,
+  extraPadrao,
+  normalizarExtra,
+  arteriasPadrao,
+  normalizarArterias,
+  gerarLaudoCompleto,
+  gerarCabecalhoLaudo,
+  gerarBlocoMembro,
+  ladosDoExame,
+} from "../utils/mmssArterialLaudo";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMSSArterial";
@@ -70,55 +82,7 @@ function carregarExameEmEdicao() {
   }
 }
 
-// Opções para os campos das artérias
-const statusOptions = ["Pérvia", "Ocluída"];
-const localizacaoOclusaoOptions = ["Proximal", "Medial", "Distal", "Total"];
-const ateromatoseOptions = ["Ausente", "Discreta", "Moderada", "Severa"];
-const velocidadeOptions = ["Normocinético", "Hipercinético", "Hipocinético"];
-const tipoOndaOptions = ["Trifásico", "Bifásico", "Monofásico"];
-const sentidoOptions = ["Anterógrado", "Retrógrado"];
-const placaOptions = ["Ausente", "Presente"];
-const caracteristicaPlacaOptions = ["Calcificada", "Lipídica", "Mista"];
-const lados = ["Direito", "Esquerdo", "Ambos"];
-
-// Lista das artérias de MMSS
-const arterias = [
-  "Artéria Subclávia",
-  "Artéria Axilar",
-  "Artéria Braquial",
-  "Artéria Radial",
-  "Artéria Ulnar"
-];
-
 // Estilos globais
-const inputStyle = {
-  background: "#f7fbff",
-  border: "1.5px solid #0eb8d0",
-  borderRadius: "clamp(5px, 1vw, 7px)",
-  padding: "clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-  fontSize: "clamp(13px, 2.5vw, 15px)",
-  color: "#222",
-  outline: "none",
-  fontFamily: "inherit",
-  fontWeight: 500,
-  width: "clamp(140px, 25vw, 180px)",
-  minWidth: 0
-};
-
-const selectStyle = {
-  background: "#f7fbff",
-  border: "1.5px solid #0eb8d0",
-  borderRadius: "clamp(5px, 1vw, 7px)",
-  padding: "clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-  fontSize: "clamp(13px, 2.5vw, 15px)",
-  color: "#222",
-  outline: "none",
-  fontFamily: "inherit",
-  fontWeight: 500,
-  width: "clamp(140px, 25vw, 180px)",
-  minWidth: 0
-};
-
 const buttonStyle = {
   background: "#0eb8d0",
   color: "#fff",
@@ -135,356 +99,34 @@ const buttonStyle = {
   minWidth: "clamp(120px, 20vw, 140px)"
 };
 
-const textareaStyle = {
-  background: "#f7fbff",
-  border: "1.5px solid #0eb8d0",
-  borderRadius: "clamp(5px, 1vw, 7px)",
-  padding: "clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-  fontSize: "clamp(13px, 2.5vw, 15px)",
-  color: "#222",
-  outline: "none",
-  fontFamily: "inherit",
-  fontWeight: 500,
-  width: "100%",
-  minWidth: 0,
-  resize: "vertical",
-  minHeight: "clamp(60px, 8vw, 80px)"
-};
-
-// Estrutura padrão para cada artéria
-const estruturaArteria = {
-  status: "Pérvia",
-  localizacaoOclusao: "",
-  ateromatose: "Ausente",
-  velocidade: "Normocinético",
-  tipoOnda: "Trifásico",
-  sentido: "Anterógrado",
-  placa: "Ausente",
-  estenosePercentual: "",
-  caracteristicaPlaca: "",
-  observacao: ""
-};
-
-// Componente para campos de uma artéria
-function CamposArteria({ arteria, valores, onChange, lado }) {
-  const [showPlacaExtra, setShowPlacaExtra] = useState(false);
-
-  useEffect(() => {
-    setShowPlacaExtra(valores.placa === "Presente");
-  }, [valores.placa]);
-
-  // Helper para verificar se a artéria está ocluída
-  const isOcluida = valores.status === "Ocluída";
-
-  // Função para lidar com mudanças nos campos
-  function handleFieldChange(field, value) {
-    let newValores = { ...valores, [field]: value };
-    
-    // Se Status mudou para "Ocluída", limpar todos os campos relacionados e definir fluxo como "Ausência de fluxo"
-    if (field === "status" && value === "Ocluída") {
-      newValores = {
-        ...newValores,
-        localizacaoOclusao: "",
-        ateromatose: "Ausente",
-        velocidade: "Ausência de fluxo",
-        tipoOnda: "Trifásico",
-        sentido: "Anterógrado",
-        placa: "Ausente",
-        estenosePercentual: "",
-        caracteristicaPlaca: ""
-      };
-    }
-    
-    // Se Status voltou para "Pérvia", resetar valores padrão
-    if (field === "status" && value === "Pérvia") {
-      newValores = {
-        ...newValores,
-        localizacaoOclusao: "",
-        ateromatose: "Ausente",
-        velocidade: "Normocinético",
-        tipoOnda: "Trifásico",
-        sentido: "Anterógrado",
-        placa: "Ausente",
-        estenosePercentual: "",
-        caracteristicaPlaca: ""
-      };
-    }
-    
-    // Se Placa mudou para "Ausente", limpar campos extras
-    if (field === "placa" && value === "Ausente") {
-      newValores.estenosePercentual = "";
-      newValores.caracteristicaPlaca = "";
-    }
-    
-    // Se % Estenose foi limpa, limpar característica da placa
-    if (field === "estenosePercentual" && (!value || !value.trim || value.trim() === "")) {
-      newValores.caracteristicaPlaca = "";
-    }
-    
-    onChange(newValores);
-  }
-
+// Bloco de campos por lado
+function BlocoCampos({ lado, arteriasValores, onChange, extra, onExtraChange }) {
   return (
     <div style={{
-      marginBottom: 'clamp(16px, 3vw, 20px)',
-      padding: 'clamp(12px, 2.5vw, 16px)',
+      marginBottom: 'clamp(12px, 2vw, 16px)',
+      width: '100%',
+      padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 3vw, 20px)',
+      boxSizing: 'border-box',
       background: 'rgba(0,0,0,0.10)',
       borderRadius: 'clamp(8px, 1.5vw, 12px)',
-      boxShadow: '0 2px 16px 0 #0002'
-    }}>
-      <div style={{
-        fontWeight: 700,
-        fontSize: 'clamp(13px, 2.5vw, 15px)',
-        color: '#0eb8d0',
-        marginBottom: 'clamp(8px, 2vw, 12px)'
-      }}>
-        {arteria.toUpperCase()} ({lado.toUpperCase()}):
-      </div>
-      
-      {/* Linha 1 - Campos distribuídos igualmente */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isOcluida ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 'clamp(8px, 2vw, 12px)'
-      }}>
-        <div>
-          <label style={{ 
-            fontSize: 'clamp(10px, 2vw, 12px)', 
-            marginBottom: '3px', 
-            display: 'block',
-            color: '#0eb8d0',
-            fontWeight: 600
-          }}>Perviedade:</label>
-          <select
-            value={valores.status}
-            onChange={e => handleFieldChange('status', e.target.value)}
-            style={selectStyle}
-          >
-            {statusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
-        </div>
-        
-        {/* Localização da Oclusão - só aparece se estiver ocluída */}
-        {isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Localização:</label>
-            <select
-              value={valores.localizacaoOclusao}
-              onChange={e => handleFieldChange('localizacaoOclusao', e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">Selecione</option>
-              {localizacaoOclusaoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Ateromatose - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Ateromatose:</label>
-            <select
-              value={valores.ateromatose}
-              onChange={e => handleFieldChange('ateromatose', e.target.value)}
-              style={selectStyle}
-            >
-              {ateromatoseOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Velocidade - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Velocidade:</label>
-            <select
-              value={valores.velocidade}
-              onChange={e => handleFieldChange('velocidade', e.target.value)}
-              style={selectStyle}
-            >
-              {velocidadeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Tipo de Onda - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Tipo de Onda:</label>
-            <select
-              value={valores.tipoOnda}
-              onChange={e => handleFieldChange('tipoOnda', e.target.value)}
-              style={selectStyle}
-            >
-              {tipoOndaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Sentido - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Sentido:</label>
-            <select
-              value={valores.sentido}
-              onChange={e => handleFieldChange('sentido', e.target.value)}
-              style={selectStyle}
-            >
-              {sentidoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-        
-        {/* Placa - só aparece se não estiver ocluída */}
-        {!isOcluida && (
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Placa:</label>
-            <select
-              value={valores.placa}
-              onChange={e => handleFieldChange('placa', e.target.value)}
-              style={selectStyle}
-            >
-              {placaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Campos extras para placa - só aparecem se não estiver ocluída e placa = "Presente" */}
-      {!isOcluida && showPlacaExtra && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: 'clamp(8px, 2vw, 12px)',
-          marginBottom: 'clamp(8px, 2vw, 12px)',
-          padding: 'clamp(8px, 2vw, 12px)',
-          background: 'rgba(14, 184, 208, 0.1)',
-          borderRadius: 'clamp(4px, 1vw, 6px)',
-          border: '1px solid rgba(14, 184, 208, 0.3)'
-        }}>
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>% Estenose:</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={valores.estenosePercentual}
-              onChange={e => handleFieldChange('estenosePercentual', e.target.value)}
-              placeholder="%"
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={{ 
-              fontSize: 'clamp(10px, 2vw, 12px)', 
-              marginBottom: '3px', 
-              display: 'block',
-              color: '#0eb8d0',
-              fontWeight: 600
-            }}>Característica da Placa:</label>
-            <select
-              value={valores.caracteristicaPlaca}
-              onChange={e => handleFieldChange('caracteristicaPlaca', e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">Selecione</option>
-              {caracteristicaPlacaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Linha 2 - Observação (sempre visível) */}
-      <div>
-        <label style={{ 
-          fontSize: 'clamp(10px, 2vw, 12px)', 
-          marginBottom: '3px', 
-          display: 'block',
-          color: '#0eb8d0',
-          fontWeight: 600
-        }}>Observação:</label>
-        <textarea
-          value={valores.observacao}
-          onChange={e => handleFieldChange('observacao', e.target.value)}
-          placeholder={`Digite observações para ${arteria}...`}
-          style={textareaStyle}
-        />
-      </div>
-    </div>
-  );
-}
-
-// Bloco de campos por lado
-function BlocoCampos({ lado, arteriasValores, onChange }) {
-  return (
-    <div style={{
-      marginBottom: 'clamp(12px, 2vw, 16px)', 
-      width: '100%', 
-      padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 3vw, 20px)', 
-      boxSizing: 'border-box', 
-      background: 'rgba(0,0,0,0.10)', 
-      borderRadius: 'clamp(8px, 1.5vw, 12px)', 
-      boxShadow: '0 2px 16px 0 #0002', 
-      marginLeft: 'auto', 
-      marginRight: 'auto', 
-      display: 'flex', 
-      flexDirection: 'column', 
+      boxShadow: '0 2px 16px 0 #0002',
+      marginLeft: 'auto',
+      marginRight: 'auto',
+      display: 'flex',
+      flexDirection: 'column',
       gap: 'clamp(8px, 1.5vw, 12px)'
     }}>
       <div style={{
         marginTop: 'clamp(4px, 1vw, 8px)',
         marginBottom: 'clamp(8px, 2vw, 12px)',
-        fontWeight: 700, 
+        fontWeight: 700,
         fontSize: 'clamp(14px, 2.5vw, 16px)',
         color: '#0eb8d0'
       }}>
         MEMBRO SUPERIOR {lado.toUpperCase()}:
       </div>
-      
-      {arterias.map(arteria => (
+
+      {arteriasDoLado(lado).map(arteria => (
         <CamposArteria
           key={arteria}
           arteria={arteria}
@@ -493,6 +135,10 @@ function BlocoCampos({ lado, arteriasValores, onChange }) {
           lado={lado}
         />
       ))}
+
+      <CamposManobras lado={lado} manobras={extra.manobras} onChange={(m) => onExtraChange({ ...extra, manobras: m })} />
+      <CamposFAV lado={lado} fav={extra.fav} onChange={(f) => onExtraChange({ ...extra, fav: f })} />
+
     </div>
   );
 }
@@ -507,28 +153,21 @@ function MMSSArterial() {
   const [erro, setErro] = useState("");
   const [mostrarLaudo, setMostrarLaudo] = useState(false);
   const [anexos, setAnexos] = useState([]);
-  
-  // Estado para as artérias de cada lado
-  const [arteriasDireito, setArteriasDireito] = useState(
-    Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }]))
-  );
-  const [arteriasEsquerdo, setArteriasEsquerdo] = useState(
-    Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }]))
-  );
 
-  // Hook para detectar mudanças no tamanho da tela
+  const [arteriasDireito, setArteriasDireito] = useState(arteriasPadrao);
+  const [arteriasEsquerdo, setArteriasEsquerdo] = useState(arteriasPadrao);
+  const [extras, setExtras] = useState(() => ({ Direito: extraPadrao(), Esquerdo: extraPadrao() }));
+  const [mostrarMapa, setMostrarMapa] = useState(false);
+  const [ladoMapa, setLadoMapa] = useState("Direito");
+  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
+
   useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
+    const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
     checkIsMobile();
     window.addEventListener('resize', checkIsMobile);
-    
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  // Hook para carregar exame em edição
   useEffect(() => {
     const exameEmEdicao = carregarExameEmEdicao();
     if (exameEmEdicao) {
@@ -536,13 +175,12 @@ function MMSSArterial() {
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
       setLado(exameEmEdicao.lado || "");
-      
-      if (exameEmEdicao.arteriasDireito) {
-        setArteriasDireito(exameEmEdicao.arteriasDireito);
-      }
-      if (exameEmEdicao.arteriasEsquerdo) {
-        setArteriasEsquerdo(exameEmEdicao.arteriasEsquerdo);
-      }
+      setArteriasDireito(normalizarArterias(exameEmEdicao.arteriasDireito));
+      setArteriasEsquerdo(normalizarArterias(exameEmEdicao.arteriasEsquerdo));
+      setExtras({
+        Direito: normalizarExtra(exameEmEdicao.extras?.Direito),
+        Esquerdo: normalizarExtra(exameEmEdicao.extras?.Esquerdo),
+      });
     }
   }, []);
 
@@ -562,6 +200,10 @@ function MMSSArterial() {
     }
   }
 
+  function handleExtraChange(lado, extra) {
+    setExtras(prev => ({ ...prev, [lado]: extra }));
+  }
+
   function handleVoltarMenu() {
     window.location.href = '/home';
   }
@@ -576,6 +218,288 @@ function MMSSArterial() {
 
   function handleLogout() {
     window.location.href = '/';
+  }
+
+  function gerarTextoLaudo() {
+    if (!deveMostrarCampos) return "";
+    return gerarLaudoCompleto({ nome, idade, data, lado, arteriasDireito, arteriasEsquerdo, extras });
+  }
+
+  // Validação dos campos obrigatórios
+  const nomeValido = nome && nome.trim && nome.trim().length > 0;
+  const idadeValida = idade && !isNaN(idade) && parseInt(idade) > 0 && parseInt(idade) <= 120;
+  const dataValida = data && data.trim && data.trim().length > 0;
+  const ladoValido = lado && ["Direito", "Esquerdo", "Ambos"].includes(lado);
+  const deveMostrarCampos = nomeValido && idadeValida && dataValida && ladoValido;
+
+  function handleVisualizar() {
+    if (!deveMostrarCampos) return;
+    setMostrarLaudo(!mostrarLaudo);
+  }
+
+  async function handleSalvarExame() {
+    if (!deveMostrarCampos) {
+      alert('Preencha todos os campos obrigatórios antes de salvar!');
+      return;
+    }
+
+    const dadosExame = {
+      nome,
+      idade,
+      data,
+      lado,
+      arteriasDireito,
+      arteriasEsquerdo,
+      extras,
+      laudo: gerarTextoLaudo(),
+      timestamp: new Date().toISOString(),
+      tipoNome: "MMSS Arterial"
+    };
+
+    try {
+      const sucesso = await salvarExame(dadosExame);
+      alert(sucesso ? "Exame salvo com sucesso!" : 'Erro ao salvar o exame. Tente novamente.');
+    } catch (error) {
+      console.error("Erro ao salvar exame:", error);
+      alert('Erro ao salvar o exame. Tente novamente.');
+    }
+  }
+
+  function handleSalvarTXT() {
+    const blob = new Blob([gerarTextoLaudo()], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, `Laudo_${nome}_${data}.txt`);
+  }
+
+  async function handleSalvarPDF() {
+    // Buscar dados do localStorage
+    const nomeMedico = localStorage.getItem("nomeMedico") || "";
+    const crm = localStorage.getItem("crm") || "";
+    const especialidade = localStorage.getItem("especialidadeLaudo") || "";
+    const nomeClinica = localStorage.getItem("nomeClinica") || "";
+    const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
+    const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
+    const emailClinica = localStorage.getItem("emailClinica") || "";
+    const logoClinica = localStorage.getItem("logoClinica") || null;
+    const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
+
+    const doc = new jsPDF();
+    const lados = ladosDoExame(lado);
+    const cabecalhoPaciente = gerarCabecalhoLaudo({ nome, idade, data });
+
+    function addCabecalho(y) {
+      let yLogo = 14; // topo do logo
+      let yAtual = yLogo;
+      const logoHeight = 20; // altura do logo
+      const logoSpacing = 8; // espaço após o logo antes do conteúdo
+      
+      if (logoClinica) {
+        try {
+          doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight); // quadrado 20x20
+        } catch (e) {}
+      }
+      doc.setFontSize(9);
+      let cabecalho = [];
+      if (nomeClinica) cabecalho.push(nomeClinica);
+      if (enderecoClinica) cabecalho.push(enderecoClinica);
+      if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
+      if (emailClinica) cabecalho.push(emailClinica);
+      // Alinhar o cabeçalho à direita, na mesma altura do logo
+      cabecalho.forEach((txt, idx) => {
+        doc.setFont(undefined, "bold");
+        doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+      });
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(11);
+      // Retorna posição Y após logo + espaço + margem superior
+      return yLogo + logoHeight + logoSpacing;
+    }
+
+    function addRodape() {
+      const yRodape = 280; // margem inferior de 1cm
+      doc.setFontSize(8);
+      if (assinaturaMedico) {
+        try {
+          doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
+        } catch (e) {}
+      }
+      doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
+      let yInfo = yRodape + 5;
+      if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
+      if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
+      if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
+      doc.setFontSize(11);
+    }
+
+    // Função auxiliar para quebrar conclusão por travessões
+    function processarConclusao(texto) {
+      // Se a linha contém múltiplos travessões, quebrar em linhas separadas
+      if (texto.includes('- ') && texto.split('- ').length > 2) {
+        // Remove o primeiro travessão se já existir
+        const partes = texto.split('- ').filter(p => p.trim() !== '');
+        return partes.map(p => p.trim()).filter(p => p !== '');
+      }
+      return [texto];
+    }
+
+    // Função auxiliar para quebrar texto longo respeitando margens
+    function quebrarTexto(texto, maxWidth, x) {
+      if (!texto || texto.trim() === '') return [''];
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margemEsquerda = x || 15;
+      const margemDireita = 15;
+      const larguraDisponivel = pageWidth - margemEsquerda - margemDireita;
+      
+      // Usar splitTextToSize do jsPDF - ele calcula automaticamente baseado na fonte atual
+      try {
+        const linhas = doc.splitTextToSize(texto, larguraDisponivel);
+        // Garantir que sempre retorna um array
+        return Array.isArray(linhas) ? linhas : [linhas];
+      } catch (e) {
+        console.warn('Erro ao quebrar texto com splitTextToSize:', e);
+        // Fallback: quebrar manualmente por caracteres
+        const linhas = [];
+        // Aproximação conservadora: ~3mm por caractere para fonte padrão
+        const maxChars = Math.max(1, Math.floor(larguraDisponivel / 3));
+        for (let i = 0; i < texto.length; i += maxChars) {
+          linhas.push(texto.substring(i, i + maxChars));
+        }
+        return linhas.length > 0 ? linhas : [texto];
+      }
+    }
+
+    let pagina = 0;
+    lados.forEach((ladoAtual, idx) => {
+      if (pagina > 0) doc.addPage();
+      let y = addCabecalho(12);
+      // Cada página (membro) leva a identificação do paciente.
+      const bloco = (cabecalhoPaciente + "\n" +
+        gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo, extras[ladoAtual])
+      ).trim().split("\n");
+      // Com manobras/pré-FAV o membro pode passar de uma página por poucas
+      // linhas: nesse caso aperta o espaçamento (até 6) para caber.
+      const yInicio = y;
+      doc.setFont(undefined, "bold");
+      const totalLinhas = bloco.reduce((n, l) => n + quebrarTexto(l.startsWith("-") ? l : `- ${l}`, 0, 15).length, 0);
+      doc.setFont(undefined, "normal");
+      const passo = Math.max(6, Math.min(8, (265 - yInicio) / totalLinhas));
+      let inConclusao = false;
+      let inObservacoes = false;
+      for (let i = 0; i < bloco.length; i++) {
+        let line = bloco[i];
+        // Negrito para nome do paciente e nome do exame
+        if (line.startsWith("PACIENTE:")) {
+          doc.setFont(undefined, "bold");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            doc.text(linha, 15, y);
+            y += passo;
+          });
+          doc.setFont(undefined, "normal");
+          y -= passo; // Ajuste para não ter espaço extra
+        } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO SUPERIOR") || line.startsWith("MANOBRAS PARA DESFILADEIRO") || line.startsWith("MAPEAMENTO PRÉ-FÍSTULA")) {
+          doc.setFont(undefined, "bold");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            doc.text(linha, 15, y);
+            y += passo;
+          });
+          doc.setFont(undefined, "normal");
+          y -= passo; // Ajuste para não ter espaço extra
+        } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Arterial")) {
+          doc.setFont(undefined, "bold");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            doc.text(linha, 15, y);
+            y += passo;
+          });
+          if (line.startsWith("CONCLUSÃO")) {
+            inConclusao = true;
+            inObservacoes = false;
+          }
+          doc.setFont(undefined, "normal");
+          y -= passo; // Ajuste para não ter espaço extra
+        } else if (line.startsWith("OBSERVAÇÕES")) {
+          doc.setFont(undefined, "bold");
+          doc.text(line, 15, y);
+          doc.setFont(undefined, "normal");
+          inConclusao = false;
+          inObservacoes = true;
+          y += passo;
+        } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
+          // Processar conclusão: quebrar por travessões
+          const linhasConclusao = processarConclusao(line);
+          doc.setFont(undefined, "bold");
+          linhasConclusao.forEach(linhaConclusao => {
+            // Garantir que cada item comece com travessão
+            const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
+            const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
+            linhasQuebradas.forEach(linha => {
+              if (y > 265) {
+                addRodape();
+                doc.addPage();
+                y = addCabecalho(12);
+              }
+              doc.text(linha, 15, y);
+              y += passo;
+            });
+          });
+          doc.setFont(undefined, "normal");
+          y -= passo; // Ajuste para não ter espaço extra
+        } else if (inObservacoes && line && line.trim() !== "") {
+          // Quebrar observações longas respeitando margens
+          doc.setFont(undefined, "normal");
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            if (y > 265) {
+              addRodape();
+              doc.addPage();
+              y = addCabecalho(12);
+            }
+            doc.text(linha, 15, y);
+            y += passo;
+          });
+          y -= passo; // Ajuste para não ter espaço extra
+        } else {
+          doc.setFont(undefined, "normal");
+          // Quebrar linhas longas também
+          const linhasQuebradas = quebrarTexto(line, 0, 15);
+          linhasQuebradas.forEach(linha => {
+            if (y > 265) {
+              addRodape();
+              doc.addPage();
+              y = addCabecalho(12);
+            }
+            doc.text(linha, 15, y);
+            y += passo;
+          });
+          if (inConclusao && line && line.trim() === "") {
+            inConclusao = false;
+          }
+          if (inObservacoes && line && line.trim() === "") {
+            inObservacoes = false;
+          }
+          y -= passo; // Ajuste para não ter espaço extra
+        }
+        y += passo;
+        // Só abre página nova se ainda houver linhas (evita página em branco).
+        if (y > 265 && i < bloco.length - 1) {
+          addRodape();
+          doc.addPage();
+          y = addCabecalho(12);
+        }
+      }
+      addRodape();
+      pagina++;
+    });
+    
+    // Adicionar anexos como páginas no final do PDF
+    if (incluirMapaPdf) {
+      await adicionarMapaMMSSArterialAoPdf(doc, lados, { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo });
+    }
+
+    appendImagesToPdf(doc, anexos);
+    
+    doc.save(`Laudo_${nome}_${data}.pdf`);
   }
 
   // Funções para gerenciar anexos de imagens
@@ -606,70 +530,46 @@ function MMSSArterial() {
 
   function handleFileUpload(event) {
     const files = Array.from(event.target.files);
+    setErro('');
+    
     files.forEach(file => {
       if (validateFile(file)) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // Criar thumbnail (100x100)
-            const thumbnailSize = 100;
-            canvas.width = thumbnailSize;
-            canvas.height = thumbnailSize;
-            ctx.drawImage(img, 0, 0, thumbnailSize, thumbnailSize);
-            
-            const newAnexo = {
-              id: Date.now() + Math.random(),
-              file: file,
-              name: file.name,
-              size: file.size,
-              thumbnail: e.target.result
-            };
-            
-            setAnexos(prev => [...prev, newAnexo]);
-            setErro('');
+          const newAnexo = {
+            id: Date.now() + Math.random(),
+            file: file,
+            name: file.name,
+            size: file.size,
+            thumbnail: e.target.result
           };
-          img.src = e.target.result;
+          setAnexos(prev => [...prev, newAnexo]);
         };
         reader.readAsDataURL(file);
       }
     });
+    
+    // Limpar o input
     event.target.value = '';
   }
 
   function handleDrop(event) {
     event.preventDefault();
     const files = Array.from(event.dataTransfer.files);
+    setErro('');
+    
     files.forEach(file => {
       if (validateFile(file)) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // Criar thumbnail (100x100)
-            const thumbnailSize = 100;
-            canvas.width = thumbnailSize;
-            canvas.height = thumbnailSize;
-            ctx.drawImage(img, 0, 0, thumbnailSize, thumbnailSize);
-            
-            const newAnexo = {
-              id: Date.now() + Math.random(),
-              file: file,
-              name: file.name,
-              size: file.size,
-              thumbnail: e.target.result
-            };
-            
-            setAnexos(prev => [...prev, newAnexo]);
-            setErro('');
+          const newAnexo = {
+            id: Date.now() + Math.random(),
+            file: file,
+            name: file.name,
+            size: file.size,
+            thumbnail: e.target.result
           };
-          img.src = e.target.result;
+          setAnexos(prev => [...prev, newAnexo]);
         };
         reader.readAsDataURL(file);
       }
@@ -684,271 +584,6 @@ function MMSSArterial() {
     setAnexos(prev => prev.filter(anexo => anexo.id !== id));
   }
 
-  // Função para gerar o texto do laudo
-  function gerarTextoLaudo() {
-    if (!deveMostrarCampos) return "";
-
-    let laudo = "";
-    
-    // Cabeçalho
-    laudo += `${nome}, ${idade} anos.\n`;
-    laudo += `Data: ${data}\n`;
-    laudo += `DOPPLER ARTERIAL DE MMSS\n\n`;
-
-    // Função auxiliar para gerar texto de uma artéria
-    function gerarTextoArteria(arteria, valores, lado) {
-      let texto = "";
-      
-      // Nome da artéria com lado
-      const nomeArteria = arteria;
-      const ladoTexto = lado === "Direito" ? "direita" : "esquerda";
-      texto += `${nomeArteria} ${ladoTexto}: `;
-      
-      // Se estiver ocluída, exibir oclusão com localização e ausência de fluxo
-      if (valores.status === "Ocluída") {
-        if (valores.localizacaoOclusao) {
-          texto += `oclusão ${valores.localizacaoOclusao.toLowerCase()}, ausência de fluxo.`;
-        } else {
-          texto += "oclusão, ausência de fluxo.";
-        }
-        return texto;
-      }
-      
-      // Status
-      texto += "pérvia, ";
-      
-      // Ateromatose
-      if (valores.ateromatose !== "Ausente") {
-        texto += `ateromatose ${valores.ateromatose.toLowerCase()}, `;
-      }
-      
-      // Velocidade
-      if (valores.velocidade !== "Normocinético") {
-        texto += `fluxo ${valores.velocidade.toLowerCase()}, `;
-      } else {
-        texto += "fluxo normocinético, ";
-      }
-      
-      // Tipo de Onda
-      if (valores.tipoOnda !== "Trifásico") {
-        texto += `padrão ${valores.tipoOnda.toLowerCase()}, `;
-      } else {
-        texto += "padrão trifásico, ";
-      }
-      
-      // Sentido
-      if (valores.sentido === "Retrógrado") {
-        texto += `sentido retrógrado, `;
-      } else {
-        texto += "sentido anterógrado, ";
-      }
-      
-      // Placa
-      if (valores.placa === "Presente" && valores.estenosePercentual && valores.caracteristicaPlaca) {
-        texto += `estenose de ${valores.estenosePercentual}%, placa ${valores.caracteristicaPlaca.toLowerCase()}, `;
-      }
-      
-      // Remover vírgula e espaço do final e adicionar ponto
-      texto = texto.replace(/,\s*$/, ".");
-      
-      return texto;
-    }
-
-    // Membro Superior Direito
-    if (lado === "Direito" || lado === "Ambos") {
-      laudo += "DOPPLER ARTERIAL DE MEMBRO SUPERIOR DIREITO\n";
-      arterias.forEach(arteria => {
-        laudo += gerarTextoArteria(arteria, arteriasDireito[arteria], "Direito") + "\n";
-        
-        // Observação (se houver)
-        if (arteriasDireito[arteria].observacao && arteriasDireito[arteria].observacao.trim && arteriasDireito[arteria].observacao.trim()) {
-          laudo += `  ${arteriasDireito[arteria].observacao}\n`;
-        }
-      });
-      
-      // Conclusão do Membro Direito
-      laudo += "\nCONCLUSÃO\n";
-      const conclusaoDireito = getConclusaoMMSSArterialPorMembro(arteriasDireito, "Direito");
-      laudo += conclusaoDireito + "\n\n";
-    }
-
-    // Separador entre membros (apenas quando ambos são selecionados)
-    if (lado === "Ambos") {
-      laudo += "=".repeat(80) + "\n";
-    }
-
-    // Membro Superior Esquerdo
-    if (lado === "Esquerdo" || lado === "Ambos") {
-      laudo += "DOPPLER ARTERIAL DE MEMBRO SUPERIOR ESQUERDO\n";
-      arterias.forEach(arteria => {
-        laudo += gerarTextoArteria(arteria, arteriasEsquerdo[arteria], "Esquerdo") + "\n";
-        
-        // Observação (se houver)
-        if (arteriasEsquerdo[arteria].observacao && arteriasEsquerdo[arteria].observacao.trim && arteriasEsquerdo[arteria].observacao.trim()) {
-          laudo += `  ${arteriasEsquerdo[arteria].observacao}\n`;
-        }
-      });
-      
-      // Conclusão do Membro Esquerdo
-      laudo += "\nCONCLUSÃO\n";
-      const conclusaoEsquerdo = getConclusaoMMSSArterialPorMembro(arteriasEsquerdo, "Esquerdo");
-      laudo += conclusaoEsquerdo + "\n";
-    }
-
-    return laudo;
-  }
-
-  // Função para copiar o laudo
-  function copiarLaudo() {
-    const textoLaudo = gerarTextoLaudo();
-    if (textoLaudo) {
-      navigator.clipboard.writeText(textoLaudo).then(() => {
-        // Feedback visual temporário
-        const btn = document.getElementById('btnCopiarLaudo');
-        if (btn) {
-          const textoOriginal = btn.textContent;
-          btn.textContent = "Copiado!";
-          btn.style.background = "linear-gradient(135deg, #28a745 0%, #20c997 100%)";
-          setTimeout(() => {
-            btn.textContent = textoOriginal;
-            btn.style.background = "linear-gradient(135deg, #6c757d 0%, #495057 100%)";
-          }, 2000);
-        }
-      }).catch(err => {
-        console.error('Erro ao copiar:', err);
-      });
-    }
-  }
-
-  // Validação dos campos obrigatórios
-  const nomeValido = nome && nome.trim && nome.trim().length > 0;
-  const idadeValida = idade && !isNaN(idade) && parseInt(idade) > 0 && parseInt(idade) <= 120;
-  const dataValida = data && data.trim && data.trim().length > 0;
-  const ladoValido = lado && ["Direito", "Esquerdo", "Ambos"].includes(lado);
-  
-  // Verificar se deve mostrar os campos das artérias
-  const deveMostrarCampos = nomeValido && idadeValida && dataValida && ladoValido;
-
-  // Função para visualizar o laudo
-  function handleVisualizar() {
-    if (!deveMostrarCampos) return;
-    setMostrarLaudo(!mostrarLaudo);
-  }
-
-  async function handleSalvarExame() {
-    if (!deveMostrarCampos) return;
-
-    const dadosExame = {
-      nome,
-      idade,
-      data,
-      lado,
-      arteriasDireito,
-      arteriasEsquerdo,
-      timestamp: new Date().toISOString(),
-      tipoNome: "MMSS Arterial"
-    };
-
-    try {
-      const sucesso = await salvarExame(dadosExame);
-      
-      if (sucesso) {
-        alert('Exame salvo com sucesso!');
-      } else {
-        alert('Erro ao salvar o exame. Tente novamente.');
-      }
-    } catch (error) {
-      console.error("Erro ao salvar exame:", error);
-      alert('Erro ao salvar o exame. Tente novamente.');
-    }
-  }
-
-  // Função para verificar se uma artéria está normal
-  function isArteriaNormal(valores) {
-    return (
-      valores.status === "Pérvia" &&
-      valores.velocidade === "Normocinético" &&
-      valores.tipoOnda === "Trifásico" &&
-      valores.sentido === "Anterógrado" &&
-      valores.ateromatose === "Ausente" &&
-      valores.placa === "Ausente"
-    );
-  }
-
-  // Função para gerar descrição da estenose baseada na porcentagem
-  function getDescricaoEstenose(percentual, nomeArteria) {
-    const percentualNum = parseFloat(percentual);
-    
-    if (percentualNum < 50) {
-      return `Estenose menor que 50% em Artéria ${nomeArteria}`;
-    } else if (percentualNum >= 50 && percentualNum <= 70) {
-      return `Estenose de 50-70% em Artéria ${nomeArteria}`;
-    } else if (percentualNum > 70 && percentualNum <= 90) {
-      return `Estenose maior que 70% em Artéria ${nomeArteria}`;
-    } else if (percentualNum > 90) {
-      return `Estenose crítica maior que 90% em Artéria ${nomeArteria}`;
-    }
-    
-    return `Estenose de ${percentualNum}% em Artéria ${nomeArteria}`;
-  }
-
-  // Função para gerar conclusão de um membro específico
-  function getConclusaoMMSSArterialPorMembro(arteriasValores, lado) {
-    // Calcular flags conforme requisitos especificados
-    const temAtero = Object.values(arteriasValores).some(v => ['Discreta', 'Moderada', 'Severa'].includes(v.ateromatose));
-    const oclusoes = [];
-    const estenoses = [];
-    let isNormal = true;
-    
-    // Verificar cada artéria
-    Object.entries(arteriasValores).forEach(([nomeArteria, valores]) => {
-      const ladoTexto = lado === "Direito" ? "direita" : "esquerda";
-      
-      // Verificar normalidade da artéria
-      if (!isArteriaNormal(valores)) {
-        isNormal = false;
-      }
-      
-      // Verificar se a artéria está ocluída
-      if (valores.status === "Ocluída") {
-        let linhaOclusao = `Oclusão de Artéria ${nomeArteria} ${ladoTexto}`;
-        if (valores.localizacaoOclusao) {
-          linhaOclusao += ` (${valores.localizacaoOclusao.toLowerCase()})`;
-        }
-        oclusoes.push(linhaOclusao);
-        return; // Pular outras verificações para artéria ocluída
-      }
-      
-      // Verificar se há placa/estenose
-      if (valores.placa === "Presente" && valores.estenosePercentual && valores.caracteristicaPlaca) {
-        // Corrigir bug de duplicação "Artéria Artéria"
-        const nomeLimpo = nomeArteria.replace(/^Artéria\s+/i, '');
-        const linhaEstenose = getDescricaoEstenose(valores.estenosePercentual, `${nomeLimpo} ${ladoTexto}`);
-        estenoses.push(linhaEstenose);
-      }
-    });
-    
-    // Montar array linhas conforme requisitos
-    const linhas = [];
-    
-    if (isNormal) {
-      linhas.push('Exame compatível com normalidade.');
-    } else {
-      // 1) Ateromatose (sempre aparece se existir, mesmo com outros achados)
-      if (temAtero) {
-        linhas.push('Ateromatose.');
-      }
-      
-      // 2) Oclusões
-      linhas.push(...oclusoes);
-      
-      // 3) Estenoses
-      linhas.push(...estenoses);
-    }
-    
-    // Retornar todas as linhas, cada uma separada por quebra de linha
-    return linhas.join('\n');
-  }
 
   return (
     <div style={{
@@ -978,6 +613,39 @@ function MMSSArterial() {
         onLogout={handleLogout}
         erro={erro}
       />
+
+      {deveMostrarCampos && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 'clamp(10px, 2vw, 14px)' }}>
+          <button
+            type="button"
+            onClick={() => { setLadoMapa(lado === "Ambos" ? "Direito" : lado); setMostrarMapa(true); }}
+            style={{ ...buttonStyle, background: "#3d5a80", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <FiMousePointer /> Mapeamento Interativo
+          </button>
+        </div>
+      )}
+
+      <MapaInterativoMMSSArterial
+        aberto={mostrarMapa}
+        onFechar={() => setMostrarMapa(false)}
+        lado={lado}
+        ladoAtivo={ladoMapa}
+        onTrocarLado={setLadoMapa}
+        arterias={{ Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }}
+        onArteriaChange={handleArteriaChange}
+        extras={extras}
+        onExtraChange={handleExtraChange}
+        laudoMembro={deveMostrarCampos
+          ? gerarBlocoMembro(ladoMapa, ladoMapa === "Direito" ? arteriasDireito : arteriasEsquerdo, extras[ladoMapa])
+          : ""}
+        incluirMapaPdf={incluirMapaPdf}
+        onIncluirMapaPdf={setIncluirMapaPdf}
+        onSalvarTXT={handleSalvarTXT}
+        onSalvarPDF={handleSalvarPDF}
+        onSalvarExame={handleSalvarExame}
+      />
+
 
       {/* Campos das artérias - só aparecem após preencher dados básicos */}
       {deveMostrarCampos && (
@@ -1009,6 +677,8 @@ function MMSSArterial() {
                   lado={lado}
                   arteriasValores={lado === "Direito" ? arteriasDireito : arteriasEsquerdo}
                   onChange={(arteria, valores) => handleArteriaChange(lado, arteria, valores)}
+                  extra={extras[lado]}
+                  onExtraChange={(ex) => handleExtraChange(lado, ex)}
                 />
               </div>
             )}
@@ -1027,6 +697,8 @@ function MMSSArterial() {
                     lado="Direito"
                     arteriasValores={arteriasDireito}
                     onChange={(arteria, valores) => handleArteriaChange("Direito", arteria, valores)}
+                    extra={extras.Direito}
+                    onExtraChange={(ex) => handleExtraChange("Direito", ex)}
                   />
                 </div>
                 <div style={{
@@ -1040,11 +712,15 @@ function MMSSArterial() {
                     lado="Esquerdo"
                     arteriasValores={arteriasEsquerdo}
                     onChange={(arteria, valores) => handleArteriaChange("Esquerdo", arteria, valores)}
+                    extra={extras.Esquerdo}
+                    onExtraChange={(ex) => handleExtraChange("Esquerdo", ex)}
                   />
                 </div>
               </>
             )}
           </div>
+
+
 
           {/* Preview do Laudo */}
           {mostrarLaudo && (
@@ -1071,243 +747,14 @@ function MMSSArterial() {
                   color: "#fff", 
                   fontSize: 'clamp(10px, 2vw, 12px)', 
                   padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-                }} onClick={() => {
-                  const blob = new Blob([gerarTextoLaudo()], { type: "text/plain;charset=utf-8" });
-                  saveAs(blob, `Laudo_${nome}_${data}.txt`);
-                }}>Salvar TXT</button>
+                }} onClick={handleSalvarTXT}>Salvar TXT</button>
                 <button style={{ 
                   ...buttonStyle, 
                   background: "#0eb8d0", 
                   color: "#fff", 
                   fontSize: 'clamp(10px, 2vw, 12px)', 
                   padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)" 
-                }} onClick={() => {
-                  // Buscar dados do localStorage
-                  const nomeMedico = localStorage.getItem("nomeMedico") || "";
-                  const crm = localStorage.getItem("crm") || "";
-                  const especialidade = localStorage.getItem("especialidadeLaudo") || "";
-                  const nomeClinica = localStorage.getItem("nomeClinica") || "";
-                  const enderecoClinica = localStorage.getItem("enderecoClinica") || "";
-                  const telefoneClinica = localStorage.getItem("telefoneClinica") || "";
-                  const emailClinica = localStorage.getItem("emailClinica") || "";
-                  const logoClinica = localStorage.getItem("logoClinica") || null;
-                  const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
-
-                  const doc = new jsPDF();
-                  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
-                  const blocos = gerarTextoLaudo().split("=".repeat(80));
-
-                  function addCabecalho(y) {
-                    let yLogo = 14; // topo do logo
-                    let yAtual = yLogo;
-                    const logoHeight = 20; // altura do logo
-                    const logoSpacing = 8; // espaço após o logo antes do conteúdo
-                    
-                    if (logoClinica) {
-                      try {
-                        doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight); // quadrado 20x20
-                      } catch (e) {}
-                    }
-                    doc.setFontSize(9);
-                    let cabecalho = [];
-                    if (nomeClinica) cabecalho.push(nomeClinica);
-                    if (enderecoClinica) cabecalho.push(enderecoClinica);
-                    if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
-                    if (emailClinica) cabecalho.push(emailClinica);
-                    // Alinhar o cabeçalho à direita, na mesma altura do logo
-                    cabecalho.forEach((txt, idx) => {
-                      doc.setFont(undefined, "bold");
-                      doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
-                    });
-                    doc.setFont(undefined, "normal");
-                    doc.setFontSize(11);
-                    // Retorna posição Y após logo + espaço + margem superior
-                    return yLogo + logoHeight + logoSpacing;
-                  }
-
-                  function addRodape() {
-                    const yRodape = 280; // margem inferior de 1cm
-                    doc.setFontSize(8);
-                    if (assinaturaMedico) {
-                      try {
-                        doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
-                      } catch (e) {}
-                    }
-                    doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
-                    let yInfo = yRodape + 5;
-                    if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
-                    if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
-                    if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
-                    doc.setFontSize(11);
-                  }
-
-                  // Função auxiliar para quebrar conclusão por travessões
-                  function processarConclusao(texto) {
-                    // Se a linha contém múltiplos travessões, quebrar em linhas separadas
-                    if (texto.includes('- ') && texto.split('- ').length > 2) {
-                      // Remove o primeiro travessão se já existir
-                      const partes = texto.split('- ').filter(p => p.trim() !== '');
-                      return partes.map(p => p.trim()).filter(p => p !== '');
-                    }
-                    return [texto];
-                  }
-
-                  // Função auxiliar para quebrar texto longo respeitando margens
-                  function quebrarTexto(texto, maxWidth, x) {
-                    if (!texto || texto.trim() === '') return [''];
-                    const pageWidth = doc.internal.pageSize.getWidth();
-                    const margemEsquerda = x || 15;
-                    const margemDireita = 15;
-                    const larguraDisponivel = pageWidth - margemEsquerda - margemDireita;
-                    
-                    // Usar splitTextToSize do jsPDF - ele calcula automaticamente baseado na fonte atual
-                    try {
-                      const linhas = doc.splitTextToSize(texto, larguraDisponivel);
-                      // Garantir que sempre retorna um array
-                      return Array.isArray(linhas) ? linhas : [linhas];
-                    } catch (e) {
-                      console.warn('Erro ao quebrar texto com splitTextToSize:', e);
-                      // Fallback: quebrar manualmente por caracteres
-                      const linhas = [];
-                      // Aproximação conservadora: ~3mm por caractere para fonte padrão
-                      const maxChars = Math.max(1, Math.floor(larguraDisponivel / 3));
-                      for (let i = 0; i < texto.length; i += maxChars) {
-                        linhas.push(texto.substring(i, i + maxChars));
-                      }
-                      return linhas.length > 0 ? linhas : [texto];
-                    }
-                  }
-
-                  let pagina = 0;
-                  lados.forEach((ladoAtual, idx) => {
-                    if (pagina > 0) doc.addPage();
-                    let y = addCabecalho(12);
-                    const bloco = blocos[idx] ? blocos[idx].trim().split("\n") : [];
-                    let inConclusao = false;
-                    let inObservacoes = false;
-                    for (let i = 0; i < bloco.length; i++) {
-                      let line = bloco[i];
-                      // Negrito para nome do paciente e nome do exame
-                      if (line.startsWith("PACIENTE:")) {
-                        doc.setFont(undefined, "bold");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO SUPERIOR")) {
-                        doc.setFont(undefined, "bold");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Arterial")) {
-                        doc.setFont(undefined, "bold");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        if (line.startsWith("CONCLUSÃO")) {
-                          inConclusao = true;
-                          inObservacoes = false;
-                        }
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (line.startsWith("OBSERVAÇÕES")) {
-                        doc.setFont(undefined, "bold");
-                        doc.text(line, 15, y);
-                        doc.setFont(undefined, "normal");
-                        inConclusao = false;
-                        inObservacoes = true;
-                        y += 8;
-                      } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
-                        // Processar conclusão: quebrar por travessões
-                        const linhasConclusao = processarConclusao(line);
-                        doc.setFont(undefined, "bold");
-                        linhasConclusao.forEach(linhaConclusao => {
-                          // Garantir que cada item comece com travessão
-                          const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
-                          const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
-                          linhasQuebradas.forEach(linha => {
-                            if (y > 265) {
-                              addRodape();
-                              doc.addPage();
-                              y = addCabecalho(12);
-                            }
-                            doc.text(linha, 15, y);
-                            y += 8;
-                          });
-                        });
-                        doc.setFont(undefined, "normal");
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else if (inObservacoes && line && line.trim() !== "") {
-                        // Quebrar observações longas respeitando margens
-                        doc.setFont(undefined, "normal");
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          if (y > 265) {
-                            addRodape();
-                            doc.addPage();
-                            y = addCabecalho(12);
-                          }
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        y -= 8; // Ajuste para não ter espaço extra
-                      } else {
-                        doc.setFont(undefined, "normal");
-                        // Quebrar linhas longas também
-                        const linhasQuebradas = quebrarTexto(line, 0, 15);
-                        linhasQuebradas.forEach(linha => {
-                          if (y > 265) {
-                            addRodape();
-                            doc.addPage();
-                            y = addCabecalho(12);
-                          }
-                          doc.text(linha, 15, y);
-                          y += 8;
-                        });
-                        if (inConclusao && line && line.trim() === "") {
-                          inConclusao = false;
-                        }
-                        if (inObservacoes && line && line.trim() === "") {
-                          inObservacoes = false;
-                        }
-                        y -= 8; // Ajuste para não ter espaço extra
-                      }
-                      y += 8;
-                      if (y > 265) {
-                        addRodape();
-                        doc.addPage();
-                        y = addCabecalho(12);
-                      }
-                    }
-                    addRodape();
-                    pagina++;
-                  });
-                  
-                  // Adicionar anexos como páginas no final do PDF
-                  appendImagesToPdf(doc, anexos);
-                  
-                  doc.save(`Laudo_${nome}_${data}.pdf`);
-                  
-                  // RESET APÓS SALVAR PDF
-                  setNome("");
-                  setIdade("");
-                  setData("");
-                  setLado("");
-                  setArteriasDireito(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
-                  setArteriasEsquerdo(Object.fromEntries(arterias.map(arteria => [arteria, { ...estruturaArteria }])));
-                  setMostrarLaudo(false);
-                  setErro("");
-                  setAnexos([]);
-                }}>Salvar PDF</button>
+                }} onClick={handleSalvarPDF}>Salvar PDF</button>
               </div>
               {gerarTextoLaudo()}
             </div>
@@ -1461,6 +908,7 @@ function MMSSArterial() {
               )}
             </div>
           )}
+
         </div>
       )}
 
