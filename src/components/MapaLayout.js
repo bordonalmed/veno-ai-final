@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FiEye, FiX } from "react-icons/fi";
+import { FiEye, FiX, FiList } from "react-icons/fi";
 
 // Layout comum a todos os Mapas Interativos (MMII venoso, MMII arterial,
 // carótidas): fundo branco e, ao tocar num vaso, a caixa de preenchimento
@@ -94,19 +94,22 @@ export default function MapaLayout({
   incluirPdf, onIncluirPdf, labelIncluirPdf = "Incluir Mapeamento no PDF",
   onVisualizarImagem,
   onSalvarTXT, onSalvarPDF, onSalvarExame,
+  // embutido: o mapa é a própria tela do exame (dentro da página, logo abaixo
+  // do cabeçalho), em vez de uma janela por cima. "Fechar" vira "Ver formulário".
+  embutido = false,
 }) {
   const larga = useTelaLarga();
 
-  // Esc fecha a caixa (ou o mapa, se não houver caixa aberta).
+  // Esc fecha a caixa (ou o mapa, se não houver caixa aberta e ele for janela).
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== "Escape") return;
       if (painel && onFecharPainel) onFecharPainel();
-      else onFechar();
+      else if (!embutido) onFechar();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [painel, onFecharPainel, onFechar]);
+  }, [painel, onFecharPainel, onFechar, embutido]);
 
   const cabecalho = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", padding: larga ? "14px 18px 10px" : "10px 12px 8px", borderBottom: `1px solid ${COR.borda}` }}>
@@ -130,7 +133,11 @@ export default function MapaLayout({
             ))}
           </div>
         )}
-        <button onClick={onFechar} style={botaoMapaStyle("#c0392b")}>Fechar</button>
+        {embutido ? (
+          <button onClick={onFechar} title="Mostrar os quadros de preenchimento" style={{ ...botaoMapaStyle("#5c6b78"), gap: 6 }}><FiList /> Ver formulário</button>
+        ) : (
+          <button onClick={onFechar} style={botaoMapaStyle("#c0392b")}>Fechar</button>
+        )}
       </div>
     </div>
   );
@@ -181,13 +188,20 @@ export default function MapaLayout({
     </>
   );
 
+  const externo = embutido
+    ? { width: "100%", maxWidth: 1320, margin: "clamp(10px,2vw,16px) auto 0", display: "flex", justifyContent: "center" }
+    : { position: "fixed", inset: 0, background: "rgba(8,14,22,0.6)", zIndex: 2000, display: "flex", justifyContent: "center", alignItems: "stretch", padding: larga ? "clamp(8px,2vh,20px)" : 0 };
+  // Embutido em tela larga: altura fixa, cada coluna rola por dentro. No
+  // celular o mapa embutido acompanha a rolagem da própria página.
+  const alturaCartao = embutido ? (larga ? "max(560px, calc(100vh - 40px))" : "auto") : undefined;
+
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(8,14,22,0.6)", zIndex: 2000, display: "flex", justifyContent: "center", alignItems: "stretch", padding: larga ? "clamp(8px,2vh,20px)" : 0 }}>
+    <div style={externo}>
       <style>{CSS_TEMA_CLARO}</style>
       <div style={{
         background: "#fff", color: COR.texto, width: "100%", maxWidth: larga ? 1320 : "none",
-        borderRadius: larga ? 14 : 0, boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
-        display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0,
+        borderRadius: larga || embutido ? 14 : 0, boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+        display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, height: alturaCartao,
       }}>
         {cabecalho}
 
@@ -202,7 +216,7 @@ export default function MapaLayout({
             </div>
           </div>
         ) : (
-          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 10, paddingBottom: painel ? "52vh" : 10, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: embutido ? "visible" : "auto", padding: 10, paddingBottom: painel ? "52vh" : 10, display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ flexShrink: 0 }}>{blocoDesenho}</div>
             {!painel && caixaVazia}
             <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}</div>

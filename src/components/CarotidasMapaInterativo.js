@@ -398,7 +398,7 @@ function LegendaCarotidas() {
 // caixa do vaso ao lado do desenho (ou subindo da parte de baixo no celular).
 export default function CarotidasMapaInterativo({
   aberto, onFechar, vessels, onChange, nome, data,
-  onSalvarExame, onSalvarTXT, onSalvarPDF, incluirMapaPdf, onIncluirMapaPdf
+  onSalvarExame, onSalvarTXT, onSalvarPDF, incluirMapaPdf, onIncluirMapaPdf, embutido
 }) {
   const [selected, setSelected] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -582,6 +582,7 @@ export default function CarotidasMapaInterativo({
   return (
     <>
       <MapaLayout
+      embutido={embutido}
         titulo="Mapa Interativo — Carótidas e Vertebrais"
         onFechar={onFechar}
         desenho={desenho}
