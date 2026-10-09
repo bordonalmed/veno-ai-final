@@ -5,10 +5,6 @@ import {
   localizacaoPlacaOptions,
   ateromatoseOptions,
   velocidadeOptions,
-  tipoOndaOptions,
-  resistenciaOptions,
-  ascensaoOptions,
-  sentidoOptions,
   placaOptions,
   caracteristicaPlacaOptions,
   stentOptions,
@@ -22,6 +18,7 @@ import {
   arteriaManobraOptions,
   arcoPalmarOptions,
 } from "../utils/mmssArterialLaudo";
+import { OndaEspectral } from "./OndaEspectral";
 
 // Campos de uma artéria do Doppler Arterial (MMII e MMSS), do enxerto (só MMII)
 // e das manobras/pré-FAV (só MMSS), usados nas páginas e no Mapa Interativo.
@@ -145,7 +142,7 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, co
         localizacaoOclusao: "",
         velocidade: "Normocinético",
         tipoOnda: "Multifásico",
-        resistencia: "Alta",
+        resistencia: "",
         ascensao: "Rápida",
         staccato: false,
         alargamentoEspectral: false,
@@ -183,10 +180,6 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, co
         {!isOcluida && (
           <>
             <CampoSelect label="Velocidade:" value={valores.velocidade} options={velocidadeOptions} onChange={v => set('velocidade', v)} />
-            <CampoSelect label="Fase da onda:" value={valores.tipoOnda} options={tipoOndaOptions} onChange={v => set('tipoOnda', v)} />
-            <CampoSelect label="Resistência:" value={valores.resistencia} options={resistenciaOptions} placeholder="Não informada" onChange={v => set('resistencia', v)} />
-            <CampoSelect label="Ascensão sistólica:" value={valores.ascensao} options={ascensaoOptions} onChange={v => set('ascensao', v)} />
-            <CampoSelect label="Sentido:" value={valores.sentido} options={sentidoOptions} onChange={v => set('sentido', v)} />
             <CampoSelect label="Placa:" value={valores.placa} options={placaOptions} onChange={v => set('placa', v)} />
           </>
         )}
@@ -199,10 +192,10 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, co
         )}
       </div>
 
+      {!isOcluida && <OndaEspectral valores={valores} onChange={onChange} />}
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(10px, 2.5vw, 18px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
         {!isOcluida && <CampoCheck label="Reabitada por colaterais" checked={valores.reabitada} onChange={v => set('reabitada', v)} />}
-        {!isOcluida && <CampoCheck label="Staccato" checked={valores.staccato} onChange={v => set('staccato', v)} />}
-        {!isOcluida && <CampoCheck label="Alargamento espectral" checked={valores.alargamentoEspectral} onChange={v => set('alargamentoEspectral', v)} />}
         <CampoCheck label="Aneurisma" checked={valores.aneurisma} onChange={v => set('aneurisma', v)} />
         <CampoCheck label="Dissecção" checked={valores.disseccao} onChange={v => set('disseccao', v)} />
       </div>

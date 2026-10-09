@@ -100,9 +100,11 @@ describe("laudo completo", () => {
 });
 
 describe("nomenclatura das ondas (consenso SVM/SVU 2020)", () => {
-  it("normal: onda multifásica de alta resistência, sem trifásico/bifásico", () => {
+  it("normal: onda multifásica (resistência em branco não sai), sem trifásico/bifásico", () => {
     const t = descreverArteria("Artéria Poplítea", arteriasPadrao()["Artéria Poplítea"]);
-    expect(t).toBe("Artéria Poplítea: pérvia, fluxo normocinético, onda multifásica de alta resistência, sentido anterógrado.");
+    expect(t).toBe("Artéria Poplítea: pérvia, fluxo normocinético, onda multifásica, sentido anterógrado.");
+    const alta = { ...arteriasPadrao()["Artéria Poplítea"], resistencia: "Alta" };
+    expect(descreverArteria("Artéria Poplítea", alta)).toContain("onda multifásica de alta resistência");
     expect(t).not.toMatch(/trifásic|bifásic/i);
   });
 
@@ -122,8 +124,8 @@ describe("nomenclatura das ondas (consenso SVM/SVU 2020)", () => {
       "Artéria Tibial Anterior": { tipoOnda: "Monofásico" },
       "Artéria Tibial Posterior": { tipoOnda: "Amortecido (tardus-parvus)" },
     });
-    expect(n["Artéria Femoral Comum"]).toMatchObject({ tipoOnda: "Multifásico", resistencia: "Alta", ascensao: "Rápida" });
-    expect(n["Artéria Poplítea"]).toMatchObject({ tipoOnda: "Multifásico", resistencia: "Alta" });
+    expect(n["Artéria Femoral Comum"]).toMatchObject({ tipoOnda: "Multifásico", resistencia: "", ascensao: "Rápida" });
+    expect(n["Artéria Poplítea"]).toMatchObject({ tipoOnda: "Multifásico", resistencia: "" });
     // resistência não era informada: não é inventada
     expect(n["Artéria Tibial Anterior"]).toMatchObject({ tipoOnda: "Monofásico", resistencia: "" });
     expect(n["Artéria Tibial Posterior"]).toMatchObject({ tipoOnda: "Monofásico", ascensao: "Prolongada", resistencia: "" });

@@ -29,7 +29,7 @@ export const estruturaArteria = {
   ateromatose: "Ausente",
   velocidade: "Normocinético",
   tipoOnda: "Multifásico",
-  resistencia: "Alta",
+  resistencia: "", // em branco = não sai no laudo (laudo normal mais enxuto)
   ascensao: "Rápida",
   staccato: false,
   alargamentoEspectral: false,
@@ -61,7 +61,7 @@ export function normalizarOnda(salva) {
   const antiga = salva?.tipoOnda;
   if (antiga === "Trifásico" || antiga === "Bifásico") {
     v.tipoOnda = "Multifásico";
-    if (salva.resistencia === undefined) v.resistencia = "Alta";
+    if (salva.resistencia === undefined) v.resistencia = "";
   } else if (antiga === "Amortecido (tardus-parvus)") {
     v.tipoOnda = "Monofásico";
     v.ascensao = "Prolongada";
@@ -69,7 +69,7 @@ export function normalizarOnda(salva) {
   } else if (antiga === "Monofásico" && salva.resistencia === undefined) {
     v.resistencia = "";
   }
-  if (v.tipoOnda === "Multifásico" && v.resistencia === undefined) v.resistencia = "Alta";
+  if (v.resistencia === undefined) v.resistencia = "";
   if (v.ascensao === undefined) v.ascensao = "Rápida";
   return v;
 }
