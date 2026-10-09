@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import { catmullRom } from "../utils/vascularMapping";
-import { criarCurva, pontoEm, fita, fitaFusiforme } from "../utils/curvas";
+import { criarCurva, pontoEm, fita, linha, fitaFusiforme } from "../utils/curvas";
 import { ARTERIAS } from "../utils/aortaIliacasLaudo";
 import { CamposArteria } from "./CamposArteria";
 import { CamposEnxertoAorta } from "./CamposAorta";
-import { ArteriaCurva, PadroesStent, COR_ART } from "./ArteriaCurva";
+import { ArteriaCurva, PadroesStent, COR_ART, COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 
 // Abdome em vista anterior (do esterno à raiz das coxas). Lado direito do
@@ -61,14 +61,108 @@ const ROTULOS_REF = [["T. celíaco", 282, 32, "start"], ["AMS", 18, 168, "end"],
 
 const COR_REF = "#e8b4ae";
 
-// Que vasos a endoprótese/enxerto cobre, por tipo.
-const COBERTURA_ENXERTO = {
-  "Endoprótese aórtica (EVAR)": [["Aorta Infrarrenal", 0.2, 1], ["Artéria Ilíaca Comum Direita", 0, 1], ["Artéria Ilíaca Comum Esquerda", 0, 1]],
-  "Endoprótese aorto-uni-ilíaca": [["Aorta Infrarrenal", 0.2, 1], ["Artéria Ilíaca Comum Direita", 0, 1], ["Artéria Ilíaca Externa Direita", 0, 0.6]],
-  "Endoprótese ilíaca": [["Artéria Ilíaca Comum Direita", 0.1, 1], ["Artéria Ilíaca Comum Esquerda", 0.1, 1]],
-  "Enxerto aorto-bi-ilíaco": [["Aorta Infrarrenal", 0.25, 1], ["Artéria Ilíaca Comum Direita", 0, 1], ["Artéria Ilíaca Comum Esquerda", 0, 1]],
-  "Enxerto aorto-bifemoral": [["Aorta Infrarrenal", 0.25, 1], ["Artéria Ilíaca Comum Direita", 0, 1], ["Artéria Ilíaca Comum Esquerda", 0, 1], ["Artéria Ilíaca Externa Direita", 0, 1], ["Artéria Ilíaca Externa Esquerda", 0, 1]],
+// Endoprótese: malha sobre os vasos cobertos, por tipo. Começa logo abaixo das
+// artérias renais (fim da aorta justarrenal). Cada trecho pertence a uma parte
+// (corpo / ramo direito / ramo esquerdo), para marcar onde está a lesão.
+const COBERTURA_ENDOPROTESE = {
+  "Endoprótese aórtica (EVAR)": [["Aorta Justarrenal", 0.75, 1, "corpo"], ["Aorta Infrarrenal", 0, 1, "corpo"], ["Artéria Ilíaca Comum Direita", 0, 1, "ramoD"], ["Artéria Ilíaca Comum Esquerda", 0, 1, "ramoE"]],
+  "Endoprótese aorto-uni-ilíaca": [["Aorta Justarrenal", 0.75, 1, "corpo"], ["Aorta Infrarrenal", 0, 1, "corpo"], ["Artéria Ilíaca Comum Direita", 0, 1, "ramoD"], ["Artéria Ilíaca Externa Direita", 0, 0.6, "ramoD"]],
+  "Endoprótese ilíaca": [["Artéria Ilíaca Comum Direita", 0.1, 1, "ramoD"], ["Artéria Ilíaca Comum Esquerda", 0.1, 1, "ramoE"]],
 };
+// Local da lesão -> [parte acometida (ou "todas"), parte e posição da marca].
+const LOCAL_ENDOPROTESE = {
+  "Corpo principal": ["todas", "corpo", 0.5],
+  "Ramo ilíaco direito": ["ramoD", "ramoD", 0.5],
+  "Ramo ilíaco esquerdo": ["ramoE", "ramoE", 0.5],
+  "Ilíaca direita": ["ramoD", "ramoD", 0.5],
+  "Ilíaca esquerda": ["ramoE", "ramoE", 0.5],
+};
+
+// Enxerto convencional (prótese): tubo azul sobreposto, da aorta infrarrenal
+// (abaixo das renais) até as ilíacas comuns ou até as femorais comuns.
+const espelhoIliaca = (pts) => pts.map(([x, y]) => [308 - x, y]);
+const CORPO_ENXERTO = [[156, 134], [156, 180], [155, 214], [154, 234]];
+const RAMO_BI_ILIACO = [[154, 234], [141, 258], [128, 282], [118, 302]];
+const RAMO_BIFEMORAL = [[154, 234], [140, 260], [125, 292], [111, 326], [102, 356], [98, 386]];
+const GEOMETRIA_ENXERTO_AORTA = {
+  "Enxerto aorto-bi-ilíaco": { corpo: CORPO_ENXERTO, ramoD: RAMO_BI_ILIACO, ramoE: espelhoIliaca(RAMO_BI_ILIACO) },
+  "Enxerto aorto-bifemoral": { corpo: CORPO_ENXERTO, ramoD: RAMO_BIFEMORAL, ramoE: espelhoIliaca(RAMO_BIFEMORAL) },
+};
+const CURVAS_ENXERTO = Object.fromEntries(Object.entries(GEOMETRIA_ENXERTO_AORTA).map(([tipo, partes]) => [
+  tipo, Object.fromEntries(Object.entries(partes).map(([parte, pts]) => [parte, criarCurva(pts, 5)])),
+]));
+const LOCAL_ENXERTO = {
+  "Anastomose proximal": ["todas", "corpo", 0.04],
+  "Corpo do enxerto": ["todas", "corpo", 0.5],
+  "Ramo direito": ["ramoD", "ramoD", 0.5],
+  "Ramo esquerdo": ["ramoE", "ramoE", 0.5],
+  "Anastomose distal direita": ["ramoD", "ramoD", 0.96],
+  "Anastomose distal esquerda": ["ramoE", "ramoE", 0.96],
+};
+
+// Situação de cada parte: com local informado só a parte dele fica alterada.
+function situacaoDaParte(enx, parte, locais) {
+  if (enx.status !== "Com estenose" && enx.status !== "Ocluído") return "Pérvio";
+  const loc = locais[enx.local];
+  if (!loc || loc[0] === "todas" || loc[0] === parte) return enx.status;
+  return "Pérvio";
+}
+
+function MarcaLesao({ c, t, status }) {
+  const p = pontoEm(c, t);
+  return status === "Ocluído"
+    ? <circle cx={p.x} cy={p.y} r={4.6} fill={COR_ART.ocluida} stroke="#ffffff" strokeWidth={1} />
+    : <circle cx={p.x} cy={p.y} r={6.5} fill="none" stroke={COR_LESAO_ENXERTO} strokeWidth={2.6} />;
+}
+
+function DesenhoEnxertoAorta({ enx }) {
+  const curvas = CURVAS_ENXERTO[enx.tipo];
+  if (!curvas) return null;
+  const loc = LOCAL_ENXERTO[enx.local];
+  const alterado = enx.status === "Com estenose" || enx.status === "Ocluído";
+  // ramos primeiro, corpo por cima (a bifurcação fica limpa)
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      {["ramoD", "ramoE", "corpo"].map((parte) => {
+        const c = curvas[parte];
+        const ocl = situacaoDaParte(enx, parte, LOCAL_ENXERTO) === "Ocluído";
+        return (
+          <g key={parte}>
+            <path d={linha(c)} fill="none" stroke="#ffffff" strokeWidth={13} strokeLinecap="round" opacity={0.9} />
+            <path d={linha(c)} fill="none" stroke={ocl ? COR_ENXERTO.ocluido : COR_ENXERTO.pervio} strokeWidth={9} strokeLinecap="round"
+              strokeDasharray={ocl ? "7 4" : undefined} />
+          </g>
+        );
+      })}
+      {alterado && loc && <MarcaLesao c={curvas[loc[1]]} t={loc[2]} status={enx.status} />}
+    </g>
+  );
+}
+
+function DesenhoEndoprotese({ enx }) {
+  const cobertura = COBERTURA_ENDOPROTESE[enx.tipo];
+  if (!cobertura) return null;
+  const loc = LOCAL_ENDOPROTESE[enx.local];
+  const alterado = enx.status === "Com estenose" || enx.status === "Ocluído";
+  // marca no trecho mais longo da parte acometida
+  const trechoMarca = alterado && loc && cobertura.filter(([, , , parte]) => parte === loc[1])
+    .sort((a, b) => (b[2] - b[1]) * CURVAS[b[0]].comprimento - (a[2] - a[1]) * CURVAS[a[0]].comprimento)[0];
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      {cobertura.map(([nome, ta, tb, parte]) => {
+        const sit = situacaoDaParte(enx, parte, LOCAL_ENDOPROTESE);
+        return (
+          <g key={nome}>
+            {sit === "Ocluído" && <path d={fita(CURVAS[nome], ta, tb)} fill={COR_ART.ocluida} />}
+            <path d={fita(CURVAS[nome], ta, tb, 1.08)} fill={`url(#ao-stent-${sit === "Com estenose" ? "reestenose" : sit === "Ocluído" ? "ocluido" : "pervio"})`}
+              stroke="#2b2f33" strokeWidth={0.6} />
+          </g>
+        );
+      })}
+      {trechoMarca && <MarcaLesao c={CURVAS[trechoMarca[0]]} t={(trechoMarca[1] + trechoMarca[2]) / 2} status={enx.status} />}
+    </g>
+  );
+}
 
 function Rotulo({ chave, txt, lx, ly, ancora, alvo, ativo, onSelecionar, referencia }) {
   const fonte = referencia ? 8.5 : 10;
@@ -95,7 +189,6 @@ function alvoRotulo(nome, ly) {
 export function DesenhoAortaIliacas({ arterias, extra, onSelecionar, selecionada, width = "100%", height, style }) {
   const a = arterias || {};
   const enx = extra?.enxerto || {};
-  const cobertura = COBERTURA_ENXERTO[enx.tipo] || [];
   const endo = /^Endoprótese/.test(enx.tipo || "");
   const infra = CURVAS["Aorta Infrarrenal"];
   const temSaco = endo && /^Endoprótese a/.test(enx.tipo) && (parseFloat(enx.sacoDiametro) > 0 || (enx.endoleak && enx.endoleak !== "Ausente"));
@@ -138,14 +231,8 @@ export function DesenhoAortaIliacas({ arterias, extra, onSelecionar, selecionada
           <circle key={s} style={{ pointerEvents: "none" }} cx={p.x + p.nx * p.hw * 1.8 * s} cy={p.y + p.ny * p.hw * 1.8 * s} r={3.2} fill="#f1c40f" stroke="#b7950b" strokeWidth={0.6} />
         ));
       })()}
-      {/* endoprótese / enxerto: malha sobre os vasos cobertos */}
-      {cobertura.map(([nome, ta, tb]) => (
-        <g key={nome} style={{ pointerEvents: "none" }}>
-          {enx.status === "Ocluído" && <path d={fita(CURVAS[nome], ta, tb)} fill={COR_ART.ocluida} />}
-          <path d={fita(CURVAS[nome], ta, tb, 1.08)} fill={`url(#ao-stent-${enx.status === "Com estenose" ? "reestenose" : enx.status === "Ocluído" ? "ocluido" : "pervio"})`}
-            stroke="#2b2f33" strokeWidth={0.6} />
-        </g>
-      ))}
+      {/* endoprótese: malha sobre os vasos; enxerto: tubo azul sobreposto */}
+      {endo ? <DesenhoEndoprotese enx={enx} /> : <DesenhoEnxertoAorta enx={enx} />}
 
       {ROTULOS_REF.map(([txt, lx, ly, ancora], i) => {
         const alvo = [[160, 44], [130, 150], [118, 112], [97, 400]][i];
@@ -174,6 +261,7 @@ export const ITENS_LEGENDA_AORTA = [
   ["Oclusão", COR_ART.ocluida],
   ["Trombo mural", COR_ART.trombo],
   ["Vazamento (endoleak)", "#f1c40f"],
+  ["Enxerto (prótese)", COR_ENXERTO.pervio],
 ];
 
 export function LegendaAorta() {
@@ -187,6 +275,7 @@ export function LegendaAorta() {
       <span>pontos brancos = ateromatose</span>
       <span>triângulos = estenose</span>
       <span>malha = stent / endoprótese</span>
+      <span>enxerto tracejado cinza = ocluído · círculo laranja = estenose do enxerto</span>
       <span>B / M / A = onda bifásica / monofásica / amortecida</span>
     </div>
   );
@@ -227,6 +316,8 @@ export async function adicionarMapaAortaAoPdf(doc, arterias, extra) {
   doc.setFontSize(7.5);
   y += 4.5;
   doc.text("Pontos brancos = ateromatose   ·   triângulos = estenose   ·   malha = stent / endoprótese   ·   B / M / A = onda", pageWidth / 2, y, { align: "center" });
+  y += 4;
+  doc.text("Enxerto azul = pérvio   ·   tracejado cinza = ocluído   ·   círculo laranja = estenose   ·   ponto preto = oclusão", pageWidth / 2, y, { align: "center" });
   doc.setTextColor(0, 0, 0);
 }
 

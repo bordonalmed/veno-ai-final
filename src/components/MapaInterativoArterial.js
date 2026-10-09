@@ -12,6 +12,7 @@ import {
 import { ARTERIAS } from "../utils/mmiiArterialLaudo";
 import { CamposArteria, CamposEnxerto } from "./CamposArteria";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
+import { COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
 
 // Árvore arterial de UMA perna, vista anterior. Desenhada nativamente para a
 // perna ESQUERDA (mesma convenção do Mapa Interativo venoso): medial = x menor,
@@ -35,7 +36,6 @@ export const GEOMETRIA_ENXERTOS = {
   // vem da femoral do outro lado, cruzando acima do púbis
   "Fêmoro-femoral cruzado": [[40, 4], [80, 10], [114, 24], [134, 40], [141, 54]],
 };
-const COR_ENXERTO = { pervio: "#2f6fd6", estenose: "#2f6fd6", ocluido: "#7d8790" };
 const T_LOCAL_ENXERTO = { "Anastomose proximal": 0.04, "Corpo do enxerto": 0.5, "Anastomose distal": 0.96 };
 
 // Ponto ao longo de uma polilinha (t de 0 a 1), para marcar o local da lesão.
@@ -65,7 +65,7 @@ function DesenhoEnxerto({ enxerto }) {
       <path d={d} fill="none" stroke="#ffffff" strokeWidth={8} strokeLinecap="round" opacity={0.85} />
       <path d={d} fill="none" stroke={ocluido ? COR_ENXERTO.ocluido : COR_ENXERTO.pervio} strokeWidth={5.5} strokeLinecap="round"
         strokeDasharray={ocluido ? "6 4" : undefined} />
-      {marca && estenose && <circle cx={marca[0]} cy={marca[1]} r={5} fill="none" stroke="#e67e22" strokeWidth={2.4} />}
+      {marca && estenose && <circle cx={marca[0]} cy={marca[1]} r={5} fill="none" stroke={COR_LESAO_ENXERTO} strokeWidth={2.4} />}
       {marca && ocluido && <circle cx={marca[0]} cy={marca[1]} r={4.5} fill={COR_ARTERIA.ocluida} />}
     </g>
   );

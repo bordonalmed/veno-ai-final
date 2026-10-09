@@ -14,6 +14,10 @@ export const COR_ART = {
   trombo: "#b9c0c7",
 };
 
+// Enxerto/ponte (prótese ou veia): azul quando pérvio, cinza tracejado ocluído.
+export const COR_ENXERTO = { pervio: "#2f6fd6", estenose: "#2f6fd6", ocluido: "#7d8790" };
+export const COR_LESAO_ENXERTO = "#e67e22";
+
 const ESTILO_PLACA = {
   "Lipídica": { fill: "#ffffff", stroke: "#ffffff" },
   "Calcificada": { fill: "#9aa5b1", stroke: "#6b7684" },
