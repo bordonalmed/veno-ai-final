@@ -40,6 +40,7 @@ export const arcoPalmarOptions = ["Completo", "Incompleto"];
 export const tipoFavOptions = [
   "Radiocefálica (punho)",
   "Braquiocefálica (cotovelo)",
+  "Braquiocefálica via veia intermédia do cotovelo",
   "Braquiobasílica (com transposição)",
   "Braquiobasílica via veia intermédia do cotovelo",
   "Braquiobraquial (com transposição)",
@@ -156,7 +157,8 @@ function territoriosAdequados(sitios) {
   const naoReprova = (k) => sitioAdequado(k, sitios[k]) !== false;
   const t = [];
   if (ok("radial") && ok("cefalicaPunho") && naoReprova("cefalicaAntebraco")) t.push("FAV radiocefálica (punho)");
-  if (ok("braquial") && (ok("cefalicaCotovelo") || ok("intermedia")) && naoReprova("cefalicaBraco")) t.push("FAV braquiocefálica (cotovelo)");
+  if (ok("braquial") && ok("cefalicaCotovelo") && naoReprova("cefalicaBraco")) t.push("FAV braquiocefálica (cotovelo)");
+  if (ok("braquial") && ok("intermedia") && (ok("cefalicaCotovelo") || ok("cefalicaBraco")) && naoReprova("cefalicaBraco")) t.push("FAV braquiocefálica via veia intermédia do cotovelo");
   if (ok("braquial") && (ok("basilicaBraco") || ok("basilicaCotovelo"))) t.push("FAV braquiobasílica (com transposição)");
   if (ok("braquial") && ok("intermedia") && (ok("basilicaBraco") || ok("basilicaCotovelo"))) t.push("FAV braquiobasílica via veia intermédia do cotovelo");
   if (ok("braquial") && ok("braquialVeia")) t.push("FAV braquiobraquial (com transposição)");

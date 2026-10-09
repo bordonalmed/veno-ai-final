@@ -41,7 +41,9 @@ describe("FAV: confecção (mapeamento pré-operatório)", () => {
     const e = confeccao({ braquial: { diametro: "4" }, intermedia: { diametro: "3" }, basilicaBraco: { diametro: "4.5" }, braquialVeia: { diametro: "3.2" } });
     const t = gerarBlocoExame(e, "Direito");
     expect(t).toContain("Veia braquial (braço): pérvia, compressível, diâmetro de 3,2 mm.");
-    expect(t).toContain("FAV braquiocefálica (cotovelo), FAV braquiobasílica (com transposição), FAV braquiobasílica via veia intermédia do cotovelo, FAV braquiobraquial (com transposição).");
+    expect(t).toContain("Vasos com calibre adequado (>= 2,0 mm) para: FAV braquiobasílica (com transposição), FAV braquiobasílica via veia intermédia do cotovelo, FAV braquiobraquial (com transposição).");
+    const c = confeccao({ braquial: { diametro: "4" }, intermedia: { diametro: "3" }, cefalicaBraco: { diametro: "3.5" } });
+    expect(gerarBlocoExame(c, "Direito")).toContain("para: FAV braquiocefálica via veia intermédia do cotovelo.");
     const av = extraPadrao();
     av.modo = "Avaliação";
     Object.assign(av.avaliacao, { tipo: "Braquiobraquial (com transposição)" });
