@@ -6,7 +6,7 @@ import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
 import { MapaInterativoAorta, adicionarMapaAortaAoPdf } from "../components/MapaAorta";
 import ExamHeader from "../components/ExamHeader";
 import { CamposArteria } from "../components/CamposArteria";
-import { CamposEnxertoAorta } from "../components/CamposAorta";
+import { CamposEnxertoAorta, CamposFemoroFemoral } from "../components/CamposAorta";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
 import examesRealtimeService from '../services/examesRealtimeService';
@@ -132,6 +132,7 @@ function BlocoCampos({ arterias, onChange, extra, onExtraChange, observacoes, on
       <div style={tituloSecao}>ARTÉRIAS ILÍACAS:</div>
       {ILIACAS.map(quadro)}
       <CamposEnxertoAorta enxerto={extra.enxerto} onChange={(e) => onExtraChange({ ...extra, enxerto: e })} />
+      <CamposFemoroFemoral femoroFemoral={extra.femoroFemoral} onChange={(f) => onExtraChange({ ...extra, femoroFemoral: f })} />
       <div>
         <div style={tituloSecao}>OBSERVAÇÕES:</div>
         <textarea

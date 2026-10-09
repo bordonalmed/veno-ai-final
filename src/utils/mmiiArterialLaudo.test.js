@@ -5,6 +5,7 @@ import {
   descreverArteria,
   gerarLaudoCompleto,
   ARTERIAS,
+  gerarBlocoMembro,
 } from "./mmiiArterialLaudo";
 
 function membro(alteracoes) {
@@ -70,6 +71,18 @@ describe("conclusão do membro", () => {
       "Aneurisma de Artéria Poplítea (22 mm)",
       "Enxerto femoropoplíteo acima do joelho pérvio",
     ]);
+  });
+});
+
+describe("enxerto: origem e destino", () => {
+  it("femorodistal da femoral superficial para a tibial anterior; femoropoplíteo da femoral superficial", () => {
+    expect(getConclusaoMembro(arteriasPadrao(), { tipo: "Femorodistal", origem: "Femoral superficial", destino: "Tibial anterior", status: "Pérvio" }))
+      .toEqual(["Enxerto femorodistal (da femoral superficial para a tibial anterior) pérvio"]);
+    expect(gerarBlocoMembro("Direito", arteriasPadrao(), { tipo: "Femoropoplíteo abaixo do joelho", origem: "Femoral superficial", status: "Ocluído", local: "Anastomose distal" }))
+      .toContain("Enxerto femoropoplíteo abaixo do joelho (da femoral superficial): ocluído na anastomose distal.");
+    // cruzado não tem origem/destino; destino só no femorodistal
+    expect(getConclusaoMembro(arteriasPadrao(), { tipo: "Fêmoro-femoral cruzado", origem: "Femoral superficial", destino: "Fibular", status: "Pérvio" }))
+      .toEqual(["Enxerto fêmoro-femoral cruzado pérvio"]);
   });
 });
 

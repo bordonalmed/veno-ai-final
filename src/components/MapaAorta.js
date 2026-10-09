@@ -5,7 +5,7 @@ import { catmullRom } from "../utils/vascularMapping";
 import { criarCurva, pontoEm, fita, linha, fitaFusiforme } from "../utils/curvas";
 import { ARTERIAS } from "../utils/aortaIliacasLaudo";
 import { CamposArteria } from "./CamposArteria";
-import { CamposEnxertoAorta } from "./CamposAorta";
+import { CamposEnxertoAorta, CamposFemoroFemoral } from "./CamposAorta";
 import { ArteriaCurva, PadroesStent, COR_ART, COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 
@@ -66,7 +66,8 @@ const COR_REF = "#e8b4ae";
 // (corpo / ramo direito / ramo esquerdo), para marcar onde está a lesão.
 const COBERTURA_ENDOPROTESE = {
   "Endoprótese aórtica (EVAR)": [["Aorta Justarrenal", 0.75, 1, "corpo"], ["Aorta Infrarrenal", 0, 1, "corpo"], ["Artéria Ilíaca Comum Direita", 0, 1, "ramoD"], ["Artéria Ilíaca Comum Esquerda", 0, 1, "ramoE"]],
-  "Endoprótese aorto-uni-ilíaca": [["Aorta Justarrenal", 0.75, 1, "corpo"], ["Aorta Infrarrenal", 0, 1, "corpo"], ["Artéria Ilíaca Comum Direita", 0, 1, "ramoD"], ["Artéria Ilíaca Externa Direita", 0, 0.6, "ramoD"]],
+  "Endoprótese aorto-uni-ilíaca direita": [["Aorta Justarrenal", 0.75, 1, "corpo"], ["Aorta Infrarrenal", 0, 1, "corpo"], ["Artéria Ilíaca Comum Direita", 0, 1, "ramoD"], ["Artéria Ilíaca Externa Direita", 0, 0.6, "ramoD"]],
+  "Endoprótese aorto-uni-ilíaca esquerda": [["Aorta Justarrenal", 0.75, 1, "corpo"], ["Aorta Infrarrenal", 0, 1, "corpo"], ["Artéria Ilíaca Comum Esquerda", 0, 1, "ramoE"], ["Artéria Ilíaca Externa Esquerda", 0, 0.6, "ramoE"]],
   "Endoprótese ilíaca": [["Artéria Ilíaca Comum Direita", 0.1, 1, "ramoD"], ["Artéria Ilíaca Comum Esquerda", 0.1, 1, "ramoE"]],
 };
 // Local da lesão -> [parte acometida (ou "todas"), parte e posição da marca].
@@ -135,6 +136,25 @@ function DesenhoEnxertoAorta({ enx }) {
         );
       })}
       {alterado && loc && <MarcaLesao c={curvas[loc[1]]} t={loc[2]} status={enx.status} />}
+    </g>
+  );
+}
+
+// Fêmoro-femoral cruzado: passa por cima do púbis, de uma femoral comum à outra.
+const CURVA_FEMORO_FEMORAL = criarCurva([[99, 394], [106, 362], [126, 330], [154, 320], [182, 330], [202, 362], [209, 394]], 4.2);
+const T_LOCAL_FF = { "Anastomose femoral direita": 0.03, "Corpo do enxerto": 0.5, "Anastomose femoral esquerda": 0.97 };
+
+function DesenhoFemoroFemoral({ ff }) {
+  if (!ff?.presente) return null;
+  const c = CURVA_FEMORO_FEMORAL;
+  const ocluido = ff.status === "Ocluído";
+  const alterado = ocluido || ff.status === "Com estenose";
+  const t = T_LOCAL_FF[ff.local];
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      <path d={linha(c)} fill="none" stroke="#ffffff" strokeWidth={11.5} strokeLinecap="round" opacity={0.9} />
+      <path d={linha(c)} fill="none" stroke={ocluido ? COR_ENXERTO.ocluido : COR_ENXERTO.pervio} strokeWidth={8} strokeLinecap="round" strokeDasharray={ocluido ? "7 4" : undefined} />
+      {alterado && t !== undefined && <MarcaLesao c={c} t={t} status={ff.status} />}
     </g>
   );
 }
@@ -233,6 +253,7 @@ export function DesenhoAortaIliacas({ arterias, extra, onSelecionar, selecionada
       })()}
       {/* endoprótese: malha sobre os vasos; enxerto: tubo azul sobreposto */}
       {endo ? <DesenhoEndoprotese enx={enx} /> : <DesenhoEnxertoAorta enx={enx} />}
+      <DesenhoFemoroFemoral ff={extra?.femoroFemoral} />
 
       {ROTULOS_REF.map(([txt, lx, ly, ancora], i) => {
         const alvo = [[160, 44], [130, 150], [118, 112], [97, 400]][i];
@@ -350,6 +371,7 @@ export function MapaInterativoAorta({
             {extra && (
               <div className="mapa-claro">
                 <CamposEnxertoAorta enxerto={extra.enxerto} onChange={(e) => onExtraChange({ ...extra, enxerto: e })} />
+                <CamposFemoroFemoral femoroFemoral={extra.femoroFemoral} onChange={(f) => onExtraChange({ ...extra, femoroFemoral: f })} />
               </div>
             )}
             <div>

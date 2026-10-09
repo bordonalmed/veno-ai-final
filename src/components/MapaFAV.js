@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import { criarCurva, pontoEm, fita, linha, fitaFusiforme } from "../utils/curvas";
 import { BRACO_W, BRACO_H, SILHUETA_BRACO, CLAVICULA, P, ART, VEI } from "./MapaMMSS";
-import { COR_ART, COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
+import { COR_ART, COR_ENXERTO, COR_LESAO_ENXERTO, PadroesStent } from "./ArteriaCurva";
 import { CamposSitioFAV, CamposConfeccaoGeral, CamposAvaliacaoFAV } from "./CamposFistula";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 import {
@@ -31,7 +31,7 @@ const COR_OK = "#27ae60";
 
 const ARTERIAS_DESENHO = ["Artéria Axilar", "Artéria Braquial", "Artéria Radial", "Artéria Ulnar"];
 const VEIAS_DESENHO = [
-  "Veia Axilar", "Veia Cefálica (braço)", "Veia Cefálica (antebraço)", "Veia Basílica (braço)",
+  "Veia Subclávia", "Veia Axilar", "Veia Cefálica (braço)", "Veia Cefálica (antebraço)", "Veia Basílica (braço)",
   "Veia Basílica (antebraço)", "Veia Intermédia do Cotovelo",
 ];
 
@@ -71,12 +71,26 @@ const GEOMETRIA_FAV = {
   "Prótese braquioaxilar": [[106, 300], [94, 262], [94, 222], [104, 198], [118, 182]],
 };
 const CURVAS_FAV = Object.fromEntries(Object.entries(GEOMETRIA_FAV).map(([t, pts]) => [t, criarCurva(P(pts), ehProtese(t) ? 3.2 : 3.6)]));
+// tronco venoso braquiocefálico (veia central)
+const CURVA_BRAQUIOCEFALICA = criarCurva(P([[226, 118], [248, 140], [264, 176], [272, 230]]), 4.8);
+// Trecho [ta, tb] de cada local: nas veias centrais é a própria veia; nos
+// demais, o traçado da FAV ao redor do ponto do local.
+function trechoDoLocal(local, cFav) {
+  if (local === "Veia subclávia") return { c: CURVAS_VEI["Veia Subclávia"], ta: 0.2, tb: 0.75 };
+  if (local === "Veia axilar") return { c: CURVAS_VEI["Veia Axilar"], ta: 0.2, tb: 0.8 };
+  if (local === "Veia braquiocefálica") return { c: CURVA_BRAQUIOCEFALICA, ta: 0.15, tb: 0.75 };
+  if (!cFav) return null;
+  const t = T_LOCAL[local] ?? 0.4;
+  return { c: cFav, ta: Math.max(0, t - 0.06), tb: Math.min(1, t + 0.06) };
+}
+
 const T_LOCAL = {
   "Justa-anastomótica": 0.06, "Segmento de punção": 0.4, "Arco da cefálica": 0.92, "Veia de saída": 0.99,
   "Anastomose arterial": 0.03, "Corpo da prótese": 0.5, "Anastomose venosa": 0.97,
 };
 
 const ROTULOS = [
+  ["V. subclávia", 118, 50, "Veia Subclávia", "v"],
   ["V. axilar", 182, 150, "Veia Axilar", "v"],
   ["V. cefálica", 2, 196, "Veia Cefálica (braço)", "v"],
   ["V. basílica", 182, 236, "Veia Basílica (braço)", "v"],
@@ -100,10 +114,30 @@ function corPonto(sitio, s) {
   return ok === null ? "#ffffff" : ok ? COR_OK : COR_LESAO_ENXERTO;
 }
 
+// Stent e estenose em veia central aparecem mesmo sem o tipo de FAV escolhido.
+function DesenhoStentFAV({ enx }) {
+  if (!enx.stent) return null;
+  const tr = trechoDoLocal(enx.stentLocal || "Veia subclávia", CURVAS_FAV[enx.tipo]);
+  if (!tr) return null;
+  const id = enx.stentStatus === "Ocluído" ? "ocluido" : enx.stentStatus === "Com reestenose" ? "reestenose" : "pervio";
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      {id === "ocluido" && <path d={fita(tr.c, tr.ta, tr.tb, 1.1)} fill={COR_ART.ocluida} />}
+      <path d={fita(tr.c, tr.ta, tr.tb, 1.2)} fill={`url(#fav-stent-${id})`} stroke="#2b2f33" strokeWidth={0.6} />
+    </g>
+  );
+}
+
 function DesenhoFistula({ enx }) {
   const tipo = enx.tipo;
   const c = CURVAS_FAV[tipo];
-  if (!c) return null;
+  const central = enx.estenose && ["Veia subclávia", "Veia axilar", "Veia braquiocefálica"].includes(enx.estenoseLocal);
+  const marcaCentral = central && (() => {
+    const tr = trechoDoLocal(enx.estenoseLocal);
+    const p = pontoEm(tr.c, (tr.ta + tr.tb) / 2);
+    return <circle cx={p.x} cy={p.y} r={7} fill="none" stroke={COR_LESAO_ENXERTO} strokeWidth={2.4} style={{ pointerEvents: "none" }} />;
+  })();
+  if (!c) return marcaCentral || null;
   const protese = ehProtese(tipo);
   const ocluida = enx.status !== "Pérvia";
   const cor = ocluida ? COR_ENXERTO.ocluido : protese ? COR_ENXERTO.pervio : COR_ARTERIALIZADA;
@@ -120,7 +154,8 @@ function DesenhoFistula({ enx }) {
       <path d={linha(c)} fill="none" stroke="#ffffff" strokeWidth={c.amostras[0].hw * 2 + 3} strokeLinecap="round" opacity={0.9} />
       <path d={linha(c)} fill="none" stroke={cor} strokeWidth={c.amostras[0].hw * 2} strokeLinecap="round" strokeDasharray={ocluida ? "6 4" : undefined} />
       {enx.tromboParcial && !ocluida && <path d={fita(c, Math.max(0, tAneur - 0.06), Math.min(1, tAneur + 0.06), 0.45)} fill={COR_ART.trombo} />}
-      {enx.estenose && (() => { const p = pontoEm(c, tEst); return <circle cx={p.x} cy={p.y} r={6.5} fill="none" stroke={COR_LESAO_ENXERTO} strokeWidth={2.4} />; })()}
+      {enx.estenose && !central && (() => { const p = pontoEm(c, tEst); return <circle cx={p.x} cy={p.y} r={6.5} fill="none" stroke={COR_LESAO_ENXERTO} strokeWidth={2.4} />; })()}
+      {marcaCentral}
       <circle cx={anast.x} cy={anast.y} r={4.2} fill="#ffffff" stroke={protese ? COR_ENXERTO.pervio : COR_ARTERIALIZADA} strokeWidth={2} />
     </g>
   );
@@ -139,13 +174,16 @@ export function DesenhoFAV({ lado, extra, onSelecionar, selecionado, width = "10
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${BRACO_W} ${BRACO_H}`} width={width} height={height} style={style}>
       <g transform={mirrored ? `translate(${BRACO_W},0) scale(-1,1)` : undefined}>
+        <PadroesStent prefixo="fav" />
         <path d={SILHUETA_BRACO} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
         <path d={CLAVICULA} fill="none" stroke="#c9a27a" strokeWidth={2.2} strokeLinecap="round" opacity={0.7} />
         {CURVAS_BRAQUIAIS.map((c, i) => <path key={i} d={fita(c)} fill={veiaRuim("Veias Braquiais") ? COR_VEIA_RUIM : COR_VEIA} opacity={confeccao ? 0.7 : 0.4} />)}
         {ARTERIAS_DESENHO.map((n) => <path key={n} d={fita(CURVAS_ART[n])} fill={COR_ART.normal} />)}
         <path d={linha(ARCO_PALMAR)} fill="none" stroke="#e8b4ae" strokeWidth={2} />
         {VEIAS_DESENHO.map((n) => <path key={n} d={fita(CURVAS_VEI[n])} fill={veiaRuim(n) ? COR_VEIA_RUIM : COR_VEIA} opacity={confeccao ? 1 : 0.55} />)}
+        <path d={fita(CURVA_BRAQUIOCEFALICA)} fill="#a9c6e2" opacity={confeccao ? 1 : 0.7} />
         {!confeccao && <DesenhoFistula enx={enx} />}
+        {!confeccao && <DesenhoStentFAV enx={enx} />}
         {!confeccao && onSelecionar && CURVAS_FAV[enx.tipo] && (
           <path d={linha(CURVAS_FAV[enx.tipo])} fill="none" stroke={selecionado === "fav" ? "#0eb8d0" : "#000"} strokeOpacity={selecionado === "fav" ? 0.35 : 0.001}
             strokeWidth={16} strokeLinecap="round" style={{ cursor: "pointer" }} onClick={() => onSelecionar("fav")} />
@@ -218,7 +256,7 @@ const ITENS_AVALIACAO = [
 ];
 const itensLegenda = (modo) => (modo === "Avaliação" ? ITENS_AVALIACAO : ITENS_CONFECCAO);
 const textoLegenda = (modo) => (modo === "Avaliação"
-  ? "Círculo branco = anastomose · círculo laranja = estenose · dilatação = aneurisma · cinza = trombo · R = roubo"
+  ? "Círculo branco = anastomose · círculo laranja = estenose · malha = stent (laranja = reestenose) · dilatação = aneurisma · cinza = trombo · R = roubo"
   : "Clique em um ponto para medir · número = diâmetro em mm · ponto branco = não medido");
 
 function LegendaFAV({ modo }) {

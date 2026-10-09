@@ -10,6 +10,8 @@ import {
   tipoFavOptions,
   statusFavOptions,
   localLesaoFavOptions,
+  localStentFavOptions,
+  stentFavStatusOptions,
   ehProtese,
 } from "../utils/favLaudo";
 
@@ -104,6 +106,8 @@ export function CamposAvaliacaoFAV({ avaliacao, onChange }) {
         <CampoCheck label="Colaterais" checked={a.colaterais} onChange={(v) => set("colaterais", v)} />
         <CampoCheck label="Roubo (fluxo retrógrado distal)" checked={a.roubo} onChange={(v) => set("roubo", v)} />
         <CampoCheck label="Hematoma / coleção" checked={a.hematoma} onChange={(v) => set("hematoma", v)} />
+        <CampoCheck label="Stent" checked={a.stent}
+          onChange={(v) => onChange(v ? { ...a, stent: true, stentLocal: a.stentLocal || "Veia subclávia", stentStatus: a.stentStatus || "Pérvio" } : { ...a, stent: false, stentLocal: "", stentStatus: "" })} />
       </div>
 
       {a.estenose && (
@@ -111,6 +115,12 @@ export function CamposAvaliacaoFAV({ avaliacao, onChange }) {
           <CampoSelect label="Local da estenose:" value={a.estenoseLocal} options={locais} placeholder="Selecione" onChange={(v) => set("estenoseLocal", v)} />
           <Medida label="% de estenose:" value={a.estenosePercentual} onChange={(v) => set("estenosePercentual", v)} unidade="%" step="1" />
           <Medida label="VPS na estenose (cm/s):" value={a.estenosePsv} onChange={(v) => set("estenosePsv", v)} unidade="cm/s" step="1" />
+        </div>
+      )}
+      {a.stent && (
+        <div style={gradeDestaque}>
+          <CampoSelect label="Local do stent:" value={a.stentLocal} options={localStentFavOptions(a.tipo)} placeholder="Selecione" onChange={(v) => set("stentLocal", v)} />
+          <CampoSelect label="Situação do stent:" value={a.stentStatus} options={stentFavStatusOptions} onChange={(v) => set("stentStatus", v)} />
         </div>
       )}
       {a.aneurisma && (

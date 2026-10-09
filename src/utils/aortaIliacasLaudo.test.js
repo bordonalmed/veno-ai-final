@@ -6,6 +6,7 @@ import {
   descreverArteria,
   normalizarArterias,
   ARTERIAS,
+  normalizarExtra,
 } from "./aortaIliacasLaudo";
 
 function exame(alt) {
@@ -73,6 +74,18 @@ describe("Aorta e ilíacas: laudo", () => {
     // pérvio ignora local que tenha ficado salvo
     expect(getConclusaoMembro(arteriasPadrao(), { enxerto: { tipo: "Enxerto aorto-bi-ilíaco", status: "Pérvio", local: "Ramo direito" } }))
       .toEqual(["Enxerto aorto-bi-ilíaco pérvio"]);
+  });
+
+  it("aorto-uni-ilíaca esquerda com fêmoro-femoral cruzado", () => {
+    const ex = {
+      enxerto: { tipo: "Endoprótese aorto-uni-ilíaca esquerda", status: "Pérvio", endoleak: "Ausente" },
+      femoroFemoral: { presente: true, doadora: "Esquerda", status: "Com estenose", local: "Anastomose femoral direita" },
+    };
+    const t = gerarLaudoCompleto({ nome: "A", idade: "80", data: "2026-10-09", arterias: arteriasPadrao(), extra: ex });
+    expect(t).toContain("ENDOPRÓTESE / ENXERTO\nEndoprótese aorto-uni-ilíaca esquerda pérvia, sem sinais de vazamento (endoleak).\nEnxerto fêmoro-femoral cruzado (da femoral esquerda para a direita) com estenose na anastomose femoral direita.");
+    expect(getConclusaoMembro(arteriasPadrao(), { femoroFemoral: { presente: true, doadora: "Direita", status: "Pérvio" } }))
+      .toEqual(["Enxerto fêmoro-femoral cruzado (da femoral direita para a esquerda) pérvio"]);
+    expect(normalizarExtra({ enxerto: { tipo: "Endoprótese aorto-uni-ilíaca" } }).enxerto.tipo).toBe("Endoprótese aorto-uni-ilíaca direita");
   });
 
   it("exame salvo antigo ganha os campos novos", () => {
