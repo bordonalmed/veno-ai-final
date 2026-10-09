@@ -1,7 +1,7 @@
 // Testes de regressão do laudo do MMII Venoso — cobrem os cenários que já
 // causaram bug real nesta sessão (varizes não persistindo, extensão do
 // "ausente" não aparecendo, etc.) para pegar quebras futuras automaticamente.
-import { veiasProfundas, veiasSuperficiais, profOptions, supOptions, montarLaudo } from "./mmiiVenosoLaudo";
+import { veiasProfundas, veiasSuperficiais, profOptions, supOptions, montarLaudo, normalizarVarizesLado } from "./mmiiVenosoLaudo";
 
 function estadoBase() {
   return {
@@ -61,38 +61,35 @@ describe("montarLaudo — Safena Magna ausente com extensão (bug relatado pelo 
   });
 });
 
-describe("montarLaudo — varizes por região (bug: não persistia/recarregava)", () => {
-  it("agrupa tipos diferentes em regiões diferentes, no corpo e na conclusão", () => {
+describe("montarLaudo — varizes (pontos no desenho, laudo só com os tipos)", () => {
+  it("cita só os tipos, sem a localização, no corpo e na conclusão", () => {
     const laudo = montarUmLado({
-      varizes: { coxa: "Varizes Superficiais", perna: "Varizes Reticulares", tornozelo: "", pe: "Microvarizes" },
+      varizes: { antCoxaProximal: "Microvarizes", antPernaMedia: "Varizes Superficiais", postPernaDistal: "Varizes Reticulares", postPe: "Microvarizes" },
     });
-    expect(laudo).toContain("Varizes Superficiais em Coxa.");
-    expect(laudo).toContain("Varizes Reticulares em Perna.");
-    expect(laudo).toContain("Microvarizes em Pé.");
-    // conclusão repete as mesmas linhas
-    const conclusaoIdx = laudo.indexOf("CONCLUSÃO:");
-    const conclusao = laudo.slice(conclusaoIdx);
-    expect(conclusao).toContain("Varizes Superficiais em Coxa.");
-    expect(conclusao).toContain("Microvarizes em Pé.");
+    expect(laudo).toContain("Varizes superficiais, varizes reticulares e microvarizes.");
+    expect(laudo).not.toMatch(/coxa|perna média|pé\./i);
+    const conclusao = laudo.slice(laudo.indexOf("CONCLUSÃO:"));
+    expect(conclusao).toContain("Varizes superficiais, varizes reticulares e microvarizes.");
   });
 
-  it("agrupa a mesma região junto quando o tipo é igual", () => {
-    const laudo = montarUmLado({
-      varizes: { coxa: "Microvarizes", perna: "Microvarizes", tornozelo: "", pe: "" },
-    });
-    expect(laudo).toContain("Microvarizes em Coxa, Perna.");
+  it("um tipo só", () => {
+    expect(montarUmLado({ varizes: { antCoxaMedia: "Varizes Reticulares", postCoxaMedia: "Varizes Reticulares" } }))
+      .toContain("Varizes reticulares.");
   });
 
-  it("aceita o formato antigo {tipo, localizacao} (exames salvos antes da migração)", () => {
-    const laudo = montarUmLado({
-      varizes: { tipo: "Varizes Reticulares", localizacao: ["coxa", "tornozelo"] },
-    });
-    expect(laudo).toContain("Varizes Reticulares em Coxa, Tornozelo.");
+  it("formatos antigos ({coxa, perna...} e {tipo, localizacao}) continuam valendo", () => {
+    expect(montarUmLado({ varizes: { coxa: "Varizes Superficiais", perna: "", tornozelo: "", pe: "Microvarizes" } }))
+      .toContain("Varizes superficiais e microvarizes.");
+    expect(montarUmLado({ varizes: { tipo: "Varizes Reticulares", localizacao: ["coxa", "tornozelo"] } }))
+      .toContain("Varizes reticulares.");
+    const n = normalizarVarizesLado({ coxa: "Microvarizes", tornozelo: "Varizes Reticulares" });
+    expect(n.antCoxaMedia).toBe("Microvarizes");
+    expect(n.postTornozelo).toBe("Varizes Reticulares");
+    expect(Object.keys(n)).toHaveLength(16);
   });
 
   it("sem nenhuma variz marcada, não imprime nada sobre varizes", () => {
-    const laudo = montarUmLado();
-    expect(laudo).not.toContain("Varizes");
+    expect(montarUmLado()).not.toContain("arizes");
   });
 });
 
@@ -145,7 +142,7 @@ describe("montarLaudo — lado 'Ambos'", () => {
     expect(blocos[0]).toContain("MEMBRO INFERIOR DIREITO");
     expect(blocos[0]).toContain("Insuficiência total da safena magna");
     expect(blocos[1]).toContain("MEMBRO INFERIOR ESQUERDO");
-    expect(blocos[1]).toContain("Microvarizes em Coxa.");
+    expect(blocos[1]).toContain("Microvarizes.");
     // achado do Direito não vaza pro bloco do Esquerdo
     expect(blocos[1]).not.toContain("Insuficiência total da safena magna");
   });

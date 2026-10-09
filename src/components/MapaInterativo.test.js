@@ -1,6 +1,6 @@
 // Testes de regressão geométrica dos ícones de variz do Mapa Interativo.
 //
-// Os 4 pontos (coxa/perna/tornozelo/pé) ficam numa faixa estreita entre o
+// Os 16 pontos (8 por face) ficam numa faixa estreita entre o
 // contorno da perna e a Safena Magna (coxa/perna) ou perto do tornozelo —
 // já tivemos o ícone (então um círculo simples) vazando ligeiramente da
 // perna ali. Esses testes conferem a elipse inteira (32 pontos ao redor,
@@ -14,7 +14,13 @@ import {
   interpAt,
 } from "../utils/vascularMapping";
 import { pontosDoPath, pontoDentroDaFaixa, faixaXNaAltura } from "../utils/svgPathBounds";
-import { VARIZ_SPOTS, VARIZ_ICON_RX, VARIZ_ICON_RY_VAZIO, VARIZ_ICON_RY_TIPO } from "./MapaInterativo";
+import { VARIZ_SPOTS, VARIZ_ICON_RX as RX, VARIZ_ICON_RY_VAZIO as RY_VAZIO, VARIZ_ICON_RY_TIPO as RY_TIPO, VARIZ_ESCALA } from "./MapaInterativo";
+import { varizesRegioes } from "../utils/mmiiVenosoLaudo";
+
+// os ícones são desenhados em escala reduzida (8 pontos por vista)
+const VARIZ_ICON_RX = RX * VARIZ_ESCALA;
+const VARIZ_ICON_RY_VAZIO = RY_VAZIO * VARIZ_ESCALA;
+const VARIZ_ICON_RY_TIPO = RY_TIPO * VARIZ_ESCALA;
 
 const silhuetaMedial = pontosDoPath(MEDIAL_SILHOUETTE);
 const silhuetaPosterior = pontosDoPath(POSTERIOR_SILHOUETTE);
@@ -35,10 +41,10 @@ function bordasDaVeia(y) {
   return { esquerda: x - half, direita: x + half, centro: x };
 }
 
-describe("VARIZ_SPOTS — 4 regiões definidas (coxa/perna/tornozelo/pé)", () => {
+describe("VARIZ_SPOTS — 16 pontos (8 na face anterior, 8 na posterior)", () => {
   it("cada região tem uma posição e uma vista associada", () => {
     const regioes = VARIZ_SPOTS.map((s) => s.regiao).sort();
-    expect(regioes).toEqual(["coxa", "pe", "perna", "tornozelo"]);
+    expect(regioes).toEqual([...varizesRegioes].sort());
     VARIZ_SPOTS.forEach((spot) => {
       expect(["medial", "posterior"]).toContain(spot.view);
     });
@@ -63,7 +69,8 @@ describe("Ícones de variz — a elipse inteira fica dentro do desenho da perna"
       });
     });
 
-    if (spot.view === "medial") {
+    // o pé fica abaixo do fim da Safena Magna (tornozelo)
+    if (spot.view === "medial" && spot.y - VARIZ_ICON_RY_TIPO < VSM_SPINE[VSM_SPINE.length - 1][1]) {
       it(`${spot.regiao} não invade a Safena Magna (maior elipse, lado do ícone virado pra veia)`, () => {
         const iconeADireitaDaVeia = spot.x > bordasDaVeia(spot.y).centro;
         const pontos = pontosDaElipse(spot.x, spot.y, VARIZ_ICON_RX, VARIZ_ICON_RY_TIPO);

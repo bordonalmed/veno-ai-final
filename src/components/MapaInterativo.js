@@ -21,7 +21,7 @@ import {
 import { SafenaMagnaExtra, SafenaParvaExtra } from "./SafenaExtraFields";
 import {
   profOptions, supOptions, perfurantesStatusOptions, perfurantesSegmentoOptions,
-  varizesTipoOptions, varizesRegiaoLabel,
+  varizesTipoOptions, varizesRegiaoLabel, normalizarVarizesLado,
   montarLaudo,
 } from "../utils/mmiiVenosoLaudo";
 
@@ -96,7 +96,14 @@ export const VARIZ_ICON_RY_TIPO = 20.25;
 
 // Ícone por tipo de variz, "colado" na região clicada — sem tipo, mostra um
 // círculo tracejado com "+" (toque pra marcar).
-function VarizIcon({ tipo, cx, cy, ativo }) {
+function VarizIcon({ tipo, cx, cy, ativo, escala = 1 }) {
+  if (escala !== 1) {
+    return (
+      <g transform={`translate(${cx},${cy}) scale(${escala}) translate(${-cx},${-cy})`}>
+        <VarizIcon tipo={tipo} cx={cx} cy={cy} ativo={ativo} />
+      </g>
+    );
+  }
   const cor = VARIZ_CORES[tipo];
   if (!tipo) {
     return (
@@ -143,16 +150,28 @@ export function VarizLegendaIcone({ tipo }) {
   );
 }
 
-// Posições fixas dos 4 marcadores de variz (coxa/perna/tornozelo/pé), recentradas
-// na faixa livre entre o contorno da perna e a Safena Magna (verificado
-// programaticamente, com folga) pra caber o ícone maior definido acima. O
-// pé fica na vista posterior, abaixo do tornozelo, onde o desenho já alarga
-// bastante (bem mais espaço ali do que perto do tornozelo).
+// Pontos de variz: 8 na face anterior (vista "medial" do desenho, com a
+// safena magna) e 8 na posterior. Ícone em 70% do tamanho para caber 8 por
+// vista, cada um na faixa livre entre o contorno da perna e as veias
+// (conferido em vascularMapping.test.js).
+export const VARIZ_ESCALA = 0.7;
 export const VARIZ_SPOTS = [
-  { regiao: "coxa", view: "medial", x: 159, y: 150 },
-  { regiao: "perna", view: "medial", x: 171, y: 420 },
-  { regiao: "tornozelo", view: "posterior", x: 156, y: 540 },
-  { regiao: "pe", view: "posterior", x: 150, y: 595 },
+  { regiao: "antCoxaProximal", view: "medial", x: 157, y: 95 },
+  { regiao: "antCoxaMedia", view: "medial", x: 160, y: 175 },
+  { regiao: "antCoxaDistal", view: "medial", x: 162.5, y: 235 },
+  { regiao: "antPernaProximal", view: "medial", x: 136, y: 375 },
+  { regiao: "antPernaMedia", view: "medial", x: 134, y: 435 },
+  { regiao: "antPernaDistal", view: "medial", x: 134, y: 495 },
+  { regiao: "antTornozelo", view: "medial", x: 131, y: 538 },
+  { regiao: "antPe", view: "medial", x: 148, y: 594 },
+  { regiao: "postCoxaProximal", view: "posterior", x: 150, y: 95 },
+  { regiao: "postCoxaMedia", view: "posterior", x: 150, y: 175 },
+  { regiao: "postCoxaDistal", view: "posterior", x: 150, y: 255 },
+  { regiao: "postPernaProximal", view: "posterior", x: 170, y: 368 },
+  { regiao: "postPernaMedia", view: "posterior", x: 167, y: 467 },
+  { regiao: "postPernaDistal", view: "posterior", x: 162, y: 507 },
+  { regiao: "postTornozelo", view: "posterior", x: 153, y: 550 },
+  { regiao: "postPe", view: "posterior", x: 150, y: 597 },
 ];
 
 const PROFUNDA_LABELS = {
@@ -179,7 +198,7 @@ export function DesenhoMMIIVenoso({
   const m = magna || {};
   const pv = parva || {};
   const perfs = Array.isArray(perfurantes) ? perfurantes : [];
-  const vz = varizes || {};
+  const vz = normalizarVarizesLado(varizes);
   const interativo = typeof onSelecionar === "function";
   const selecionar = (tipo, key) => { if (interativo) onSelecionar(tipo, key); };
   const clicavel = interativo ? { cursor: "pointer" } : undefined;
@@ -258,7 +277,7 @@ export function DesenhoMMIIVenoso({
             const ativo = chaveAtiva === chave;
             return (
               <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
-                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
+                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} escala={VARIZ_ESCALA} />
               </g>
             );
           })}
@@ -294,7 +313,7 @@ export function DesenhoMMIIVenoso({
             const ativo = chaveAtiva === chave;
             return (
               <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
-                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} />
+                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} escala={VARIZ_ESCALA} />
               </g>
             );
           })}
@@ -331,7 +350,7 @@ export default function MapaInterativo({
   const m = magna?.[l] || {};
   const pv = parva?.[l] || {};
   const perfs = Array.isArray(perfurantes?.[l]) ? perfurantes[l] : [];
-  const vz = varizes?.[l] || {};
+  const vz = normalizarVarizesLado(varizes?.[l]);
 
   function selecionar(tipo, key) {
     setSelecionado({ tipo, key });
