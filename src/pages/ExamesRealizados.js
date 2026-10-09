@@ -8,6 +8,7 @@ import { FaHospital } from "react-icons/fa";
 import { GiLeg } from "react-icons/gi";
 import examesRealtimeService from "../services/examesRealtimeService";
 import { TrialManager } from "../utils/trialManager";
+import { carimbarMarcaVenoAIPdfLib } from "../utils/pdfMarca";
 
 // Helpers para exames salvos (localStorage)
 const STORAGE_KEY_TO_LABEL = {
@@ -162,6 +163,7 @@ async function gerarPDFExame(exame) {
       }
     }
     
+    carimbarMarcaVenoAIPdfLib(doc, font, rgb);
     const pdfBytes = await doc.save();
     const dataArquivo = (exame.data && formatarDataDiaMesAno(exame.data)) ? formatarDataDiaMesAno(exame.data).replace(/\//g, "-") : "sem_data";
     const nomeArquivo = `Laudo_${(exame.nome || "paciente").replace(/\s+/g,"_")}_${dataArquivo}.pdf`;

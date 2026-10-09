@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import jsPDF from "jspdf";
+import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import {
@@ -301,6 +302,7 @@ export default function EsquemaMapeamentoModal({
       }
 
       const nomeArquivo = `Mapeamento_Venoso_${nome ? nome.replace(/\s+/g, "_") : "exame"}${data ? "_" + data : ""}.pdf`;
+      carimbarMarcaVenoAI(doc);
       doc.save(nomeArquivo);
     } catch (e) {
       console.error("Erro ao gerar PDF do esquema de mapeamento:", e);

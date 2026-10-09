@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { FiSettings, FiHome, FiList, FiLogOut, FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import laudoSyncService from '../services/laudoSyncService';
@@ -767,6 +768,8 @@ function CarotidasVertebrais() {
     const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
 
     const doc = new jsPDF();
+    // Fonte do corpo do laudo: 11, ou 10 quando é preciso para caber numa página.
+    let fonteCorpo = 11;
 
     function addCabecalho(y) {
       let yLogo = 14;
@@ -789,9 +792,11 @@ function CarotidasVertebrais() {
         doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
       });
       doc.setFont(undefined, "normal");
-      doc.setFontSize(11);
-      // Retorna posição Y após logo + espaço + margem superior
-      return yLogo + logoHeight + logoSpacing;
+      doc.setFontSize(fonteCorpo);
+      // Só reserva a altura do logo quando há logo; sem logo, o texto sobe.
+      if (logoClinica) return yLogo + logoHeight + logoSpacing;
+      if (cabecalho.length) return yLogo + 5 + (cabecalho.length - 1) * 5 + 10;
+      return 20;
     }
 
     function addRodape() {
@@ -807,7 +812,7 @@ function CarotidasVertebrais() {
       if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
       if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
       if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
-      doc.setFontSize(11);
+      doc.setFontSize(fonteCorpo);
     }
 
     // Função auxiliar para quebrar conclusão por travessões
@@ -849,6 +854,24 @@ function CarotidasVertebrais() {
 
     let y = addCabecalho(12);
     const linhas = laudo.split("\n");
+    // Espaçamento adaptável (igual ao MMII venoso): se não cabe numa página
+    // com linhas de 8 mm, aproxima as linhas (até 5,2 mm) e, se ainda faltar
+    // espaço, usa fonte 10 (até 4,8 mm). Linha em branco ocupa meia linha.
+    const limite = assinaturaMedico ? 265 : 270;
+    const contarLinhas = () => {
+      doc.setFont(undefined, "bold");
+      const n = linhas.reduce((acc, l) => acc + (l.trim() === "" ? 0.5 : quebrarTexto(l, 0, 15).length), 0);
+      doc.setFont(undefined, "normal");
+      return n + 1; // folga para quebras que a conta não prevê
+    };
+    fonteCorpo = 11;
+    doc.setFontSize(fonteCorpo);
+    let passo = Math.min(8, (limite - y) / contarLinhas());
+    if (passo < 5.2) {
+      fonteCorpo = 10;
+      doc.setFontSize(fonteCorpo);
+      passo = Math.max(4.8, Math.min(8, (limite - y) / contarLinhas()));
+    }
     let inConclusao = false;
     let inObservacoes = false;
 
@@ -859,34 +882,33 @@ function CarotidasVertebrais() {
         const linhasQuebradas = quebrarTexto(line, 0, 15);
         linhasQuebradas.forEach(linha => {
           doc.text(linha, 15, y);
-          y += 8;
+          y += passo;
         });
         doc.setFont(undefined, "normal");
-        y -= 8; // Ajuste para não ter espaço extra
+        y -= passo; // Ajuste para não ter espaço extra
       } else if (line.startsWith("**") && line.endsWith("**")) {
         doc.setFont(undefined, "bold");
         const textoLimpo = line.replace(/\*\*/g, "");
         const linhasQuebradas = quebrarTexto(textoLimpo, 0, 15);
         linhasQuebradas.forEach(linha => {
           doc.text(linha, 15, y);
-          y += 8;
+          y += passo;
         });
         doc.setFont(undefined, "normal");
-        y -= 8; // Ajuste para não ter espaço extra
+        y -= passo; // Ajuste para não ter espaço extra
       } else if (line.startsWith("**CONCLUSÃO:**")) {
         doc.setFont(undefined, "bold");
         doc.text("CONCLUSÃO:", 15, y);
         doc.setFont(undefined, "normal");
         inConclusao = true;
         inObservacoes = false;
-        y += 8;
+        y += passo;
       } else if (line.startsWith("OBSERVAÇÕES") || line.startsWith("**OBSERVAÇÕES**")) {
         doc.setFont(undefined, "bold");
         doc.text("OBSERVAÇÕES:", 15, y);
         doc.setFont(undefined, "normal");
         inConclusao = false;
         inObservacoes = true;
-        y += 8;
       } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("**") && !line.startsWith("OBSERVAÇÕES")) {
         // Processar conclusão: quebrar por travessões
         const linhasConclusao = processarConclusao(line);
@@ -896,43 +918,43 @@ function CarotidasVertebrais() {
           const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
           const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
           linhasQuebradas.forEach(linha => {
-            if (y > 265) {
+            if (y > limite) {
               addRodape();
               doc.addPage();
               y = addCabecalho(12);
             }
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
         });
         doc.setFont(undefined, "normal");
-        y -= 8; // Ajuste para não ter espaço extra
+        y -= passo; // Ajuste para não ter espaço extra
       } else if (inObservacoes && line && line.trim() !== "") {
         // Quebrar observações longas respeitando margens
         doc.setFont(undefined, "normal");
         const linhasQuebradas = quebrarTexto(line, 0, 15);
         linhasQuebradas.forEach(linha => {
-          if (y > 265) {
+          if (y > limite) {
             addRodape();
             doc.addPage();
             y = addCabecalho(12);
           }
           doc.text(linha, 15, y);
-          y += 8;
+          y += passo;
         });
-        y -= 8; // Ajuste para não ter espaço extra
+        y -= passo; // Ajuste para não ter espaço extra
       } else {
         doc.setFont(undefined, "normal");
         // Quebrar linhas longas também
         const linhasQuebradas = quebrarTexto(line, 0, 15);
         linhasQuebradas.forEach(linha => {
-          if (y > 265) {
+          if (y > limite) {
             addRodape();
             doc.addPage();
             y = addCabecalho(12);
           }
           doc.text(linha, 15, y);
-          y += 8;
+          y += passo;
         });
         if (inConclusao && line && line.trim() === "") {
           inConclusao = false;
@@ -940,10 +962,10 @@ function CarotidasVertebrais() {
         if (inObservacoes && line && line.trim() === "") {
           inObservacoes = false;
         }
-        y -= 8; // Ajuste para não ter espaço extra
+        y -= passo; // Ajuste para não ter espaço extra
       }
-      y += 8;
-      if (y > 265) {
+      y += line.trim() === "" ? passo / 2 : passo;
+      if (y > limite && i < linhas.length - 1) {
         addRodape();
         doc.addPage();
         y = addCabecalho(12);
@@ -961,6 +983,7 @@ function CarotidasVertebrais() {
       }
     }
 
+    carimbarMarcaVenoAI(doc);
     doc.save(`Laudo_${nome}_${data}.pdf`);
 
     setNome("");

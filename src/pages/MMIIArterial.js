@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
 import { CamposArteria, CamposEnxerto } from "../components/CamposArteria";
@@ -286,6 +287,8 @@ function MMIIArterial() {
     const assinaturaMedico = localStorage.getItem("assinaturaMedico") || null;
 
     const doc = new jsPDF();
+    // Fonte do corpo do laudo: 11, ou 10 quando é preciso para caber numa página.
+    let fonteCorpo = 11;
     const lados = ladosDoExame(lado);
     const cabecalhoPaciente = gerarCabecalhoLaudo({ nome, idade, data });
 
@@ -312,9 +315,11 @@ function MMIIArterial() {
         doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
       });
       doc.setFont(undefined, "normal");
-      doc.setFontSize(11);
-      // Retorna posição Y após logo + espaço + margem superior
-      return yLogo + logoHeight + logoSpacing;
+      doc.setFontSize(fonteCorpo);
+      // Só reserva a altura do logo quando há logo; sem logo, o texto sobe.
+      if (logoClinica) return yLogo + logoHeight + logoSpacing;
+      if (cabecalho.length) return yLogo + 5 + (cabecalho.length - 1) * 5 + 10;
+      return 20;
     }
 
     function addRodape() {
@@ -330,7 +335,7 @@ function MMIIArterial() {
       if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
       if (crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + crm, 200, yInfo, { align: "right" }); yInfo += 4; }
       if (especialidade) { doc.setFont(undefined, "normal"); doc.text(especialidade, 200, yInfo, { align: "right" }); yInfo += 4; }
-      doc.setFontSize(11);
+      doc.setFontSize(fonteCorpo);
     }
 
     // Função auxiliar para quebrar conclusão por travessões
@@ -378,6 +383,24 @@ function MMIIArterial() {
       const bloco = (cabecalhoPaciente + "\n" +
         gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos[ladoAtual])
       ).trim().split("\n");
+      // Espaçamento adaptável (igual ao MMII venoso): se não cabe numa página
+      // com linhas de 8 mm, aproxima as linhas (até 5,2 mm) e, se ainda faltar
+      // espaço, usa fonte 10 (até 4,8 mm). Linha em branco ocupa meia linha.
+      const limite = assinaturaMedico ? 265 : 270;
+      const contarLinhas = () => {
+        doc.setFont(undefined, "bold");
+        const n = bloco.reduce((acc, l) => acc + (l.trim() === "" ? 0.5 : quebrarTexto(l, 0, 15).length), 0);
+        doc.setFont(undefined, "normal");
+        return n + 1; // folga para quebras que a conta não prevê
+      };
+      fonteCorpo = 11;
+      doc.setFontSize(fonteCorpo);
+      let passo = Math.min(8, (limite - y) / contarLinhas());
+      if (passo < 5.2) {
+        fonteCorpo = 10;
+        doc.setFontSize(fonteCorpo);
+        passo = Math.max(4.8, Math.min(8, (limite - y) / contarLinhas()));
+      }
       let inConclusao = false;
       let inObservacoes = false;
       for (let i = 0; i < bloco.length; i++) {
@@ -388,39 +411,38 @@ function MMIIArterial() {
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO INFERIOR")) {
           doc.setFont(undefined, "bold");
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else if (line.startsWith("CONCLUSÃO") || line.startsWith("Sistema Arterial")) {
           doc.setFont(undefined, "bold");
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           if (line.startsWith("CONCLUSÃO")) {
             inConclusao = true;
             inObservacoes = false;
           }
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else if (line.startsWith("OBSERVAÇÕES")) {
           doc.setFont(undefined, "bold");
           doc.text(line, 15, y);
           doc.setFont(undefined, "normal");
           inConclusao = false;
           inObservacoes = true;
-          y += 8;
         } else if (inConclusao && line && line.trim() !== "" && !line.startsWith("OBSERVAÇÕES") && !line.startsWith("=")) {
           // Processar conclusão: quebrar por travessões
           const linhasConclusao = processarConclusao(line);
@@ -430,43 +452,43 @@ function MMIIArterial() {
             const linhaFormatada = linhaConclusao.startsWith('-') ? linhaConclusao : `- ${linhaConclusao}`;
             const linhasQuebradas = quebrarTexto(linhaFormatada, 0, 15);
             linhasQuebradas.forEach(linha => {
-              if (y > 265) {
+              if (y > limite) {
                 addRodape();
                 doc.addPage();
                 y = addCabecalho(12);
               }
               doc.text(linha, 15, y);
-              y += 8;
+              y += passo;
             });
           });
           doc.setFont(undefined, "normal");
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else if (inObservacoes && line && line.trim() !== "") {
           // Quebrar observações longas respeitando margens
           doc.setFont(undefined, "normal");
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
-            if (y > 265) {
+            if (y > limite) {
               addRodape();
               doc.addPage();
               y = addCabecalho(12);
             }
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         } else {
           doc.setFont(undefined, "normal");
           // Quebrar linhas longas também
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
-            if (y > 265) {
+            if (y > limite) {
               addRodape();
               doc.addPage();
               y = addCabecalho(12);
             }
             doc.text(linha, 15, y);
-            y += 8;
+            y += passo;
           });
           if (inConclusao && line && line.trim() === "") {
             inConclusao = false;
@@ -474,11 +496,11 @@ function MMIIArterial() {
           if (inObservacoes && line && line.trim() === "") {
             inObservacoes = false;
           }
-          y -= 8; // Ajuste para não ter espaço extra
+          y -= passo; // Ajuste para não ter espaço extra
         }
-        y += 8;
+        y += line.trim() === "" ? passo / 2 : passo;
         // Só abre página nova se ainda houver linhas (evita página em branco).
-        if (y > 265 && i < bloco.length - 1) {
+        if (y > limite && i < bloco.length - 1) {
           addRodape();
           doc.addPage();
           y = addCabecalho(12);
@@ -495,6 +517,7 @@ function MMIIArterial() {
     // Adicionar anexos como páginas no final do PDF
     appendImagesToPdf(doc, anexos);
     
+    carimbarMarcaVenoAI(doc);
     doc.save(`Laudo_${nome}_${data}.pdf`);
   }
 
