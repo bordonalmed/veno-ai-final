@@ -109,13 +109,13 @@ export function PreviewImagemPdf({ titulo, onFechar, children }) {
 
 export default function MapaLayout({
   titulo,
-  subtitulo = "Toque num vaso do desenho para preencher. O laudo é atualizado em tempo real.",
+  subtitulo = "Clique em um vaso do desenho para preencher. O laudo é atualizado em tempo real.",
   onFechar,
   lado, ladoAtivo, onTrocarLado,
   desenho,
   legenda,
   painel, tituloPainel, onFecharPainel,
-  placeholderPainel = "Toque em um vaso no desenho para registrar o achado.",
+  placeholderPainel = "Clique em um vaso no desenho para registrar o achado.",
   conteudo,
   incluirPdf, onIncluirPdf, labelIncluirPdf = "Incluir Mapeamento no PDF",
   onVisualizarImagem,
