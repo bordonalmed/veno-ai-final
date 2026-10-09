@@ -16,12 +16,8 @@ export function appendImagesToPdf(pdf, anexos, { margin = 15, titleSpace = 25 } 
     return;
   }
 
-  console.log('Processando anexos:', anexos.length, 'anexos encontrados');
-
   anexos.forEach((anexo, index) => {
     try {
-      console.log(`Processando anexo ${index + 1}:`, anexo.name);
-      
       pdf.addPage();
       
       // Adicionar título da imagem
@@ -37,11 +33,22 @@ export function appendImagesToPdf(pdf, anexos, { margin = 15, titleSpace = 25 } 
       const availableWidth = pageWidth - (margin * 2);
       const availableHeight = pageHeight - titleSpace - (margin * 2);
       
-      // Adicionar a imagem centralizada e redimensionada para aproveitar toda a página
-      // Usar thumbnail como no MMII Venoso
-      pdf.addImage(anexo.thumbnail, 'PNG', margin, titleSpace, availableWidth, availableHeight);
-      
-      console.log(`Anexo ${index + 1} adicionado com sucesso`);
+      // Cabe na área disponível SEM distorcer: mantém a proporção da foto
+      // (antes ela era esticada para a página inteira) e centraliza.
+      const formato = /^data:image\/jpe?g/i.test(anexo.thumbnail || "") ? "JPEG" : "PNG";
+      let largura = availableWidth;
+      let altura = availableHeight;
+      try {
+        const props = pdf.getImageProperties(anexo.thumbnail);
+        const escala = Math.min(availableWidth / props.width, availableHeight / props.height);
+        largura = props.width * escala;
+        altura = props.height * escala;
+      } catch (e) {
+        // sem as dimensões, usa a área toda (comportamento antigo)
+      }
+      const x = margin + (availableWidth - largura) / 2;
+      pdf.addImage(anexo.thumbnail, formato, x, titleSpace, largura, altura);
+
     } catch (error) {
       console.error('Erro ao adicionar anexo ao PDF:', error);
       

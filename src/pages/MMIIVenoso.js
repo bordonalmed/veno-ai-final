@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
+import { appendImagesToPdf } from "../utils/pdfImages";
 import { FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
 import { FaStethoscope } from "react-icons/fa";
 import ExamHeader from "../components/ExamHeader";
@@ -824,31 +825,6 @@ function MMIIVenoso() {
       pagina++;
     });
 
-    // Adicionar anexos como páginas no final do PDF
-    anexos.forEach((anexo, index) => {
-      try {
-        doc.addPage();
-        // Adicionar título da imagem
-        doc.setFontSize(14);
-        doc.setFont(undefined, "bold");
-        doc.text(`Anexo ${index + 1}: ${anexo.name}`, 15, 20);
-
-        // Adicionar a imagem aproveitando melhor a página
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 15; // margem de 15mm
-        const titleSpace = 25; // espaço para o título
-
-        // Calcular dimensões disponíveis
-        const availableWidth = pageWidth - (margin * 2);
-        const availableHeight = pageHeight - titleSpace - (margin * 2);
-
-        // Adicionar a imagem centralizada e redimensionada para aproveitar toda a página
-        doc.addImage(anexo.thumbnail, 'PNG', margin, titleSpace, availableWidth, availableHeight);
-      } catch (e) {
-        console.error('Erro ao adicionar anexo ao PDF:', e);
-      }
-    });
 
     if (incluirEsquemaPdf) {
       try {
@@ -867,45 +843,12 @@ function MMIIVenoso() {
       }
     }
 
+    // Anexos por último (depois do mapeamento), sem distorcer as fotos.
+    appendImagesToPdf(doc, anexos);
+
     carimbarMarcaVenoAI(doc);
     doc.save(`Laudo_${nome}_${data}.pdf`);
-    // Limpar formulário para novo laudo
-    setNome("");
-    setIdade("");
-    setData("");
-    setLado("");
-    setProfundas({
-      Direito: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
-      Esquerdo: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
-    });
-    setSuperficiais({
-      Direito: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
-      Esquerdo: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
-    });
-    setMagna({
-      Direito: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
-      Esquerdo: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
-    });
-    setParva({
-      Direito: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
-      Esquerdo: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
-    });
-    setPerfurantes({
-      Direito: [{ status: "pérvia e competente", segmento: "", valor: "" }],
-      Esquerdo: [{ status: "pérvia e competente", segmento: "", valor: "" }]
-    });
-    setObservacoes({ Direito: '', Esquerdo: '' });
-    setLaudoTexto("");
-    setJsfDiametro({ Direito: "", Esquerdo: "" });
-    setJspDiametro({ Direito: "", Esquerdo: "" });
-    setVarizes({
-      Direito: { coxa: '', perna: '', tornozelo: '', pe: '' },
-      Esquerdo: { coxa: '', perna: '', tornozelo: '', pe: '' }
-    });
-    setAnexos([]);
-    setIncluirEsquemaPdf(false);
-    setErro("");
-    setMostrarMapa(false);
+    // O formulário continua preenchido (dá para ajustar e salvar de novo).
   }
 
   function handleVoltarMenu() {
