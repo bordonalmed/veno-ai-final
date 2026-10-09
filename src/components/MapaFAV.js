@@ -63,6 +63,8 @@ const GEOMETRIA_FAV = {
   "Radiocefálica (punho)": [[72, 548], [62, 548], [59, 500], [55, 440], [55, 384], [58, 342], [54, 290], [52, 232], [55, 174], [70, 128], [104, 112], [140, 124]],
   "Braquiocefálica (cotovelo)": [[99, 336], [80, 337], [62, 334], [56, 300], [52, 232], [55, 174], [70, 128], [104, 112], [140, 124]],
   "Braquiobasílica (com transposição)": [[104, 318], [96, 290], [91, 250], [95, 214], [106, 194], [117, 186]],
+  // anastomose braquial–intermédia, drenando pela cefálica do braço
+  "Braquiocefálica via veia intermédia do cotovelo": [[100, 348], [88, 356], [72, 364], [59, 368], [57, 345], [54, 290], [52, 232], [55, 174], [70, 128], [104, 112], [140, 124]],
   // anastomose braquial–intermédia, drenando pela basílica do braço
   "Braquiobasílica via veia intermédia do cotovelo": [[100, 346], [112, 343], [127, 338], [130, 296], [128, 252], [122, 216], [116, 188]],
   // veia braquial superficializada até a axilar
@@ -332,7 +334,7 @@ function BotaoModo({ ativo, children, onClick }) {
 }
 
 export function MapaInterativoFAV({
-  aberto, onFechar, lado, extra, onExtraChange, observacoes, onObservacoes, laudo,
+  aberto, onFechar, lado, ladoExame, onTrocarLado, extra, onExtraChange, observacoes, onObservacoes, laudo,
   incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onSalvarExame, embutido,
 }) {
   const [selecionado, setSelecionado] = useState(null);
@@ -376,6 +378,9 @@ export function MapaInterativoFAV({
         embutido={embutido}
         titulo="Fístula Arteriovenosa"
         onFechar={onFechar}
+        lado={ladoExame || lado}
+        ladoAtivo={lado}
+        onTrocarLado={onTrocarLado ? (op) => { setSelecionado(null); onTrocarLado(op); } : undefined}
         desenho={<DesenhoFAV lado={lado} extra={e} onSelecionar={setSelecionado} selecionado={selecionado} style={{ display: "block", width: "100%", maxWidth: 360, maxHeight: "74vh" }} />}
         legenda={legenda}
         painel={painel}

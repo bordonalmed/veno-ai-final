@@ -41,7 +41,9 @@ describe("FAV: confecção (mapeamento pré-operatório)", () => {
     const e = confeccao({ braquial: { diametro: "4" }, intermedia: { diametro: "3" }, basilicaBraco: { diametro: "4.5" }, braquialVeia: { diametro: "3.2" } });
     const t = gerarBlocoExame(e, "Direito");
     expect(t).toContain("Veia braquial (braço): pérvia, compressível, diâmetro de 3,2 mm.");
-    expect(t).toContain("FAV braquiocefálica (cotovelo), FAV braquiobasílica (com transposição), FAV braquiobasílica via veia intermédia do cotovelo, FAV braquiobraquial (com transposição).");
+    expect(t).toContain("Vasos com calibre adequado (>= 2,0 mm) para: FAV braquiobasílica (com transposição), FAV braquiobasílica via veia intermédia do cotovelo, FAV braquiobraquial (com transposição).");
+    const c = confeccao({ braquial: { diametro: "4" }, intermedia: { diametro: "3" }, cefalicaBraco: { diametro: "3.5" } });
+    expect(gerarBlocoExame(c, "Direito")).toContain("para: FAV braquiocefálica via veia intermédia do cotovelo.");
     const av = extraPadrao();
     av.modo = "Avaliação";
     Object.assign(av.avaliacao, { tipo: "Braquiobraquial (com transposição)" });
@@ -60,6 +62,20 @@ describe("FAV: confecção (mapeamento pré-operatório)", () => {
     expect(t).toContain("Arco palmar incompleto.");
     expect(sitioAdequado("cefalicaPunho", e.confeccao.sitios.cefalicaPunho)).toBe(false);
     expect(sitioAdequado("basilicaBraco", e.confeccao.sitios.basilicaBraco)).toBeNull();
+  });
+});
+
+describe("FAV: ambos os membros", () => {
+  it("um bloco por membro, cada um com a sua conclusão, observação no fim", () => {
+    const d = confeccao({ radial: { diametro: "2.4" }, cefalicaPunho: { diametro: "2.9" } });
+    const e = avaliacao({ tipo: "Braquiocefálica (cotovelo)", fluxoVolume: "900" });
+    const t = gerarLaudoCompleto({ nome: "A", idade: "60", data: "2026-10-09", lado: "Ambos", extras: { Direito: d, Esquerdo: e }, observacoes: "Obs." });
+    expect(t.match(/DOPPLER PARA FÍSTULA ARTERIOVENOSA/g)).toHaveLength(1);
+    expect(t).toContain("MAPEAMENTO PARA CONFECÇÃO DE FÍSTULA ARTERIOVENOSA - MEMBRO SUPERIOR DIREITO");
+    expect(t).toContain("CONCLUSÃO - MEMBRO SUPERIOR DIREITO\nVasos com calibre adequado (>= 2,0 mm) para: FAV radiocefálica (punho).");
+    expect(t).toContain("AVALIAÇÃO DE FÍSTULA ARTERIOVENOSA - MEMBRO SUPERIOR ESQUERDO");
+    expect(t).toContain("CONCLUSÃO - MEMBRO SUPERIOR ESQUERDO\nFAV braquiocefálica (cotovelo) pérvia, com fluxo de 900 mL/min.");
+    expect(t.trim().endsWith("OBSERVAÇÕES\nObs.")).toBe(true);
   });
 });
 

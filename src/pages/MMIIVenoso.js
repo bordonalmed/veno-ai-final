@@ -15,7 +15,7 @@ import MapaInterativo from "../components/MapaInterativo";
 import {
   veiasProfundas, veiasSuperficiais, profOptions, supOptions,
   perfurantesStatusOptions, perfurantesSegmentoOptions,
-  montarLaudo,
+  montarLaudo, varizesVazias, normalizarVarizesLado,
 } from "../utils/mmiiVenosoLaudo";
 
 // Constantes para localStorage
@@ -405,10 +405,7 @@ function MMIIVenoso() {
   const [jsfDiametro, setJsfDiametro] = useState({ Direito: "", Esquerdo: "" });
   const [jspDiametro, setJspDiametro] = useState({ Direito: "", Esquerdo: "" });
   const [erro, setErro] = useState("");
-  const [varizes, setVarizes] = useState({
-    Direito: { coxa: '', perna: '', tornozelo: '', pe: '' },
-    Esquerdo: { coxa: '', perna: '', tornozelo: '', pe: '' }
-  });
+  const [varizes, setVarizes] = useState({ Direito: varizesVazias(), Esquerdo: varizesVazias() });
   const [anexos, setAnexos] = useState([]);
   const [mostrarEsquema, setMostrarEsquema] = useState(false);
   const [incluirEsquemaPdf, setIncluirEsquemaPdf] = useState(false);
@@ -459,20 +456,8 @@ function MMIIVenoso() {
       if (exameEmEdicao.jsfDiametro) setJsfDiametro(exameEmEdicao.jsfDiametro);
       if (exameEmEdicao.jspDiametro) setJspDiametro(exameEmEdicao.jspDiametro);
       if (exameEmEdicao.varizes) {
-        // Exames salvos antes de "varizes por região" guardavam {tipo, localizacao}
-        // pra perna toda — migra pro formato atual {coxa, perna, tornozelo, pe}.
-        const migrarVarizes = (v) => {
-          if (!v) return { coxa: '', perna: '', tornozelo: '', pe: '' };
-          if (v.tipo !== undefined || v.localizacao !== undefined) {
-            const regioes = { coxa: '', perna: '', tornozelo: '', pe: '' };
-            (v.localizacao || []).forEach((regiao) => {
-              const chave = regiao.toLowerCase();
-              if (chave in regioes) regioes[chave] = v.tipo || '';
-            });
-            return regioes;
-          }
-          return { coxa: '', perna: '', tornozelo: '', pe: '', ...v };
-        };
+        // Exames antigos ({coxa, perna...} ou {tipo, localizacao}) viram os 16 pontos.
+        const migrarVarizes = normalizarVarizesLado;
         setVarizes({
           Direito: migrarVarizes(exameEmEdicao.varizes.Direito),
           Esquerdo: migrarVarizes(exameEmEdicao.varizes.Esquerdo),

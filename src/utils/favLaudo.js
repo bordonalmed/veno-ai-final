@@ -40,6 +40,7 @@ export const arcoPalmarOptions = ["Completo", "Incompleto"];
 export const tipoFavOptions = [
   "Radiocefálica (punho)",
   "Braquiocefálica (cotovelo)",
+  "Braquiocefálica via veia intermédia do cotovelo",
   "Braquiobasílica (com transposição)",
   "Braquiobasílica via veia intermédia do cotovelo",
   "Braquiobraquial (com transposição)",
@@ -156,7 +157,8 @@ function territoriosAdequados(sitios) {
   const naoReprova = (k) => sitioAdequado(k, sitios[k]) !== false;
   const t = [];
   if (ok("radial") && ok("cefalicaPunho") && naoReprova("cefalicaAntebraco")) t.push("FAV radiocefálica (punho)");
-  if (ok("braquial") && (ok("cefalicaCotovelo") || ok("intermedia")) && naoReprova("cefalicaBraco")) t.push("FAV braquiocefálica (cotovelo)");
+  if (ok("braquial") && ok("cefalicaCotovelo") && naoReprova("cefalicaBraco")) t.push("FAV braquiocefálica (cotovelo)");
+  if (ok("braquial") && ok("intermedia") && (ok("cefalicaCotovelo") || ok("cefalicaBraco")) && naoReprova("cefalicaBraco")) t.push("FAV braquiocefálica via veia intermédia do cotovelo");
   if (ok("braquial") && (ok("basilicaBraco") || ok("basilicaCotovelo"))) t.push("FAV braquiobasílica (com transposição)");
   if (ok("braquial") && ok("intermedia") && (ok("basilicaBraco") || ok("basilicaCotovelo"))) t.push("FAV braquiobasílica via veia intermédia do cotovelo");
   if (ok("braquial") && ok("braquialVeia")) t.push("FAV braquiobraquial (com transposição)");
@@ -280,15 +282,23 @@ export function gerarCabecalhoLaudo({ nome, idade, data }) {
   return `PACIENTE: ${nome}${idade ? `, ${idade} anos` : ""}\nDATA: ${data}\n`;
 }
 
-export function gerarBlocoExame(extra, lado, observacoes) {
+function blocoDoLado(extra, lado, comLadoNaConclusao) {
   const e = normalizarExtra(extra);
   const { linhas, conclusao } = e.modo === "Avaliação" ? blocoAvaliacao(e.avaliacao, lado) : blocoConfeccao(e.confeccao, lado);
-  let t = `${TITULO_EXAME}\n${linhas.join("\n")}\n`;
-  t += "\nCONCLUSÃO\n" + conclusao.join("\n") + "\n";
+  const titulo = comLadoNaConclusao ? `CONCLUSÃO - ${membroTexto(lado)}` : "CONCLUSÃO";
+  return `${linhas.join("\n")}\n\n${titulo}\n${conclusao.join("\n")}\n`;
+}
+
+// lado "Ambos": cada braço tem os próprios dados (extras.Direito / extras.Esquerdo)
+// e o laudo traz um bloco por membro, cada um com a sua conclusão.
+export function gerarBlocoExame(extra, lado, observacoes, extras) {
+  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
+  let t = `${TITULO_EXAME}\n`;
+  t += lados.map((l) => blocoDoLado(extras ? extras[l] : extra, l, lado === "Ambos")).join("\n");
   if (tem(observacoes)) t += `\nOBSERVAÇÕES\n${observacoes.trim()}\n`;
   return t;
 }
 
-export function gerarLaudoCompleto({ nome, idade, data, lado, extra, observacoes }) {
-  return gerarCabecalhoLaudo({ nome, idade, data }) + "\n" + gerarBlocoExame(extra, lado, observacoes);
+export function gerarLaudoCompleto({ nome, idade, data, lado, extra, extras, observacoes }) {
+  return gerarCabecalhoLaudo({ nome, idade, data }) + "\n" + gerarBlocoExame(extra, lado, observacoes, extras);
 }

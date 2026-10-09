@@ -44,29 +44,52 @@ export const varizesTipoOptions = [
   "Varizes Superficiais",
   "Microvarizes",
 ];
-export const varizesRegioes = ["coxa", "perna", "tornozelo", "pe"];
-export const varizesRegiaoLabel = { coxa: "Coxa", perna: "Perna", tornozelo: "Tornozelo", pe: "Pé" };
+// Pontos de variz no desenho: 8 na face anterior e 8 na posterior. Servem
+// para quem olha o desenho ver onde estão; o laudo cita só os tipos.
+const SEGMENTOS_VARIZ = [
+  ["CoxaProximal", "coxa proximal"], ["CoxaMedia", "coxa média"], ["CoxaDistal", "coxa distal"],
+  ["PernaProximal", "perna proximal"], ["PernaMedia", "perna média"], ["PernaDistal", "perna distal"],
+  ["Tornozelo", "tornozelo"], ["Pe", "pé"],
+];
+export const varizesFaces = {
+  anterior: SEGMENTOS_VARIZ.map(([k]) => `ant${k}`),
+  posterior: SEGMENTOS_VARIZ.map(([k]) => `post${k}`),
+};
+export const varizesRegioes = [...varizesFaces.anterior, ...varizesFaces.posterior];
+export const varizesSegmentoLabel = Object.fromEntries(SEGMENTOS_VARIZ.flatMap(([k, t]) => [[`ant${k}`, t], [`post${k}`, t]]));
+export const varizesRegiaoLabel = Object.fromEntries(varizesRegioes.map((r) => [r, `${r.startsWith("ant") ? "Anterior" : "Posterior"} — ${varizesSegmentoLabel[r]}`]));
 
-// Agrupa as regiões por tipo de variz (cada região guarda seu próprio tipo,
-// independente das outras) — usado tanto no laudo quanto na CONCLUSÃO.
-// Aceita também o formato antigo ({ tipo, localizacao: [] }), tratando-o como
-// um único tipo aplicado a todas as localizações marcadas.
-function agruparVarizesPorTipo(varizesLado) {
-  if (!varizesLado) return [];
-  const porTipo = {};
-  if (varizesLado.tipo) {
-    // formato antigo (compatibilidade)
-    const regioesAntigas = (varizesLado.localizacao || []).map(loc => loc.charAt(0).toUpperCase() + loc.slice(1));
-    if (regioesAntigas.length) porTipo[varizesLado.tipo] = regioesAntigas;
+// Exames antigos: {coxa, perna, tornozelo, pe} ou {tipo, localizacao: []}.
+const REGIAO_ANTIGA = { coxa: "antCoxaMedia", perna: "antPernaMedia", tornozelo: "postTornozelo", pe: "postPe" };
+export function varizesVazias() {
+  return Object.fromEntries(varizesRegioes.map((r) => [r, ""]));
+}
+export function normalizarVarizesLado(v) {
+  const out = varizesVazias();
+  if (!v) return out;
+  if (v.tipo !== undefined || v.localizacao !== undefined) {
+    (v.localizacao || []).forEach((loc) => {
+      const k = REGIAO_ANTIGA[String(loc).toLowerCase()];
+      if (k) out[k] = v.tipo || "";
+    });
   }
-  varizesRegioes.forEach(regiao => {
-    const tipo = varizesLado[regiao];
-    if (tipo) {
-      if (!porTipo[tipo]) porTipo[tipo] = [];
-      porTipo[tipo].push(varizesRegiaoLabel[regiao]);
-    }
+  Object.entries(v).forEach(([k, tipo]) => {
+    if (!varizesTipoOptions.includes(tipo)) return;
+    if (k in out) out[k] = tipo;
+    else if (REGIAO_ANTIGA[k] && !out[REGIAO_ANTIGA[k]]) out[REGIAO_ANTIGA[k]] = tipo;
   });
-  return Object.entries(porTipo).map(([tipo, regioes]) => `${tipo} em ${regioes.join(', ')}`);
+  return out;
+}
+
+// Laudo: só os tipos presentes, sem a localização.
+// Ex.: "Varizes superficiais, varizes reticulares e microvarizes"
+const ORDEM_TIPOS_VARIZ = ["Varizes Superficiais", "Varizes Reticulares", "Microvarizes"];
+function agruparVarizesPorTipo(varizesLado) {
+  const v = normalizarVarizesLado(varizesLado);
+  const presentes = ORDEM_TIPOS_VARIZ.filter((t) => Object.values(v).includes(t)).map((t) => t.toLowerCase());
+  if (!presentes.length) return [];
+  const texto = presentes.length === 1 ? presentes[0] : `${presentes.slice(0, -1).join(", ")} e ${presentes[presentes.length - 1]}`;
+  return [texto.charAt(0).toUpperCase() + texto.slice(1)];
 }
 export const legendaCampos = {
   "JSF": "JSF",
