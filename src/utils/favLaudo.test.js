@@ -1,4 +1,4 @@
-import { extraPadrao, normalizarExtra, gerarLaudoCompleto, gerarBlocoExame, sitioAdequado, localLesaoFavOptions } from "./favLaudo";
+import { extraPadrao, normalizarExtra, gerarLaudoCompleto, gerarBlocoExame, sitioAdequado, localLesaoFavOptions, localStentFavOptions } from "./favLaudo";
 
 function confeccao(sitios, outros = {}) {
   const e = extraPadrao();
@@ -86,6 +86,17 @@ describe("FAV: avaliação de fístula existente", () => {
     expect(t).toContain("Estenose de 60% justa-anastomótica (velocidade de pico sistólico de 480 cm/s).");
     expect(t).toContain("Dilatação aneurismática no segmento de punção, com diâmetro de 18 mm.");
     expect(t).toMatch(/CONCLUSÃO[\s\S]*Fluxo retrógrado na artéria distal à anastomose \(sinal de roubo\)\./);
+  });
+
+  it("stent na veia subclávia e estenose central", () => {
+    const t = gerarBlocoExame(avaliacao({
+      tipo: "Braquiocefálica (cotovelo)", stent: true, stentLocal: "Veia subclávia", stentStatus: "Com reestenose",
+      estenose: true, estenoseLocal: "Veia braquiocefálica", estenosePercentual: "70",
+    }), "Esquerdo");
+    expect(t).toContain("Estenose de 70% na veia braquiocefálica.");
+    expect(t).toContain("Stent com reestenose na veia subclávia.");
+    expect(t).toMatch(/CONCLUSÃO[\s\S]*Stent com reestenose na veia subclávia\./);
+    expect(localStentFavOptions("Radiocefálica (punho)")[0]).toBe("Veia subclávia");
   });
 
   it("prótese ocluída e opções de local por tipo", () => {

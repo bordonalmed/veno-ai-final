@@ -48,10 +48,18 @@ export const tipoFavOptions = [
 ];
 export const ehProtese = (tipo) => /^Prótese/.test(tipo || "");
 export const statusFavOptions = ["Pérvia", "Ocluída (trombosada)"];
+// Veias centrais: estenose (e stent) de subclávia/braquiocefálica é comum em
+// quem faz hemodiálise.
+export const VEIAS_CENTRAIS_FAV = ["Veia axilar", "Veia subclávia", "Veia braquiocefálica"];
 export function localLesaoFavOptions(tipo) {
-  if (ehProtese(tipo)) return ["Anastomose arterial", "Corpo da prótese", "Anastomose venosa", "Veia de saída"];
+  if (ehProtese(tipo)) return ["Anastomose arterial", "Corpo da prótese", "Anastomose venosa", "Veia de saída", ...VEIAS_CENTRAIS_FAV];
   const base = ["Justa-anastomótica", "Segmento de punção", "Veia de saída"];
-  return /cefálica/i.test(tipo || "") ? [...base.slice(0, 2), "Arco da cefálica", base[2]] : base;
+  const locais = /cefálica/i.test(tipo || "") ? [...base.slice(0, 2), "Arco da cefálica", base[2]] : base;
+  return [...locais, ...VEIAS_CENTRAIS_FAV];
+}
+export const stentFavStatusOptions = ["Pérvio", "Com reestenose", "Ocluído"];
+export function localStentFavOptions(tipo) {
+  return ["Veia subclávia", "Veia braquiocefálica", "Veia axilar", ...localLesaoFavOptions(tipo).filter((l) => !VEIAS_CENTRAIS_FAV.includes(l) && l !== "Veia de saída")];
 }
 
 function sitioPadrao(sitio) {
@@ -89,6 +97,9 @@ export function extraPadrao() {
       colaterais: false,
       roubo: false,
       hematoma: false,
+      stent: false,
+      stentLocal: "",
+      stentStatus: "",
     },
   };
 }
@@ -231,6 +242,12 @@ function blocoAvaliacao(a, lado) {
   if (a.colaterais) linhas.push("Veias colaterais / acessórias.");
   if (a.roubo) linhas.push("Fluxo retrógrado na artéria distal à anastomose (sinal de roubo).");
   if (a.hematoma) linhas.push("Coleção / hematoma perianastomótico.");
+  if (a.stent) {
+    let s = "Stent";
+    if (tem(a.stentStatus)) s += ` ${a.stentStatus.toLowerCase()}`;
+    if (tem(a.stentLocal)) s += ` ${a.stentLocal === "Justa-anastomótica" ? "justa-anastomótico" : noLocal(a.stentLocal)}`;
+    linhas.push(`${s}.`);
+  }
 
   // conclusão
   let principal = `${tipo} ${ocluida ? "ocluída (trombosada)" : "pérvia"}`;
@@ -251,7 +268,7 @@ function blocoAvaliacao(a, lado) {
   }
   if (!ocluida && tem(a.fluxoVolume) && num(a.fluxoVolume) > 2000) conclusao.push("FAV de alto fluxo (> 2.000 mL/min).");
   linhas.slice(3).forEach((l) => {
-    if (/^(Estenose|Dilatação|Pseudoaneurisma|Trombo|Veias colaterais|Fluxo retrógrado|Coleção)/.test(l)) conclusao.push(l);
+    if (/^(Estenose|Dilatação|Pseudoaneurisma|Trombo|Veias colaterais|Fluxo retrógrado|Coleção|Stent)/.test(l)) conclusao.push(l);
   });
   return { linhas, conclusao };
 }
