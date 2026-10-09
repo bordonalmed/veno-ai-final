@@ -86,3 +86,14 @@ export function faixaDoTerco(terco) {
   if (terco === "Terço distal") return [2 / 3, 1];
   return [0, 1];
 }
+
+// Contorno em fuso entre ta e tb: a largura cresce até kmax× no meio
+// (dilatação aneurismática fusiforme).
+export function fitaFusiforme(curva, ta, tb, kmax) {
+  const pts = trecho(curva, ta, tb);
+  const n = pts.length - 1;
+  const esc = (i) => 1 + (kmax - 1) * Math.sin((Math.PI * i) / n);
+  const esq = pts.map((p, i) => [p.x + p.nx * p.hw * esc(i), p.y + p.ny * p.hw * esc(i)]);
+  const dir = pts.map((p, i) => [p.x - p.nx * p.hw * esc(i), p.y - p.ny * p.hw * esc(i)]).reverse();
+  return "M " + [...esq, ...dir].map(([x, y]) => `${f2(x)},${f2(y)}`).join(" L ") + " Z";
+}

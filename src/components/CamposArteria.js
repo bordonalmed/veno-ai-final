@@ -10,6 +10,7 @@ import {
   placaOptions,
   caracteristicaPlacaOptions,
   stentOptions,
+  aneurismaFormaOptions,
   enxertoTipoOptions,
   enxertoStatusOptions,
 } from "../utils/mmiiArterialLaudo";
@@ -128,7 +129,8 @@ export function CampoCheck({ label, checked, onChange }) {
 }
 
 // semMoldura: dentro do Mapa Interativo, que já mostra a caixa com o nome da artéria.
-export function CamposArteria({ arteria, valores, onChange, lado, semMoldura }) {
+// comCalibre: aorta/ilíacas — calibre medido, forma do aneurisma e trombo mural.
+export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, comCalibre }) {
   const isOcluida = valores.status === "Ocluída";
 
   function set(field, value) {
@@ -154,13 +156,17 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura }) 
       novos.caracteristicaPlaca = "";
       novos.localizacaoPlaca = "";
     }
-    if (field === "aneurisma" && !value) novos.aneurismaDiametro = "";
+    if (field === "aneurisma" && !value) {
+      novos.aneurismaDiametro = "";
+      novos.aneurismaForma = "";
+      novos.tromboMural = false;
+    }
     onChange(novos);
   }
 
   return (
     <div style={semMoldura ? undefined : cardStyle}>
-      {!semMoldura && <div style={tituloCardStyle}>{arteria.toUpperCase()} ({lado.toUpperCase()}):</div>}
+      {!semMoldura && <div style={tituloCardStyle}>{arteria.toUpperCase()}{lado ? ` (${lado.toUpperCase()})` : ""}:</div>}
 
       <div style={gradeCampos}>
         <CampoSelect label="Perviedade:" value={valores.status} options={statusOptions} onChange={v => set('status', v)} />
@@ -177,6 +183,12 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura }) 
           </>
         )}
         <CampoSelect label="Stent:" value={valores.stent} options={stentOptions} onChange={v => set('stent', v)} />
+        {comCalibre && (
+          <div>
+            <label style={labelStyle}>Calibre (mm):</label>
+            <input type="number" min="0" step="0.1" value={valores.diametro || ""} onChange={e => set('diametro', e.target.value)} placeholder="mm" style={inputStyle} />
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(10px, 2.5vw, 18px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
@@ -217,6 +229,14 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura }) 
               style={inputStyle}
             />
           </div>
+          {comCalibre && (
+            <>
+              <CampoSelect label="Forma:" value={valores.aneurismaForma} options={aneurismaFormaOptions} placeholder="Selecione" onChange={v => set('aneurismaForma', v)} />
+              <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 8 }}>
+                <CampoCheck label="Trombo mural" checked={valores.tromboMural} onChange={v => set('tromboMural', v)} />
+              </div>
+            </>
+          )}
         </div>
       )}
 
