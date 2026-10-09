@@ -25,6 +25,7 @@ export const SITIOS_VENOSOS = [
   ["basilicaCotovelo", "Veia basílica (cotovelo)"],
   ["basilicaBraco", "Veia basílica (braço)"],
   ["intermedia", "Veia intermédia do cotovelo"],
+  ["braquialVeia", "Veia braquial (braço)"],
   ["axilar", "Veia axilar"],
 ];
 export const NOME_SITIO = Object.fromEntries([...SITIOS_ARTERIAIS, ...SITIOS_VENOSOS]);
@@ -40,6 +41,8 @@ export const tipoFavOptions = [
   "Radiocefálica (punho)",
   "Braquiocefálica (cotovelo)",
   "Braquiobasílica (com transposição)",
+  "Braquiobasílica via veia intermédia do cotovelo",
+  "Braquiobraquial (com transposição)",
   "Prótese em alça no antebraço",
   "Prótese braquioaxilar",
 ];
@@ -144,6 +147,8 @@ function territoriosAdequados(sitios) {
   if (ok("radial") && ok("cefalicaPunho") && naoReprova("cefalicaAntebraco")) t.push("FAV radiocefálica (punho)");
   if (ok("braquial") && (ok("cefalicaCotovelo") || ok("intermedia")) && naoReprova("cefalicaBraco")) t.push("FAV braquiocefálica (cotovelo)");
   if (ok("braquial") && (ok("basilicaBraco") || ok("basilicaCotovelo"))) t.push("FAV braquiobasílica (com transposição)");
+  if (ok("braquial") && ok("intermedia") && (ok("basilicaBraco") || ok("basilicaCotovelo"))) t.push("FAV braquiobasílica via veia intermédia do cotovelo");
+  if (ok("braquial") && ok("braquialVeia")) t.push("FAV braquiobraquial (com transposição)");
   return t;
 }
 

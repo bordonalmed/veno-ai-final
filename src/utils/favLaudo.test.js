@@ -37,6 +37,17 @@ describe("FAV: confecção (mapeamento pré-operatório)", () => {
     expect(t).toContain("Veia basílica (braço) profunda (9 mm da pele): pode exigir superficialização.");
   });
 
+  it("braquiobasílica via intermédia e braquiobraquial", () => {
+    const e = confeccao({ braquial: { diametro: "4" }, intermedia: { diametro: "3" }, basilicaBraco: { diametro: "4.5" }, braquialVeia: { diametro: "3.2" } });
+    const t = gerarBlocoExame(e, "Direito");
+    expect(t).toContain("Veia braquial (braço): pérvia, compressível, diâmetro de 3,2 mm.");
+    expect(t).toContain("FAV braquiocefálica (cotovelo), FAV braquiobasílica (com transposição), FAV braquiobasílica via veia intermédia do cotovelo, FAV braquiobraquial (com transposição).");
+    const av = extraPadrao();
+    av.modo = "Avaliação";
+    Object.assign(av.avaliacao, { tipo: "Braquiobraquial (com transposição)" });
+    expect(gerarBlocoExame(av, "Direito")).toContain("FAV braquiobraquial (com transposição): pérvia.");
+  });
+
   it("veia fina ou trombosada não serve; fluxo contínuo na axilar", () => {
     const e = confeccao({
       radial: { diametro: "2.5" }, cefalicaPunho: { diametro: "1.6" },
