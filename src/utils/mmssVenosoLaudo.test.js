@@ -6,6 +6,7 @@ import {
   gerarLaudoCompleto,
   normalizarVeiasLado,
   estruturaVeia,
+  normalizarExtra,
 } from "./mmssVenosoLaudo";
 
 function membro(alt) {
@@ -117,5 +118,16 @@ describe("MMSS venoso: laudo e dados antigos", () => {
     expect(v["Veia Cefálica (braço)"].status).toBe("Recanalização parcial");
     expect(v["Veia Cefálica (antebraço)"].status).toBe("Recanalização parcial");
     expect(v["Veia Basílica (antebraço)"].status).toBe("Ausente");
+  });
+});
+
+describe("MMSS venoso: veia intermédia do cotovelo", () => {
+  it("exame salvo com 'Veia Cubital Mediana' passa para o nome atual (achado e cateter)", () => {
+    const antigo = { veias: { Direito: { "Veia Cubital Mediana": { status: "Trombose oclusiva" } } } };
+    const v = normalizarVeiasLado(antigo, "Direito");
+    expect(v["Veia Intermédia do Cotovelo"].status).toBe("Trombose oclusiva");
+    expect(v["Veia Cubital Mediana"]).toBeUndefined();
+    expect(normalizarExtra({ cateter: { presente: true, tipo: "PICC", veia: "Veia Cubital Mediana" } }).cateter.veia).toBe("Veia Intermédia do Cotovelo");
+    expect(descreverVeia("Veia Intermédia do Cotovelo", estruturaVeia)).toBe("Veia Intermédia do Cotovelo: pérvia, compressível.");
   });
 });

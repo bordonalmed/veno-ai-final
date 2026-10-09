@@ -418,7 +418,7 @@ function MMSSArterial() {
           });
           doc.setFont(undefined, "normal");
           y -= passo; // Ajuste para não ter espaço extra
-        } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO SUPERIOR") || line.startsWith("MANOBRAS PARA DESFILADEIRO") || line.startsWith("MAPEAMENTO PRÉ-FÍSTULA")) {
+        } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO SUPERIOR") || line.startsWith("MANOBRA PARA DESFILADEIRO") || line.startsWith("MAPEAMENTO PRÉ-FÍSTULA")) {
           doc.setFont(undefined, "bold");
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {

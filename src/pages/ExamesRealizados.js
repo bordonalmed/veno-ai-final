@@ -20,6 +20,7 @@ const STORAGE_KEY_TO_LABEL = {
   "examesCarotidas": "Carótidas e Vertebrais", // legado
   "examesCarótidaseVertebrais": "Carótidas e Vertebrais", // legado com acento
   "examesAorta": "Aorta e Ilíacas",
+  "examesFAV": "Fístula Arteriovenosa",
   "examesAortaeIlíacas": "Aorta e Ilíacas", // legado com acento
   "examesRenais": "Artérias Renais",
   "examesArtériasRenais": "Artérias Renais", // legado com acento
@@ -36,6 +37,7 @@ const TIPO_COR = {
   "MMII Arterial": "#e0574a",
   "MMSS Arterial": "#e0574a",
   "Aorta e Ilíacas": "#e0574a",
+  "Fístula Arteriovenosa": "#a569d6",
   "Artérias Renais": "#e0574a",
   "Carótidas e Vertebrais": "#4fd8ec",
 };
@@ -301,6 +303,7 @@ export default function ExamesRealizados() {
       "MMSS Arterial": "/mmss-arterial",
       "Carótidas e Vertebrais": "/carotidas-vertebrais",
       "Aorta e Ilíacas": "/aorta-iliacas",
+      "Fístula Arteriovenosa": "/fistula-arteriovenosa",
       "Artérias Renais": "/arterias-renais"
     };
     

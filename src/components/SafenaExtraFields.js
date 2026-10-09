@@ -261,7 +261,6 @@ export function SafenaParvaExtra({ status, valores, onChange }) {
           >
             <option value="">Selecione</option>
             <option value="JSP">JSP</option>
-            <option value="joelho">joelho</option>
             <option value="cm_abaixo_joelho">cm abaixo do joelho</option>
           </select>
           {valores.inicio === "cm_abaixo_joelho" && (

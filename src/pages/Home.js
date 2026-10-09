@@ -10,6 +10,7 @@ import { TrialManager } from "../utils/trialManager";
 const COLOR_STYLES = {
   blue: { border: "#3f93e0", ring: "rgba(63,147,224,0.1)", glow: "rgba(63,147,224,0.55)" },
   red: { border: "#e0574a", ring: "rgba(224,87,74,0.1)", glow: "rgba(224,87,74,0.55)" },
+  purple: { border: "#a569d6", ring: "rgba(142,68,173,0.1)", glow: "rgba(142,68,173,0.55)" },
   cyan: { border: "#4fd8ec", ring: "rgba(14,184,208,0.1)", glow: "rgba(14,184,208,0.55)" },
 };
 
@@ -22,6 +23,7 @@ const EXAMES = [
   { label: "Doppler Arterial de Membros Inferiores", rota: "/mmii-arterial", Icone: GiLeg, cor: "red", regiao: "Membros inferiores" },
   { label: "Doppler Venoso de Membros Superiores", rota: "/mmss-venoso", Icone: GiBiceps, cor: "blue", regiao: "Membros superiores" },
   { label: "Doppler Arterial de Membros Superiores", rota: "/mmss-arterial", Icone: GiBiceps, cor: "red", regiao: "Membros superiores" },
+  { label: "Fístula Arteriovenosa (confecção e avaliação)", rota: "/fistula-arteriovenosa", Icone: GiBiceps, cor: "purple", regiao: "Membros superiores" },
   { label: "Doppler de Carótidas e Vertebrais", rota: "/carotidas-vertebrais", Icone: GiBrain, cor: "cyan", regiao: "Pescoço" },
   { label: "Doppler de Aorta e Ilíacas", rota: "/aorta-iliacas", Icone: IconeAbdome, cor: "red", regiao: "Abdome" },
 ];

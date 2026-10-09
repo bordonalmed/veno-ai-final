@@ -3,25 +3,27 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
+import { MapaInterativoFAV, adicionarMapaFAVAoPdf } from "../components/MapaFAV";
 import ExamHeader from "../components/ExamHeader";
-import { CamposArteria, CamposEnxerto } from "../components/CamposArteria";
-import MapaInterativoArterial, { adicionarMapaArterialAoPdf } from "../components/MapaInterativoArterial";
+import { CamposSitioFAV, CamposConfeccaoGeral, CamposAvaliacaoFAV } from "../components/CamposFistula";
+import { cardStyle, tituloCardStyle } from "../components/CamposArteria";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import "../styles/pdf.css";
 import examesRealtimeService from '../services/examesRealtimeService';
 import {
-  ARTERIAS,
-  enxertoPadrao,
-  arteriasPadrao,
-  normalizarArterias,
+  TITULO_EXAME,
+  MODOS_FAV,
+  SITIOS_ARTERIAIS,
+  SITIOS_VENOSOS,
+  extraPadrao,
+  normalizarExtra,
   gerarLaudoCompleto,
   gerarCabecalhoLaudo,
-  gerarBlocoMembro,
-  ladosDoExame,
-} from "../utils/mmiiArterialLaudo";
+  gerarBlocoExame,
+} from "../utils/favLaudo";
 
 // Constantes para localStorage
-const STORAGE_KEY = "examesMMIIArterial";
+const STORAGE_KEY = "examesFAV";
 
 // Funções para gerenciar exames salvos
 async function salvarExame(dadosExame) {
@@ -29,7 +31,7 @@ async function salvarExame(dadosExame) {
     // Salvar usando o serviço em tempo real
     const resultado = await examesRealtimeService.criarExame({
       ...dadosExame,
-      tipoNome: "MMII Arterial"
+      tipoNome: "Fístula Arteriovenosa"
     });
     
     if (resultado.success) {
@@ -99,70 +101,96 @@ const buttonStyle = {
   minWidth: "clamp(120px, 20vw, 140px)"
 };
 
-// Bloco de campos por lado
-function BlocoCampos({ lado, arteriasValores, onChange, enxerto, onEnxertoChange }) {
+const tituloSecao = {
+  marginTop: 'clamp(4px, 1vw, 8px)',
+  marginBottom: 'clamp(4px, 1vw, 8px)',
+  fontWeight: 700,
+  fontSize: 'clamp(14px, 2.5vw, 16px)',
+  color: '#0eb8d0'
+};
+
+// Quadros de preenchimento (modo formulário): modo, pontos de medida ou FAV.
+function BlocoCampos({ extra, onExtraChange, observacoes, onObservacoes }) {
+  const e = normalizarExtra(extra);
+  const setConfeccao = (c) => onExtraChange({ ...e, confeccao: c });
   return (
     <div style={{
-      marginBottom: 'clamp(12px, 2vw, 16px)',
       width: '100%',
       padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 3vw, 20px)',
       boxSizing: 'border-box',
       background: 'rgba(0,0,0,0.10)',
       borderRadius: 'clamp(8px, 1.5vw, 12px)',
       boxShadow: '0 2px 16px 0 #0002',
-      marginLeft: 'auto',
-      marginRight: 'auto',
       display: 'flex',
       flexDirection: 'column',
       gap: 'clamp(8px, 1.5vw, 12px)'
     }}>
-      <div style={{
-        marginTop: 'clamp(4px, 1vw, 8px)',
-        marginBottom: 'clamp(8px, 2vw, 12px)',
-        fontWeight: 700,
-        fontSize: 'clamp(14px, 2.5vw, 16px)',
-        color: '#0eb8d0'
-      }}>
-        MEMBRO INFERIOR {lado.toUpperCase()}:
+      <div style={{ display: 'flex', gap: 8 }}>
+        {MODOS_FAV.map((m) => (
+          <button key={m} type="button" onClick={() => onExtraChange({ ...e, modo: m })} style={{
+            ...buttonStyle, marginLeft: 0, flex: 1,
+            background: e.modo === m ? "#0eb8d0" : "transparent", border: "1.5px solid #0eb8d0",
+          }}>{m === "Confecção" ? "Confecção (mapeamento)" : "Avaliação de FAV"}</button>
+        ))}
       </div>
-
-      {ARTERIAS.map(arteria => (
-        <CamposArteria
-          key={arteria}
-          arteria={arteria}
-          valores={arteriasValores[arteria]}
-          onChange={(valores) => onChange(arteria, valores)}
-          lado={lado}
+      {e.modo === "Confecção" ? (
+        <>
+          <CamposConfeccaoGeral confeccao={e.confeccao} onChange={setConfeccao} />
+          <div style={tituloSecao}>ARTÉRIAS:</div>
+          {SITIOS_ARTERIAIS.map(([k, nome]) => (
+            <div key={k} style={cardStyle}>
+              <div style={tituloCardStyle}>{nome.toUpperCase()}:</div>
+              <CamposSitioFAV sitio={k} valores={e.confeccao.sitios[k]} onChange={(v) => setConfeccao({ ...e.confeccao, sitios: { ...e.confeccao.sitios, [k]: v } })} />
+            </div>
+          ))}
+          <div style={tituloSecao}>VEIAS:</div>
+          {SITIOS_VENOSOS.map(([k, nome]) => (
+            <div key={k} style={cardStyle}>
+              <div style={tituloCardStyle}>{nome.toUpperCase()}:</div>
+              <CamposSitioFAV sitio={k} valores={e.confeccao.sitios[k]} onChange={(v) => setConfeccao({ ...e.confeccao, sitios: { ...e.confeccao.sitios, [k]: v } })} />
+            </div>
+          ))}
+        </>
+      ) : (
+        <div style={cardStyle}>
+          <div style={tituloCardStyle}>FÍSTULA ARTERIOVENOSA:</div>
+          <CamposAvaliacaoFAV avaliacao={e.avaliacao} onChange={(a) => onExtraChange({ ...e, avaliacao: a })} />
+        </div>
+      )}
+      <div>
+        <div style={tituloSecao}>OBSERVAÇÕES:</div>
+        <textarea
+          value={observacoes || ""}
+          onChange={(ev) => onObservacoes(ev.target.value)}
+          placeholder="Observações adicionais..."
+          style={{
+            width: '100%', minHeight: 70, boxSizing: 'border-box', resize: 'vertical',
+            background: '#f7fbff', border: '1.5px solid #0eb8d0', borderRadius: 7,
+            padding: '8px 12px', fontSize: 'clamp(13px, 2.5vw, 15px)', fontFamily: 'inherit', color: '#222'
+          }}
         />
-      ))}
-
-      <CamposEnxerto lado={lado} enxerto={enxerto} onChange={onEnxertoChange} />
+      </div>
     </div>
   );
 }
 
 // Componente principal
-function MMIIArterial() {
+function FistulaArteriovenosa() {
   const [nome, setNome] = useState("");
   const [idade, setIdade] = useState("");
   const [data, setData] = useState("");
-  const [lado, setLado] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [erro, setErro] = useState("");
   const [mostrarLaudo, setMostrarLaudo] = useState(false);
   const [anexos, setAnexos] = useState([]);
 
-  const [arteriasDireito, setArteriasDireito] = useState(arteriasPadrao);
-  const [arteriasEsquerdo, setArteriasEsquerdo] = useState(arteriasPadrao);
-  const [enxertos, setEnxertos] = useState({ Direito: { ...enxertoPadrao }, Esquerdo: { ...enxertoPadrao } });
+  const [lado, setLado] = useState("");
+  const [extra, setExtra] = useState(extraPadrao);
+  const [observacoes, setObservacoes] = useState("");
   // O Mapa Interativo é a tela principal do exame: abre sozinho assim que o
-  // cabeçalho (nome, idade, data e lado) está completo. "Ver formulário"
+  // cabeçalho (nome, idade e data) está completo. "Ver formulário"
   // mostra os quadros de preenchimento no lugar dele.
   const [mostrarMapa, setMostrarMapa] = useState(true);
-  const [ladoMapa, setLadoMapa] = useState("Direito");
-  useEffect(() => {
-    setLadoMapa(lado === "Esquerdo" ? "Esquerdo" : "Direito");
-  }, [lado]);
   const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
@@ -179,12 +207,8 @@ function MMIIArterial() {
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
       setLado(exameEmEdicao.lado || "");
-      setArteriasDireito(normalizarArterias(exameEmEdicao.arteriasDireito));
-      setArteriasEsquerdo(normalizarArterias(exameEmEdicao.arteriasEsquerdo));
-      setEnxertos({
-        Direito: { ...enxertoPadrao, ...exameEmEdicao.enxertos?.Direito },
-        Esquerdo: { ...enxertoPadrao, ...exameEmEdicao.enxertos?.Esquerdo },
-      });
+      setExtra(normalizarExtra(exameEmEdicao.extra));
+      setObservacoes(exameEmEdicao.observacoes || "");
     }
   }, []);
 
@@ -194,18 +218,6 @@ function MMIIArterial() {
     else if (name === "idade") setIdade(value);
     else if (name === "data") setData(value);
     else if (name === "lado") setLado(value);
-  }
-
-  function handleArteriaChange(lado, arteria, valores) {
-    if (lado === "Direito") {
-      setArteriasDireito(prev => ({ ...prev, [arteria]: valores }));
-    } else {
-      setArteriasEsquerdo(prev => ({ ...prev, [arteria]: valores }));
-    }
-  }
-
-  function handleEnxertoChange(lado, enxerto) {
-    setEnxertos(prev => ({ ...prev, [lado]: enxerto }));
   }
 
   function handleVoltarMenu() {
@@ -226,15 +238,14 @@ function MMIIArterial() {
 
   function gerarTextoLaudo() {
     if (!deveMostrarCampos) return "";
-    return gerarLaudoCompleto({ nome, idade, data, lado, arteriasDireito, arteriasEsquerdo, enxertos });
+    return gerarLaudoCompleto({ nome, idade, data, lado, extra, observacoes });
   }
 
   // Validação dos campos obrigatórios
   const nomeValido = nome && nome.trim && nome.trim().length > 0;
   const idadeValida = idade && !isNaN(idade) && parseInt(idade) > 0 && parseInt(idade) <= 120;
   const dataValida = data && data.trim && data.trim().length > 0;
-  const ladoValido = lado && ["Direito", "Esquerdo", "Ambos"].includes(lado);
-  const deveMostrarCampos = nomeValido && idadeValida && dataValida && ladoValido;
+  const deveMostrarCampos = nomeValido && idadeValida && dataValida && (lado === "Direito" || lado === "Esquerdo");
 
   function handleVisualizar() {
     if (!deveMostrarCampos) return;
@@ -252,12 +263,11 @@ function MMIIArterial() {
       idade,
       data,
       lado,
-      arteriasDireito,
-      arteriasEsquerdo,
-      enxertos,
+      extra,
+      observacoes,
       laudo: gerarTextoLaudo(),
       timestamp: new Date().toISOString(),
-      tipoNome: "MMII Arterial"
+      tipoNome: "Fístula Arteriovenosa"
     };
 
     try {
@@ -289,7 +299,7 @@ function MMIIArterial() {
     const doc = new jsPDF();
     // Fonte do corpo do laudo: 11, ou 10 quando é preciso para caber numa página.
     let fonteCorpo = 11;
-    const lados = ladosDoExame(lado);
+    const lados = ["exame"]; // uma página (o exame não tem lado)
     const cabecalhoPaciente = gerarCabecalhoLaudo({ nome, idade, data });
 
     function addCabecalho(y) {
@@ -381,7 +391,7 @@ function MMIIArterial() {
       let y = addCabecalho(12);
       // Cada página (membro) leva a identificação do paciente.
       const bloco = (cabecalhoPaciente + "\n" +
-        gerarBlocoMembro(ladoAtual, ladoAtual === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos[ladoAtual])
+        gerarBlocoExame(extra, lado, observacoes)
       ).trim().split("\n");
       // Espaçamento adaptável (igual ao MMII venoso): se não cabe numa página
       // com linhas de 8 mm, aproxima as linhas (até 5,2 mm) e, se ainda faltar
@@ -415,7 +425,7 @@ function MMIIArterial() {
           });
           doc.setFont(undefined, "normal");
           y -= passo; // Ajuste para não ter espaço extra
-        } else if (line.startsWith("DOPPLER ARTERIAL DE MEMBRO INFERIOR")) {
+        } else if (line.startsWith(TITULO_EXAME) || line.startsWith("MAPEAMENTO PARA CONFECÇÃO") || line.startsWith("AVALIAÇÃO DE FÍSTULA") || line === "Artérias:" || line.startsWith("Veias")) {
           doc.setFont(undefined, "bold");
           const linhasQuebradas = quebrarTexto(line, 0, 15);
           linhasQuebradas.forEach(linha => {
@@ -510,11 +520,11 @@ function MMIIArterial() {
       pagina++;
     });
     
+    // Adicionar anexos como páginas no final do PDF
     if (incluirMapaPdf) {
-      await adicionarMapaArterialAoPdf(doc, lados, { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }, enxertos);
+      await adicionarMapaFAVAoPdf(doc, lado, extra);
     }
 
-    // Adicionar anexos como páginas no final do PDF
     appendImagesToPdf(doc, anexos);
     
     carimbarMarcaVenoAI(doc);
@@ -618,11 +628,12 @@ function MMIIArterial() {
       position: "relative"
     }}>
       <ExamHeader
-        examTitle="MMII Arterial"
+        examTitle="Fístula Arteriovenosa"
         nome={nome}
         idade={idade}
         data={data}
         lado={lado}
+        semAmbos
         onInputChange={handleChange}
         onVisualizar={handleVisualizar}
         onSalvar={handleSalvarExame}
@@ -645,20 +656,16 @@ function MMIIArterial() {
         </div>
       )}
 
-      <MapaInterativoArterial
+      <MapaInterativoFAV
         aberto={deveMostrarCampos && mostrarMapa}
         embutido
         onFechar={() => setMostrarMapa(false)}
         lado={lado}
-        ladoAtivo={ladoMapa}
-        onTrocarLado={setLadoMapa}
-        arterias={{ Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }}
-        onArteriaChange={handleArteriaChange}
-        enxertos={enxertos}
-        onEnxertoChange={handleEnxertoChange}
-        laudoMembro={deveMostrarCampos
-          ? gerarBlocoMembro(ladoMapa, ladoMapa === "Direito" ? arteriasDireito : arteriasEsquerdo, enxertos[ladoMapa])
-          : ""}
+        extra={extra}
+        onExtraChange={setExtra}
+        observacoes={observacoes}
+        onObservacoes={setObservacoes}
+        laudo={gerarTextoLaudo()}
         incluirMapaPdf={incluirMapaPdf}
         onIncluirMapaPdf={setIncluirMapaPdf}
         onSalvarTXT={handleSalvarTXT}
@@ -666,7 +673,6 @@ function MMIIArterial() {
         onSalvarExame={handleSalvarExame}
       />
 
-      {/* Aviso de campos obrigatórios removido - validação apenas pelos botões desabilitados */}
 
       {/* Campos das artérias - só aparecem após preencher dados básicos */}
       {deveMostrarCampos && (
@@ -681,67 +687,12 @@ function MMIIArterial() {
         }}>
           {/* Quadros de preenchimento: só no modo formulário */}
           {!mostrarMapa && (
-          <div style={{ 
-            width: '100%', 
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : lado === "Ambos" ? 'repeat(2, 1fr)' : '1fr',
-            gap: 'clamp(12px, 2vw, 20px)'
-          }}>
-            {/* Layout para lado único (Direito ou Esquerdo) */}
-            {(lado === "Direito" || lado === "Esquerdo") && (
-              <div style={{
-                background: 'rgba(0,0,0,0.05)', 
-                borderRadius: 'clamp(8px, 1.5vw, 12px)', 
-                boxShadow: '0 2px 12px #00e0ff18', 
-                padding: 'clamp(10px, 2vw, 14px)', 
-                minWidth: 0
-              }}>
-                <BlocoCampos
-                  lado={lado}
-                  arteriasValores={lado === "Direito" ? arteriasDireito : arteriasEsquerdo}
-                  onChange={(arteria, valores) => handleArteriaChange(lado, arteria, valores)}
-                  enxerto={enxertos[lado]}
-                  onEnxertoChange={(enx) => handleEnxertoChange(lado, enx)}
-                />
-              </div>
-            )}
-            
-            {/* Layout para ambos os lados */}
-            {lado === "Ambos" && (
-              <>
-                <div style={{
-                  background: 'rgba(0,0,0,0.05)', 
-                  borderRadius: 'clamp(8px, 1.5vw, 12px)', 
-                  boxShadow: '0 2px 12px #00e0ff18', 
-                  padding: 'clamp(10px, 2vw, 14px)', 
-                  minWidth: 0
-                }}>
-                  <BlocoCampos
-                    lado="Direito"
-                    arteriasValores={arteriasDireito}
-                    onChange={(arteria, valores) => handleArteriaChange("Direito", arteria, valores)}
-                    enxerto={enxertos.Direito}
-                    onEnxertoChange={(enx) => handleEnxertoChange("Direito", enx)}
-                  />
-                </div>
-                <div style={{
-                  background: 'rgba(0,0,0,0.05)', 
-                  borderRadius: 'clamp(8px, 1.5vw, 12px)', 
-                  boxShadow: '0 2px 12px #00e0ff18', 
-                  padding: 'clamp(10px, 2vw, 14px)', 
-                  minWidth: 0
-                }}>
-                  <BlocoCampos
-                    lado="Esquerdo"
-                    arteriasValores={arteriasEsquerdo}
-                    onChange={(arteria, valores) => handleArteriaChange("Esquerdo", arteria, valores)}
-                    enxerto={enxertos.Esquerdo}
-                    onEnxertoChange={(enx) => handleEnxertoChange("Esquerdo", enx)}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+            <BlocoCampos
+              extra={extra}
+              onExtraChange={setExtra}
+              observacoes={observacoes}
+              onObservacoes={setObservacoes}
+            />
           )}
 
           {/* Preview do Laudo */}
@@ -948,4 +899,4 @@ function MMIIArterial() {
   );
 }
 
-export default MMIIArterial;
+export default FistulaArteriovenosa;

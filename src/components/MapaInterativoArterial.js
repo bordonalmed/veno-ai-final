@@ -12,6 +12,7 @@ import {
 import { ARTERIAS } from "../utils/mmiiArterialLaudo";
 import { CamposArteria, CamposEnxerto } from "./CamposArteria";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
+import { COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
 
 // Árvore arterial de UMA perna, vista anterior. Desenhada nativamente para a
 // perna ESQUERDA (mesma convenção do Mapa Interativo venoso): medial = x menor,
@@ -25,6 +26,50 @@ export const GEOMETRIA_ARTERIAS = {
   "Artéria Fibular": { spine: [[146, 400], [152, 440], [153, 485], [150, 525]], half: [3.2, 3.1, 3, 2.8], rotulo: ["Fibular", "lateral", 505] },
   "Artéria Tibial Posterior": { spine: [[146, 400], [139, 440], [137, 485], [139, 530], [141, 556]], half: [3.4, 3.3, 3.2, 3, 2.9], rotulo: ["Tibial post.", "medial", 470] },
 };
+
+// Enxertos/pontes (perna esquerda nativa): traçado próprio, correndo pela face
+// medial, da femoral comum até o alvo de cada tipo.
+export const GEOMETRIA_ENXERTOS = {
+  "Femoropoplíteo acima do joelho": [[139, 62], [126, 110], [120, 180], [122, 250], [133, 288], [144, 304]],
+  "Femoropoplíteo abaixo do joelho": [[139, 62], [126, 110], [120, 180], [120, 260], [124, 330], [136, 372], [146, 390]],
+  "Femorodistal": [[139, 62], [126, 110], [120, 180], [120, 260], [123, 340], [128, 420], [134, 478], [139, 505]],
+  // vem da femoral do outro lado, cruzando acima do púbis
+  "Fêmoro-femoral cruzado": [[40, 4], [80, 10], [114, 24], [134, 40], [141, 54]],
+};
+const T_LOCAL_ENXERTO = { "Anastomose proximal": 0.04, "Corpo do enxerto": 0.5, "Anastomose distal": 0.96 };
+
+// Ponto ao longo de uma polilinha (t de 0 a 1), para marcar o local da lesão.
+function pontoNaPolilinha(pts, t) {
+  const seg = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+  let alvo = seg.reduce((a, b) => a + b, 0) * t;
+  for (let i = 0; i < seg.length; i++) {
+    if (alvo <= seg[i]) {
+      const f = alvo / (seg[i] || 1);
+      return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f];
+    }
+    alvo -= seg[i];
+  }
+  return pts[pts.length - 1];
+}
+
+function DesenhoEnxerto({ enxerto }) {
+  const pts = enxerto && GEOMETRIA_ENXERTOS[enxerto.tipo];
+  if (!pts) return null;
+  const ocluido = enxerto.status === "Ocluído";
+  const estenose = enxerto.status === "Com estenose";
+  const d = catmullRom(pts, false);
+  const local = T_LOCAL_ENXERTO[enxerto.local];
+  const marca = local !== undefined && (ocluido || estenose) ? pontoNaPolilinha(pts, local) : null;
+  return (
+    <g pointerEvents="none">
+      <path d={d} fill="none" stroke="#ffffff" strokeWidth={8} strokeLinecap="round" opacity={0.85} />
+      <path d={d} fill="none" stroke={ocluido ? COR_ENXERTO.ocluido : COR_ENXERTO.pervio} strokeWidth={5.5} strokeLinecap="round"
+        strokeDasharray={ocluido ? "6 4" : undefined} />
+      {marca && estenose && <circle cx={marca[0]} cy={marca[1]} r={5} fill="none" stroke={COR_LESAO_ENXERTO} strokeWidth={2.4} />}
+      {marca && ocluido && <circle cx={marca[0]} cy={marca[1]} r={4.5} fill={COR_ARTERIA.ocluida} />}
+    </g>
+  );
+}
 
 export const DESENHO_W = 300;
 export const DESENHO_H = 660;
@@ -113,7 +158,7 @@ function hitPath(d, onClick) {
 
 // Desenho de um membro. Com onSelecionar é clicável (Mapa Interativo); sem,
 // é estático (usado no PDF) — o mesmo desenho nos dois.
-export function DesenhoMMIIArterial({ lado, arterias, onSelecionar, selecionada, width = "100%", height, style }) {
+export function DesenhoMMIIArterial({ lado, arterias, enxerto, onSelecionar, selecionada, width = "100%", height, style }) {
   const interativo = typeof onSelecionar === "function";
   const mirrored = lado === "Direito";
   const mirrorTransform = mirrored ? `translate(${DESENHO_W},0) scale(-1,1)` : undefined;
@@ -195,6 +240,7 @@ export function DesenhoMMIIArterial({ lado, arterias, onSelecionar, selecionada,
             </g>
           );
         })}
+        <DesenhoEnxerto enxerto={enxerto} />
       </g>
       {ARTERIAS.map((nome) => {
         const g = GEOMETRIA_ARTERIAS[nome];
@@ -224,11 +270,11 @@ function hexParaRgb(hex) {
 }
 
 // Uma página por membro com o mesmo desenho do Mapa Interativo + legenda.
-export async function adicionarMapaArterialAoPdf(doc, lados, arteriasPorLado) {
+export async function adicionarMapaArterialAoPdf(doc, lados, arteriasPorLado, enxertosPorLado) {
   const pageWidth = doc.internal.pageSize.getWidth();
   for (const ladoAtual of lados) {
     const svg = renderToStaticMarkup(
-      <DesenhoMMIIArterial lado={ladoAtual} arterias={arteriasPorLado[ladoAtual]} width={DESENHO_W} height={DESENHO_H} />
+      <DesenhoMMIIArterial lado={ladoAtual} arterias={arteriasPorLado[ladoAtual]} enxerto={enxertosPorLado?.[ladoAtual]} width={DESENHO_W} height={DESENHO_H} />
     );
     const dataUrl = await svgParaImagemDataUrl(svg, DESENHO_W, DESENHO_H);
     doc.addPage();
@@ -269,6 +315,7 @@ export const ITENS_LEGENDA_ARTERIAL = [
   ["Hipercinético", COR_ARTERIA.hipercinetico],
   ["Hipocinético", COR_ARTERIA.hipocinetico],
   ["Oclusão", COR_ARTERIA.ocluida],
+  ["Enxerto / ponte", COR_ENXERTO.pervio],
 ];
 
 function LegendaArterial() {
@@ -283,6 +330,7 @@ function LegendaArterial() {
       <span>triângulos = estenose (branco lipídica, cinza calcificada, contorno cinza mista)</span>
       <span>malha = stent</span>
       <span>B / M / A = onda bifásica / monofásica / amortecida</span>
+      <span>enxerto: azul = pérvio · círculo laranja = estenose · cinza tracejado = ocluído</span>
     </div>
   );
 }
@@ -317,7 +365,7 @@ export default function MapaInterativoArterial({
         onTrocarLado={(op) => { onTrocarLado(op); setSelecionada(null); }}
         desenho={
           <DesenhoMMIIArterial
-            lado={l} arterias={valores} onSelecionar={setSelecionada} selecionada={selecionada}
+            lado={l} arterias={valores} enxerto={enxertos?.[l]} onSelecionar={setSelecionada} selecionada={selecionada}
             style={{ display: "block", width: "100%", maxWidth: 380, maxHeight: "72vh" }}
           />
         }
@@ -357,7 +405,7 @@ export default function MapaInterativoArterial({
             {lados.map((ld) => (
               <div key={ld} style={{ flex: "1 1 260px", maxWidth: 380, textAlign: "center" }}>
                 <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Membro Inferior {ld}</div>
-                <DesenhoMMIIArterial lado={ld} arterias={arterias?.[ld] || {}} style={{ display: "block", width: "100%" }} />
+                <DesenhoMMIIArterial lado={ld} arterias={arterias?.[ld] || {}} enxerto={enxertos?.[ld]} style={{ display: "block", width: "100%" }} />
               </div>
             ))}
           </div>

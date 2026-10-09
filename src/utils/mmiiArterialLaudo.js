@@ -1,6 +1,6 @@
 // Laudo do Doppler Arterial de MMII: artérias do membro inferior e enxertos.
 // A geração do texto é compartilhada com o MMSS (laudoArterial.js).
-import { criarLaudoArterial, preenchido } from "./laudoArterial";
+import { criarLaudoArterial, preenchido, noLocal } from "./laudoArterial";
 
 export * from "./laudoArterial";
 
@@ -11,7 +11,11 @@ export const enxertoTipoOptions = [
   "Fêmoro-femoral cruzado",
 ];
 export const enxertoStatusOptions = ["Pérvio", "Com estenose", "Ocluído"];
-export const enxertoPadrao = { tipo: "", status: "" };
+// Onde está a lesão do enxerto (estenose ou oclusão).
+export const enxertoLocalOptions = ["Anastomose proximal", "Corpo do enxerto", "Anastomose distal"];
+export const enxertoPadrao = { tipo: "", status: "", local: "" };
+
+const comLocal = (enx) => (preenchido(enx.local) && enx.status !== "Pérvio" ? ` ${noLocal(enx.local)}` : "");
 
 const laudo = criarLaudoArterial({
   arterias: [
@@ -27,12 +31,12 @@ const laudo = criarLaudoArterial({
   extra: {
     descrever: (enxerto) =>
       enxerto && preenchido(enxerto.tipo)
-        ? [`Enxerto ${enxerto.tipo.toLowerCase()}: ${preenchido(enxerto.status) ? enxerto.status.toLowerCase() : "situação não informada"}.`]
+        ? [`Enxerto ${enxerto.tipo.toLowerCase()}: ${preenchido(enxerto.status) ? enxerto.status.toLowerCase() + comLocal(enxerto) : "situação não informada"}.`]
         : [],
     concluir: (enxerto) =>
       enxerto && preenchido(enxerto.tipo)
         ? {
-            linhas: [`Enxerto ${enxerto.tipo.toLowerCase()}${preenchido(enxerto.status) ? ` ${enxerto.status.toLowerCase()}` : ""}`],
+            linhas: [`Enxerto ${enxerto.tipo.toLowerCase()}${preenchido(enxerto.status) ? ` ${enxerto.status.toLowerCase()}${comLocal(enxerto)}` : ""}`],
             alterado: true,
           }
         : { linhas: [], alterado: false },

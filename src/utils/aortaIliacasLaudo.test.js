@@ -63,6 +63,18 @@ describe("Aorta e ilíacas: laudo", () => {
     expect(getConclusaoMembro(arteriasPadrao(), ex)).toEqual(["Enxerto aorto-bifemoral pérvio"]);
   });
 
+  it("local da estenose/oclusão do enxerto", () => {
+    const ex = { enxerto: { tipo: "Enxerto aorto-bifemoral", status: "Ocluído", local: "Ramo esquerdo" } };
+    expect(getConclusaoMembro(arteriasPadrao(), ex)).toEqual(["Enxerto aorto-bifemoral ocluído no ramo esquerdo"]);
+    const evar = { enxerto: { tipo: "Endoprótese aórtica (EVAR)", status: "Com estenose", local: "Ramo ilíaco direito", endoleak: "Ausente" } };
+    expect(getConclusaoMembro(arteriasPadrao(), evar)).toEqual([
+      "Endoprótese aórtica (EVAR) com estenose no ramo ilíaco direito, sem sinais de vazamento (endoleak)",
+    ]);
+    // pérvio ignora local que tenha ficado salvo
+    expect(getConclusaoMembro(arteriasPadrao(), { enxerto: { tipo: "Enxerto aorto-bi-ilíaco", status: "Pérvio", local: "Ramo direito" } }))
+      .toEqual(["Enxerto aorto-bi-ilíaco pérvio"]);
+  });
+
   it("exame salvo antigo ganha os campos novos", () => {
     const n = normalizarArterias({ "Aorta Infrarrenal": { status: "Ocluída", localizacaoOclusao: "Medial" } });
     expect(Object.keys(n)).toEqual(ARTERIAS);

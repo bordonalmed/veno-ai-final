@@ -13,6 +13,7 @@ import {
   aneurismaFormaOptions,
   enxertoTipoOptions,
   enxertoStatusOptions,
+  enxertoLocalOptions,
 } from "../utils/mmiiArterialLaudo";
 import {
   MANOBRAS,
@@ -182,7 +183,6 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, co
             <CampoSelect label="Placa:" value={valores.placa} options={placaOptions} onChange={v => set('placa', v)} />
           </>
         )}
-        <CampoSelect label="Stent:" value={valores.stent} options={stentOptions} onChange={v => set('stent', v)} />
         {comCalibre && (
           <div>
             <label style={labelStyle}>Calibre (mm):</label>
@@ -193,9 +193,21 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, co
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(10px, 2.5vw, 18px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
         {!isOcluida && <CampoCheck label="Reabitada por colaterais" checked={valores.reabitada} onChange={v => set('reabitada', v)} />}
+        <CampoCheck label="Stent" checked={(valores.stent || "Ausente") !== "Ausente"} onChange={v => set('stent', v ? "Pérvio" : "Ausente")} />
         <CampoCheck label="Aneurisma" checked={valores.aneurisma} onChange={v => set('aneurisma', v)} />
         <CampoCheck label="Dissecção" checked={valores.disseccao} onChange={v => set('disseccao', v)} />
       </div>
+
+      {(valores.stent || "Ausente") !== "Ausente" && (
+        <div style={gradeDestaque}>
+          <CampoSelect
+            label="Situação do stent:"
+            value={valores.stent}
+            options={stentOptions.filter(o => o !== "Ausente")}
+            onChange={v => set('stent', v)}
+          />
+        </div>
+      )}
 
       {!isOcluida && valores.placa === "Presente" && (
         <div style={gradeDestaque}>
@@ -263,7 +275,7 @@ export function CamposEnxerto({ lado, enxerto, onChange }) {
           value={enxerto.tipo}
           options={enxertoTipoOptions}
           placeholder="Nenhum"
-          onChange={v => onChange({ tipo: v, status: v ? enxerto.status : "" })}
+          onChange={v => onChange({ tipo: v, status: v ? enxerto.status : "", local: v ? enxerto.local || "" : "" })}
         />
         {enxerto.tipo && (
           <CampoSelect
@@ -271,7 +283,16 @@ export function CamposEnxerto({ lado, enxerto, onChange }) {
             value={enxerto.status}
             options={enxertoStatusOptions}
             placeholder="Selecione"
-            onChange={v => onChange({ ...enxerto, status: v })}
+            onChange={v => onChange({ ...enxerto, status: v, local: v === "Pérvio" ? "" : enxerto.local || "" })}
+          />
+        )}
+        {enxerto.tipo && (enxerto.status === "Com estenose" || enxerto.status === "Ocluído") && (
+          <CampoSelect
+            label="Local da lesão:"
+            value={enxerto.local}
+            options={enxertoLocalOptions}
+            placeholder="Selecione"
+            onChange={v => onChange({ ...enxerto, local: v })}
           />
         )}
       </div>
@@ -287,7 +308,7 @@ export function CamposManobras({ lado, manobras, onChange }) {
       <div style={tituloCardStyle}>DESFILADEIRO TORÁCICO ({lado.toUpperCase()}):</div>
       <div style={{ marginBottom: manobras.realizadas ? 'clamp(8px, 2vw, 12px)' : 0 }}>
         <CampoCheck
-          label="Manobras realizadas"
+          label="Manobra costoclavicular realizada"
           checked={manobras.realizadas}
           onChange={v => onChange({ ...manobras, realizadas: v })}
         />

@@ -1,6 +1,6 @@
 import React from "react";
 import { cardStyle, tituloCardStyle, gradeCampos, inputStyle, labelStyle, CampoSelect } from "./CamposArteria";
-import { enxertoAortaTipoOptions, enxertoAortaStatusOptions, endoleakOptions } from "../utils/aortaIliacasLaudo";
+import { enxertoAortaTipoOptions, enxertoAortaStatusOptions, enxertoAortaLocalOptions, endoleakOptions } from "../utils/aortaIliacasLaudo";
 
 // Endoprótese (EVAR) ou enxerto aórtico: tipo, situação e, na endoprótese,
 // vazamento (endoleak) e diâmetro do saco aneurismático.
@@ -15,10 +15,13 @@ export function CamposEnxertoAorta({ enxerto, onChange }) {
           value={enxerto.tipo}
           options={enxertoAortaTipoOptions}
           placeholder="Nenhum"
-          onChange={v => onChange(v ? { ...enxerto, tipo: v } : { tipo: "", status: "", endoleak: "", sacoDiametro: "" })}
+          onChange={v => onChange(v ? { ...enxerto, tipo: v, local: enxertoAortaLocalOptions(v).includes(enxerto.local) ? enxerto.local : "" } : { tipo: "", status: "", local: "", endoleak: "", sacoDiametro: "" })}
         />
         {enxerto.tipo && (
-          <CampoSelect label="Situação:" value={enxerto.status} options={enxertoAortaStatusOptions} placeholder="Selecione" onChange={v => onChange({ ...enxerto, status: v })} />
+          <CampoSelect label="Situação:" value={enxerto.status} options={enxertoAortaStatusOptions} placeholder="Selecione" onChange={v => onChange({ ...enxerto, status: v, local: v === "Pérvio" ? "" : enxerto.local })} />
+        )}
+        {enxerto.tipo && (enxerto.status === "Com estenose" || enxerto.status === "Ocluído") && (
+          <CampoSelect label="Local da lesão:" value={enxerto.local} options={enxertoAortaLocalOptions(enxerto.tipo)} placeholder="Selecione" onChange={v => onChange({ ...enxerto, local: v })} />
         )}
         {endo && (
           <CampoSelect label="Vazamento (endoleak):" value={enxerto.endoleak} options={endoleakOptions} placeholder="Selecione" onChange={v => onChange({ ...enxerto, endoleak: v })} />

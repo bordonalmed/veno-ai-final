@@ -5,12 +5,8 @@ import { criarLaudoArterial, preenchido } from "./laudoArterial";
 
 export * from "./laudoArterial";
 
-export const MANOBRAS = [
-  "Abdução a 90° com rotação externa",
-  "Hiperabdução de Wright",
-  "Manobra de Adson",
-  "Manobra costoclavicular",
-];
+// Só a manobra costoclavicular (resultados de manobras antigas salvas são ignorados).
+export const MANOBRAS = ["Manobra costoclavicular"];
 export const resultadoManobraOptions = ["Sem alteração", "Redução do fluxo", "Abolição do fluxo"];
 export const arteriaManobraOptions = ["Artéria Subclávia", "Artéria Axilar", "Artéria Braquial", "Artéria Radial"];
 export const arcoPalmarOptions = ["Completo", "Incompleto"];
@@ -59,7 +55,7 @@ function descreverExtra(extra) {
   const linhas = [];
   const man = extra?.manobras;
   if (man?.realizadas) {
-    linhas.push("", `MANOBRAS PARA DESFILADEIRO TORÁCICO (avaliação na ${man.arteria.toLowerCase()})`);
+    linhas.push("", `MANOBRA PARA DESFILADEIRO TORÁCICO (avaliação na ${man.arteria.toLowerCase()})`);
     MANOBRAS.forEach((m) => linhas.push(`${m}: ${(man.resultados[m] || "Sem alteração").toLowerCase()}.`));
   }
   const fav = extra?.fav;
@@ -82,9 +78,9 @@ function concluirExtra(extra) {
     if (positivas.length) {
       alterado = true;
       const lista = positivas.map((m) => `${minusculaInicial(m)} (${man.resultados[m].toLowerCase()})`).join(", ");
-      linhas.push(`Manobras positivas para compressão arterial no desfiladeiro torácico: ${lista}`);
+      linhas.push(`Compressão arterial no desfiladeiro torácico à ${lista}`);
     } else {
-      linhas.push("Manobras para desfiladeiro torácico sem alterações.");
+      linhas.push("Manobra costoclavicular sem alterações.");
     }
   }
   const fav = extra?.fav;

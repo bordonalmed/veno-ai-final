@@ -76,26 +76,24 @@ describe("MMSS: tronco braquiocefálico, desfiladeiro e pré-FAV", () => {
     expect(getConclusaoMembro(t, undefined, "Esquerdo")).toEqual(["Exame compatível com normalidade."]);
   });
 
-  it("manobras positivas entram na descrição e na conclusão", () => {
+  it("manobra costoclavicular positiva entra na descrição e na conclusão", () => {
     const extra = extraPadrao();
     extra.manobras.realizadas = true;
-    extra.manobras.resultados["Abdução a 90° com rotação externa"] = "Abolição do fluxo";
-    extra.manobras.resultados["Hiperabdução de Wright"] = "Redução do fluxo";
+    extra.manobras.resultados["Manobra costoclavicular"] = "Abolição do fluxo";
     const t = gerarBlocoMembro("Esquerdo", arteriasPadrao(), extra);
-    expect(t).toContain("MANOBRAS PARA DESFILADEIRO TORÁCICO (avaliação na artéria radial)");
-    expect(t).toContain("Abdução a 90° com rotação externa: abolição do fluxo.");
-    expect(t).toContain("Manobra de Adson: sem alteração.");
+    expect(t).toContain("MANOBRA PARA DESFILADEIRO TORÁCICO (avaliação na artéria radial)");
+    expect(t).toContain("Manobra costoclavicular: abolição do fluxo.");
+    expect(t).not.toContain("Adson");
     expect(getConclusaoMembro(arteriasPadrao(), extra, "Esquerdo")).toEqual([
-      "Manobras positivas para compressão arterial no desfiladeiro torácico: abdução a 90° com rotação externa (abolição do fluxo), hiperabdução de Wright (redução do fluxo)",
+      "Compressão arterial no desfiladeiro torácico à manobra costoclavicular (abolição do fluxo)",
     ]);
   });
 
-  it("manobras negativas mantêm a normalidade", () => {
-    const extra = extraPadrao();
-    extra.manobras.realizadas = true;
+  it("manobra negativa mantém a normalidade; manobras antigas salvas são ignoradas", () => {
+    const extra = normalizarExtra({ manobras: { realizadas: true, arteria: "Artéria Radial", resultados: { "Manobra de Adson": "Abolição do fluxo" } } });
     expect(getConclusaoMembro(arteriasPadrao(), extra, "Direito")).toEqual([
       "Exame compatível com normalidade.",
-      "Manobras para desfiladeiro torácico sem alterações.",
+      "Manobra costoclavicular sem alterações.",
     ]);
   });
 
@@ -115,7 +113,7 @@ describe("MMSS: tronco braquiocefálico, desfiladeiro e pré-FAV", () => {
 
   it("seções desmarcadas não aparecem; exames antigos ganham padrão", () => {
     const t = gerarBlocoMembro("Direito", arteriasPadrao(), extraPadrao());
-    expect(t).not.toMatch(/MANOBRAS|PRÉ-FÍSTULA/);
+    expect(t).not.toMatch(/MANOBRA|PRÉ-FÍSTULA/);
     expect(normalizarExtra(undefined)).toEqual(extraPadrao());
     expect(normalizarExtra({ fav: { realizado: true, radialPunho: "2" } }).fav.radialPunho).toBe("2");
   });

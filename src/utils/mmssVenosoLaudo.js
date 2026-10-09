@@ -16,7 +16,7 @@ export const VEIAS_SUPERFICIAIS = [
   "Veia Cefálica (antebraço)",
   "Veia Basílica (braço)",
   "Veia Basílica (antebraço)",
-  "Veia Cubital Mediana",
+  "Veia Intermédia do Cotovelo",
 ];
 
 export const VEIAS = [...VEIAS_PROFUNDAS, ...VEIAS_SUPERFICIAIS];
@@ -264,11 +264,15 @@ function converterTextoAntigo(texto) {
   return { ...estruturaVeia };
 }
 
+// Nome antigo -> nome atual (exames salvos antes da troca).
+const NOMES_ANTIGOS = { "Veia Cubital Mediana": "Veia Intermédia do Cotovelo" };
+const nomeAtual = (n) => NOMES_ANTIGOS[n] || n;
+
 export function normalizarVeiasLado(exame, lado) {
   const out = veiasPadrao();
   if (exame?.veias?.[lado]) {
-    VEIAS.forEach((n) => {
-      if (exame.veias[lado][n]) out[n] = { ...estruturaVeia, ...exame.veias[lado][n] };
+    Object.entries(exame.veias[lado]).forEach(([n, v]) => {
+      if (out[nomeAtual(n)]) out[nomeAtual(n)] = { ...estruturaVeia, ...v };
     });
     return out;
   }
@@ -290,5 +294,7 @@ export function normalizarExtra(salvo) {
   if (!salvo) return p;
   const fav = { ...p.fav, ...salvo.fav };
   MEDIDAS_FAV_VENOSO.forEach(([c]) => { fav[c] = { ...p.fav[c], ...salvo.fav?.[c] }; });
-  return { cateter: { ...p.cateter, ...salvo.cateter }, fav };
+  const cateter = { ...p.cateter, ...salvo.cateter };
+  cateter.veia = nomeAtual(cateter.veia);
+  return { cateter, fav };
 }

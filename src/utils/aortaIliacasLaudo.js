@@ -2,7 +2,7 @@
 // descrição/conclusão das artérias dos membros (laudoArterial.js), com o
 // calibre, a forma do aneurisma e o trombo mural, mais endoprótese/enxerto.
 // Exame único (sem "lado"): as ilíacas já levam o lado no nome.
-import { criarLaudoArterial, descreverArteria, gerarCabecalhoLaudo, preenchido } from "./laudoArterial";
+import { criarLaudoArterial, descreverArteria, gerarCabecalhoLaudo, preenchido, noLocal } from "./laudoArterial";
 
 export * from "./laudoArterial";
 
@@ -24,10 +24,19 @@ export const enxertoAortaTipoOptions = [
   "Enxerto aorto-bifemoral",
 ];
 export const enxertoAortaStatusOptions = ["Pérvio", "Com estenose", "Ocluído"];
+// Onde está a estenose/oclusão do enxerto, conforme o tipo.
+const LOCAIS_ENXERTO_BIFURCADO = ["Anastomose proximal", "Corpo do enxerto", "Ramo direito", "Ramo esquerdo", "Anastomose distal direita", "Anastomose distal esquerda"];
+export function enxertoAortaLocalOptions(tipo) {
+  if (tipo === "Endoprótese aórtica (EVAR)") return ["Corpo principal", "Ramo ilíaco direito", "Ramo ilíaco esquerdo"];
+  if (tipo === "Endoprótese aorto-uni-ilíaca") return ["Corpo principal", "Ramo ilíaco direito"];
+  if (tipo === "Endoprótese ilíaca") return ["Ilíaca direita", "Ilíaca esquerda"];
+  if (/^Enxerto/.test(tipo || "")) return LOCAIS_ENXERTO_BIFURCADO;
+  return [];
+}
 export const endoleakOptions = ["Ausente", "Tipo I", "Tipo II", "Tipo III", "Tipo IV", "Indeterminado"];
 
 export function extraPadrao() {
-  return { enxerto: { tipo: "", status: "", endoleak: "", sacoDiametro: "" } };
+  return { enxerto: { tipo: "", status: "", local: "", endoleak: "", sacoDiametro: "" } };
 }
 
 export function normalizarExtra(salvo) {
@@ -53,6 +62,7 @@ function textoEnxerto(enx) {
   const partes = [enx.tipo];
   const sit = situacao(enx);
   if (sit) partes[0] += ` ${sit}`;
+  if (sit && enx.status !== "Pérvio" && enxertoAortaLocalOptions(enx.tipo).includes(enx.local)) partes[0] += ` ${noLocal(enx.local)}`;
   if (ehEndoprotese(enx.tipo) && preenchido(enx.endoleak)) {
     partes.push(enx.endoleak === "Ausente" ? "sem sinais de vazamento (endoleak)" : `com vazamento (endoleak) ${enx.endoleak.replace("Tipo", "tipo").replace("Indeterminado", "indeterminado")}`);
   }

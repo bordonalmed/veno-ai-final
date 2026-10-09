@@ -41,6 +41,13 @@ export const estruturaArteria = {
 // Exames salvos antes desta versão usavam "Proximal/Medial/Distal".
 const LOCALIZACAO_ANTIGA = { Proximal: "Terço proximal", Medial: "Terço médio", Distal: "Terço distal" };
 
+// "Anastomose distal" -> "na anastomose distal"; "Ramo direito" -> "no ramo direito".
+export function noLocal(local) {
+  const l = String(local).trim();
+  const fem = /^(anastomose|ilíaca|veia|artéria|origem|bifurcação)/i.test(l);
+  return `${fem ? "na" : "no"} ${l.charAt(0).toLowerCase()}${l.slice(1)}`;
+}
+
 export function preenchido(v) {
   return v !== undefined && v !== null && String(v).trim() !== "";
 }
