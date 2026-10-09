@@ -7,6 +7,8 @@ import { appendImagesToPdf } from "../utils/pdfImages";
 import laudoSyncService from '../services/laudoSyncService';
 import examesRealtimeService from '../services/examesRealtimeService';
 import CarotidasMapaInterativo, { adicionarMapaCarotidasAoPdf } from "../components/CarotidasMapaInterativo";
+import CamposCarotida from "../components/CamposCarotida";
+import { vasoPadrao, normalizarVaso, normalizarSistema, montarLaudo, validarVasos } from "../utils/carotidasLaudo";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesCarotidasVertebrais";
@@ -83,209 +85,11 @@ function carregarExameEmEdicao() {
   }
 }
 
-// Opções para os campos
-const statusOptions = ["pérvia", "ocluída"];
-const fluxoOptions = ["sem alteração", "hipocinético", "hipercinético"];
-const ateromatoseOptions = ["ausente", "discreta", "moderada", "severa"];
-const estenoseOptions = ["ausente", "<50%", "50% a 70%", ">70%"];
-const tipoPlacaOptions = ["lipídica", "calcificada", "mista"];
+const initialVesselData = vasoPadrao();
 
-// Estrutura inicial dos dados dos vasos
-const initialVesselData = {
-  status: "pérvia",
-  fluxo: "sem alteração",
-  ateromatose: "ausente",
-  estenose: "ausente",
-  tipoPlaca: "",
-  stent: "ausente",
-  imt: "",
-  observacao: ""
-};
-
-// Função para gerar conclusão automática
-function gerarConclusaoCarotidas(data) {
-  const vesselNames = {
-    ACCD: "artéria carótida comum direita",
-    ACCE: "artéria carótida comum esquerda",
-    ACID: "artéria carótida interna direita",
-    ACIE: "artéria carótida interna esquerda",
-    ACED: "artéria carótida externa direita",
-    ACEE: "artéria carótida externa esquerda",
-    AVD: "artéria vertebral direita",
-    AVE: "artéria vertebral esquerda"
-  };
-
-  // Verifica se o vaso tem alterações (não é pérvio OU não tem fluxo sem alteração)
-  const hasAlterations = (vessel) => {
-    return vessel.status !== "pérvia"
-      || vessel.fluxo !== "sem alteração"
-      || vessel.ateromatose !== "ausente"
-      || (vessel.estenose && vessel.estenose !== "ausente")
-      || vessel.stent === "presente";
-  };
-
-  const allVessels = [data.ACCD, data.ACID, data.ACED, data.ACCE, data.ACIE, data.ACEE, data.AVD, data.AVE];
-  const hasAnyAlterations = allVessels.some(hasAlterations);
-
-  // Se não há alterações, retorna a conclusão padrão
-  if (!hasAnyAlterations) {
-    return "Artérias carótidas e vertebrais pérvias, sem alterações hemodinâmicas.";
-  }
-
-  const getVesselDescription = (vessel, vesselKey) => {
-    const vesselName = vesselNames[vesselKey];
-    const descriptions = [];
-
-    if (vessel.status === "ocluída") {
-      descriptions.push(`Oclusão de ${vesselName}`);
-    } else {
-      if (vessel.estenose && vessel.estenose !== "ausente") {
-        let estenoseDesc = `Estenose ${vessel.estenose} em ${vesselName}`;
-        if (vessel.tipoPlaca && vessel.tipoPlaca.trim && vessel.tipoPlaca.trim() !== "") {
-          estenoseDesc += ` com placa ${vessel.tipoPlaca}`;
-        }
-        descriptions.push(estenoseDesc);
-      }
-
-      if (vessel.ateromatose !== "ausente" && vessel.estenose === "ausente") {
-        if (vessel.ateromatose === "discreta") {
-          descriptions.push(`Ateromatose discreta sem repercussão hemodinâmica`);
-        } else {
-          descriptions.push(`Ateromatose ${vessel.ateromatose} em ${vesselName}`);
-        }
-      }
-
-      if (vessel.fluxo !== "sem alteração" &&
-          vessel.ateromatose === "ausente" &&
-          vessel.estenose === "ausente") {
-        descriptions.push(`Fluxo ${vessel.fluxo} em ${vesselName}`);
-      }
-    }
-
-    if (vessel.stent === "presente") {
-      descriptions.push(descriptions.length > 0 ? "com stent" : `Stent em ${vesselName}`);
-    }
-
-    return descriptions.length > 0 ? descriptions.join(", ") + "." : null;
-  };
-
-  const vesselDescriptions = [];
-  Object.entries(data).forEach(([vesselKey, vesselData]) => {
-    // Só inclui vasos que têm alterações
-    if (hasAlterations(vesselData)) {
-      const description = getVesselDescription(vesselData, vesselKey);
-      if (description) {
-        vesselDescriptions.push(description);
-      }
-    }
-  });
-
-  // Cada alteração em uma linha separada
-  return vesselDescriptions.join("\n");
-} 
-
-// Função para gerar relatório completo
-function montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais }) {
-  const vesselNames = {
-    ACCD: "Artéria carótida comum direita",
-    ACCE: "Artéria carótida comum esquerda",
-    ACID: "Artéria carótida interna direita",
-    ACIE: "Artéria carótida interna esquerda",
-    ACED: "Artéria carótida externa direita",
-    ACEE: "Artéria carótida externa esquerda",
-    AVD: "Artéria vertebral direita",
-    AVE: "Artéria vertebral esquerda"
-  };
-
-  const formatarVesselDescricao = (vessel, vesselKey) => {
-    const vesselName = vesselNames[vesselKey];
-    
-    // Se a artéria está normal, retornar apenas "pérvia, fluxo sem alteração"
-    if (vessel.status === "pérvia" &&
-        vessel.fluxo === "sem alteração" &&
-        vessel.ateromatose === "ausente" &&
-        vessel.estenose === "ausente" &&
-        vessel.stent !== "presente") {
-      return `${vesselName}: pérvia, fluxo sem alteração.`;
-    }
-
-    // Caso contrário, incluir todos os dados relevantes
-    const descricoes = [];
-    descricoes.push(vessel.status);
-    descricoes.push(`fluxo ${vessel.fluxo}`);
-    
-    if (vessel.ateromatose !== "ausente") {
-      descricoes.push(`ateromatose ${vessel.ateromatose}`);
-    }
-    
-    if (vessel.estenose && vessel.estenose !== "ausente") {
-      let estenoseDesc = `estenose ${vessel.estenose}`;
-      if (vessel.tipoPlaca && vessel.tipoPlaca.trim && vessel.tipoPlaca.trim() !== "") {
-        estenoseDesc += ` com placa ${vessel.tipoPlaca}`;
-      }
-      descricoes.push(estenoseDesc);
-    }
-
-    if (vessel.stent === "presente") {
-      descricoes.push("presença de stent");
-    }
-
-    // IMT (apenas para carótidas comuns)
-    if ((vesselKey === "ACCD" || vesselKey === "ACCE") && vessel.imt) {
-      descricoes.push(`IMT ${vessel.imt} mm`);
-    }
-
-    const observacao = vessel.observacao ? vessel.observacao.trim() : "";
-    if (observacao) {
-      return `${vesselName}: ${descricoes.join(", ")}.\nObservação: ${observacao}`;
-    }
-
-    return `${vesselName}: ${descricoes.join(", ")}.`;
-  };
-
-  let relatorio = `PACIENTE: ${nome}\n`;
-  if (idade) relatorio += `IDADE: ${idade} anos\n`;
-  relatorio += `DATA: ${data}\n`;
-  relatorio += `DOPPLER DE CARÓTIDAS E VERTEBRAIS\n\n`;
-
-  // Sistema Carotídeo Direito
-  relatorio += `**Sistema Carotídeo Direito**\n`;
-  relatorio += formatarVesselDescricao(carotidasDireitas.ACCD, "ACCD") + "\n";
-  relatorio += formatarVesselDescricao(carotidasDireitas.ACID, "ACID") + "\n";
-  relatorio += formatarVesselDescricao(carotidasDireitas.ACED, "ACED") + "\n\n";
-
-  // Sistema Carotídeo Esquerdo
-  relatorio += `**Sistema Carotídeo Esquerdo**\n`;
-  relatorio += formatarVesselDescricao(carotidasEsquerdas.ACCE, "ACCE") + "\n";
-  relatorio += formatarVesselDescricao(carotidasEsquerdas.ACIE, "ACIE") + "\n";
-  relatorio += formatarVesselDescricao(carotidasEsquerdas.ACEE, "ACEE") + "\n\n";
-
-  // Sistema Vertebral
-  relatorio += `**Sistema Vertebral**\n`;
-  relatorio += formatarVesselDescricao(vertebrais.AVD, "AVD") + "\n";
-  relatorio += formatarVesselDescricao(vertebrais.AVE, "AVE") + "\n\n";
-
-  // Adicionar conclusão
-  relatorio += `**CONCLUSÃO:**\n`;
-  relatorio += gerarConclusaoCarotidas({ ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais });
-
-  return relatorio;
-}
-
-// Validação compartilhada: quando a estenose não está ausente, o tipo de placa é obrigatório
-function validarVasos(todosVasos) {
-  for (const [vesselKey, vessel] of Object.entries(todosVasos)) {
-    if (vessel.estenose && vessel.estenose !== "ausente") {
-      if (!vessel.tipoPlaca || !vessel.tipoPlaca.trim || vessel.tipoPlaca.trim() === "") {
-        return `Campo "Tipo Placa" é obrigatório para ${vesselKey} quando há estenose!`;
-      }
-    }
-  }
-  return null;
-}
-
-// Componente para um vaso individual
+// Quadro de um vaso no modo formulário (mesmos campos do VENO.AI Map).
 const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) => {
+  const v = normalizarVaso(vessel);
   return (
     <div style={{
       marginBottom: 'clamp(12px, 2.5vw, 16px)',
@@ -293,10 +97,7 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
       background: 'transparent',
       borderRadius: 'clamp(8px, 1.5vw, 12px)',
       border: '1px solid rgba(14, 184, 208, 0.4)',
-      boxShadow: '0 4px 12px rgba(0, 224, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 'clamp(12px, 2.5vw, 16px)'
+      boxShadow: '0 4px 12px rgba(0, 224, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1)'
     }}>
       <div style={{
         fontSize: 'clamp(13px, 2.5vw, 15px)',
@@ -308,271 +109,13 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
       }}>
         {title}
       </div>
-      
-      {/* Primeira linha: Status | Fluxo | Ateromatose | Estenose | IMT */}
-      <div style={{
-        display: 'flex',
-        gap: 'clamp(12px, 2.5vw, 16px)',
-        flexWrap: 'wrap',
-        alignItems: 'center'
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-          <label style={{
-            fontSize: 'clamp(11px, 2.2vw, 13px)',
-            color: '#fff',
-            fontWeight: 'bold',
-            minWidth: 'clamp(80px, 15vw, 100px)'
-          }}>Status:</label>
-          <select
-            value={vessel.status}
-            onChange={(e) => {
-              const novoStatus = e.target.value;
-              onChange(vesselKey, 'status', novoStatus);
-              if (novoStatus === "ocluída") {
-                onChange(vesselKey, 'fluxo', 'sem alteração');
-                onChange(vesselKey, 'ateromatose', 'ausente');
-                onChange(vesselKey, 'estenose', 'ausente');
-                onChange(vesselKey, 'tipoPlaca', '');
-              }
-            }}
-            style={{
-              padding: 'clamp(8px, 1.5vw, 10px)',
-              borderRadius: 'clamp(4px, 1vw, 6px)',
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              background: '#ffffff',
-              border: '1px solid #0eb8d0',
-              color: '#222',
-              minWidth: 'clamp(120px, 20vw, 150px)'
-            }}
-          >
-            {statusOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-          <label style={{
-            fontSize: 'clamp(11px, 2.2vw, 13px)',
-            color: '#fff',
-            fontWeight: 'bold',
-            minWidth: 'clamp(80px, 15vw, 100px)'
-          }}>Stent:</label>
-          <button
-            type="button"
-            onClick={() => onChange(vesselKey, 'stent', vessel.stent === "presente" ? "ausente" : "presente")}
-            style={{
-              padding: 'clamp(8px, 1.5vw, 10px)',
-              borderRadius: 'clamp(4px, 1vw, 6px)',
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              fontWeight: 'bold',
-              background: vessel.stent === "presente" ? '#0eb8d0' : '#ffffff',
-              border: '1px solid #0eb8d0',
-              color: vessel.stent === "presente" ? '#ffffff' : '#222',
-              minWidth: 'clamp(120px, 20vw, 150px)',
-              cursor: 'pointer'
-            }}
-          >
-            {vessel.stent === "presente" ? "Presente" : "Ausente"}
-          </button>
-        </div>
-
-        {showIMT && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-            <label style={{
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              color: '#fff',
-              fontWeight: 'bold',
-              minWidth: 'clamp(80px, 15vw, 100px)'
-            }}>IMT:</label>
-            <input
-              type="text"
-              value={vessel.imt || ''}
-              onChange={(e) => onChange(vesselKey, 'imt', e.target.value)}
-              placeholder="mm"
-              style={{
-                padding: 'clamp(8px, 1.5vw, 10px)',
-                borderRadius: 'clamp(4px, 1vw, 6px)',
-                fontSize: 'clamp(11px, 2.2vw, 13px)',
-                background: '#ffffff',
-                border: '1px solid #0eb8d0',
-                color: '#222',
-                minWidth: 'clamp(120px, 20vw, 150px)'
-              }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Vaso ocluído: fluxo/ateromatose/estenose/placa não se aplicam */}
-      {vessel.status === "ocluída" && (
-        <div style={{
-          background: 'rgba(0,0,0,0.25)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: 'clamp(4px, 1vw, 6px)',
-          padding: 'clamp(8px, 1.5vw, 10px) clamp(10px, 2vw, 14px)',
-          fontSize: 'clamp(11px, 2.2vw, 13px)',
-          color: '#cfd3d8'
-        }}>
-          Vaso ocluído — fluxo, ateromatose, estenose e tipo de placa não se aplicam.
-        </div>
-      )}
-
-      {/* Fluxo, Ateromatose e Estenose (só fazem sentido se o vaso está pérvio) */}
-      {vessel.status !== "ocluída" && (
-        <div style={{
-          display: 'flex',
-          gap: 'clamp(12px, 2.5vw, 16px)',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-            <label style={{
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              color: '#fff',
-              fontWeight: 'bold',
-              minWidth: 'clamp(80px, 15vw, 100px)'
-            }}>Fluxo:</label>
-            <select
-              value={vessel.fluxo}
-              onChange={(e) => onChange(vesselKey, 'fluxo', e.target.value)}
-              style={{
-                padding: 'clamp(8px, 1.5vw, 10px)',
-                borderRadius: 'clamp(4px, 1vw, 6px)',
-                fontSize: 'clamp(11px, 2.2vw, 13px)',
-                background: '#ffffff',
-                border: '1px solid #0eb8d0',
-                color: '#222',
-                minWidth: 'clamp(120px, 20vw, 150px)'
-              }}
-            >
-              {fluxoOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-            <label style={{
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              color: '#fff',
-              fontWeight: 'bold',
-              minWidth: 'clamp(80px, 15vw, 100px)'
-            }}>Ateromatose:</label>
-            <select
-              value={vessel.ateromatose}
-              onChange={(e) => onChange(vesselKey, 'ateromatose', e.target.value)}
-              style={{
-                padding: 'clamp(8px, 1.5vw, 10px)',
-                borderRadius: 'clamp(4px, 1vw, 6px)',
-                fontSize: 'clamp(11px, 2.2vw, 13px)',
-                background: '#ffffff',
-                border: '1px solid #0eb8d0',
-                color: '#222',
-                minWidth: 'clamp(120px, 20vw, 150px)'
-              }}
-            >
-              {ateromatoseOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-            <label style={{
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              color: '#fff',
-              fontWeight: 'bold',
-              minWidth: 'clamp(80px, 15vw, 100px)'
-            }}>Estenose:</label>
-            <select
-              value={vessel.estenose}
-              onChange={(e) => {
-                const novaEstenose = e.target.value;
-                onChange(vesselKey, 'estenose', novaEstenose);
-                if (novaEstenose === "ausente") {
-                  onChange(vesselKey, 'tipoPlaca', '');
-                }
-              }}
-              style={{
-                padding: 'clamp(8px, 1.5vw, 10px)',
-                borderRadius: 'clamp(4px, 1vw, 6px)',
-                fontSize: 'clamp(11px, 2.2vw, 13px)',
-                background: '#ffffff',
-                border: '1px solid #0eb8d0',
-                color: '#222',
-                minWidth: 'clamp(120px, 20vw, 150px)'
-              }}
-            >
-              {estenoseOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Tipo de placa (só quando a estenose não está ausente) */}
-      {vessel.status !== "ocluída" && vessel.estenose && vessel.estenose !== "ausente" && (
-        <div style={{
-          display: 'flex',
-          gap: 'clamp(12px, 2.5vw, 16px)',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', minWidth: 'clamp(140px, 22vw, 180px)' }}>
-            <label style={{
-              fontSize: 'clamp(11px, 2.2vw, 13px)',
-              color: '#fff',
-              fontWeight: 'bold',
-              minWidth: 'clamp(80px, 15vw, 100px)'
-            }}>Tipo Placa:</label>
-            <select
-              value={vessel.tipoPlaca || ''}
-              onChange={(e) => onChange(vesselKey, 'tipoPlaca', e.target.value)}
-              required={vessel.estenose !== "ausente"}
-              style={{
-                padding: 'clamp(8px, 1.5vw, 10px)',
-                borderRadius: 'clamp(4px, 1vw, 6px)',
-                fontSize: 'clamp(11px, 2.2vw, 13px)',
-                background: '#ffffff',
-                border: '1px solid #0eb8d0',
-                color: '#222',
-                minWidth: 'clamp(120px, 20vw, 150px)'
-              }}
-            >
-              <option value="">Selecione...</option>
-              {tipoPlacaOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Terceira linha: Observação */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 8px)', width: '100%' }}>
-        <label style={{
-          fontSize: 'clamp(11px, 2.2vw, 13px)',
-          color: '#fff',
-          fontWeight: 'bold'
-        }}>Observação:</label>
-        <input
-          type="text"
-          value={vessel.observacao || ''}
-          onChange={(e) => onChange(vesselKey, 'observacao', e.target.value)}
-          placeholder="Anotações livres..."
-          style={{
-            padding: 'clamp(8px, 1.5vw, 10px)',
-            borderRadius: 'clamp(4px, 1vw, 6px)',
-            fontSize: 'clamp(11px, 2.2vw, 13px)',
-            background: '#ffffff',
-            border: '1px solid #0eb8d0',
-            color: '#222',
-            width: '100%'
-          }}
-        />
-      </div>
+      <CamposCarotida
+        valores={v}
+        comIMT={showIMT}
+        onChange={(novos) => Object.entries(novos).forEach(([campo, valor]) => {
+          if (vessel?.[campo] !== valor) onChange(vesselKey, campo, valor);
+        })}
+      />
     </div>
   );
 };
@@ -640,9 +183,10 @@ function CarotidasVertebrais() {
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
       
-      if (exameEmEdicao.carotidasDireitas) setCarotidasDireitas(exameEmEdicao.carotidasDireitas);
-      if (exameEmEdicao.carotidasEsquerdas) setCarotidasEsquerdas(exameEmEdicao.carotidasEsquerdas);
-      if (exameEmEdicao.vertebrais) setVertebrais(exameEmEdicao.vertebrais);
+      // exames antigos ganham os campos novos (stent "presente" vira pérvio)
+      if (exameEmEdicao.carotidasDireitas) setCarotidasDireitas(normalizarSistema(exameEmEdicao.carotidasDireitas, ["ACCD", "ACID", "ACED"]));
+      if (exameEmEdicao.carotidasEsquerdas) setCarotidasEsquerdas(normalizarSistema(exameEmEdicao.carotidasEsquerdas, ["ACCE", "ACIE", "ACEE"]));
+      if (exameEmEdicao.vertebrais) setVertebrais(normalizarSistema(exameEmEdicao.vertebrais, ["AVD", "AVE"]));
       
       if (exameEmEdicao.laudo) {
         setLaudoTexto(exameEmEdicao.laudo);
