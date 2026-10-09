@@ -1,9 +1,3 @@
-// Nomenclatura das ondas conforme o consenso SVM/SVU 2020 (Kim ES et al.,
-// Vasc Med 2020;25:484-506, doi:10.1177/1358863X20937665): fase multifásica ou
-// monofásica (substitui trifásico/bifásico), resistência alta/intermediária/
-// baixa, sentido anterógrado/retrógrado/bidirecional e modificadores
-// (ascensão sistólica prolongada, staccato, alargamento espectral).
-
 // Laudo do Doppler Arterial (membros inferiores e superiores): opções dos
 // campos, estrutura de dados e geração do texto (descrição + conclusão).
 // A lista de artérias e o nome do membro vêm de cada exame
@@ -14,10 +8,8 @@ export const localizacaoOclusaoOptions = ["Terço proximal", "Terço médio", "T
 export const localizacaoPlacaOptions = ["Terço proximal", "Terço médio", "Terço distal"];
 export const ateromatoseOptions = ["Ausente", "Discreta", "Moderada", "Severa"];
 export const velocidadeOptions = ["Normocinético", "Hipercinético", "Hipocinético"];
-export const tipoOndaOptions = ["Multifásico", "Monofásico"];
-export const resistenciaOptions = ["Alta", "Intermediária", "Baixa"];
-export const ascensaoOptions = ["Rápida", "Prolongada"];
-export const sentidoOptions = ["Anterógrado", "Retrógrado", "Bidirecional"];
+export const tipoOndaOptions = ["Trifásico", "Bifásico", "Monofásico", "Amortecido (tardus-parvus)"];
+export const sentidoOptions = ["Anterógrado", "Retrógrado"];
 export const placaOptions = ["Ausente", "Presente"];
 export const caracteristicaPlacaOptions = ["Calcificada", "Lipídica", "Mista"];
 export const aneurismaFormaOptions = ["Fusiforme", "Sacular"];
@@ -28,11 +20,7 @@ export const estruturaArteria = {
   localizacaoOclusao: "",
   ateromatose: "Ausente",
   velocidade: "Normocinético",
-  tipoOnda: "Multifásico",
-  resistencia: "Alta",
-  ascensao: "Rápida",
-  staccato: false,
-  alargamentoEspectral: false,
+  tipoOnda: "Trifásico",
   sentido: "Anterógrado",
   reabitada: false,
   placa: "Ausente",
@@ -53,27 +41,6 @@ export const estruturaArteria = {
 // Exames salvos antes desta versão usavam "Proximal/Medial/Distal".
 const LOCALIZACAO_ANTIGA = { Proximal: "Terço proximal", Medial: "Terço médio", Distal: "Terço distal" };
 
-// Exames salvos com a nomenclatura antiga da onda (trifásico/bifásico/
-// amortecido). Onde a resistência não era informada, fica em branco (não sai
-// no laudo) em vez de ser presumida — exceto na onda multifásica normal.
-export function normalizarOnda(salva) {
-  const v = { ...salva };
-  const antiga = salva?.tipoOnda;
-  if (antiga === "Trifásico" || antiga === "Bifásico") {
-    v.tipoOnda = "Multifásico";
-    if (salva.resistencia === undefined) v.resistencia = "Alta";
-  } else if (antiga === "Amortecido (tardus-parvus)") {
-    v.tipoOnda = "Monofásico";
-    v.ascensao = "Prolongada";
-    if (salva.resistencia === undefined) v.resistencia = "";
-  } else if (antiga === "Monofásico" && salva.resistencia === undefined) {
-    v.resistencia = "";
-  }
-  if (v.tipoOnda === "Multifásico" && v.resistencia === undefined) v.resistencia = "Alta";
-  if (v.ascensao === undefined) v.ascensao = "Rápida";
-  return v;
-}
-
 export function preenchido(v) {
   return v !== undefined && v !== null && String(v).trim() !== "";
 }
@@ -88,11 +55,7 @@ export function isArteriaNormal(v) {
     v.status === "Pérvia" &&
     v.ateromatose === "Ausente" &&
     v.velocidade === "Normocinético" &&
-    v.tipoOnda === "Multifásico" &&
-    (v.resistencia || "Alta") === "Alta" &&
-    (v.ascensao || "Rápida") === "Rápida" &&
-    !v.staccato &&
-    !v.alargamentoEspectral &&
+    v.tipoOnda === "Trifásico" &&
     v.sentido === "Anterógrado" &&
     !v.reabitada &&
     v.placa === "Ausente" &&
@@ -129,23 +92,6 @@ function textoExtras(v) {
   return partes;
 }
 
-// "Multifásico" -> "onda multifásica de alta resistência, com ascensão
-// sistólica prolongada" (só o que foi informado).
-function textoOnda(v) {
-  let t = `onda ${v.tipoOnda === "Monofásico" ? "monofásica" : "multifásica"}`;
-  if (preenchido(v.resistencia)) t += ` de ${v.resistencia.toLowerCase()} resistência`;
-  const partes = [t];
-  if (v.ascensao === "Prolongada") partes.push("com ascensão sistólica prolongada");
-  return partes;
-}
-
-function modificadores(v) {
-  const m = [];
-  if (v.staccato) m.push("padrão staccato");
-  if (v.alargamentoEspectral) m.push("alargamento espectral");
-  return m;
-}
-
 // Uma linha da descrição, ex.: "Artéria Poplítea: pérvia, fluxo normocinético, ...".
 // "Tronco Braquiocefálico" é masculino: "pérvio".
 // Sem o lado: o título do bloco ("...MEMBRO INFERIOR DIREITO") já diz qual é.
@@ -158,10 +104,8 @@ export function descreverArteria(nome, v) {
     partes.push(/^Tronco/.test(nome) ? "pérvio" : "pérvia");
     if (v.ateromatose !== "Ausente") partes.push(`ateromatose ${v.ateromatose.toLowerCase()}`);
     partes.push(`fluxo ${v.velocidade.toLowerCase()}`);
-    partes.push(...textoOnda(v));
+    partes.push(`padrão ${v.tipoOnda.toLowerCase()}`);
     partes.push(`sentido ${v.sentido.toLowerCase()}`);
-    const mods = modificadores(v);
-    if (mods.length) partes.push(`com ${mods.join(" e ")}`);
     if (v.reabitada) partes.push("reabitada por colaterais");
     if (v.placa === "Presente") partes.push(textoPlaca(v));
   }
@@ -221,9 +165,7 @@ export function criarLaudoArterial({ arterias: ARTERIAS, membro, soDireito = [],
     if (!salvas) return out;
     ARTERIAS.forEach((a) => {
       if (!salvas[a]) return;
-      // a resistência fica "indefinida" quando o exame é anterior a esse campo,
-      // para normalizarOnda decidir (e não herdar o "Alta" do padrão)
-      const v = normalizarOnda({ ...estruturaArteria, resistencia: undefined, ...salvas[a] });
+      const v = { ...estruturaArteria, ...salvas[a] };
       if (LOCALIZACAO_ANTIGA[v.localizacaoOclusao]) v.localizacaoOclusao = LOCALIZACAO_ANTIGA[v.localizacaoOclusao];
       if (v.status === "Ocluída") v.velocidade = "Normocinético";
       out[a] = v;
@@ -260,12 +202,8 @@ export function criarLaudoArterial({ arterias: ARTERIAS, membro, soDireito = [],
       if (v.status === "Ocluída") return;
       const partes = [];
       if (v.velocidade !== "Normocinético") partes.push(v.velocidade.toLowerCase());
-      if (v.tipoOnda === "Monofásico") partes.push("monofásico");
-      if (preenchido(v.resistencia) && v.resistencia !== "Alta") partes.push(`de ${v.resistencia.toLowerCase()} resistência`);
-      if (v.ascensao === "Prolongada") partes.push("com ascensão sistólica prolongada");
+      if (v.tipoOnda !== "Trifásico") partes.push(v.tipoOnda.toLowerCase());
       if (v.sentido !== "Anterógrado") partes.push(v.sentido.toLowerCase());
-      if (v.staccato) partes.push("com padrão staccato");
-      if (v.alargamentoEspectral) partes.push("com alargamento espectral");
       if (v.reabitada) partes.push("reabitado por colaterais");
       if (partes.length) linhas.push(`Fluxo ${partes.join(", ")} em ${nome}`);
     });

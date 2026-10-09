@@ -244,7 +244,7 @@ export function LegendaMMSSArterial() {
       <span>pontos brancos = ateromatose</span>
       <span>triângulos = estenose</span>
       <span>malha = stent</span>
-      <span>M = onda monofásica</span>
+      <span>B / M / A = onda bifásica / monofásica / amortecida</span>
     </div>
   );
 }
@@ -318,7 +318,7 @@ export function adicionarMapaMMSSArterialAoPdf(doc, lados, arteriasPorLado) {
     (l) => <DesenhoMMSSArterial lado={l} arterias={arteriasPorLado[l]} width={BRACO_W} height={BRACO_H} />,
     ITENS_LEGENDA_ARTERIAL,
     ["Pontos brancos = ateromatose   ·   triângulos = estenose (branco lipídica, cinza calcificada, contorno cinza mista)",
-      "Malha = stent   ·   M = onda monofásica"],
+      "Malha = stent   ·   B / M / A = onda bifásica / monofásica / amortecida"],
   );
 }
 
