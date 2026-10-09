@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiSettings, FiList, FiZap } from "react-icons/fi";
-import { GiBiceps, GiBrain, GiLeg } from "react-icons/gi";
+import { GiBiceps, GiBrain, GiLeg, GiStomach } from "react-icons/gi";
 import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
 import { TrialManager } from "../utils/trialManager";
@@ -22,6 +22,7 @@ const EXAMES = [
   { label: "Doppler Venoso de Membros Superiores", rota: "/mmss-venoso", Icone: GiBiceps, cor: "blue", regiao: "Membros superiores" },
   { label: "Doppler Arterial de Membros Superiores", rota: "/mmss-arterial", Icone: GiBiceps, cor: "red", regiao: "Membros superiores" },
   { label: "Doppler de Carótidas e Vertebrais", rota: "/carotidas-vertebrais", Icone: GiBrain, cor: "cyan", regiao: "Pescoço" },
+  { label: "Doppler de Aorta e Ilíacas", rota: "/aorta-iliacas", Icone: GiStomach, cor: "red", regiao: "Abdome" },
 ];
 
 export default function Home({ onLogout }) {

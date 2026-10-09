@@ -7,6 +7,7 @@ const ExamHeader = ({
   idade, 
   data, 
   lado, 
+  semLado = false, // exames sem lado (ex.: aorta e ilíacas)
   onInputChange, 
   onVisualizar, 
   onSalvar, 
@@ -17,7 +18,7 @@ const ExamHeader = ({
   erro 
 }) => {
   // Verificar se todos os campos obrigatórios estão preenchidos
-  const isFormValid = nome?.trim() && idade && data && lado;
+  const isFormValid = nome?.trim() && idade && data && (semLado || lado);
 
   return (
     <>
@@ -236,6 +237,7 @@ const ExamHeader = ({
             boxShadow: "0 1.5px 6px #00e0ff08" 
           }}
         />
+        {!semLado && (
         <select
           name="lado"
           value={lado}
@@ -256,6 +258,7 @@ const ExamHeader = ({
           <option value="Esquerdo">Esquerdo</option>
           <option value="Ambos">Ambos</option>
         </select>
+        )}
       </div>
 
       {/* Mensagem de erro */}

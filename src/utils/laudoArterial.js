@@ -12,6 +12,7 @@ export const tipoOndaOptions = ["Trifásico", "Bifásico", "Monofásico", "Amort
 export const sentidoOptions = ["Anterógrado", "Retrógrado"];
 export const placaOptions = ["Ausente", "Presente"];
 export const caracteristicaPlacaOptions = ["Calcificada", "Lipídica", "Mista"];
+export const aneurismaFormaOptions = ["Fusiforme", "Sacular"];
 export const stentOptions = ["Ausente", "Pérvio", "Com reestenose", "Ocluído"];
 
 export const estruturaArteria = {
@@ -29,6 +30,10 @@ export const estruturaArteria = {
   stent: "Ausente",
   aneurisma: false,
   aneurismaDiametro: "",
+  // usados na aorta/ilíacas (calibre medido, forma do aneurisma, trombo mural)
+  diametro: "",
+  aneurismaForma: "",
+  tromboMural: false,
   disseccao: false,
   observacao: "",
 };
@@ -38,6 +43,11 @@ const LOCALIZACAO_ANTIGA = { Proximal: "Terço proximal", Medial: "Terço médio
 
 export function preenchido(v) {
   return v !== undefined && v !== null && String(v).trim() !== "";
+}
+
+// "22" -> "22 mm", "2.5" -> "2,5 mm"
+function mm(valor) {
+  return `${String(valor).trim().replace(".", ",")} mm`;
 }
 
 export function isArteriaNormal(v) {
@@ -72,7 +82,11 @@ function textoExtras(v) {
   const partes = [];
   if (v.stent && v.stent !== "Ausente") partes.push(`stent ${v.stent.toLowerCase()}`);
   if (v.aneurisma) {
-    partes.push(`dilatação aneurismática${preenchido(v.aneurismaDiametro) ? ` com diâmetro de ${v.aneurismaDiametro} mm` : ""}`);
+    partes.push(
+      `dilatação aneurismática${preenchido(v.aneurismaForma) ? ` ${v.aneurismaForma.toLowerCase()}` : ""}` +
+      `${preenchido(v.aneurismaDiametro) ? ` com diâmetro de ${mm(v.aneurismaDiametro)}` : ""}` +
+      `${v.tromboMural ? ", com trombo mural" : ""}`
+    );
   }
   if (v.disseccao) partes.push("sinais de dissecção");
   return partes;
@@ -95,6 +109,8 @@ export function descreverArteria(nome, v) {
     if (v.reabitada) partes.push("reabitada por colaterais");
     if (v.placa === "Presente") partes.push(textoPlaca(v));
   }
+  // calibre medido (aorta/ilíacas) logo depois da perviedade
+  if (preenchido(v.diametro)) partes.splice(1, 0, `calibre de ${mm(v.diametro)}`);
   partes.push(...textoExtras(v));
   return `${nome}: ${partes.join(", ")}.`;
 }
@@ -195,7 +211,10 @@ export function criarLaudoArterial({ arterias: ARTERIAS, membro, soDireito = [],
     valores.forEach(([nome, v]) => {
       if (v.stent && v.stent !== "Ausente") linhas.push(`Stent ${v.stent.toLowerCase()} em ${nome}`);
       if (v.aneurisma) {
-        linhas.push(`Aneurisma de ${nome}${preenchido(v.aneurismaDiametro) ? ` (${v.aneurismaDiametro} mm)` : ""}`);
+        linhas.push(
+          `Aneurisma ${preenchido(v.aneurismaForma) ? `${v.aneurismaForma.toLowerCase()} ` : ""}de ${nome}` +
+          `${preenchido(v.aneurismaDiametro) ? ` (${mm(v.aneurismaDiametro)})` : ""}${v.tromboMural ? ", com trombo mural" : ""}`
+        );
       }
       if (v.disseccao) linhas.push(`Dissecção em ${nome}`);
     });

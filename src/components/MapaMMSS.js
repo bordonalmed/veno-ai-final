@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import { catmullRom } from "../utils/vascularMapping";
-import { criarCurva, pontoEm, fita, linha, faixaDoTerco } from "../utils/curvas";
+import { criarCurva, pontoEm, fita, linha } from "../utils/curvas";
+import { ArteriaCurva, PadroesStent } from "./ArteriaCurva";
 import { arteriasDoLado } from "../utils/mmssArterialLaudo";
 import { VEIAS, VEIAS_CENTRAIS } from "../utils/mmssVenosoLaudo";
 import { CamposArteria, CamposManobras, CamposFAV } from "./CamposArteria";
@@ -54,51 +55,6 @@ const CURVAS_CACHE = new Map();
 function curva(chave, g) {
   if (!CURVAS_CACHE.has(chave)) CURVAS_CACHE.set(chave, criarCurva(P(g.pts), g.half));
   return CURVAS_CACHE.get(chave);
-}
-
-const ESTILO_PLACA = {
-  "Lipídica": { fill: "#ffffff", stroke: "#ffffff" },
-  "Calcificada": { fill: "#9aa5b1", stroke: "#6b7684" },
-  "Mista": { fill: "#ffffff", stroke: "#6b7684" },
-};
-const LETRA_ONDA = { "Bifásico": "B", "Monofásico": "M", "Amortecido (tardus-parvus)": "A" };
-
-function corArteria(v) {
-  if (v.velocidade === "Hipercinético") return COR_ARTERIA.hipercinetico;
-  if (v.velocidade === "Hipocinético") return COR_ARTERIA.hipocinetico;
-  return COR_ARTERIA.normal;
-}
-
-const tangente = (p) => [p.ny, -p.nx];
-
-function pontosAteromatose(c, grau) {
-  const cfg = grau === "Severa" ? { passo: 6, toward: 0.42, op: 0.85 }
-    : grau === "Moderada" ? { passo: 9, toward: 0.3, op: 0.7 }
-    : grau === "Discreta" ? { passo: 14, toward: 0.15, op: 0.55 }
-    : null;
-  if (!cfg) return [];
-  const pts = [];
-  for (let s = cfg.passo / 2; s < c.comprimento; s += cfg.passo) {
-    const p = pontoEm(c, s / c.comprimento);
-    const off = p.hw * 0.92 * (1 - cfg.toward);
-    pts.push([p.x + p.nx * off, p.y + p.ny * off, cfg.op], [p.x - p.nx * off, p.y - p.ny * off, cfg.op]);
-  }
-  return pts;
-}
-
-// Triângulos de estenose: base na parede, ápices se aproximando pelo grau.
-function triangulosEstenose(c, v) {
-  const [ta, tb] = faixaDoTerco(v.localizacaoPlaca || "Terço médio");
-  const p = pontoEm(c, (ta + tb) / 2);
-  const pct = parseFloat(v.estenosePercentual);
-  const toward = !(pct >= 50) ? 0.15 : pct <= 70 ? 0.48 : 0.78;
-  const base = p.hw * 0.92, apex = p.hw * 0.92 * (1 - toward);
-  const span = Math.max(p.hw * 1.6, 4);
-  const [tx, ty] = tangente(p);
-  return [1, -1].map((sgn) => {
-    const bx = p.x + p.nx * base * sgn, by = p.y + p.ny * base * sgn;
-    return `M ${bx - tx * span},${by - ty * span} L ${p.x + p.nx * apex * sgn},${p.y + p.ny * apex * sgn} L ${bx + tx * span},${by + ty * span} Z`;
-  });
 }
 
 function Rotulos({ itens, mirrored, selecionada, onSelecionar }) {
@@ -156,14 +112,7 @@ export function DesenhoMMSSArterial({ lado, arterias, onSelecionar, selecionada,
   const nomes = arteriasDoLado(lado);
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${BRACO_W} ${BRACO_H}`} width={width} height={height} style={style}>
-      <defs>
-        {[["pervio", "#2b2f33"], ["reestenose", "#d99a3d"], ["ocluido", "#ffffff"]].map(([id, cor]) => (
-          <pattern key={id} id={`mmss-stent-${id}-${sufixo}`} width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="3" stroke={cor} strokeWidth="0.8" />
-            <line x1="0" y1="0" x2="3" y2="0" stroke={cor} strokeWidth="0.8" />
-          </pattern>
-        ))}
-      </defs>
+      <PadroesStent prefixo={`mmss-${sufixo}`} />
       <Moldura mirrored={mirrored} rodape="Visão anterior">
         {/* arco aórtico, carótida comum e arco palmar: só referência, não editáveis */}
         <path d={fita(criarCurva(P([[300, 214], [288, 196], [276, 182]]), 6))} fill="#e8b4ae" />
@@ -173,38 +122,9 @@ export function DesenhoMMSSArterial({ lado, arterias, onSelecionar, selecionada,
           const g = geometriaArteria(nome, lado);
           const v = a[nome];
           if (!g || !v) return null;
-          const c = curva(`a:${lado}:${nome}`, g);
-          const ocluida = v.status === "Ocluída";
-          const ativo = selecionada === nome;
-          const meio = pontoEm(c, 0.5);
-          const badge = pontoEm(c, 0.72);
           return (
-            <g key={nome}>
-              {v.aneurisma && <circle cx={meio.x} cy={meio.y} r={meio.hw * 2.6} fill={ocluida ? COR_ARTERIA.ocluida : corArteria(v)} stroke="#7b241c" strokeWidth={0.8} />}
-              {ativo && <path d={linha(c)} fill="none" stroke="#0eb8d0" strokeOpacity={0.55} strokeWidth={Math.max(...g.half) * 2 + 6} strokeLinecap="round" />}
-              <path d={fita(c)} fill={ocluida ? COR_ARTERIA.normal : corArteria(v)} />
-              {ocluida && (() => { const [ta, tb] = faixaDoTerco(v.localizacaoOclusao); return <path d={fita(c, ta, tb)} fill={COR_ARTERIA.ocluida} />; })()}
-              {v.stent && v.stent !== "Ausente" && (
-                <>
-                  {v.stent === "Ocluído" && <path d={fita(c, 0.3, 0.7)} fill={COR_ARTERIA.ocluida} />}
-                  <path d={fita(c, 0.3, 0.7)} fill={`url(#mmss-stent-${v.stent === "Pérvio" ? "pervio" : v.stent === "Ocluído" ? "ocluido" : "reestenose"}-${sufixo})`} stroke="#2b2f33" strokeWidth={0.4} />
-                </>
-              )}
-              {v.disseccao && <path d={linha(c, 0.3, 0.7, 0.6)} fill="none" stroke="#ffffff" strokeWidth={0.9} />}
-              {pontosAteromatose(c, v.ateromatose).map(([x, y, op], i) => <circle key={i} cx={x} cy={y} r={0.9} fill="#ffffff" opacity={op} />)}
-              {!ocluida && v.placa === "Presente" && triangulosEstenose(c, v).map((d, i) => {
-                const st = ESTILO_PLACA[v.caracteristicaPlaca] || { fill: "#ffffff", stroke: "#9aa5b1" };
-                return <path key={i} d={d} fill={st.fill} stroke={st.stroke} strokeWidth={0.8} />;
-              })}
-              {!ocluida && LETRA_ONDA[v.tipoOnda] && (
-                <g>
-                  <circle cx={badge.x} cy={badge.y} r={5.2} fill="#ffffff" stroke="#2b2f33" strokeWidth={0.8} />
-                  <text x={badge.x} y={badge.y + 2.6} fontFamily="monospace" fontSize="7" fontWeight="bold" fill="#2b2f33" textAnchor="middle"
-                    transform={mirrored ? `translate(${2 * badge.x},0) scale(-1,1)` : undefined}>{LETRA_ONDA[v.tipoOnda]}</text>
-                </g>
-              )}
-              {onSelecionar && <path d={linha(c)} fill="none" stroke="#000" strokeOpacity={0.001} strokeWidth={14} strokeLinecap="round" style={{ cursor: "pointer" }} onClick={() => onSelecionar(nome)} />}
-            </g>
+            <ArteriaCurva key={nome} nome={nome} c={curva(`a:${lado}:${nome}`, g)} maxHalf={Math.max(...g.half)} v={v}
+              ativo={selecionada === nome} mirrored={mirrored} prefixo={`mmss-${sufixo}`} onSelecionar={onSelecionar} />
           );
         })}
       </Moldura>
