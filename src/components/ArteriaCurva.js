@@ -19,7 +19,8 @@ const ESTILO_PLACA = {
   "Calcificada": { fill: "#9aa5b1", stroke: "#6b7684" },
   "Mista": { fill: "#ffffff", stroke: "#6b7684" },
 };
-const LETRA_ONDA = { "Bifásico": "B", "Monofásico": "M", "Amortecido (tardus-parvus)": "A" };
+// Selo na artéria quando a onda é monofásica (consenso SVM/SVU 2020).
+const LETRA_ONDA = { "Monofásico": "M" };
 
 export function corArteria(v) {
   if (v.velocidade === "Hipercinético") return COR_ART.hipercinetico;

@@ -42,7 +42,8 @@ const ESTILO_PLACA = {
   "Mista": { fill: "#ffffff", stroke: "#6b7684" },
 };
 
-const LETRA_ONDA = { "Bifásico": "B", "Monofásico": "M", "Amortecido (tardus-parvus)": "A" };
+// Selo na artéria quando a onda é monofásica (consenso SVM/SVU 2020).
+const LETRA_ONDA = { "Monofásico": "M" };
 
 function corBase(v) {
   if (v.velocidade === "Hipercinético") return COR_ARTERIA.hipercinetico;
@@ -258,7 +259,7 @@ export async function adicionarMapaArterialAoPdf(doc, lados, arteriasPorLado) {
     doc.setFontSize(7.5);
     doc.text("Pontos brancos = ateromatose   ·   triângulos = estenose (branco lipídica, cinza calcificada, contorno cinza mista)", pageWidth / 2, y, { align: "center" });
     y += 4.5;
-    doc.text("Malha = stent   ·   B / M / A = onda bifásica / monofásica / amortecida", pageWidth / 2, y, { align: "center" });
+    doc.text("Malha = stent   ·   M = onda monofásica", pageWidth / 2, y, { align: "center" });
     doc.setTextColor(0, 0, 0);
   }
 }
@@ -282,7 +283,7 @@ function LegendaArterial() {
       <span>pontos brancos = ateromatose</span>
       <span>triângulos = estenose (branco lipídica, cinza calcificada, contorno cinza mista)</span>
       <span>malha = stent</span>
-      <span>B / M / A = onda bifásica / monofásica / amortecida</span>
+      <span>M = onda monofásica</span>
     </div>
   );
 }

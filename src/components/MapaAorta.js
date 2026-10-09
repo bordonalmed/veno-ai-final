@@ -187,7 +187,7 @@ export function LegendaAorta() {
       <span>pontos brancos = ateromatose</span>
       <span>triângulos = estenose</span>
       <span>malha = stent / endoprótese</span>
-      <span>B / M / A = onda bifásica / monofásica / amortecida</span>
+      <span>M = onda monofásica</span>
     </div>
   );
 }
@@ -226,7 +226,7 @@ export async function adicionarMapaAortaAoPdf(doc, arterias, extra) {
   });
   doc.setFontSize(7.5);
   y += 4.5;
-  doc.text("Pontos brancos = ateromatose   ·   triângulos = estenose   ·   malha = stent / endoprótese   ·   B / M / A = onda", pageWidth / 2, y, { align: "center" });
+  doc.text("Pontos brancos = ateromatose   ·   triângulos = estenose   ·   malha = stent / endoprótese   ·   M = onda monofásica", pageWidth / 2, y, { align: "center" });
   doc.setTextColor(0, 0, 0);
 }
 
