@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { FiSettings, FiHome, FiList, FiLogOut, FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
 import { appendImagesToPdf } from "../utils/pdfImages";
 import laudoSyncService from '../services/laudoSyncService';
@@ -961,6 +962,7 @@ function CarotidasVertebrais() {
       }
     }
 
+    carimbarMarcaVenoAI(doc);
     doc.save(`Laudo_${nome}_${data}.pdf`);
 
     setNome("");

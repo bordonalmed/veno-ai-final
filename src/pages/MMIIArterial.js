@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
 import ExamHeader from "../components/ExamHeader";
 import { CamposArteria, CamposEnxerto } from "../components/CamposArteria";
@@ -495,6 +496,7 @@ function MMIIArterial() {
     // Adicionar anexos como páginas no final do PDF
     appendImagesToPdf(doc, anexos);
     
+    carimbarMarcaVenoAI(doc);
     doc.save(`Laudo_${nome}_${data}.pdf`);
   }
 
