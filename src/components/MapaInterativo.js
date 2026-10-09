@@ -41,19 +41,26 @@ const VIEW_TY = 16;
 export const VIEW_W = COL_WIDTH * 2;
 export const VIEW_H = 660;
 
-function hitPath(d, onClick, key, selecionado, largura = 10) {
+// dHalo: quando a área de clique é menor que a veia (safena parva, que não
+// pode roubar o clique da poplítea), o sombreamento usa a veia inteira.
+function hitPath(d, onClick, key, selecionado, largura = 10, dHalo) {
   const ativo = selecionado === key;
   return (
-    <path
-      d={d}
-      fill="none"
-      stroke={ativo ? "#0eb8d0" : "#000"}
-      strokeOpacity={ativo ? 0.35 : 0.001}
-      strokeWidth={largura}
-      strokeLinecap="round"
-      style={{ cursor: "pointer" }}
-      onClick={onClick}
-    />
+    <>
+      {ativo && dHalo && (
+        <path d={dHalo} fill="none" stroke="#0eb8d0" strokeOpacity={0.35} strokeWidth={largura} strokeLinecap="round" pointerEvents="none" />
+      )}
+      <path
+        d={d}
+        fill="none"
+        stroke={ativo && !dHalo ? "#0eb8d0" : "#000"}
+        strokeOpacity={ativo && !dHalo ? 0.35 : 0.001}
+        strokeWidth={largura}
+        strokeLinecap="round"
+        style={{ cursor: "pointer" }}
+        onClick={onClick}
+      />
+    </>
   );
 }
 
@@ -206,6 +213,8 @@ export function DesenhoMMIIVenoso({
   // Área de clique começa abaixo da faixa da Veia Poplítea (POPLITEA_RIBBON vai
   // até y~388), para não roubar o clique destinado a ela logo abaixo do JSP.
   const parvaHitD = fitaVeiaSimples(VSP_SPINE, VSP_HALF, 382, LANDMARK_PARVA.tornozelo);
+  // Sombreamento da seleção: a parva inteira, desde a JSP.
+  const parvaHaloD = fitaVeiaSimples(VSP_SPINE, VSP_HALF, LANDMARK_PARVA.top, LANDMARK_PARVA.tornozelo);
   const jspCor = CORES[s["JSP"]] || CORES["pérvia e competente"];
 
   // ---- Marcadores de perfurante insuficiente (vista medial) ----
@@ -268,7 +277,7 @@ export function DesenhoMMIIVenoso({
           {parvaResult.segments.map((seg, i) => (
             <path key={i} d={seg.d} fill={seg.tracejado ? "none" : seg.color} stroke={seg.tracejado ? seg.color : "none"} strokeDasharray={seg.tracejado ? "5 5" : undefined} strokeWidth={seg.tracejado ? 2 : undefined} pointerEvents="none" />
           ))}
-          {interativo && hitPath(parvaHitD, () => selecionar("superficial", "Safena Parva"), "superficial:Safena Parva", chaveAtiva)}
+          {interativo && hitPath(parvaHitD, () => selecionar("superficial", "Safena Parva"), "superficial:Safena Parva", chaveAtiva, 10, parvaHaloD)}
           <circle cx={150} cy={314} r={8} fill={jspCor} stroke="#fff" strokeWidth={1.5} style={clicavel} onClick={() => selecionar("superficial", "JSP")} />
           {CALF_DOTS.map((dot) => {
             const chave = `profunda:${dot.key}`;

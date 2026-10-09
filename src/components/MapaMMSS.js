@@ -8,7 +8,10 @@ import { arteriasDoLado } from "../utils/mmssArterialLaudo";
 import { VEIAS, VEIAS_CENTRAIS } from "../utils/mmssVenosoLaudo";
 import { CamposArteria, CamposManobras, CamposFAV } from "./CamposArteria";
 import { CamposVeia, CamposCateter, CamposFAVVenoso } from "./CamposVeiaMMSS";
-import { COR_ARTERIA, ITENS_LEGENDA_ARTERIAL } from "./MapaInterativoArterial";
+import { ITENS_LEGENDA_ARTERIAL as ITENS_LEGENDA_MMII } from "./MapaInterativoArterial";
+
+// Mesma legenda do MMII, sem o enxerto (não existe no membro superior).
+const ITENS_LEGENDA_ARTERIAL = ITENS_LEGENDA_MMII.filter(([t]) => t !== "Enxerto / ponte");
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 
 // Membro superior, vista anterior (palma para a frente), com pescoço e
@@ -37,11 +40,11 @@ const CLAVICULA = catmullRom(P([[214, 78], [170, 76], [130, 80], [92, 90]]), fal
 // ---------- Artérias ----------
 const ART = {
   "Tronco Braquiocefálico": { pts: [[276, 176], [270, 150], [262, 128]], half: [5, 4.8, 4.6], rotulo: ["Tronco BC", 200, 200] },
-  "Artéria Subclávia": { pts: [[262, 128], [238, 113], [200, 102], [162, 101], [138, 110]], half: [4.4, 4.2, 4, 3.9, 3.8], rotulo: ["Subclávia", 118, 40] },
-  "Artéria Axilar": { pts: [[138, 110], [121, 126], [111, 150], [107, 182]], half: [3.8, 3.7, 3.6, 3.5], rotulo: ["Axilar", 182, 230] },
-  "Artéria Braquial": { pts: [[107, 182], [108, 232], [108, 282], [102, 325], [95, 350]], half: [3.4, 3.3, 3.2, 3.1, 3], rotulo: ["Braquial", 182, 290] },
-  "Artéria Radial": { pts: [[95, 350], [84, 380], [77, 430], [73, 490], [73, 545], [76, 566]], half: [2.7, 2.6, 2.6, 2.5, 2.4, 2.3], rotulo: ["Radial", 4, 470] },
-  "Artéria Ulnar": { pts: [[95, 350], [105, 378], [111, 430], [113, 490], [111, 545], [108, 566]], half: [2.7, 2.6, 2.6, 2.5, 2.4, 2.3], rotulo: ["Ulnar", 182, 470] },
+  "Artéria Subclávia": { pts: [[262, 128], [238, 113], [200, 102], [162, 101], [138, 110]], half: [4.4, 4.2, 4, 3.9, 3.8], rotulo: ["A. subclávia", 118, 40] },
+  "Artéria Axilar": { pts: [[138, 110], [121, 126], [111, 150], [107, 182]], half: [3.8, 3.7, 3.6, 3.5], rotulo: ["A. axilar", 182, 230] },
+  "Artéria Braquial": { pts: [[107, 182], [108, 232], [108, 282], [102, 325], [95, 350]], half: [3.4, 3.3, 3.2, 3.1, 3], rotulo: ["A. braquial", 182, 290] },
+  "Artéria Radial": { pts: [[95, 350], [84, 380], [77, 430], [73, 490], [73, 545], [76, 566]], half: [2.7, 2.6, 2.6, 2.5, 2.4, 2.3], rotulo: ["A. radial", 4, 470] },
+  "Artéria Ulnar": { pts: [[95, 350], [105, 378], [111, 430], [113, 490], [111, 545], [108, 566]], half: [2.7, 2.6, 2.6, 2.5, 2.4, 2.3], rotulo: ["A. ulnar", 182, 470] },
 };
 // No lado esquerdo não há tronco braquiocefálico: a subclávia nasce do arco aórtico.
 const SUBCLAVIA_ESQUERDA = { ...ART["Artéria Subclávia"], pts: [[274, 176], [266, 146], [244, 118], [200, 102], [162, 101], [138, 110]], half: [4.6, 4.5, 4.2, 4, 3.9, 3.8] };
@@ -155,7 +158,7 @@ const VEI = {
   "Veia Cefálica (antebraço)": { curvas: [[[64, 560], [59, 500], [55, 440], [55, 384], [58, 342]]], half: 2.4, rotulo: ["V. cefálica", 2, 430] },
   "Veia Basílica (braço)": { curvas: [[[128, 340], [130, 296], [128, 252], [122, 216], [116, 188]]], half: 2.6, rotulo: ["V. basílica", 182, 300] },
   "Veia Basílica (antebraço)": { curvas: [[[114, 562], [122, 500], [127, 440], [129, 384], [128, 340]]], half: 2.4, rotulo: ["V. basílica", 182, 430] },
-  "Veia Cubital Mediana": { curvas: [[[57, 372], [80, 362], [104, 350], [127, 338]]], half: 2.2, rotulo: ["V. cubital med.", 182, 352] },
+  "Veia Intermédia do Cotovelo": { curvas: [[[57, 372], [80, 362], [104, 350], [127, 338]]], half: 2.2, rotulo: ["V. interm. cotovelo", 182, 352] },
 };
 
 export const COR_VEIA = {
@@ -174,7 +177,7 @@ function curvasVeia(nome) {
 function rotuloVeia(nome) {
   const [txt, lx, ly] = VEI[nome].rotulo;
   const c = curvasVeia(nome)[0];
-  const horizontal = nome === "Veia Subclávia" || nome === "Veia Jugular Interna" || nome === "Veia Cubital Mediana";
+  const horizontal = nome === "Veia Subclávia" || nome === "Veia Jugular Interna" || nome === "Veia Intermédia do Cotovelo";
   const alvo = horizontal ? pontoEm(c, 0.5) : c.amostras.reduce((acc, a) => (Math.abs(a.y - ly) < Math.abs(acc.y - ly) ? a : acc));
   return { chave: nome, txt, lx, ly, alvo: [alvo.x, alvo.y] };
 }
@@ -183,9 +186,7 @@ export function DesenhoMMSSVenoso({ lado, veias, extra, onSelecionar, selecionad
   const mirrored = lado === "Esquerdo";
   const v = veias || {};
   const cateterVeia = extra?.cateter?.presente ? extra.cateter.veia : null;
-  // profundas por baixo, superficiais por cima (como no membro)
-  const ordem = [...VEIAS].sort((x, y) => (x.startsWith("Veia Cef") || x.startsWith("Veia Bas") || x.startsWith("Veia Cub") ? 1 : 0)
-    - (y.startsWith("Veia Cef") || y.startsWith("Veia Bas") || y.startsWith("Veia Cub") ? 1 : 0));
+  const ordem = VEIAS; // já vem com as profundas primeiro e as superficiais por cima
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${BRACO_W} ${BRACO_H}`} width={width} height={height} style={style}>
       <Moldura mirrored={mirrored} rodape="Visão anterior">

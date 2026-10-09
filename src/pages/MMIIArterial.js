@@ -511,7 +511,7 @@ function MMIIArterial() {
     });
     
     if (incluirMapaPdf) {
-      await adicionarMapaArterialAoPdf(doc, lados, { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo });
+      await adicionarMapaArterialAoPdf(doc, lados, { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }, enxertos);
     }
 
     // Adicionar anexos como páginas no final do PDF
