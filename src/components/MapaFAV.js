@@ -37,6 +37,8 @@ const VEIAS_DESENHO = [
 
 const CURVAS_ART = Object.fromEntries(ARTERIAS_DESENHO.map((n) => [n, criarCurva(P(ART[n].pts), ART[n].half)]));
 const CURVAS_VEI = Object.fromEntries(VEIAS_DESENHO.map((n) => [n, criarCurva(P(VEI[n].curvas[0]), VEI[n].half)]));
+// veias braquiais (pareadas, profundas): referência para a FAV braquiobraquial
+const CURVAS_BRAQUIAIS = VEI["Veias Braquiais"].curvas.map((pts) => criarCurva(P(pts), VEI["Veias Braquiais"].half));
 const ARCO_PALMAR = criarCurva(P([[76, 566], [80, 596], [92, 606], [104, 596], [108, 566]]), 1);
 
 // Pontos de medida (coordenadas do desenho original, antes de P).
@@ -44,15 +46,16 @@ const POS_SITIO = {
   braquial: [102, 322], radial: [73, 532], ulnar: [111, 532],
   cefalicaPunho: [62, 556], cefalicaAntebraco: [55, 440], cefalicaCotovelo: [57, 352], cefalicaBraco: [52, 232],
   basilicaAntebraco: [127, 440], basilicaCotovelo: [128, 342], basilicaBraco: [129, 262],
-  intermedia: [90, 357], axilar: [121, 156],
+  intermedia: [90, 357], braquialVeia: [115, 226], axilar: [121, 156],
 };
-const LATERAIS = ["radial", "cefalicaPunho", "cefalicaAntebraco", "cefalicaCotovelo", "cefalicaBraco"];
+const LATERAIS = ["braquialVeia", "radial", "cefalicaPunho", "cefalicaAntebraco", "cefalicaCotovelo", "cefalicaBraco"];
 // Qual veia do desenho cada ponto representa (para escurecer a trombosada).
 const VEIA_DO_SITIO = {
   cefalicaPunho: "Veia Cefálica (antebraço)", cefalicaAntebraco: "Veia Cefálica (antebraço)",
   cefalicaCotovelo: "Veia Cefálica (braço)", cefalicaBraco: "Veia Cefálica (braço)",
   basilicaAntebraco: "Veia Basílica (antebraço)", basilicaCotovelo: "Veia Basílica (braço)",
   basilicaBraco: "Veia Basílica (braço)", intermedia: "Veia Intermédia do Cotovelo", axilar: "Veia Axilar",
+  braquialVeia: "Veias Braquiais",
 };
 
 // Traçado de cada tipo de FAV: anastomose no início, veia (ou prótese) até o fim.
@@ -60,6 +63,10 @@ const GEOMETRIA_FAV = {
   "Radiocefálica (punho)": [[72, 548], [62, 548], [59, 500], [55, 440], [55, 384], [58, 342], [54, 290], [52, 232], [55, 174], [70, 128], [104, 112], [140, 124]],
   "Braquiocefálica (cotovelo)": [[99, 336], [80, 337], [62, 334], [56, 300], [52, 232], [55, 174], [70, 128], [104, 112], [140, 124]],
   "Braquiobasílica (com transposição)": [[104, 318], [96, 290], [91, 250], [95, 214], [106, 194], [117, 186]],
+  // anastomose braquial–intermédia, drenando pela basílica do braço
+  "Braquiobasílica via veia intermédia do cotovelo": [[100, 346], [112, 343], [127, 338], [130, 296], [128, 252], [122, 216], [116, 188]],
+  // veia braquial superficializada até a axilar
+  "Braquiobraquial (com transposição)": [[103, 326], [111, 300], [114, 262], [115, 222], [116, 190]],
   "Prótese em alça no antebraço": [[99, 344], [86, 392], [80, 440], [86, 482], [100, 494], [114, 482], [120, 440], [124, 392], [127, 346]],
   "Prótese braquioaxilar": [[106, 300], [94, 262], [94, 222], [104, 198], [118, 182]],
 };
@@ -134,6 +141,7 @@ export function DesenhoFAV({ lado, extra, onSelecionar, selecionado, width = "10
       <g transform={mirrored ? `translate(${BRACO_W},0) scale(-1,1)` : undefined}>
         <path d={SILHUETA_BRACO} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
         <path d={CLAVICULA} fill="none" stroke="#c9a27a" strokeWidth={2.2} strokeLinecap="round" opacity={0.7} />
+        {CURVAS_BRAQUIAIS.map((c, i) => <path key={i} d={fita(c)} fill={veiaRuim("Veias Braquiais") ? COR_VEIA_RUIM : COR_VEIA} opacity={confeccao ? 0.7 : 0.4} />)}
         {ARTERIAS_DESENHO.map((n) => <path key={n} d={fita(CURVAS_ART[n])} fill={COR_ART.normal} />)}
         <path d={linha(ARCO_PALMAR)} fill="none" stroke="#e8b4ae" strokeWidth={2} />
         {VEIAS_DESENHO.map((n) => <path key={n} d={fita(CURVAS_VEI[n])} fill={veiaRuim(n) ? COR_VEIA_RUIM : COR_VEIA} opacity={confeccao ? 1 : 0.55} />)}
@@ -273,7 +281,7 @@ const NOME_CURTO = {
   braquial: "A. braquial", radial: "A. radial", ulnar: "A. ulnar",
   cefalicaPunho: "Cefálica punho", cefalicaAntebraco: "Cefálica antebraço", cefalicaCotovelo: "Cefálica cotovelo", cefalicaBraco: "Cefálica braço",
   basilicaAntebraco: "Basílica antebraço", basilicaCotovelo: "Basílica cotovelo", basilicaBraco: "Basílica braço",
-  intermedia: "Intermédia cotovelo", axilar: "V. axilar",
+  intermedia: "Intermédia cotovelo", braquialVeia: "V. braquial", axilar: "V. axilar",
 };
 
 function BotaoModo({ ativo, children, onClick }) {
