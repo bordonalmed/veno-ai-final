@@ -457,7 +457,6 @@ export function MapaInterativoMMSSArterial({
         ) : null}
         tituloPainel={selecionada ? `${selecionada} (${l})` : ""}
         onFecharPainel={() => setSelecionada(null)}
-        placeholderPainel="Toque em uma artéria no desenho para registrar o achado."
         conteudo={
           <>
             {extra && (
@@ -504,7 +503,6 @@ export function MapaInterativoMMSSVenoso({
       <MapaLayout
         embutido={embutido}
         titulo="MMSS Venoso"
-        subtitulo="Toque numa veia do desenho para marcar o achado. O laudo é atualizado em tempo real."
         onFechar={onFechar}
         lado={lado} ladoAtivo={l}
         onTrocarLado={(op) => { onTrocarLado(op); setSelecionada(null); }}
@@ -515,7 +513,6 @@ export function MapaInterativoMMSSVenoso({
         ) : null}
         tituloPainel={selecionada ? `${selecionada} (${l})` : ""}
         onFecharPainel={() => setSelecionada(null)}
-        placeholderPainel="Toque em uma veia no desenho para registrar o achado."
         conteudo={
           <>
             {extra && (

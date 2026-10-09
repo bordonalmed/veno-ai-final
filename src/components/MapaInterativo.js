@@ -420,7 +420,7 @@ export default function MapaInterativo({
         <span>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-        <span>Varizes (toque nos ícones tracejados):</span>
+        <span>Varizes (clique nos ícones tracejados):</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Superficiais"] }}><VarizLegendaIcone tipo="Varizes Superficiais" /> superficiais</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Reticulares"] }}><VarizLegendaIcone tipo="Varizes Reticulares" /> reticulares</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Microvarizes"] }}><VarizLegendaIcone tipo="Microvarizes" /> microvarizes</span>
@@ -535,7 +535,6 @@ export default function MapaInterativo({
     <MapaLayout
       embutido={embutido}
       titulo="MMII Venoso"
-      subtitulo="Toque numa veia do desenho para marcar o achado. O laudo é atualizado em tempo real."
       onFechar={onFechar}
       lado={lado}
       ladoAtivo={ladoAtivo}
@@ -551,7 +550,6 @@ export default function MapaInterativo({
       painel={painel}
       tituloPainel={`${tituloPainel} (${l})`}
       onFecharPainel={() => setSelecionado(null)}
-      placeholderPainel="Toque em uma veia no desenho para registrar o achado."
       conteudo={conteudo}
       incluirPdf={incluirMapeamentoVisualPdf}
       onIncluirPdf={onIncluirMapeamentoVisualPdf}

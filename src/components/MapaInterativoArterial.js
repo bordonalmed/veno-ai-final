@@ -333,7 +333,6 @@ export default function MapaInterativoArterial({
         ) : null}
         tituloPainel={selecionada ? `${selecionada} (${l})` : ""}
         onFecharPainel={() => setSelecionada(null)}
-        placeholderPainel="Toque em uma artéria no desenho para registrar o achado."
         conteudo={
           <>
             <div className="mapa-claro">
