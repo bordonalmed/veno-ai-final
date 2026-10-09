@@ -28,14 +28,28 @@ export const GEOMETRIA_ARTERIAS = {
 };
 
 // Enxertos/pontes (perna esquerda nativa): traçado próprio, correndo pela face
-// medial, da femoral comum até o alvo de cada tipo.
-export const GEOMETRIA_ENXERTOS = {
-  "Femoropoplíteo acima do joelho": [[139, 62], [126, 110], [120, 180], [122, 250], [133, 288], [144, 304]],
-  "Femoropoplíteo abaixo do joelho": [[139, 62], [126, 110], [120, 180], [120, 260], [124, 330], [136, 372], [146, 390]],
-  "Femorodistal": [[139, 62], [126, 110], [120, 180], [120, 260], [123, 340], [128, 420], [134, 478], [139, 505]],
-  // vem da femoral do outro lado, cruzando acima do púbis
-  "Fêmoro-femoral cruzado": [[40, 4], [80, 10], [114, 24], [134, 40], [141, 54]],
+// medial, da femoral comum (ou da femoral superficial) até o alvo de cada tipo.
+const INICIO_ENXERTO = {
+  "Femoral comum": [[139, 62], [126, 110], [120, 180]],
+  "Femoral superficial": [[136, 138], [127, 160], [121, 190]],
 };
+const FIM_ENXERTO = {
+  "Femoropoplíteo acima do joelho": [[122, 250], [133, 288], [144, 304]],
+  "Femoropoplíteo abaixo do joelho": [[120, 260], [124, 330], [136, 372], [146, 390]],
+  "Femorodistal|Tibial posterior": [[120, 260], [123, 340], [128, 420], [134, 478], [139, 505]],
+  "Femorodistal|Fibular": [[120, 260], [123, 340], [130, 400], [142, 440], [151, 475]],
+  "Femorodistal|Tibial anterior": [[120, 260], [124, 330], [138, 370], [154, 396], [162, 430], [163, 468]],
+};
+// vem da femoral do outro lado, cruzando acima do púbis
+const FEMORO_FEMORAL_CRUZADO = [[40, 4], [80, 10], [114, 24], [134, 40], [141, 54]];
+
+export function geometriaEnxerto(enx) {
+  if (!enx?.tipo) return null;
+  if (enx.tipo === "Fêmoro-femoral cruzado") return FEMORO_FEMORAL_CRUZADO;
+  const fim = enx.tipo === "Femorodistal" ? FIM_ENXERTO[`Femorodistal|${enx.destino || "Tibial posterior"}`] : FIM_ENXERTO[enx.tipo];
+  if (!fim) return null;
+  return [...INICIO_ENXERTO[enx.origem === "Femoral superficial" ? "Femoral superficial" : "Femoral comum"], ...fim];
+}
 const T_LOCAL_ENXERTO = { "Anastomose proximal": 0.04, "Corpo do enxerto": 0.5, "Anastomose distal": 0.96 };
 
 // Ponto ao longo de uma polilinha (t de 0 a 1), para marcar o local da lesão.
@@ -53,7 +67,7 @@ function pontoNaPolilinha(pts, t) {
 }
 
 function DesenhoEnxerto({ enxerto }) {
-  const pts = enxerto && GEOMETRIA_ENXERTOS[enxerto.tipo];
+  const pts = geometriaEnxerto(enxerto);
   if (!pts) return null;
   const ocluido = enxerto.status === "Ocluído";
   const estenose = enxerto.status === "Com estenose";

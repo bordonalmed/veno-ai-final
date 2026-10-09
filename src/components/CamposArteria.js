@@ -14,6 +14,9 @@ import {
   enxertoTipoOptions,
   enxertoStatusOptions,
   enxertoLocalOptions,
+  enxertoOrigemOptions,
+  enxertoDestinoOptions,
+  enxertoTemOrigem,
 } from "../utils/mmiiArterialLaudo";
 import {
   MANOBRAS,
@@ -275,8 +278,32 @@ export function CamposEnxerto({ lado, enxerto, onChange }) {
           value={enxerto.tipo}
           options={enxertoTipoOptions}
           placeholder="Nenhum"
-          onChange={v => onChange({ tipo: v, status: v ? enxerto.status : "", local: v ? enxerto.local || "" : "" })}
+          onChange={v => onChange({
+            tipo: v,
+            origem: enxertoTemOrigem(v) ? enxerto.origem || "" : "",
+            destino: v === "Femorodistal" ? enxerto.destino || "" : "",
+            status: v ? enxerto.status : "",
+            local: v ? enxerto.local || "" : ""
+          })}
         />
+        {enxertoTemOrigem(enxerto.tipo) && (
+          <CampoSelect
+            label="Origem:"
+            value={enxerto.origem}
+            options={enxertoOrigemOptions}
+            placeholder="Selecione"
+            onChange={v => onChange({ ...enxerto, origem: v })}
+          />
+        )}
+        {enxerto.tipo === "Femorodistal" && (
+          <CampoSelect
+            label="Destino:"
+            value={enxerto.destino}
+            options={enxertoDestinoOptions}
+            placeholder="Selecione"
+            onChange={v => onChange({ ...enxerto, destino: v })}
+          />
+        )}
         {enxerto.tipo && (
           <CampoSelect
             label="Situação:"

@@ -13,7 +13,19 @@ export const enxertoTipoOptions = [
 export const enxertoStatusOptions = ["Pérvio", "Com estenose", "Ocluído"];
 // Onde está a lesão do enxerto (estenose ou oclusão).
 export const enxertoLocalOptions = ["Anastomose proximal", "Corpo do enxerto", "Anastomose distal"];
-export const enxertoPadrao = { tipo: "", status: "", local: "" };
+// Origem (femoral comum ou superficial) e, no femorodistal, a artéria de destino.
+export const enxertoOrigemOptions = ["Femoral comum", "Femoral superficial"];
+export const enxertoDestinoOptions = ["Tibial anterior", "Tibial posterior", "Fibular"];
+export const enxertoPadrao = { tipo: "", origem: "", destino: "", status: "", local: "" };
+export const enxertoTemOrigem = (tipo) => preenchido(tipo) && tipo !== "Fêmoro-femoral cruzado";
+
+// "Enxerto femorodistal (da femoral superficial para a tibial anterior)"
+export function nomeEnxerto(enx) {
+  const partes = [];
+  if (enxertoTemOrigem(enx.tipo) && preenchido(enx.origem)) partes.push(`da ${enx.origem.toLowerCase()}`);
+  if (enx.tipo === "Femorodistal" && preenchido(enx.destino)) partes.push(`para a ${enx.destino.toLowerCase()}`);
+  return `Enxerto ${enx.tipo.toLowerCase()}${partes.length ? ` (${partes.join(" ")})` : ""}`;
+}
 
 const comLocal = (enx) => (preenchido(enx.local) && enx.status !== "Pérvio" ? ` ${noLocal(enx.local)}` : "");
 
@@ -31,12 +43,12 @@ const laudo = criarLaudoArterial({
   extra: {
     descrever: (enxerto) =>
       enxerto && preenchido(enxerto.tipo)
-        ? [`Enxerto ${enxerto.tipo.toLowerCase()}: ${preenchido(enxerto.status) ? enxerto.status.toLowerCase() + comLocal(enxerto) : "situação não informada"}.`]
+        ? [`${nomeEnxerto(enxerto)}: ${preenchido(enxerto.status) ? enxerto.status.toLowerCase() + comLocal(enxerto) : "situação não informada"}.`]
         : [],
     concluir: (enxerto) =>
       enxerto && preenchido(enxerto.tipo)
         ? {
-            linhas: [`Enxerto ${enxerto.tipo.toLowerCase()}${preenchido(enxerto.status) ? ` ${enxerto.status.toLowerCase()}${comLocal(enxerto)}` : ""}`],
+            linhas: [`${nomeEnxerto(enxerto)}${preenchido(enxerto.status) ? ` ${enxerto.status.toLowerCase()}${comLocal(enxerto)}` : ""}`],
             alterado: true,
           }
         : { linhas: [], alterado: false },
