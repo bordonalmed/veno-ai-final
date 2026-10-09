@@ -9,6 +9,7 @@ const STORAGE_KEY_MAP = {
   'MMSS Arterial': 'examesMMSSArterial',
   'Carótidas e Vertebrais': 'examesCarotidasVertebrais',
   'Aorta e Ilíacas': 'examesAorta',
+  'Fístula Arteriovenosa': 'examesFAV',
   'Artérias Renais': 'examesRenais',
 };
 
@@ -22,6 +23,7 @@ const LEGACY_STORAGE_KEYS = [
   'examesCarótidaseVertebrais',
   'examesAorta',
   'examesAortaeIlíacas',
+  'examesFAV',
   'examesRenais',
   'examesArtériasRenais',
 ];

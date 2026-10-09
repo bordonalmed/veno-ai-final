@@ -65,10 +65,10 @@ describe("Aorta e ilíacas: laudo", () => {
 
   it("local da estenose/oclusão do enxerto", () => {
     const ex = { enxerto: { tipo: "Enxerto aorto-bifemoral", status: "Ocluído", local: "Ramo esquerdo" } };
-    expect(getConclusaoMembro(arteriasPadrao(), ex)).toEqual(["Enxerto aorto-bifemoral ocluído em ramo esquerdo"]);
+    expect(getConclusaoMembro(arteriasPadrao(), ex)).toEqual(["Enxerto aorto-bifemoral ocluído no ramo esquerdo"]);
     const evar = { enxerto: { tipo: "Endoprótese aórtica (EVAR)", status: "Com estenose", local: "Ramo ilíaco direito", endoleak: "Ausente" } };
     expect(getConclusaoMembro(arteriasPadrao(), evar)).toEqual([
-      "Endoprótese aórtica (EVAR) com estenose em ramo ilíaco direito, sem sinais de vazamento (endoleak)",
+      "Endoprótese aórtica (EVAR) com estenose no ramo ilíaco direito, sem sinais de vazamento (endoleak)",
     ]);
     // pérvio ignora local que tenha ficado salvo
     expect(getConclusaoMembro(arteriasPadrao(), { enxerto: { tipo: "Enxerto aorto-bi-ilíaco", status: "Pérvio", local: "Ramo direito" } }))

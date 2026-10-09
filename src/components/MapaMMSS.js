@@ -25,7 +25,7 @@ export const BRACO_H = 660;
 // As coordenadas abaixo foram traçadas num quadro de 0–300; X() as comprime um
 // pouco para a direita, abrindo uma margem do lado lateral para os rótulos.
 const X = (x) => 28 + x * (272 / 300);
-const P = (pts) => pts.map(([x, y]) => [X(x), y]);
+export const P = (pts) => pts.map(([x, y]) => [X(x), y]);
 
 const CONTORNO = [
   [206, 0], [208, 30], [201, 52], [170, 63], [122, 71], [84, 79], [60, 92], [45, 116], [40, 146], [41, 190],
@@ -35,10 +35,10 @@ const CONTORNO = [
   [144, 200], [145, 166], [149, 150], [153, 190], [157, 240], [162, 270], [200, 276], [300, 280],
 ];
 export const SILHUETA_BRACO = catmullRom(P(CONTORNO), false) + " L 300,0 Z";
-const CLAVICULA = catmullRom(P([[214, 78], [170, 76], [130, 80], [92, 90]]), false);
+export const CLAVICULA = catmullRom(P([[214, 78], [170, 76], [130, 80], [92, 90]]), false);
 
 // ---------- Artérias ----------
-const ART = {
+export const ART = {
   "Tronco Braquiocefálico": { pts: [[276, 176], [270, 150], [262, 128]], half: [5, 4.8, 4.6], rotulo: ["Tronco BC", 200, 200] },
   "Artéria Subclávia": { pts: [[262, 128], [238, 113], [200, 102], [162, 101], [138, 110]], half: [4.4, 4.2, 4, 3.9, 3.8], rotulo: ["A. subclávia", 118, 40] },
   "Artéria Axilar": { pts: [[138, 110], [121, 126], [111, 150], [107, 182]], half: [3.8, 3.7, 3.6, 3.5], rotulo: ["A. axilar", 182, 230] },
@@ -138,7 +138,7 @@ export function DesenhoMMSSArterial({ lado, arterias, onSelecionar, selecionada,
 
 // ---------- Veias ----------
 // Veias pareadas (braquiais, radiais, ulnares) têm duas curvas.
-const VEI = {
+export const VEI = {
   "Veia Jugular Interna": { curvas: [[[240, 0], [238, 40], [234, 82], [226, 116]]], half: 4.6, rotulo: ["V. jugular int.", 118, 22] },
   "Veia Subclávia": { curvas: [[[226, 118], [196, 113], [164, 116], [140, 124]]], half: 4.4, rotulo: ["V. subclávia", 118, 46] },
   "Veia Axilar": { curvas: [[[140, 124], [126, 140], [119, 162], [116, 186]]], half: 4, rotulo: ["V. axilar", 182, 200] },

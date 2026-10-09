@@ -2,7 +2,7 @@
 // descrição/conclusão das artérias dos membros (laudoArterial.js), com o
 // calibre, a forma do aneurisma e o trombo mural, mais endoprótese/enxerto.
 // Exame único (sem "lado"): as ilíacas já levam o lado no nome.
-import { criarLaudoArterial, descreverArteria, gerarCabecalhoLaudo, preenchido } from "./laudoArterial";
+import { criarLaudoArterial, descreverArteria, gerarCabecalhoLaudo, preenchido, noLocal } from "./laudoArterial";
 
 export * from "./laudoArterial";
 
@@ -62,7 +62,7 @@ function textoEnxerto(enx) {
   const partes = [enx.tipo];
   const sit = situacao(enx);
   if (sit) partes[0] += ` ${sit}`;
-  if (sit && enx.status !== "Pérvio" && enxertoAortaLocalOptions(enx.tipo).includes(enx.local)) partes[0] += ` em ${enx.local.toLowerCase()}`;
+  if (sit && enx.status !== "Pérvio" && enxertoAortaLocalOptions(enx.tipo).includes(enx.local)) partes[0] += ` ${noLocal(enx.local)}`;
   if (ehEndoprotese(enx.tipo) && preenchido(enx.endoleak)) {
     partes.push(enx.endoleak === "Ausente" ? "sem sinais de vazamento (endoleak)" : `com vazamento (endoleak) ${enx.endoleak.replace("Tipo", "tipo").replace("Indeterminado", "indeterminado")}`);
   }

@@ -175,7 +175,8 @@ class LaudoSyncService {
         'examesMMSSVenoso',
         'examesMMSSArterial',
         'examesCarotidasVertebrais',
-        'examesAorta'
+        'examesAorta',
+        'examesFAV'
       ];
       
       tiposLaudo.forEach(tipo => {
@@ -236,7 +237,8 @@ class LaudoSyncService {
         'examesMMSSVenoso',
         'examesMMSSArterial',
         'examesCarotidasVertebrais',
-        'examesAorta'
+        'examesAorta',
+        'examesFAV'
       ];
 
       let deletado = false;

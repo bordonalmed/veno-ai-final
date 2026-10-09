@@ -1,6 +1,6 @@
 // Laudo do Doppler Arterial de MMII: artérias do membro inferior e enxertos.
 // A geração do texto é compartilhada com o MMSS (laudoArterial.js).
-import { criarLaudoArterial, preenchido } from "./laudoArterial";
+import { criarLaudoArterial, preenchido, noLocal } from "./laudoArterial";
 
 export * from "./laudoArterial";
 
@@ -15,7 +15,7 @@ export const enxertoStatusOptions = ["Pérvio", "Com estenose", "Ocluído"];
 export const enxertoLocalOptions = ["Anastomose proximal", "Corpo do enxerto", "Anastomose distal"];
 export const enxertoPadrao = { tipo: "", status: "", local: "" };
 
-const comLocal = (enx) => (preenchido(enx.local) && enx.status !== "Pérvio" ? ` em ${enx.local.toLowerCase()}` : "");
+const comLocal = (enx) => (preenchido(enx.local) && enx.status !== "Pérvio" ? ` ${noLocal(enx.local)}` : "");
 
 const laudo = criarLaudoArterial({
   arterias: [

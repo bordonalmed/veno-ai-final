@@ -8,6 +8,7 @@ const ExamHeader = ({
   data, 
   lado, 
   semLado = false, // exames sem lado (ex.: aorta e ilíacas)
+  semAmbos = false, // exames de um membro só (ex.: fístula arteriovenosa)
   onInputChange, 
   onVisualizar, 
   onSalvar, 
@@ -256,7 +257,7 @@ const ExamHeader = ({
           <option value="">Selecione o Lado</option>
           <option value="Direito">Direito</option>
           <option value="Esquerdo">Esquerdo</option>
-          <option value="Ambos">Ambos</option>
+          {!semAmbos && <option value="Ambos">Ambos</option>}
         </select>
         )}
       </div>

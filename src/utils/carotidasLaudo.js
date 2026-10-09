@@ -129,9 +129,9 @@ function concluirVaso(v, chave) {
       d.push(`Fluxo ${v.fluxo} em ${nome}`);
     }
   }
+  if (temStent(v)) d.push(d.length ? `com stent ${v.stent}` : `Stent ${v.stent} em ${nome}`);
   if (v.disseccao) d.push(d.length ? "com sinais de dissecção" : `Dissecção de ${nome}`);
   if (v.aneurisma) d.push(d.length ? `com ${textoAneurisma(v)}` : `Dilatação aneurismática de ${nome}${tem(v.aneurismaDiametro) ? ` (${String(v.aneurismaDiametro).trim().replace(".", ",")} mm)` : ""}`);
-  if (temStent(v)) d.push(d.length ? `com stent ${v.stent}` : `Stent ${v.stent} em ${nome}`);
   return d.length ? d.join(", ") + "." : null;
 }
 
