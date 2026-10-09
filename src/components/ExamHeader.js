@@ -150,9 +150,10 @@ const ExamHeader = ({
         src={process.env.PUBLIC_URL + "/venoai-logo.png"}
         alt="VENO.AI"
         style={{
-          width: "clamp(100px, 15vw, 140px)",
-          marginTop: "clamp(8px, 2vw, 16px)",
-          marginBottom: "clamp(6px, 1.5vw, 10px)",
+          // o PNG tem ~13% de margem transparente: 190px mostram ~145px de logo
+          width: "clamp(110px, 14vw, 190px)",
+          marginTop: "clamp(4px, 1vw, 8px)",
+          marginBottom: "clamp(2px, 0.8vw, 6px)",
           filter: "drop-shadow(0 10px 32px #00e0ff90)",
           animation: "logoGlow 3s ease-in-out infinite alternate"
         }}

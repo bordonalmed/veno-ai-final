@@ -63,6 +63,20 @@ describe("FAV: confecção (mapeamento pré-operatório)", () => {
   });
 });
 
+describe("FAV: ambos os membros", () => {
+  it("um bloco por membro, cada um com a sua conclusão, observação no fim", () => {
+    const d = confeccao({ radial: { diametro: "2.4" }, cefalicaPunho: { diametro: "2.9" } });
+    const e = avaliacao({ tipo: "Braquiocefálica (cotovelo)", fluxoVolume: "900" });
+    const t = gerarLaudoCompleto({ nome: "A", idade: "60", data: "2026-10-09", lado: "Ambos", extras: { Direito: d, Esquerdo: e }, observacoes: "Obs." });
+    expect(t.match(/DOPPLER PARA FÍSTULA ARTERIOVENOSA/g)).toHaveLength(1);
+    expect(t).toContain("MAPEAMENTO PARA CONFECÇÃO DE FÍSTULA ARTERIOVENOSA - MEMBRO SUPERIOR DIREITO");
+    expect(t).toContain("CONCLUSÃO - MEMBRO SUPERIOR DIREITO\nVasos com calibre adequado (>= 2,0 mm) para: FAV radiocefálica (punho).");
+    expect(t).toContain("AVALIAÇÃO DE FÍSTULA ARTERIOVENOSA - MEMBRO SUPERIOR ESQUERDO");
+    expect(t).toContain("CONCLUSÃO - MEMBRO SUPERIOR ESQUERDO\nFAV braquiocefálica (cotovelo) pérvia, com fluxo de 900 mL/min.");
+    expect(t.trim().endsWith("OBSERVAÇÕES\nObs.")).toBe(true);
+  });
+});
+
 describe("FAV: avaliação de fístula existente", () => {
   it("pérvia e madura (regra dos 6)", () => {
     const t = gerarBlocoExame(avaliacao({

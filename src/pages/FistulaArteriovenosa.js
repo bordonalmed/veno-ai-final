@@ -110,7 +110,7 @@ const tituloSecao = {
 };
 
 // Quadros de preenchimento (modo formulário): modo, pontos de medida ou FAV.
-function BlocoCampos({ extra, onExtraChange, observacoes, onObservacoes }) {
+function BlocoCampos({ titulo, extra, onExtraChange, observacoes, onObservacoes, semObservacoes }) {
   const e = normalizarExtra(extra);
   const setConfeccao = (c) => onExtraChange({ ...e, confeccao: c });
   return (
@@ -125,6 +125,7 @@ function BlocoCampos({ extra, onExtraChange, observacoes, onObservacoes }) {
       flexDirection: 'column',
       gap: 'clamp(8px, 1.5vw, 12px)'
     }}>
+      {titulo && <div style={{ ...tituloSecao, fontSize: 'clamp(15px, 2.8vw, 18px)' }}>{titulo}</div>}
       <div style={{ display: 'flex', gap: 8 }}>
         {MODOS_FAV.map((m) => (
           <button key={m} type="button" onClick={() => onExtraChange({ ...e, modo: m })} style={{
@@ -157,6 +158,7 @@ function BlocoCampos({ extra, onExtraChange, observacoes, onObservacoes }) {
           <CamposAvaliacaoFAV avaliacao={e.avaliacao} onChange={(a) => onExtraChange({ ...e, avaliacao: a })} />
         </div>
       )}
+      {!semObservacoes && (
       <div>
         <div style={tituloSecao}>OBSERVAÇÕES:</div>
         <textarea
@@ -170,6 +172,7 @@ function BlocoCampos({ extra, onExtraChange, observacoes, onObservacoes }) {
           }}
         />
       </div>
+      )}
     </div>
   );
 }
@@ -185,7 +188,12 @@ function FistulaArteriovenosa() {
   const [anexos, setAnexos] = useState([]);
 
   const [lado, setLado] = useState("");
-  const [extra, setExtra] = useState(extraPadrao);
+  // cada braço tem seus próprios dados; com "Ambos", o mapa troca entre eles
+  const [extras, setExtras] = useState(() => ({ Direito: extraPadrao(), Esquerdo: extraPadrao() }));
+  const [ladoMapa, setLadoMapa] = useState("Direito");
+  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : lado ? [lado] : [];
+  const ladoAtivo = lado === "Ambos" ? ladoMapa : lado;
+  const setExtraLado = (l) => (e) => setExtras((prev) => ({ ...prev, [l]: e }));
   const [observacoes, setObservacoes] = useState("");
   // O Mapa Interativo é a tela principal do exame: abre sozinho assim que o
   // cabeçalho (nome, idade e data) está completo. "Ver formulário"
@@ -207,7 +215,13 @@ function FistulaArteriovenosa() {
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
       setLado(exameEmEdicao.lado || "");
-      setExtra(normalizarExtra(exameEmEdicao.extra));
+      if (exameEmEdicao.extras) {
+        setExtras({ Direito: normalizarExtra(exameEmEdicao.extras.Direito), Esquerdo: normalizarExtra(exameEmEdicao.extras.Esquerdo) });
+      } else if (exameEmEdicao.extra) {
+        // salvo antes do "Ambos": um braço só
+        const l = exameEmEdicao.lado === "Esquerdo" ? "Esquerdo" : "Direito";
+        setExtras((prev) => ({ ...prev, [l]: normalizarExtra(exameEmEdicao.extra) }));
+      }
       setObservacoes(exameEmEdicao.observacoes || "");
     }
   }, []);
@@ -238,14 +252,14 @@ function FistulaArteriovenosa() {
 
   function gerarTextoLaudo() {
     if (!deveMostrarCampos) return "";
-    return gerarLaudoCompleto({ nome, idade, data, lado, extra, observacoes });
+    return gerarLaudoCompleto({ nome, idade, data, lado, extras, observacoes });
   }
 
   // Validação dos campos obrigatórios
   const nomeValido = nome && nome.trim && nome.trim().length > 0;
   const idadeValida = idade && !isNaN(idade) && parseInt(idade) > 0 && parseInt(idade) <= 120;
   const dataValida = data && data.trim && data.trim().length > 0;
-  const deveMostrarCampos = nomeValido && idadeValida && dataValida && (lado === "Direito" || lado === "Esquerdo");
+  const deveMostrarCampos = nomeValido && idadeValida && dataValida && (lado === "Direito" || lado === "Esquerdo" || lado === "Ambos");
 
   function handleVisualizar() {
     if (!deveMostrarCampos) return;
@@ -263,7 +277,7 @@ function FistulaArteriovenosa() {
       idade,
       data,
       lado,
-      extra,
+      extras,
       observacoes,
       laudo: gerarTextoLaudo(),
       timestamp: new Date().toISOString(),
@@ -391,7 +405,7 @@ function FistulaArteriovenosa() {
       let y = addCabecalho(12);
       // Cada página (membro) leva a identificação do paciente.
       const bloco = (cabecalhoPaciente + "\n" +
-        gerarBlocoExame(extra, lado, observacoes)
+        gerarBlocoExame(null, lado, observacoes, extras)
       ).trim().split("\n");
       // Espaçamento adaptável (igual ao MMII venoso): se não cabe numa página
       // com linhas de 8 mm, aproxima as linhas (até 5,2 mm) e, se ainda faltar
@@ -522,7 +536,7 @@ function FistulaArteriovenosa() {
     
     // Adicionar anexos como páginas no final do PDF
     if (incluirMapaPdf) {
-      await adicionarMapaFAVAoPdf(doc, lado, extra);
+      for (const l of lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado]) await adicionarMapaFAVAoPdf(doc, l, extras[l]);
     }
 
     appendImagesToPdf(doc, anexos);
@@ -633,7 +647,6 @@ function FistulaArteriovenosa() {
         idade={idade}
         data={data}
         lado={lado}
-        semAmbos
         onInputChange={handleChange}
         onVisualizar={handleVisualizar}
         onSalvar={handleSalvarExame}
@@ -660,9 +673,11 @@ function FistulaArteriovenosa() {
         aberto={deveMostrarCampos && mostrarMapa}
         embutido
         onFechar={() => setMostrarMapa(false)}
-        lado={lado}
-        extra={extra}
-        onExtraChange={setExtra}
+        lado={ladoAtivo}
+        ladoExame={lado}
+        onTrocarLado={setLadoMapa}
+        extra={extras[ladoAtivo]}
+        onExtraChange={setExtraLado(ladoAtivo)}
         observacoes={observacoes}
         onObservacoes={setObservacoes}
         laudo={gerarTextoLaudo()}
@@ -687,12 +702,17 @@ function FistulaArteriovenosa() {
         }}>
           {/* Quadros de preenchimento: só no modo formulário */}
           {!mostrarMapa && (
-            <BlocoCampos
-              extra={extra}
-              onExtraChange={setExtra}
-              observacoes={observacoes}
-              onObservacoes={setObservacoes}
-            />
+            lados.map((l, i) => (
+              <BlocoCampos
+                key={l}
+                titulo={lado === "Ambos" ? `MEMBRO SUPERIOR ${l.toUpperCase()}` : ""}
+                extra={extras[l]}
+                onExtraChange={setExtraLado(l)}
+                observacoes={observacoes}
+                onObservacoes={setObservacoes}
+                semObservacoes={i < lados.length - 1}
+              />
+            ))
           )}
 
           {/* Preview do Laudo */}

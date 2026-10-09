@@ -332,7 +332,7 @@ function BotaoModo({ ativo, children, onClick }) {
 }
 
 export function MapaInterativoFAV({
-  aberto, onFechar, lado, extra, onExtraChange, observacoes, onObservacoes, laudo,
+  aberto, onFechar, lado, ladoExame, onTrocarLado, extra, onExtraChange, observacoes, onObservacoes, laudo,
   incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onSalvarExame, embutido,
 }) {
   const [selecionado, setSelecionado] = useState(null);
@@ -376,6 +376,9 @@ export function MapaInterativoFAV({
         embutido={embutido}
         titulo="Fístula Arteriovenosa"
         onFechar={onFechar}
+        lado={ladoExame || lado}
+        ladoAtivo={lado}
+        onTrocarLado={onTrocarLado ? (op) => { setSelecionado(null); onTrocarLado(op); } : undefined}
         desenho={<DesenhoFAV lado={lado} extra={e} onSelecionar={setSelecionado} selecionado={selecionado} style={{ display: "block", width: "100%", maxWidth: 360, maxHeight: "74vh" }} />}
         legenda={legenda}
         painel={painel}

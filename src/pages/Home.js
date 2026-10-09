@@ -180,8 +180,8 @@ export default function Home({ onLogout }) {
         src={process.env.PUBLIC_URL + "/venoai-logo.png"} 
         alt="VENO.AI" 
         style={{ 
-          width: 120, 
-          marginBottom: 10, 
+          width: "clamp(120px, 14vw, 190px)",
+          marginBottom: 6,
           filter: "drop-shadow(0 6px 20px #00e0ff90)",
           animation: "logoGlow 3s ease-in-out infinite alternate"
         }}
