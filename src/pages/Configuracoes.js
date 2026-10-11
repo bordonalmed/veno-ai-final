@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiArrowLeft, FiUser, FiFileText, FiCreditCard, FiSend, FiMessageCircle, FiMail, FiCheckCircle,
+  FiArrowLeft, FiUser, FiFileText, FiCreditCard, FiSend, FiMessageCircle, FiCheckCircle, FiRotateCcw,
   FiAlertTriangle, FiLoader, FiLock, FiBriefcase, FiImage, FiEdit3, FiExternalLink, FiPlus,
 } from "react-icons/fi";
 import { FaGem } from "react-icons/fa";
 import { TrialManager } from "../utils/trialManager";
 import { AuthService } from "../services/supabaseAuthService";
 import { EVENTO_PERFIL_NA_CONTA } from "../services/perfilSyncService";
+import { lerModeloMensagem, salvarModeloMensagem, montarMensagem, MODELO_PADRAO, VARIAVEIS_MENSAGEM } from "../utils/envioLaudo";
 import {
   ativarPerfilDoUsuario, carregarDadosPerfil, salvarDadosPerfil, normalizarDados, perfilAtivo, progressoPerfil, EVENTO_PERFIL_ATUALIZADO,
   medicoVazio, localVazio, MAX_MEDICOS, MAX_LOCAIS,
@@ -21,15 +22,6 @@ const HOTMART_ASSINATURAS_URL = "https://consumer.hotmart.com";
 
 function isUsuarioPremium(email) {
   return localStorage.getItem("plano_premium") === "true" || localStorage.getItem(`plano_${email}`) === "premium";
-}
-
-function lerEnvio() {
-  return {
-    whatsapp: localStorage.getItem("whatsapp") === "true",
-    numeroWhatsapp: localStorage.getItem("numeroWhatsapp") || "",
-    envioEmail: localStorage.getItem("envioEmail") === "true",
-    emailRemetente: localStorage.getItem("emailRemetente") || "",
-  };
 }
 
 const SECOES = [
@@ -79,7 +71,8 @@ export default function Configuracoes() {
   const [dados, setDados] = useState(() => carregarDadosPerfil(email) || ativarPerfilDoUsuario(email) || normalizarDados(null));
   const [remover, setRemover] = useState(null); // { tipo: "medico"|"local", indice }
   const [nomeCompleto, setNomeCompleto] = useState(() => localStorage.getItem("nomeCompleto") || "");
-  const [envio, setEnvio] = useState(lerEnvio);
+  const [modelo, setModelo] = useState(lerModeloMensagem);
+  const campoModelo = useRef(null);
   const [status, setStatus] = useState({ tipo: "ok", texto: "Tudo salvo" });
   const [senha, setSenha] = useState({ atual: "", nova: "", confirmar: "", msg: "", ok: false, enviando: false });
   const [confirmarAssinatura, setConfirmarAssinatura] = useState(false);
@@ -135,12 +128,12 @@ export default function Configuracoes() {
       const r = salvarDadosPerfil(email, dados);
       try {
         localStorage.setItem("nomeCompleto", nomeCompleto);
-        Object.entries(envio).forEach(([k, v]) => localStorage.setItem(k, String(v)));
+        salvarModeloMensagem(modelo);
       } catch (_) {}
       setStatus(r.ok ? { tipo: "ok", texto: "Salvo" } : { tipo: "erro", texto: r.erro });
     }, 500);
     return () => clearTimeout(t);
-  }, [dados, nomeCompleto, envio, email]);
+  }, [dados, nomeCompleto, modelo, email]);
 
   async function alterarSenha() {
     if (!senha.atual) return setSenha((s) => ({ ...s, msg: "Informe a senha atual.", ok: false }));
@@ -256,39 +249,45 @@ export default function Configuracoes() {
     </div>
   );
 
-  const numeroWa = envio.numeroWhatsapp.replace(/\D/g, "");
+  // Coloca a variável onde está o cursor na mensagem.
+  function inserirVariavel(v) {
+    const el = campoModelo.current;
+    const ini = el ? el.selectionStart : modelo.length;
+    const fim = el ? el.selectionEnd : modelo.length;
+    setModelo(modelo.slice(0, ini) + v + modelo.slice(fim));
+    setTimeout(() => { if (el) { el.focus(); el.selectionStart = el.selectionEnd = ini + v.length; } }, 0);
+  }
+  const previaMensagem = montarMensagem(modelo, {
+    paciente: "Maria da Silva", tipoNome: "Doppler Venoso de Membros Inferiores", data: new Date().toISOString().slice(0, 10),
+    clinica: perfil.nomeClinica, medico: perfil.nomeMedico, crm: perfil.crm,
+  });
   const secaoEnvio = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
       {!temAcesso && (
         <Card titulo="Disponível no Premium" icone={<FaGem />} descricao="Seu período de teste terminou. Assine o Premium para enviar laudos por WhatsApp e e-mail." />
       )}
-      <Card titulo="WhatsApp" icone={<FiMessageCircle />} descricao='Mostra o botão verde "WhatsApp" em Exames Realizados para enviar o laudo em PDF ao paciente.'>
-        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: temAcesso ? "pointer" : "not-allowed", color: TEMA.texto, opacity: temAcesso ? 1 : 0.5 }}>
-          <input type="checkbox" disabled={!temAcesso} checked={envio.whatsapp} onChange={(e) => setEnvio((v) => ({ ...v, whatsapp: e.target.checked }))} style={{ transform: "scale(1.2)" }} />
-          Ativar envio por WhatsApp
-        </label>
-        {envio.whatsapp && temAcesso && (
-          <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 240px" }}>
-              <CampoTexto label="Número do WhatsApp (seu ou da clínica)" value={envio.numeroWhatsapp} onChange={(v) => setEnvio((e) => ({ ...e, numeroWhatsapp: v }))} placeholder="(43) 99999-9999" type="tel" />
-            </div>
-            {numeroWa.length >= 10 && (
-              <a href={`https://wa.me/${numeroWa.startsWith("55") ? numeroWa : "55" + numeroWa}`} target="_blank" rel="noopener noreferrer" style={{ ...botao("#25D366"), textDecoration: "none" }}>
-                <FiExternalLink /> Testar número
-              </a>
-            )}
-          </div>
-        )}
+      <Card titulo="Como enviar" icone={<FiSend />} descricao='Use o botão verde "Enviar laudo" no fim do exame ou "Enviar" em Exames Realizados.'>
+        <ul style={{ margin: 0, paddingLeft: 18, color: TEMA.texto, fontSize: 13.5, lineHeight: 1.7 }}>
+          <li><strong>No celular:</strong> o laudo em PDF já vai anexado — é só escolher o WhatsApp ou o e-mail e o paciente.</li>
+          <li><strong>No computador:</strong> digite o WhatsApp ou e-mail do paciente; a conversa abre com a mensagem pronta e o PDF é baixado para você anexar.</li>
+          <li>O telefone/e-mail do paciente e a data do envio ficam guardados no exame.</li>
+        </ul>
       </Card>
-      <Card titulo="E-mail" icone={<FiMail />} descricao='Mostra o botão azul "E-mail" em Exames Realizados para enviar o laudo em PDF.'>
-        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: temAcesso ? "pointer" : "not-allowed", color: TEMA.texto, opacity: temAcesso ? 1 : 0.5 }}>
-          <input type="checkbox" disabled={!temAcesso} checked={envio.envioEmail} onChange={(e) => setEnvio((v) => ({ ...v, envioEmail: e.target.checked }))} style={{ transform: "scale(1.2)" }} />
-          Ativar envio por e-mail
-        </label>
-        {envio.envioEmail && temAcesso && (
-          <div style={{ marginTop: 12, maxWidth: 380 }}>
-            <CampoTexto label="E-mail remetente (seu ou da clínica)" value={envio.emailRemetente} onChange={(v) => setEnvio((e) => ({ ...e, emailRemetente: v }))} placeholder="contato@clinica.com.br" type="email" />
-          </div>
+      <Card titulo="Mensagem para o paciente" icone={<FiMessageCircle />} descricao="Texto que acompanha o laudo. As palavras entre chaves são trocadas pelos dados do exame.">
+        <textarea ref={campoModelo} value={modelo} onChange={(e) => setModelo(e.target.value)} rows={5}
+          style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #2f6f86", background: "#f7fbff", color: "#16202c", fontSize: 14, fontFamily: "inherit", resize: "vertical" }} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {VARIAVEIS_MENSAGEM.map(([v, d]) => (
+            <button key={v} type="button" title={d} onClick={() => inserirVariavel(v)}
+              style={{ background: "rgba(14,184,208,0.12)", color: TEMA.destaque, border: `1px solid ${TEMA.destaque}55`, borderRadius: 14, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>
+              {d}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: TEMA.suave, margin: "14px 0 5px" }}>Prévia</div>
+        <div style={{ whiteSpace: "pre-wrap", background: "#0f1a14", border: "1px solid #25D36655", borderRadius: 10, padding: "10px 12px", color: TEMA.texto, fontSize: 13.5, lineHeight: 1.5 }}>{previaMensagem}</div>
+        {modelo.trim() !== MODELO_PADRAO.trim() && (
+          <button type="button" onClick={() => setModelo(MODELO_PADRAO)} style={{ ...botao(TEMA.suave, true), marginTop: 12 }}><FiRotateCcw /> Restaurar mensagem padrão</button>
         )}
       </Card>
       <p style={{ fontSize: 12.5, color: TEMA.suave, margin: 0 }}>Integração com prontuário eletrônico / PACS: em breve.</p>

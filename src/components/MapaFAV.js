@@ -335,7 +335,7 @@ function BotaoModo({ ativo, children, onClick }) {
 
 export function MapaInterativoFAV({
   aberto, onFechar, lado, ladoExame, onTrocarLado, extra, onExtraChange, observacoes, onObservacoes, laudo,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
 }) {
   const [selecionado, setSelecionado] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -414,7 +414,7 @@ export function MapaInterativoFAV({
         }
         incluirPdf={incluirMapaPdf} onIncluirPdf={onIncluirMapaPdf}
         onVisualizarImagem={() => setMostrarPreview(true)}
-        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onSalvarExame={onSalvarExame}
+        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onEnviar={onEnviar} onSalvarExame={onSalvarExame}
       />
       {mostrarPreview && (
         <PreviewImagemPdf titulo={confeccao ? "Mapa — Confecção de Fístula Arteriovenosa" : "Mapa — Avaliação de Fístula Arteriovenosa"} onFechar={() => setMostrarPreview(false)}>

@@ -119,7 +119,7 @@ export default function MapaLayout({
   conteudo,
   incluirPdf, onIncluirPdf, labelIncluirPdf = "Incluir Mapeamento no PDF",
   onVisualizarImagem,
-  onSalvarTXT, onSalvarPDF, onSalvarExame,
+  onSalvarTXT, onSalvarPDF, onSalvarExame, onEnviar,
   // embutido: o mapa é a própria tela do exame (dentro da página, logo abaixo
   // do cabeçalho), em vez de uma janela por cima. "Fechar" vira "Ver formulário".
   embutido = false,
@@ -207,6 +207,7 @@ export default function MapaLayout({
         )}
         <button onClick={onSalvarTXT} style={botaoMapaStyle(COR.destaque, !larga)}>Salvar TXT</button>
         <button onClick={onSalvarPDF} style={botaoMapaStyle(COR.destaque, !larga)}>Salvar PDF</button>
+        {onEnviar && <button onClick={onEnviar} style={botaoMapaStyle("#25a35a", !larga)} title="Enviar o laudo ao paciente (WhatsApp, e-mail)">Enviar laudo</button>}
         <button onClick={onSalvarExame} style={botaoMapaStyle("#28a745", !larga)}>Salvar Exame</button>
       </div>
     </div>

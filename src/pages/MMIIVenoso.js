@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import EnviarLaudo from "../components/EnviarLaudo";
+import { temAcessoEnvio } from "../utils/envioLaudo";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { desenharCabecalhoLaudo, desenharAssinatura } from "../utils/pdfCabecalho";
@@ -376,6 +378,7 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
 
 function MMIIVenoso() {
   const [nome, setNome] = useState("");
+  const [enviandoLaudo, setEnviandoLaudo] = useState(false);
   const [idade, setIdade] = useState("");
   const [data, setData] = useState("");
   const [lado, setLado] = useState("");
@@ -568,15 +571,17 @@ function MMIIVenoso() {
   // Gera e salva o PDF completo (mesma lógica usada pelo botão "Salvar PDF"
   // do formulário principal), sempre a partir do estado atual — permite
   // chamar isso também de dentro do Mapa Interativo.
-  async function handleSalvarPDF() {
+  async function handleSalvarPDF(opcoes = {}) {
+    const paraEnvio = !!(opcoes && opcoes.retornarBlob);
     if (!nome || !data || !lado) {
+      if (paraEnvio) return null;
       alert("Preencha nome, data e lado antes de salvar o exame!");
       return;
     }
     // "Salvar PDF" baixa o PDF e já limpa o formulário pro próximo paciente
     // (não dá pra desfazer) — confirma antes pra evitar perder o que estava
     // preenchido se o clique foi sem querer ou antes de revisar tudo.
-    if (!window.confirm("Isso vai baixar o PDF e limpar o formulário para um novo exame. Deseja continuar?")) {
+    if (!paraEnvio && !window.confirm("Isso vai baixar o PDF e limpar o formulário para um novo exame. Deseja continuar?")) {
       return;
     }
     const laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes });
@@ -809,7 +814,10 @@ function MMIIVenoso() {
     appendImagesToPdf(doc, anexos);
 
     carimbarMarcaVenoAI(doc);
-    doc.save(`Laudo_${nome}_${data}.pdf`);
+    const nomeArquivoPdf = `Laudo_${nome}_${data}.pdf`;
+    // "Enviar laudo" usa o mesmo PDF (com mapa e anexos, se marcados)
+    if (opcoes && opcoes.retornarBlob) return { blob: doc.output("blob"), nomeArquivo: nomeArquivoPdf };
+    doc.save(nomeArquivoPdf);
     // O formulário continua preenchido (dá para ajustar e salvar de novo).
   }
 
@@ -957,6 +965,18 @@ function MMIIVenoso() {
         </div>
       )}
 
+      <EnviarLaudo
+
+        aberto={enviandoLaudo}
+
+        onFechar={() => setEnviandoLaudo(false)}
+
+        obterPdf={() => handleSalvarPDF({ retornarBlob: true })}
+
+        info={{ paciente: nome, tipoNome: "Doppler Venoso de Membros Inferiores", data }}
+
+      />
+
       <MapaInterativo
         aberto={mapaAtivo}
         embutido
@@ -987,6 +1007,7 @@ function MMIIVenoso() {
         onSalvarExame={handleSalvarExame}
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
+        onEnviar={temAcessoEnvio() ? () => setEnviandoLaudo(true) : undefined}
         onAbrirMapeamentoVisual={() => setMostrarEsquema(true)}
         incluirMapeamentoVisualPdf={incluirEsquemaPdf}
         onIncluirMapeamentoVisualPdf={setIncluirEsquemaPdf}

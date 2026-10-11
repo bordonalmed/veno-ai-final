@@ -335,7 +335,7 @@ export default function MapaInterativo({
   jsfDiametro, jspDiametro,
   onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes,
   onJsfDiametro, onJspDiametro, onVarizes, onObservacao,
-  onSalvarExame, onSalvarTXT, onSalvarPDF, onAbrirMapeamentoVisual,
+  onSalvarExame, onSalvarTXT, onSalvarPDF, onEnviar, onAbrirMapeamentoVisual,
   incluirMapeamentoVisualPdf, onIncluirMapeamentoVisualPdf,
   anexos = [], onFileUpload, onDrop, onDragOver, onRemoveAnexo, formatFileSize,
   embutido,
@@ -584,7 +584,7 @@ export default function MapaInterativo({
       labelIncluirPdf="Incluir Mapeamento Visual no PDF"
       onVisualizarImagem={onAbrirMapeamentoVisual}
       onSalvarTXT={onSalvarTXT}
-      onSalvarPDF={onSalvarPDF}
+      onSalvarPDF={onSalvarPDF} onEnviar={onEnviar}
       onSalvarExame={() => {
         if (!nome || !data) { alert("Preencha nome e data no formulário antes de salvar o exame!"); return; }
         onSalvarExame();

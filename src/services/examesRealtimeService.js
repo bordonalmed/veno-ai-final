@@ -51,6 +51,11 @@ function getStorageKey(tipoNome = 'Exame') {
   return normalized ? `exames${normalized}` : 'examesLaudo';
 }
 
+const ehUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ""));
+const normalizarNome = (v) => String(v || "").trim().toLowerCase();
+// Local de atendimento em uso (clínica escolhida em "Local do exame").
+const localEmUso = () => (typeof localStorage !== "undefined" && localStorage.getItem("nomeClinica")) || "";
+
 class ExamesRealtimeService {
   constructor() {
     this.currentUser = null;
@@ -193,10 +198,38 @@ class ExamesRealtimeService {
     this.unsubscribeListeners.clear();
   }
 
-  // Criar novo exame
+  // Edição: ao abrir um exame salvo para editar (Exames Realizados -> Editar),
+  // o próximo "Salvar Exame" do mesmo tipo e paciente ATUALIZA esse exame em
+  // vez de criar outro (antes cada edição gerava um exame duplicado).
+  iniciarEdicao(exame) {
+    if (!exame) { this.edicao = null; return; }
+    this.edicao = {
+      ids: [exame.id, exame.localId, exame.supabaseId].filter(Boolean),
+      supabaseId: exame.supabaseId || (ehUuid(exame.id) ? exame.id : null),
+      tipoNome: exame.tipoNome,
+      nome: normalizarNome(exame.nome || exame.paciente),
+      dados: exame,
+    };
+  }
+
+  encerrarEdicao() {
+    this.edicao = null;
+  }
+
+  edicaoCorresponde(dadosExame) {
+    const e = this.edicao;
+    return !!e && e.tipoNome === dadosExame.tipoNome && e.nome === normalizarNome(dadosExame.nome || dadosExame.paciente);
+  }
+
+  // Criar novo exame (ou atualizar o que está em edição)
   async criarExame(dadosExame) {
     try {
       const user = this.requireAuth();
+      dadosExame = { ...dadosExame, localExame: dadosExame.localExame ?? localEmUso() };
+      if (this.edicaoCorresponde(dadosExame)) {
+        const r = await this.atualizarExame(this.edicao.ids[0], dadosExame, this.edicao);
+        if (r.success) return { success: true, id: this.edicao.ids[0], atualizado: true };
+      }
       console.log('📝 ExamesRealtimeService: Criando novo exame...');
 
       const localId = Date.now().toString();
@@ -278,87 +311,68 @@ class ExamesRealtimeService {
     }
   }
 
-  // Atualizar exame existente
-  async atualizarExame(exameId, dadosAtualizados) {
+  // Atualizar exame existente (no Supabase e na cópia do navegador).
+  // ref: dados da edição (ids e supabaseId), para exames que estão só no
+  // Supabase (salvos em outro computador).
+  async atualizarExame(exameId, dadosAtualizados, ref = null) {
     try {
       const user = this.requireAuth();
-      console.log('✏️ ExamesRealtimeService: Atualizando exame:', exameId);
+      const ids = new Set([exameId, ...(ref?.ids || [])].filter(Boolean));
+      const bate = (e) => e && (ids.has(e.id) || ids.has(e.localId) || ids.has(e.supabaseId))
+        && (!e.userId || e.userId === user.uid) && (!e.userEmail || e.userEmail === user.email);
+      const agora = new Date().toISOString();
 
-      // Primeiro, encontrar o exame para ver se tem supabaseId
-      let exameParaAtualizar = null;
-      const tiposLaudo = STORAGE_KEYS;
+      let original = null;
+      for (const tipo of STORAGE_KEYS) {
+        const achado = JSON.parse(localStorage.getItem(tipo) || "[]").find(bate);
+        if (achado) { original = achado; break; }
+      }
+      original = original || ref?.dados || {};
+      const supabaseId = original.supabaseId || ref?.supabaseId || (ehUuid(exameId) ? exameId : null);
+      const exameAtualizado = {
+        ...original,
+        ...dadosAtualizados,
+        id: original.id || exameId,
+        localId: original.localId || exameId,
+        supabaseId: supabaseId || undefined,
+        dataModificacao: agora,
+      };
 
-      for (const tipo of tiposLaudo) {
-        const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
-        const exame = exames.find(e => e.id === exameId && (e.userId === user.uid || e.userEmail === user.email));
-        if (exame) {
-          exameParaAtualizar = { ...exame, tipo };
-          break;
-        }
+      let noSupabase = false;
+      if (supabaseId && this.useSupabase && supabase) {
+        const { error } = await supabase
+          .from('laudos')
+          .update({
+            nome: exameAtualizado.nome || exameAtualizado.paciente || 'Sem nome',
+            data: exameAtualizado.data || exameAtualizado.dataCriacao,
+            tipo_nome: exameAtualizado.tipoNome,
+            tipo_exame: exameAtualizado.tipoNome,
+            dados: exameAtualizado,
+            data_modificacao: agora,
+          })
+          .eq('id', supabaseId)
+          .eq('user_id', user.uid);
+        if (error) console.error('❌ Erro ao atualizar exame no Supabase:', error);
+        else noSupabase = true;
       }
 
-      // Atualizar no Supabase se tiver supabaseId
-      if (exameParaAtualizar && exameParaAtualizar.supabaseId && this.useSupabase && supabase) {
-        try {
-          console.log('✏️ Atualizando exame no Supabase...');
-          const exameAtualizado = {
-            ...exameParaAtualizar,
-            ...dadosAtualizados,
-            dataModificacao: new Date().toISOString()
-          };
-
-          const { error: supabaseError } = await supabase
-            .from('laudos')
-            .update({
-              nome: exameAtualizado.nome || exameAtualizado.paciente || 'Sem nome',
-              data: exameAtualizado.data || exameAtualizado.dataCriacao,
-              tipo_nome: exameAtualizado.tipoNome || exameParaAtualizar.tipoNome,
-              dados: exameAtualizado,
-              data_modificacao: new Date().toISOString()
-            })
-            .eq('id', exameParaAtualizar.supabaseId)
-            .eq('user_id', user.uid);
-
-          if (supabaseError) {
-            console.error('❌ Erro ao atualizar exame no Supabase:', supabaseError);
-          } else {
-            console.log('✅ Exame atualizado no Supabase');
-          }
-        } catch (supabaseErr) {
-          console.error('❌ Erro ao conectar com Supabase:', supabaseErr);
-        }
-      }
-
-      // Atualizar no localStorage
-      let atualizado = false;
-      for (const tipo of tiposLaudo) {
+      let noNavegador = false;
+      for (const tipo of STORAGE_KEYS) {
         const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
-        const examesAtualizados = exames.map(exame => {
-          if (exame.id === exameId && (exame.userId === user.uid || exame.userEmail === user.email)) {
-            atualizado = true;
-            return {
-              ...exame,
-              ...dadosAtualizados,
-              dataModificacao: new Date().toISOString(),
-              modificadoPor: user.uid
-            };
-          }
-          return exame;
+        let mudou = false;
+        const novos = exames.map((e) => {
+          if (!bate(e)) return e;
+          mudou = true;
+          return { ...e, ...exameAtualizado, modificadoPor: user.uid };
         });
-        
-        if (atualizado) {
-          localStorage.setItem(tipo, JSON.stringify(examesAtualizados));
-          break;
-        }
+        if (mudou) { localStorage.setItem(tipo, JSON.stringify(novos)); noNavegador = true; }
       }
 
-      if (atualizado || (exameParaAtualizar && exameParaAtualizar.supabaseId)) {
+      if (noSupabase || noNavegador) {
         console.log('✅ ExamesRealtimeService: Exame atualizado:', exameId);
         return { success: true };
-      } else {
-        return { success: false, error: 'Exame não encontrado' };
       }
-
+      return { success: false, error: 'Exame não encontrado' };
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao atualizar exame:', error);
       return { success: false, error: error.message };
