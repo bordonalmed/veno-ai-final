@@ -7,7 +7,8 @@ import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
 import { TrialManager } from "../utils/trialManager";
 import BoasVindasPerfil from "../components/perfil/BoasVindasPerfil";
-import { carregarDadosPerfil, progressoPerfil, boasVindasPendente } from "../utils/perfilLaudo";
+import { carregarDadosPerfil, progressoPerfil, boasVindasPendente, perfilAtivo, EVENTO_PERFIL_ATUALIZADO } from "../utils/perfilLaudo";
+import TrocaPerfil from "../components/perfil/TrocaPerfil";
 
 const COLOR_STYLES = {
   blue: { border: "#3f93e0", ring: "rgba(63,147,224,0.1)", glow: "rgba(63,147,224,0.55)" },
@@ -34,11 +35,20 @@ export default function Home({ onLogout }) {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
   // Perfil do laudo: assistente no primeiro acesso e cartão "Complete seu perfil"
-  const lerPerfil = () => { const d = carregarDadosPerfil(userEmail); return d ? d.perfis[d.ativo] : {}; };
+  const lerPerfil = () => { const d = carregarDadosPerfil(userEmail); return d ? perfilAtivo(d) : {}; };
   const [perfilLaudo, setPerfilLaudo] = useState(lerPerfil);
   const progresso = progressoPerfil(perfilLaudo);
   const [mostrarBoasVindas, setMostrarBoasVindas] = useState(() => boasVindasPendente(userEmail) && progressoPerfil(lerPerfil()).feitos < 5);
-  const iniciais = (perfilLaudo.nomeMedico || userEmail || "?").replace(/^(dr|dra)\.?\s+/i, "").split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+  // perfil chegou da conta (cadastrado em outro computador)
+  useEffect(() => {
+    const atualizar = () => {
+      const p = lerPerfil();
+      setPerfilLaudo(p);
+      if (progressoPerfil(p).feitos >= 3) setMostrarBoasVindas(false);
+    };
+    window.addEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
+    return () => window.removeEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
+  }, []);
   const nomeMedico = perfilLaudo.nomeMedico || localStorage.getItem("nomeMedico") || "";
   const [planoUsuario, setPlanoUsuario] = useState('trial');
   const [carregandoPlano, setCarregandoPlano] = useState(true);
@@ -99,22 +109,12 @@ export default function Home({ onLogout }) {
       {mostrarBoasVindas && (
         <BoasVindasPerfil email={userEmail} onFechar={() => { setMostrarBoasVindas(false); setPerfilLaudo(lerPerfil()); }} />
       )}
+      {/* Perfil do laudo (logo ou iniciais) - canto superior esquerdo, longe do logo do VENO.AI */}
+      <div style={{ position: "absolute", left: 25, top: 25 }}>
+        <TrocaPerfil email={userEmail} completo={progresso.feitos === progresso.total} onTrocar={setPerfilLaudo} />
+      </div>
       {/* Botões - Canto superior direito */}
       <div style={{ position: "absolute", right: 25, top: 25, display: "flex", gap: 12, alignItems: "center" }}>
-        <button
-          onClick={() => navigate("/configuracoes")}
-          title="Meu perfil do laudo (logo, assinatura e dados)"
-          style={{
-            width: 34, height: 34, borderRadius: "50%", padding: 0, overflow: "hidden", cursor: "pointer",
-            border: `2px solid ${progresso.feitos === progresso.total ? "#3ddc97" : "#0eb8d0"}`,
-            background: perfilLaudo.logoClinica ? "#fff" : "rgba(14,184,208,0.15)", color: "#0eb8d0",
-            fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          {perfilLaudo.logoClinica
-            ? <img src={perfilLaudo.logoClinica} alt="perfil" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            : iniciais}
-        </button>
         <button
           onClick={() => navigate("/exames-realizados")}
           style={{

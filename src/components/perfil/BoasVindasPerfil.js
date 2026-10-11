@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FiArrowRight, FiArrowLeft, FiCheck, FiX } from "react-icons/fi";
-import { carregarDadosPerfil, salvarDadosPerfil, perfilVazio, marcarBoasVindas } from "../../utils/perfilLaudo";
+import { carregarDadosPerfil, salvarDadosPerfil, normalizarDados, perfilAtivo, CAMPOS_MEDICO, marcarBoasVindas } from "../../utils/perfilLaudo";
 import { TEMA, CampoTexto, grade2, botao, UploadImagem, CampoAssinatura, PreviaLaudo, ESPECIALIDADES } from "./PerfilCampos";
 
 // Assistente de primeiro acesso: 3 passos para personalizar o laudo
@@ -9,16 +9,20 @@ const PASSOS = ["Médico", "Clínica e logo", "Assinatura"];
 
 export default function BoasVindasPerfil({ email, onFechar }) {
   const [passo, setPasso] = useState(0);
-  const [dados, setDados] = useState(() => carregarDadosPerfil(email) || { perfis: [perfilVazio()], ativo: 0 });
+  const [dados, setDados] = useState(() => carregarDadosPerfil(email) || normalizarDados(null));
   const [erro, setErro] = useState("");
   const largura = window.innerWidth;
   const larga = largura >= 900;
-  const perfil = dados.perfis[dados.ativo] || perfilVazio();
-  const set = (campo) => (v) => setDados((d) => {
-    const perfis = d.perfis.slice();
-    perfis[d.ativo] = { ...perfis[d.ativo], [campo]: v };
-    return { ...d, perfis };
-  });
+  const perfil = perfilAtivo(dados);
+  // campos do médico vão para o médico em uso; os da clínica, para o local em uso
+  const set = (campo) => (v) => setDados((d) => ({
+    ...d,
+    medicos: d.medicos.map((m, i) => {
+      if (i !== d.medicoAtivo) return m;
+      if (CAMPOS_MEDICO.includes(campo)) return { ...m, [campo]: v };
+      return { ...m, locais: m.locais.map((l, j) => (j === m.localAtivo ? { ...l, [campo]: v } : l)) };
+    }),
+  }));
 
   function salvar(estado) {
     const r = salvarDadosPerfil(email, dados);

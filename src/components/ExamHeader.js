@@ -1,4 +1,5 @@
 import React from "react";
+import { SeletorPerfilLaudo } from "./perfil/TrocaPerfil";
 import { FiSettings, FiHome, FiList, FiLogOut } from "react-icons/fi";
 
 const ExamHeader = ({ 
@@ -171,6 +172,7 @@ const ExamHeader = ({
       }}>
         {examTitle}
       </h1>
+      <SeletorPerfilLaudo />
 
       {/* Primeira linha: campos de entrada */}
       <div style={{
