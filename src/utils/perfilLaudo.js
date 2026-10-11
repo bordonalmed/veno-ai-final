@@ -1,13 +1,15 @@
 // Perfil do laudo guardado POR USUÁRIO (conta de login):
-//   conta -> até MAX_MEDICOS médicos (nome, CRM, especialidade, assinatura)
-//   médico -> até MAX_LOCAIS locais de atendimento (clínica, endereço,
-//             telefone, e-mail e logo)
+//   conta -> 1 profissional (nome, CRM, especialidade, assinatura)
+//   profissional -> até MAX_LOCAIS locais de atendimento (clínica, endereço,
+//                   telefone, e-mail e logo)
 // Ex.: o Dr. José atende na clínica A (logo A) e na clínica B (logo B).
+// A estrutura já guarda uma lista de profissionais para o futuro plano para
+// clínicas (vários usuários): será só aumentar MAX_MEDICOS.
 // Os exames leem o médico + local "em uso" das chaves soltas do navegador
 // ("nomeMedico", "logoClinica"...), que são só uma cópia da combinação ativa.
 
-// Limites (Premium). Um futuro plano para clínicas é só mudar estes números.
-export const MAX_MEDICOS = 3;
+// Limites. O futuro plano para clínicas aumenta MAX_MEDICOS.
+export const MAX_MEDICOS = 1;
 export const MAX_LOCAIS = 3;
 
 export const CAMPOS_MEDICO = ["nomeMedico", "crm", "especialidade", "assinaturaMedico"];
@@ -50,13 +52,23 @@ export function normalizarDados(d) {
     medicos = [];
     medicoAtivo = 0;
   }
+  // profissionais além do limite (ex.: Premium antigo com 3 médicos) ficam
+  // guardados à parte, sem se perder, para o futuro plano para clínicas
+  let arquivados = Array.isArray(d?.arquivados) ? d.arquivados : [];
+  if (medicos.length > MAX_MEDICOS) {
+    const fixoAtivo = limitar(medicoAtivo, medicos.length);
+    const ordem = [medicos[fixoAtivo], ...medicos.filter((_, i) => i !== fixoAtivo)];
+    arquivados = [...ordem.slice(MAX_MEDICOS), ...arquivados];
+    medicos = ordem;
+    medicoAtivo = 0;
+  }
   medicos = medicos.slice(0, MAX_MEDICOS).map((m) => {
     const locais = (Array.isArray(m?.locais) && m.locais.length ? m.locais : [localVazio()])
       .slice(0, MAX_LOCAIS).map((l) => ({ ...localVazio(), ...l }));
     return { ...medicoVazio(), ...m, locais, localAtivo: limitar(m?.localAtivo, locais.length) };
   });
   if (!medicos.length) medicos = [medicoVazio()];
-  return { versao: 2, medicos, medicoAtivo: limitar(medicoAtivo, medicos.length) };
+  return { versao: 2, medicos, medicoAtivo: limitar(medicoAtivo, medicos.length), ...(arquivados.length ? { arquivados } : {}) };
 }
 
 // Combinação médico + local, no formato que os exames usam.

@@ -16,33 +16,36 @@ function jose() {
   return m;
 }
 
-describe("médicos e locais de atendimento", () => {
-  it("o mesmo médico atende na clínica A ou B, cada uma com seu logo", () => {
-    const maria = { ...medicoVazio(), nomeMedico: "Dra. Maria" };
-    let d = normalizarDados({ medicos: [jose(), maria], medicoAtivo: 0 });
+describe("um profissional com até 3 locais de atendimento", () => {
+  it("o Dr. José atende na clínica A ou B, cada uma com seu logo", () => {
+    let d = normalizarDados({ medicos: [jose()], medicoAtivo: 0 });
     expect(perfilAtivo(d)).toMatchObject({ nomeMedico: "Dr. José", nomeClinica: "Clínica A", logoClinica: "data:LOGO-A", assinaturaMedico: "data:SIG-J" });
     d = selecionarCombinacao(d, 0, 1);
     salvarDadosPerfil("a@x.com", d);
     expect(localStorage.getItem("logoClinica")).toBe("data:LOGO-B");
     expect(localStorage.getItem("telefoneClinica")).toBe("(16) 3333-3333");
     expect(localStorage.getItem("assinaturaMedico")).toBe("data:SIG-J");
-    expect(opcoesDePerfil(d).map((o) => o.rotulo)).toEqual(["Dr. José · Clínica A", "Dr. José · Clínica B", "Dra. Maria"]);
+    expect(opcoesDePerfil(d).map((o) => o.rotulo)).toEqual(["Dr. José · Clínica A", "Dr. José · Clínica B"]);
     expect(opcoesDePerfil(d).find((o) => o.ativo).rotulo).toBe("Dr. José · Clínica B");
   });
 
-  it("limites: até 3 médicos e 3 locais por médico", () => {
-    const muitos = Array.from({ length: 5 }, () => ({ ...medicoVazio(), locais: Array.from({ length: 5 }, localVazio) }));
-    const d = normalizarDados({ medicos: muitos, medicoAtivo: 9 });
-    expect(d.medicos).toHaveLength(MAX_MEDICOS);
+  it("limites: 1 profissional por usuário e 3 locais", () => {
+    expect(MAX_MEDICOS).toBe(1);
+    const muitos = Array.from({ length: 5 }, (_, i) => ({ ...medicoVazio(), nomeMedico: `Dr. ${i}`, locais: Array.from({ length: 5 }, localVazio) }));
+    const d = normalizarDados({ medicos: muitos, medicoAtivo: 2 });
+    expect(d.medicos).toHaveLength(1);
+    expect(d.medicos[0].nomeMedico).toBe("Dr. 2"); // fica o que estava em uso
     expect(d.medicos[0].locais).toHaveLength(MAX_LOCAIS);
-    expect(d.medicoAtivo).toBe(MAX_MEDICOS - 1);
+    // os outros não se perdem: ficam guardados para o futuro plano para clínicas
+    expect(d.arquivados.map((m) => m.nomeMedico)).toEqual(["Dr. 0", "Dr. 1", "Dr. 3", "Dr. 4"]);
+    expect(normalizarDados(d).arquivados).toHaveLength(4);
   });
 
-  it("dados da versão anterior (perfis achatados) viram médicos com 1 local", () => {
-    const d = normalizarDados({ perfis: [{ nomeMedico: "Dr. 1", nomeClinica: "C1", logoClinica: "L1" }, { nomeMedico: "" }, { nomeMedico: "Dr. 3" }], ativo: 2 });
-    expect(d.medicos.map((m) => m.nomeMedico)).toEqual(["Dr. 1", "Dr. 3"]);
-    expect(d.medicos[0].locais[0]).toMatchObject({ nomeClinica: "C1", logoClinica: "L1" });
-    expect(perfilAtivo(d).nomeMedico).toBe("Dr. 3");
+  it("dados da versão anterior (perfis achatados): o perfil em uso vira o profissional", () => {
+    const d = normalizarDados({ perfis: [{ nomeMedico: "Dr. 1", nomeClinica: "C1", logoClinica: "L1" }, { nomeMedico: "" }, { nomeMedico: "Dr. 3", nomeClinica: "C3" }], ativo: 2 });
+    expect(d.medicos.map((m) => m.nomeMedico)).toEqual(["Dr. 3"]);
+    expect(perfilAtivo(d)).toMatchObject({ nomeMedico: "Dr. 3", nomeClinica: "C3" });
+    expect(d.arquivados[0].locais[0]).toMatchObject({ nomeClinica: "C1", logoClinica: "L1" });
   });
 });
 
@@ -72,8 +75,8 @@ describe("perfil por usuário", () => {
     localStorage.setItem("configLaudoPremium", JSON.stringify([{ nomeMedico: "Dr. 1" }, { nomeMedico: "Dr. 2", crm: "999 PR" }]));
     localStorage.setItem("perfilLaudoAtivo", "1");
     const d = ativarPerfilDoUsuario("p@x.com");
-    expect(d.medicos).toHaveLength(2);
-    expect(d.medicoAtivo).toBe(1);
+    expect(d.medicos).toHaveLength(1);
+    expect(d.medicos[0].nomeMedico).toBe("Dr. 2");
     expect(localStorage.getItem("crm")).toBe("999 PR");
     expect(localStorage.getItem("configLaudoPremium")).toBeNull();
   });

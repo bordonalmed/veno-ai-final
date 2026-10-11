@@ -151,16 +151,17 @@ export default function Configuracoes() {
           </div>
         </div>
 
-        <Card titulo="Médicos" icone={<FiUser />}
-          descricao={isPremium ? `Até ${MAX_MEDICOS} médicos por conta, cada um com assinatura e até ${MAX_LOCAIS} locais de atendimento.` : `No Premium: até ${MAX_MEDICOS} médicos por conta, cada um com até ${MAX_LOCAIS} locais (clínica e logo próprios).`}>
-          <Abas
-            itens={dados.medicos.map((m, i) => m.nomeMedico?.trim() || `Médico ${i + 1}`)}
-            ativo={iMedico}
-            onEscolher={escolherMedico}
-            onAdicionar={isPremium && dados.medicos.length < MAX_MEDICOS ? adicionarMedico : null}
-            rotuloAdicionar="Adicionar médico"
-          />
-          <div style={{ ...grade2, marginTop: 14 }}>
+        <Card titulo="Profissional" icone={<FiUser />} descricao="Nome, CRM, especialidade e assinatura que saem em todos os laudos.">
+          {MAX_MEDICOS > 1 && (
+            <Abas
+              itens={dados.medicos.map((m, i) => m.nomeMedico?.trim() || `Médico ${i + 1}`)}
+              ativo={iMedico}
+              onEscolher={escolherMedico}
+              onAdicionar={dados.medicos.length < MAX_MEDICOS ? adicionarMedico : null}
+              rotuloAdicionar="Adicionar médico"
+            />
+          )}
+          <div style={{ ...grade2, marginTop: MAX_MEDICOS > 1 ? 14 : 0 }}>
             <CampoTexto label="Nome que aparece no laudo" value={medico.nomeMedico} onChange={setMedicoCampo("nomeMedico")} placeholder="Dr. João Silva" />
             <CampoTexto label="CRM / UF" value={medico.crm} onChange={setMedicoCampo("crm")} placeholder="12345 PR" />
             <CampoTexto label="Especialidade" value={medico.especialidade} onChange={setMedicoCampo("especialidade")} placeholder="Angiologia e Cirurgia Vascular" lista={ESPECIALIDADES} />
@@ -176,13 +177,15 @@ export default function Configuracoes() {
           )}
         </Card>
 
-        <Card titulo={`Locais de atendimento${medico.nomeMedico?.trim() ? ` de ${medico.nomeMedico.trim()}` : ""}`} icone={<FiBriefcase />}
-          descricao="Cada local tem a sua clínica e o seu logo. O local selecionado é o que sai no laudo.">
+        <Card titulo="Locais de atendimento" icone={<FiBriefcase />}
+          descricao={temAcesso
+            ? `Até ${MAX_LOCAIS} locais, cada um com a sua clínica e o seu logo. O local selecionado é o que sai no laudo (dá para trocar no menu e em cada exame).`
+            : `No Premium: até ${MAX_LOCAIS} locais, cada um com a sua clínica e o seu logo.`}>
           <Abas
             itens={medico.locais.map((l, i) => l.nomeClinica?.trim() || `Local ${i + 1}`)}
             ativo={iLocal}
             onEscolher={escolherLocal}
-            onAdicionar={isPremium && medico.locais.length < MAX_LOCAIS ? adicionarLocal : null}
+            onAdicionar={temAcesso && medico.locais.length < MAX_LOCAIS ? adicionarLocal : null}
             rotuloAdicionar="Adicionar local"
           />
           <div style={{ ...grade2, marginTop: 14 }}>
@@ -273,7 +276,7 @@ export default function Configuracoes() {
 
   let planoTitulo, planoTexto, planoCor;
   if (isPremium) {
-    planoTitulo = "Premium"; planoTexto = "Laudos ilimitados, até 3 médicos e envio por WhatsApp/e-mail."; planoCor = TEMA.ok;
+    planoTitulo = "Premium"; planoTexto = "Laudos ilimitados, até 3 locais de atendimento e envio por WhatsApp/e-mail."; planoCor = TEMA.ok;
   } else if (trial.status === "ativo") {
     planoTitulo = "Teste gratuito";
     planoTexto = `Restam ${trial.diasRestantes} ${trial.diasRestantes === 1 ? "dia" : "dias"} e ${trial.laudosRestantes} ${trial.laudosRestantes === 1 ? "laudo" : "laudos"}.`;

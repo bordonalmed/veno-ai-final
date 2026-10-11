@@ -37,7 +37,7 @@ export default function TrocaPerfil({ email, onTrocar, completo }) {
     <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => (opcoes.length > 1 ? setAberto((a) => !a) : navigate("/configuracoes"))}
-        title={opcoes.length > 1 ? "Trocar médico / local do laudo" : "Meu perfil do laudo (logo, assinatura e dados)"}
+        title={opcoes.length > 1 ? "Trocar local de atendimento" : "Meu perfil do laudo (logo, assinatura e dados)"}
         style={{
           width: 34, height: 34, borderRadius: "50%", padding: 0, overflow: "hidden", cursor: "pointer",
           border: `2px solid ${completo ? "#3ddc97" : "#0eb8d0"}`,
@@ -71,7 +71,7 @@ export default function TrocaPerfil({ email, onTrocar, completo }) {
           ))}
           <button type="button" onClick={() => navigate("/configuracoes")}
             style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", marginTop: 4, border: "none", borderTop: "1px solid #2c3a52", background: "transparent", color: "#0eb8d0", cursor: "pointer", fontSize: 13 }}>
-            <FiSettings /> Editar médicos e locais
+            <FiSettings /> Editar perfil e locais
           </button>
         </div>
       )}
