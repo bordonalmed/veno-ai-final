@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import EnviarLaudo from "../components/EnviarLaudo";
+import { temAcessoEnvio } from "../utils/envioLaudo";
 import { SeletorPerfilLaudo } from "../components/perfil/TrocaPerfil";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
@@ -124,6 +126,7 @@ const VesselField = ({ vessel, vesselKey, onChange, title, showIMT = false }) =>
 
 function CarotidasVertebrais() {
   const [nome, setNome] = useState("");
+  const [enviandoLaudo, setEnviandoLaudo] = useState(false);
   const [idade, setIdade] = useState("");
   const [data, setData] = useState("");
   const [isMobile, setIsMobile] = useState(false);
@@ -290,7 +293,7 @@ function CarotidasVertebrais() {
   // Gera e salva o PDF completo (mesma lógica usada pelo botão "Salvar PDF" do formulário
   // principal), sempre a partir do estado atual -- permite chamar isso também de dentro do Mapa
   // Interativo, sem precisar visualizar o laudo antes.
-  async function handleSalvarPDF() {
+  async function handleSalvarPDF(opcoes = {}) {
     setErro("");
     if (!nome || !data) {
       setErro("Preencha nome e data antes de salvar o exame!");
@@ -507,7 +510,10 @@ function CarotidasVertebrais() {
     }
 
     carimbarMarcaVenoAI(doc);
-    doc.save(`Laudo_${nome}_${data}.pdf`);
+    const nomeArquivoPdf = `Laudo_${nome}_${data}.pdf`;
+    // "Enviar laudo" usa o mesmo PDF (com mapa e anexos, se marcados)
+    if (opcoes && opcoes.retornarBlob) return { blob: doc.output("blob"), nomeArquivo: nomeArquivoPdf };
+    doc.save(nomeArquivoPdf);
 
     setNome("");
     setIdade("");
@@ -933,6 +939,18 @@ function CarotidasVertebrais() {
         </div>
       )}
 
+      <EnviarLaudo
+
+        aberto={enviandoLaudo}
+
+        onFechar={() => setEnviandoLaudo(false)}
+
+        obterPdf={() => handleSalvarPDF({ retornarBlob: true })}
+
+        info={{ paciente: nome, tipoNome: "Carótidas e Vertebrais", data }}
+
+      />
+
       <CarotidasMapaInterativo
         aberto={formReady && mostrarMapa}
         embutido
@@ -944,6 +962,7 @@ function CarotidasVertebrais() {
         onSalvarExame={handleSalvarExame}
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
+        onEnviar={temAcessoEnvio() ? () => setEnviandoLaudo(true) : undefined}
         incluirMapaPdf={incluirMapaPdf}
         onIncluirMapaPdf={setIncluirMapaPdf}
       />

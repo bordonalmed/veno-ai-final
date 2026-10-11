@@ -347,7 +347,7 @@ const estiloLaudo = { background: "#f7f9fa", border: "1px solid #dfe6ec", color:
 
 export function MapaInterativoAorta({
   aberto, onFechar, arterias, onArteriaChange, extra, onExtraChange, observacoes, onObservacoes, laudo,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -391,7 +391,7 @@ export function MapaInterativoAorta({
         }
         incluirPdf={incluirMapaPdf} onIncluirPdf={onIncluirMapaPdf}
         onVisualizarImagem={() => setMostrarPreview(true)}
-        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onSalvarExame={onSalvarExame}
+        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onEnviar={onEnviar} onSalvarExame={onSalvarExame}
       />
       {mostrarPreview && (
         <PreviewImagemPdf titulo="Mapeamento — Aorta Abdominal e Artérias Ilíacas" onFechar={() => setMostrarPreview(false)}>

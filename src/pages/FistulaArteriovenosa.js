@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import EnviarLaudo from "../components/EnviarLaudo";
+import { temAcessoEnvio } from "../utils/envioLaudo";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { desenharCabecalhoLaudo, desenharAssinatura } from "../utils/pdfCabecalho";
@@ -181,6 +183,7 @@ function BlocoCampos({ titulo, extra, onExtraChange, observacoes, onObservacoes,
 // Componente principal
 function FistulaArteriovenosa() {
   const [nome, setNome] = useState("");
+  const [enviandoLaudo, setEnviandoLaudo] = useState(false);
   const [idade, setIdade] = useState("");
   const [data, setData] = useState("");
   const [isMobile, setIsMobile] = useState(false);
@@ -299,7 +302,7 @@ function FistulaArteriovenosa() {
     saveAs(blob, `Laudo_${nome}_${data}.txt`);
   }
 
-  async function handleSalvarPDF() {
+  async function handleSalvarPDF(opcoes = {}) {
     // Buscar dados do localStorage
     const nomeMedico = localStorage.getItem("nomeMedico") || "";
     const crm = localStorage.getItem("crm") || "";
@@ -518,7 +521,10 @@ function FistulaArteriovenosa() {
     appendImagesToPdf(doc, anexos);
     
     carimbarMarcaVenoAI(doc);
-    doc.save(`Laudo_${nome}_${data}.pdf`);
+    const nomeArquivoPdf = `Laudo_${nome}_${data}.pdf`;
+    // "Enviar laudo" usa o mesmo PDF (com mapa e anexos, se marcados)
+    if (opcoes && opcoes.retornarBlob) return { blob: doc.output("blob"), nomeArquivo: nomeArquivoPdf };
+    doc.save(nomeArquivoPdf);
   }
 
   // Funções para gerenciar anexos de imagens
@@ -645,6 +651,18 @@ function FistulaArteriovenosa() {
         </div>
       )}
 
+      <EnviarLaudo
+
+        aberto={enviandoLaudo}
+
+        onFechar={() => setEnviandoLaudo(false)}
+
+        obterPdf={() => handleSalvarPDF({ retornarBlob: true })}
+
+        info={{ paciente: nome, tipoNome: "Fístula Arteriovenosa", data }}
+
+      />
+
       <MapaInterativoFAV
         aberto={deveMostrarCampos && mostrarMapa}
         embutido
@@ -661,6 +679,7 @@ function FistulaArteriovenosa() {
         onIncluirMapaPdf={setIncluirMapaPdf}
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
+        onEnviar={temAcessoEnvio() ? () => setEnviandoLaudo(true) : undefined}
         onSalvarExame={handleSalvarExame}
       />
 

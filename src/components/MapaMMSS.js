@@ -354,7 +354,7 @@ function Previa({ titulo, lados, onFechar, desenhar, legenda }) {
 export function MapaInterativoMMSSArterial({
   aberto, onFechar, lado, ladoAtivo, onTrocarLado,
   arterias, onArteriaChange, extras, onExtraChange, laudoMembro,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -394,7 +394,7 @@ export function MapaInterativoMMSSArterial({
         }
         incluirPdf={incluirMapaPdf} onIncluirPdf={onIncluirMapaPdf}
         onVisualizarImagem={() => setMostrarPreview(true)}
-        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onSalvarExame={onSalvarExame}
+        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onEnviar={onEnviar} onSalvarExame={onSalvarExame}
       />
       {mostrarPreview && (
         <Previa
@@ -410,7 +410,7 @@ export function MapaInterativoMMSSArterial({
 export function MapaInterativoMMSSVenoso({
   aberto, onFechar, lado, ladoAtivo, onTrocarLado,
   veias, onVeiaChange, extras, onExtraChange, observacoes, onObservacao, laudoMembro,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -459,7 +459,7 @@ export function MapaInterativoMMSSVenoso({
         }
         incluirPdf={incluirMapaPdf} onIncluirPdf={onIncluirMapaPdf}
         onVisualizarImagem={() => setMostrarPreview(true)}
-        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onSalvarExame={onSalvarExame}
+        onSalvarTXT={onSalvarTXT} onSalvarPDF={onSalvarPDF} onEnviar={onEnviar} onSalvarExame={onSalvarExame}
       />
       {mostrarPreview && (
         <Previa

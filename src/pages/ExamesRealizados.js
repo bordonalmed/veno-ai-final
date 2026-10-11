@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiMapPin, FiArrowLeft, FiTrash2, FiX, FiWifi, FiWifiOff, FiMessageCircle, FiMail, FiMoreVertical, FiAlertTriangle, FiClipboard, FiRefreshCw, FiCheckSquare, FiSquare, FiSearch, FiCalendar, FiEye, FiEdit2, FiPrinter } from "react-icons/fi";
+import { FiMapPin, FiArrowLeft, FiTrash2, FiX, FiWifi, FiWifiOff, FiSend, FiMoreVertical, FiAlertTriangle, FiClipboard, FiRefreshCw, FiCheckSquare, FiSquare, FiSearch, FiCalendar, FiEye, FiEdit2, FiPrinter } from "react-icons/fi";
 import { MdSort } from "react-icons/md";
 import { FaHospital } from "react-icons/fa";
 import { GiLeg } from "react-icons/gi";
 import examesRealtimeService from "../services/examesRealtimeService";
-import { TrialManager } from "../utils/trialManager";
-import { gerarPDFExame, formatarDataDiaMesAno } from "../utils/pdfExameSalvo";
+import { gerarPDFExame, montarPDFExame, perfilParaExame, formatarDataDiaMesAno } from "../utils/pdfExameSalvo";
+import { temAcessoEnvio, textoEnvio } from "../utils/envioLaudo";
+import EnviarLaudo from "../components/EnviarLaudo";
 
 // Helpers para exames salvos (localStorage)
 const STORAGE_KEY_TO_LABEL = {
@@ -51,19 +52,13 @@ function isUsuarioPremium() {
   );
 }
 
-function temAcessoPremium() {
-  // Retorna true se for Premium OU se trial estiver ativo (7 dias com acesso igual ao Premium)
-  const userEmail = localStorage.getItem("userEmail") || "";
-  if (isUsuarioPremium()) return true;
-  const trial = TrialManager.verificarTrial(userEmail);
-  return trial.status === "ativo";
-}
-
 // Laudo como foi salvo (os separadores "====" entre membros já vêm no texto).
 // Antes cada linha em branco virava um separador gigante na visualização.
 function formatarLaudoParaVisualizacao(laudo) {
   return laudo ? String(laudo).replace(/\*\*/g, "") : "Laudo não disponível";
 }
+
+const ultimoEnvio = (e) => (Array.isArray(e?.envios) && e.envios.length ? e.envios[e.envios.length - 1] : null);
 
 const SEM_LOCAL = "__sem_local__";
 const localDoExame = (e) => String(e?.localExame || "").trim();
@@ -80,16 +75,13 @@ export default function ExamesRealizados() {
   const [busca, setBusca] = useState("");
   const [examesSelecionados, setExamesSelecionados] = useState([]);
   const [modoSelecao, setModoSelecao] = useState(false);
-  const [whatsappExame, setWhatsappExame] = useState(null);
-  const [whatsappNumeroPaciente, setWhatsappNumeroPaciente] = useState("");
-  const [emailExame, setEmailExame] = useState(null);
-  const [emailPaciente, setEmailPaciente] = useState("");
+  const [enviandoExame, setEnviandoExame] = useState(null);
   const [ordenacao, setOrdenacao] = useState("recentes");
   const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [confirmacao, setConfirmacao] = useState(null); // { tipo: 'excluirUm'|'excluirSelecionados'|'limparTudo', exame? }
   const [confirmaLimparTudo, setConfirmaLimparTudo] = useState(false);
   const isPremium = isUsuarioPremium();
-  const temAcesso = temAcessoPremium(); // Premium OU trial ativo
+  const podeEnviar = temAcessoEnvio();
 
   // Ref para armazenar o ID do listener
   const listenerIdRef = useRef(null);
@@ -194,6 +186,33 @@ export default function ExamesRealizados() {
   const locaisUnicos = [...new Set(exames.map(localDoExame).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const temSemLocal = exames.some((e) => !localDoExame(e));
   const contarLocal = (l) => exames.filter((e) => (l === SEM_LOCAL ? !localDoExame(e) : localDoExame(e) === l)).length;
+
+  async function pdfParaEnvio(exame) {
+    if (!exame) return null;
+    const bytes = await montarPDFExame(exame, perfilParaExame(exame, localStorage.getItem("userEmail") || ""));
+    const data = formatarDataDiaMesAno(exame.data);
+    const nomeArquivo = `Laudo_${(exame.nome || "paciente").replace(/\s+/g, "_")}_${data ? data.replace(/\//g, "-") : "sem_data"}.pdf`;
+    return { blob: new Blob([bytes], { type: "application/pdf" }), nomeArquivo };
+  }
+
+  // Guarda o contato do paciente e o histórico de envios no próprio exame.
+  async function registrarEnvio(via, { telefone, email }) {
+    const exame = enviandoExame;
+    if (!exame) return;
+    const novos = {
+      ...(telefone ? { telefonePaciente: telefone } : {}),
+      ...(email ? { emailPaciente: email } : {}),
+      envios: [...(Array.isArray(exame.envios) ? exame.envios : []), { via, em: new Date().toISOString() }],
+    };
+    const atualizado = { ...exame, ...novos };
+    setEnviandoExame(atualizado);
+    setExames((lista) => lista.map((e) => (e.id === exame.id ? { ...e, ...novos } : e)));
+    await examesRealtimeService.atualizarExame(exame.id, novos, {
+      ids: [exame.id, exame.localId, exame.supabaseId].filter(Boolean),
+      supabaseId: exame.supabaseId,
+      dados: exame,
+    });
+  }
 
   function handleEditarExame(exame) {
     // Navegar para a página específica do tipo de exame
@@ -848,6 +867,11 @@ export default function ExamesRealizados() {
                     {exame.lado && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><GiLeg size={12} /> {exame.lado}</span>}
                     {localDoExame(exame) && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#9fd7e2" }}><FiMapPin size={12} /> {localDoExame(exame)}</span>}
                   </div>
+                  {ultimoEnvio(exame) && (
+                    <div style={{ marginTop: 6, fontSize: "11.5px", color: "#3ddc97", display: "flex", alignItems: "center", gap: 4 }}>
+                      <FiSend size={11} /> {textoEnvio(ultimoEnvio(exame))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botões de ação */}
@@ -913,6 +937,27 @@ export default function ExamesRealizados() {
                       <FiPrinter /> PDF
                     </button>
 
+                    {podeEnviar && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEnviandoExame(exame); }}
+                        title="Enviar o laudo ao paciente (WhatsApp, e-mail)"
+                        style={{
+                          background: "#25a35a",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "4px",
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <FiSend /> Enviar
+                      </button>
+                    )}
+
                     <button
                       onClick={(e) => { e.stopPropagation(); setMenuAbertoId(menuAbertoId === exame.id ? null : exame.id); }}
                       title="Mais ações"
@@ -951,38 +996,6 @@ export default function ExamesRealizados() {
                             overflow: "hidden"
                           }}
                         >
-                          {temAcesso && localStorage.getItem("whatsapp") === "true" && (
-                            <button
-                              onClick={() => {
-                                setWhatsappExame(exame);
-                                setWhatsappNumeroPaciente(exame.telefonePaciente || "");
-                                setMenuAbertoId(null);
-                              }}
-                              style={{
-                                width: "100%", textAlign: "left", background: "none", border: "none",
-                                color: "#fff", padding: "10px 14px", cursor: "pointer", fontSize: "13px",
-                                display: "flex", alignItems: "center", gap: "8px"
-                              }}
-                            >
-                              <FiMessageCircle size={14} color="#25D366" /> WhatsApp
-                            </button>
-                          )}
-                          {temAcesso && localStorage.getItem("envioEmail") === "true" && (
-                            <button
-                              onClick={() => {
-                                setEmailExame(exame);
-                                setEmailPaciente(exame.emailPaciente || "");
-                                setMenuAbertoId(null);
-                              }}
-                              style={{
-                                width: "100%", textAlign: "left", background: "none", border: "none",
-                                color: "#fff", padding: "10px 14px", cursor: "pointer", fontSize: "13px",
-                                display: "flex", alignItems: "center", gap: "8px"
-                              }}
-                            >
-                              <FiMail size={14} color="#0eb8d0" /> E-mail
-                            </button>
-                          )}
                           <button
                             onClick={() => {
                               setMenuAbertoId(null);
@@ -990,7 +1003,6 @@ export default function ExamesRealizados() {
                             }}
                             style={{
                               width: "100%", textAlign: "left", background: "none", border: "none",
-                              borderTop: "1px solid #38445e",
                               color: "#e74c3c", padding: "10px 14px", cursor: "pointer", fontSize: "13px",
                               display: "flex", alignItems: "center", gap: "8px"
                             }}
@@ -1151,219 +1163,15 @@ export default function ExamesRealizados() {
         </div>
       )}
 
-      {/* Modal Enviar por WhatsApp */}
-      {whatsappExame && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0,0,0,0.85)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 1001,
-          padding: "15px"
-        }}>
-          <div style={{
-            background: "#242d43",
-            borderRadius: "8px",
-            padding: "20px",
-            width: "100%",
-            maxWidth: "400px",
-            border: "1px solid #25D366"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ color: "#25D366", margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: 8 }}>
-                <FiMessageCircle size={22} /> Enviar laudo por WhatsApp
-              </h3>
-              <button
-                onClick={() => { setWhatsappExame(null); setWhatsappNumeroPaciente(""); }}
-                style={{ background: "none", border: "none", color: "#fff", fontSize: "22px", cursor: "pointer", padding: "4px" }}
-              >
-                <FiX />
-              </button>
-            </div>
-            <p style={{ color: "#ccc", marginBottom: 12, fontSize: "14px" }}>
-              Paciente: <strong style={{ color: "#0eb8d0" }}>{whatsappExame.nome}</strong> — {whatsappExame.tipoNome}
-            </p>
-            <div style={{ background: "rgba(255,193,7,0.15)", border: "1px solid rgba(255,193,7,0.5)", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 13, color: "#e6d68a" }}>
-              <strong>Segurança:</strong> Apenas envio em PDF é aceito. Gere o PDF deste exame (botão PDF) antes de enviar e anexe o arquivo na conversa do WhatsApp.
-            </div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#fff" }}>
-              Número do paciente (com DDD):
-            </label>
-            <input
-              type="tel"
-              value={whatsappNumeroPaciente}
-              onChange={(e) => setWhatsappNumeroPaciente(e.target.value)}
-              placeholder="Ex: 11999999999 ou 11 99999-9999"
-              style={{
-                width: "100%",
-                padding: "12px",
-                borderRadius: "6px",
-                border: "none",
-                fontSize: "14px",
-                marginBottom: "16px",
-                boxSizing: "border-box"
-              }}
-            />
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => { setWhatsappExame(null); setWhatsappNumeroPaciente(""); }}
-                style={{
-                  background: "#555",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px 18px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: "14px"
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                disabled={!whatsappNumeroPaciente.trim()}
-                onClick={() => {
-                  const digits = whatsappNumeroPaciente.replace(/\D/g, "");
-                  if (!digits.length) return;
-                  const waNumber = digits.startsWith("55") ? digits : (digits.length <= 11 ? "55" + digits : digits);
-                  const msg = `Olá! Segue o resultado do seu exame (envie o laudo em PDF em anexo).\nPaciente: ${whatsappExame.nome || ""}\nExame: ${whatsappExame.tipoNome || ""}\nData: ${formatarDataDiaMesAno(whatsappExame.data) || ""}`;
-                  window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
-                  setWhatsappExame(null);
-                  setWhatsappNumeroPaciente("");
-                }}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  background: whatsappNumeroPaciente.trim() ? "#25D366" : "#555",
-                  color: "#fff",
-                  border: "none",
-                  padding: "10px 18px",
-                  borderRadius: "6px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  cursor: whatsappNumeroPaciente.trim() ? "pointer" : "not-allowed",
-                  opacity: whatsappNumeroPaciente.trim() ? 1 : 0.7
-                }}
-              >
-                <FiMessageCircle size={18} /> Abrir WhatsApp
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Enviar por E-mail */}
-      {emailExame && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0,0,0,0.85)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 1001,
-          padding: "15px"
-        }}>
-          <div style={{
-            background: "#242d43",
-            borderRadius: "8px",
-            padding: "20px",
-            width: "100%",
-            maxWidth: "400px",
-            border: "1px solid #0eb8d0"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ color: "#0eb8d0", margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: 8 }}>
-                <FiMail size={22} /> Enviar laudo por e-mail
-              </h3>
-              <button
-                onClick={() => { setEmailExame(null); setEmailPaciente(""); }}
-                style={{ background: "none", border: "none", color: "#fff", fontSize: "22px", cursor: "pointer", padding: "4px" }}
-              >
-                <FiX />
-              </button>
-            </div>
-            <p style={{ color: "#ccc", marginBottom: 12, fontSize: "14px" }}>
-              Paciente: <strong style={{ color: "#0eb8d0" }}>{emailExame.nome}</strong> — {emailExame.tipoNome}
-            </p>
-            <div style={{ background: "rgba(255,193,7,0.15)", border: "1px solid rgba(255,193,7,0.5)", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 13, color: "#e6d68a" }}>
-              <strong>Segurança:</strong> Apenas envio em PDF é aceito. Gere o PDF deste exame (botão PDF) antes de enviar e anexe o arquivo no e-mail ao paciente.
-            </div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#fff" }}>
-              E-mail do paciente:
-            </label>
-            <input
-              type="email"
-              value={emailPaciente}
-              onChange={(e) => setEmailPaciente(e.target.value)}
-              placeholder="ex: paciente@email.com"
-              style={{
-                width: "100%",
-                padding: "12px",
-                borderRadius: "6px",
-                border: "none",
-                fontSize: "14px",
-                marginBottom: "16px",
-                boxSizing: "border-box"
-              }}
-            />
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => { setEmailExame(null); setEmailPaciente(""); }}
-                style={{
-                  background: "#555",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px 18px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: "14px"
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                disabled={!emailPaciente.trim()}
-                onClick={() => {
-                  const email = emailPaciente.trim();
-                  if (!email) return;
-                  const subject = `Resultado do exame - ${emailExame.nome || "Paciente"}`;
-                  const body = `Olá!\n\nSegue o resultado do seu exame.\n\nPaciente: ${emailExame.nome || ""}\nExame: ${emailExame.tipoNome || ""}\nData: ${formatarDataDiaMesAno(emailExame.data) || ""}\n\nAnexe o laudo em PDF (gerado pelo botão PDF). Apenas formato PDF é aceito por segurança.`;
-                  window.open(`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
-                  setEmailExame(null);
-                  setEmailPaciente("");
-                }}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  background: emailPaciente.trim() ? "#0eb8d0" : "#555",
-                  color: "#fff",
-                  border: "none",
-                  padding: "10px 18px",
-                  borderRadius: "6px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  cursor: emailPaciente.trim() ? "pointer" : "not-allowed",
-                  opacity: emailPaciente.trim() ? 1 : 0.7
-                }}
-              >
-                <FiMail size={18} /> Abrir e-mail
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EnviarLaudo
+        aberto={!!enviandoExame}
+        onFechar={() => setEnviandoExame(null)}
+        obterPdf={() => pdfParaEnvio(enviandoExame)}
+        info={{ paciente: enviandoExame?.nome, tipoNome: enviandoExame?.tipoNome, data: enviandoExame?.data, clinica: localDoExame(enviandoExame) || undefined }}
+        telefoneInicial={enviandoExame?.telefonePaciente}
+        emailInicial={enviandoExame?.emailPaciente}
+        onEnviado={registrarEnvio}
+      />
 
       {/* Modal de confirmação (substitui window.confirm nativo) */}
       {confirmacao && (

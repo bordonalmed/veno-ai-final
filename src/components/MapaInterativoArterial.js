@@ -358,7 +358,7 @@ export default function MapaInterativoArterial({
   enxertos, onEnxertoChange,
   laudoMembro,
   incluirMapaPdf, onIncluirMapaPdf,
-  onSalvarTXT, onSalvarPDF, onSalvarExame,
+  onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame,
   embutido,
 }) {
   const [selecionada, setSelecionada] = useState(null);
@@ -410,7 +410,7 @@ export default function MapaInterativoArterial({
         onIncluirPdf={onIncluirMapaPdf}
         onVisualizarImagem={() => setMostrarPreview(true)}
         onSalvarTXT={onSalvarTXT}
-        onSalvarPDF={onSalvarPDF}
+        onSalvarPDF={onSalvarPDF} onEnviar={onEnviar}
         onSalvarExame={onSalvarExame}
       />
       {mostrarPreview && (
