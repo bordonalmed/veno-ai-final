@@ -268,8 +268,8 @@ export default function Configuracoes() {
       )}
       <Card titulo="Como enviar" icone={<FiSend />} descricao='Use o botão verde "Enviar laudo" no fim do exame ou "Enviar" em Exames Realizados.'>
         <ul style={{ margin: 0, paddingLeft: 18, color: TEMA.texto, fontSize: 13.5, lineHeight: 1.7 }}>
-          <li><strong>No celular:</strong> o laudo em PDF já vai anexado — é só escolher o WhatsApp ou o e-mail e o paciente.</li>
-          <li><strong>No computador:</strong> digite o WhatsApp ou e-mail do paciente; a conversa abre com a mensagem pronta e o PDF é baixado para você anexar.</li>
+          <li>Clique em <strong>Enviar laudo</strong>, escolha <strong>WhatsApp</strong> ou <strong>E-mail</strong> e preencha o contato do paciente.</li>
+          <li>A conversa abre com a mensagem pronta e o PDF do laudo é baixado para você anexar.</li>
           <li>O telefone/e-mail do paciente e a data do envio ficam guardados no exame.</li>
         </ul>
       </Card>

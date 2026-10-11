@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { saveAs } from "file-saver";
-import { FiX, FiShare2, FiMessageCircle, FiMail, FiCheckCircle, FiAlertTriangle, FiLoader } from "react-icons/fi";
+import { FiX, FiShare2, FiMessageCircle, FiMail, FiCheckCircle, FiAlertTriangle, FiLoader, FiArrowLeft, FiSend } from "react-icons/fi";
 import {
   lerModeloMensagem, montarMensagem, normalizarTelefone, mascararTelefone, emailValido,
   podeCompartilharArquivo, compartilharPdf, linkWhatsApp, linkEmail,
@@ -24,11 +24,13 @@ export default function EnviarLaudo({ aberto, onFechar, obterPdf, info, telefone
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
   const [aviso, setAviso] = useState(null); // { tipo: "ok"|"erro", texto }
+  const [canal, setCanal] = useState(null); // null (escolher) | "whatsapp" | "email"
   const gerando = useRef(false);
-  const compartilhar = podeCompartilharArquivo();
+  // compartilhar com o arquivo só no celular/tablet (no Windows abria o painel do sistema)
+  const compartilhar = podeCompartilharArquivo() && typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 
   useEffect(() => {
-    if (!aberto) { setPdf(null); setErroPdf(""); setAviso(null); gerando.current = false; return; }
+    if (!aberto) { setPdf(null); setErroPdf(""); setAviso(null); setCanal(null); gerando.current = false; return; }
     setMensagem(montarMensagem(lerModeloMensagem(), {
       paciente: info?.paciente, tipoNome: info?.tipoNome, data: info?.data,
       clinica: info?.clinica ?? localStorage.getItem("nomeClinica"),
@@ -59,7 +61,7 @@ export default function EnviarLaudo({ aberto, onFechar, obterPdf, info, telefone
       registrar("compartilhado");
       setAviso({ tipo: "ok", texto: "Laudo compartilhado." });
     } catch (e) {
-      if (e?.name !== "AbortError") setAviso({ tipo: "erro", texto: "O aparelho não conseguiu compartilhar. Use WhatsApp ou e-mail abaixo." });
+      if (e?.name !== "AbortError") setAviso({ tipo: "erro", texto: "O aparelho não conseguiu compartilhar. Use o botão Enviar pelo WhatsApp." });
     }
   }
 
@@ -82,53 +84,81 @@ export default function EnviarLaudo({ aberto, onFechar, obterPdf, info, telefone
   }
 
   const pronto = !!pdf;
+  const voltar = () => { setCanal(null); setAviso(null); };
+  const titulo = { whatsapp: "Enviar por WhatsApp", email: "Enviar por e-mail" }[canal] || "Enviar laudo";
+  const opcao = (cor) => ({
+    flex: "1 1 180px", background: `${cor}14`, border: `1.5px solid ${cor}`, borderRadius: 12, color: COR.texto, cursor: "pointer",
+    padding: "20px 14px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 700,
+  });
   return (
     <div onClick={onFechar} style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(6,10,18,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 12, boxSizing: "border-box" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: COR.fundo, border: `1px solid ${COR.borda}`, borderRadius: 14, width: "100%", maxWidth: 520, maxHeight: "94vh", overflowY: "auto", color: COR.texto, fontFamily: "Segoe UI, Inter, Arial, sans-serif" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: COR.fundo, border: `1px solid ${COR.borda}`, borderRadius: 14, width: "100%", maxWidth: 480, maxHeight: "94vh", overflowY: "auto", color: COR.texto, fontFamily: "Segoe UI, Inter, Arial, sans-serif" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: "16px 18px 10px", borderBottom: `1px solid ${COR.borda}` }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>Enviar laudo</div>
-            <div style={{ fontSize: 13, color: COR.suave, marginTop: 2 }}>
-              {[info?.paciente, info?.tipoNome, formatarDataDiaMesAno(info?.data)].filter(Boolean).join(" · ")}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            {canal && <button type="button" onClick={voltar} title="Voltar" style={{ background: "transparent", border: "none", color: COR.suave, fontSize: 20, cursor: "pointer", padding: "2px 4px 0 0" }}><FiArrowLeft /></button>}
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{titulo}</div>
+              <div style={{ fontSize: 13, color: COR.suave, marginTop: 2 }}>
+                {[info?.paciente, info?.tipoNome, formatarDataDiaMesAno(info?.data)].filter(Boolean).join(" · ")}
+              </div>
             </div>
           </div>
           <button type="button" onClick={onFechar} title="Fechar" style={{ background: "transparent", border: "none", color: COR.suave, fontSize: 20, cursor: "pointer" }}><FiX /></button>
         </div>
 
-        <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
           {erroPdf && <div style={{ color: COR.erro, fontSize: 13.5, display: "flex", gap: 6, alignItems: "center" }}><FiAlertTriangle /> {erroPdf}</div>}
-          {!pronto && !erroPdf && <div style={{ color: COR.suave, fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}><FiLoader /> Preparando o PDF...</div>}
 
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: COR.suave, marginBottom: 5 }}>Mensagem para o paciente</div>
-            <textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} style={{ ...campo, resize: "vertical", fontFamily: "inherit" }} />
-          </div>
+          {!canal && (
+            <>
+              <div style={{ fontSize: 14, color: COR.suave }}>Como você quer enviar o laudo?</div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button type="button" onClick={() => setCanal("whatsapp")} style={opcao(COR.whats)}>
+                  <FiMessageCircle size={30} color={COR.whats} /> WhatsApp
+                </button>
+                <button type="button" onClick={() => setCanal("email")} style={opcao(COR.destaque)}>
+                  <FiMail size={30} color={COR.destaque} /> E-mail
+                </button>
+              </div>
+            </>
+          )}
 
-          {compartilhar && (
-            <div style={{ background: "rgba(14,184,208,0.08)", border: "1px solid rgba(14,184,208,0.3)", borderRadius: 10, padding: 12 }}>
-              <button type="button" disabled={!pronto} onClick={aoCompartilhar} style={{ ...botao(COR.destaque), width: "100%", opacity: pronto ? 1 : 0.6 }}>
-                <FiShare2 /> Compartilhar com o PDF anexado
-              </button>
-              <div style={{ fontSize: 12, color: COR.suave, marginTop: 6, textAlign: "center" }}>Escolha WhatsApp, e-mail ou outro app e o contato do paciente.</div>
+          {canal === "whatsapp" && (
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: COR.suave, marginBottom: 5 }}>WhatsApp do paciente</div>
+              <input type="tel" inputMode="tel" autoFocus value={telefone} onChange={(e) => setTelefone(mascararTelefone(e.target.value))}
+                onKeyDown={(e) => e.key === "Enter" && aoWhatsApp()} placeholder="(43) 99999-9999" style={{ ...campo, fontSize: 16 }} />
             </div>
           )}
 
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: COR.suave, marginBottom: 5 }}>WhatsApp do paciente</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input type="tel" inputMode="tel" value={telefone} onChange={(e) => setTelefone(mascararTelefone(e.target.value))} placeholder="(43) 99999-9999" style={{ ...campo, flex: 1, minWidth: 0 }} />
-              <button type="button" disabled={!pronto} onClick={aoWhatsApp} style={{ ...botao(COR.whats), opacity: pronto ? 1 : 0.6 }}><FiMessageCircle /> WhatsApp</button>
+          {canal === "email" && (
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: COR.suave, marginBottom: 5 }}>E-mail do paciente</div>
+              <input type="email" autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && aoEmail()} placeholder="paciente@email.com" style={{ ...campo, fontSize: 16 }} />
             </div>
-          </div>
+          )}
 
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: COR.suave, marginBottom: 5 }}>E-mail do paciente</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="paciente@email.com" style={{ ...campo, flex: 1, minWidth: 0 }} />
-              <button type="button" disabled={!pronto} onClick={aoEmail} style={{ ...botao(COR.destaque, false), opacity: pronto ? 1 : 0.6 }}><FiMail /> E-mail</button>
-            </div>
-            <div style={{ fontSize: 11.5, color: COR.suave, marginTop: 5 }}>No WhatsApp e no e-mail o PDF é baixado para você anexar.</div>
-          </div>
+          {canal && (
+            <>
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: COR.suave, marginBottom: 5 }}>Mensagem</div>
+                <textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} style={{ ...campo, resize: "vertical", fontFamily: "inherit" }} />
+              </div>
+              <button type="button" disabled={!pronto} onClick={canal === "whatsapp" ? aoWhatsApp : aoEmail}
+                style={{ ...botao(canal === "whatsapp" ? COR.whats : COR.destaque), width: "100%", padding: "13px 14px", fontSize: 15.5, opacity: pronto ? 1 : 0.6 }}>
+                {!pronto && !erroPdf ? <><FiLoader /> Preparando o PDF...</> : canal === "whatsapp" ? <><FiSend /> Enviar pelo WhatsApp</> : <><FiSend /> Enviar por e-mail</>}
+              </button>
+              <div style={{ fontSize: 12, color: COR.suave, marginTop: -6, textAlign: "center" }}>
+                {canal === "whatsapp" ? "Abre a conversa com a mensagem pronta e baixa o PDF para você anexar (📎)." : "Abre o seu e-mail com a mensagem pronta e baixa o PDF para você anexar."}
+              </div>
+              {canal === "whatsapp" && compartilhar && (
+                <button type="button" disabled={!pronto} onClick={aoCompartilhar} style={{ background: "transparent", border: "none", color: COR.destaque, fontSize: 13, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <FiShare2 /> Ou compartilhar com o PDF já anexado
+                </button>
+              )}
+            </>
+          )}
 
           {aviso && (
             <div style={{ fontSize: 13.5, color: aviso.tipo === "ok" ? COR.ok : COR.erro, display: "flex", gap: 6, alignItems: "flex-start" }}>
