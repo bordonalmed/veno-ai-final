@@ -68,7 +68,8 @@ export function normalizarDados(d) {
     return { ...medicoVazio(), ...m, locais, localAtivo: limitar(m?.localAtivo, locais.length) };
   });
   if (!medicos.length) medicos = [medicoVazio()];
-  return { versao: 2, medicos, medicoAtivo: limitar(medicoAtivo, medicos.length), ...(arquivados.length ? { arquivados } : {}) };
+  const atualizadoEm = Number(d?.atualizadoEm) || 0; // usado na sincronização com a conta
+  return { versao: 2, medicos, medicoAtivo: limitar(medicoAtivo, medicos.length), atualizadoEm, ...(arquivados.length ? { arquivados } : {}) };
 }
 
 // Combinação médico + local, no formato que os exames usam.
@@ -125,12 +126,19 @@ export function carregarDadosPerfil(email) {
 
 // Grava os perfis do usuário e copia a combinação em uso para as chaves dos
 // exames. Não lança erro: devolve { ok: false, erro } com o navegador cheio.
-export function salvarDadosPerfil(email, dados) {
+// tocar: marca como alteração do usuário (data nova, vai para a conta).
+export const EVENTO_PERFIL_SALVO = "perfilLaudoSalvo";
+export const EVENTO_PERFIL_ATUALIZADO = "perfilLaudoAtualizado";
+export function salvarDadosPerfil(email, dados, { tocar = true } = {}) {
   const d = normalizarDados(dados);
+  if (tocar) d.atualizadoEm = Date.now();
   try {
     localStorage.setItem(chaveUsuario(email), JSON.stringify(d));
     aplicarChavesLegadas(perfilAtivo(d));
     localStorage.setItem(CHAVE_DONO, String(email || "").trim().toLowerCase());
+    if (tocar && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(EVENTO_PERFIL_SALVO, { detail: { email } }));
+    }
     return { ok: true, dados: d };
   } catch (e) {
     const cheio = e && (e.name === "QuotaExceededError" || e.code === 22 || /quota/i.test(e.message || ""));
@@ -166,7 +174,7 @@ export function ativarPerfilDoUsuario(email) {
       dados = normalizarDados(null);
     }
   }
-  salvarDadosPerfil(emailN, dados);
+  salvarDadosPerfil(emailN, dados, { tocar: false });
   CHAVES_ANTIGAS_PREMIUM.forEach((k) => localStorage.removeItem(k));
   return dados;
 }
@@ -199,3 +207,21 @@ export function progressoPerfil(perfil) {
 const chaveBoasVindas = (email) => `perfilBoasVindas:${String(email || "").trim().toLowerCase()}`;
 export const boasVindasPendente = (email) => !!email && !localStorage.getItem(chaveBoasVindas(email));
 export const marcarBoasVindas = (email, estado) => { try { localStorage.setItem(chaveBoasVindas(email), estado); } catch (_) {} };
+
+// Perfil que veio da conta (outro computador): substitui o local se for mais
+// novo. Devolve true quando trocou.
+export function aplicarDadosDaConta(email, remoto) {
+  if (!remoto) return false;
+  const r = normalizarDados(remoto);
+  const local = carregarDadosPerfil(email);
+  if (local && (local.atualizadoEm || 0) >= (r.atualizadoEm || 0)) return false;
+  const res = salvarDadosPerfil(email, r, { tocar: false });
+  if (res.ok && typeof window !== "undefined") window.dispatchEvent(new CustomEvent(EVENTO_PERFIL_ATUALIZADO, { detail: { email } }));
+  return res.ok;
+}
+
+// O perfil local tem algo a enviar para a conta?
+export function temPerfilParaEnviar(dados) {
+  const d = normalizarDados(dados);
+  return d.medicos.some((m) => temAlgo(m, CAMPOS_MEDICO) || m.locais.some((l) => temAlgo(l, CAMPOS_LOCAL)));
+}

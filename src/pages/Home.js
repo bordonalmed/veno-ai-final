@@ -7,7 +7,7 @@ import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
 import { TrialManager } from "../utils/trialManager";
 import BoasVindasPerfil from "../components/perfil/BoasVindasPerfil";
-import { carregarDadosPerfil, progressoPerfil, boasVindasPendente, perfilAtivo } from "../utils/perfilLaudo";
+import { carregarDadosPerfil, progressoPerfil, boasVindasPendente, perfilAtivo, EVENTO_PERFIL_ATUALIZADO } from "../utils/perfilLaudo";
 import TrocaPerfil from "../components/perfil/TrocaPerfil";
 
 const COLOR_STYLES = {
@@ -39,6 +39,16 @@ export default function Home({ onLogout }) {
   const [perfilLaudo, setPerfilLaudo] = useState(lerPerfil);
   const progresso = progressoPerfil(perfilLaudo);
   const [mostrarBoasVindas, setMostrarBoasVindas] = useState(() => boasVindasPendente(userEmail) && progressoPerfil(lerPerfil()).feitos < 5);
+  // perfil chegou da conta (cadastrado em outro computador)
+  useEffect(() => {
+    const atualizar = () => {
+      const p = lerPerfil();
+      setPerfilLaudo(p);
+      if (progressoPerfil(p).feitos >= 3) setMostrarBoasVindas(false);
+    };
+    window.addEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
+    return () => window.removeEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
+  }, []);
   const nomeMedico = perfilLaudo.nomeMedico || localStorage.getItem("nomeMedico") || "";
   const [planoUsuario, setPlanoUsuario] = useState('trial');
   const [carregandoPlano, setCarregandoPlano] = useState(true);

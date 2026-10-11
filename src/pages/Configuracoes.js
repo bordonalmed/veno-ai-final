@@ -7,8 +7,9 @@ import {
 import { FaGem } from "react-icons/fa";
 import { TrialManager } from "../utils/trialManager";
 import { AuthService } from "../services/supabaseAuthService";
+import { EVENTO_PERFIL_NA_CONTA } from "../services/perfilSyncService";
 import {
-  ativarPerfilDoUsuario, carregarDadosPerfil, salvarDadosPerfil, normalizarDados, perfilAtivo, progressoPerfil,
+  ativarPerfilDoUsuario, carregarDadosPerfil, salvarDadosPerfil, normalizarDados, perfilAtivo, progressoPerfil, EVENTO_PERFIL_ATUALIZADO,
   medicoVazio, localVazio, MAX_MEDICOS, MAX_LOCAIS,
 } from "../utils/perfilLaudo";
 import {
@@ -105,6 +106,26 @@ export default function Configuracoes() {
     }
     setRemover(null);
   }
+
+  // Depois de salvar: confirma se foi para a conta (qualquer computador) ou
+  // ficou só neste navegador (Supabase sem a coluna perfil_laudo).
+  useEffect(() => {
+    const f = (e) => setStatus((s) => (s.tipo === "erro" ? s : e.detail?.ok
+      ? { tipo: "ok", texto: "Salvo na sua conta" }
+      : { tipo: "ok", texto: "Salvo neste navegador" }));
+    window.addEventListener(EVENTO_PERFIL_NA_CONTA, f);
+    return () => window.removeEventListener(EVENTO_PERFIL_NA_CONTA, f);
+  }, []);
+
+  // Perfil chegou da conta (outro computador): mostra sem salvar de novo.
+  useEffect(() => {
+    const atualizar = () => {
+      const d = carregarDadosPerfil(email);
+      if (d) { primeira.current = true; setDados(d); }
+    };
+    window.addEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
+    return () => window.removeEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
+  }, [email]);
 
   // Salvamento automático: meio segundo depois da última alteração.
   useEffect(() => {
