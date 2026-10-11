@@ -54,7 +54,7 @@ export default function TrocaPerfil({ email, onTrocar, completo }) {
           position: "absolute", left: 0, top: 42, zIndex: 50, minWidth: 260, maxWidth: "86vw", background: "#151d2c",
           border: "1px solid #2c3a52", borderRadius: 12, boxShadow: "0 12px 36px rgba(0,0,0,0.5)", padding: 6,
         }}>
-          <div style={{ fontSize: 11.5, color: "#8fa1b5", padding: "6px 10px" }}>Laudar como:</div>
+          <div style={{ fontSize: 11.5, color: "#8fa1b5", padding: "6px 10px" }}>Laudado por:</div>
           {opcoes.map((op) => (
             <button key={`${op.medico}-${op.local}`} type="button"
               onClick={() => { const p = trocar(email, op); setAberto(false); if (p && onTrocar) onTrocar(p); }}
@@ -79,7 +79,7 @@ export default function TrocaPerfil({ email, onTrocar, completo }) {
   );
 }
 
-// Linha "Laudo como: ..." no cabeçalho dos exames, com a troca quando houver
+// Linha "Laudado por: ..." no cabeçalho dos exames, com a troca quando houver
 // mais de uma opção.
 export function SeletorPerfilLaudo() {
   const email = localStorage.getItem("userEmail") || "";
@@ -92,11 +92,11 @@ export function SeletorPerfilLaudo() {
   if (opcoes.length <= 1) {
     const p = perfilAtivo(dados);
     if (!p.nomeMedico && !p.nomeClinica) return null;
-    return <div style={estilo}>Laudo como: <b style={{ color: "#dce6ef" }}>{opcoes[0]?.rotulo}</b></div>;
+    return <div style={estilo}>Laudado por: <b style={{ color: "#dce6ef" }}>{opcoes[0]?.rotulo}</b></div>;
   }
   return (
     <div style={estilo} data-versao={versao}>
-      Laudo como:
+      Laudado por:
       <select
         value={ativo}
         onChange={(e) => { trocar(email, opcoes[Number(e.target.value)]); setVersao((v) => v + 1); }}
