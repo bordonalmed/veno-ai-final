@@ -54,7 +54,7 @@ export default function TrocaPerfil({ email, onTrocar, completo }) {
           position: "absolute", left: 0, top: 42, zIndex: 50, minWidth: 260, maxWidth: "86vw", background: "#151d2c",
           border: "1px solid #2c3a52", borderRadius: 12, boxShadow: "0 12px 36px rgba(0,0,0,0.5)", padding: 6,
         }}>
-          <div style={{ fontSize: 11.5, color: "#8fa1b5", padding: "6px 10px" }}>Laudado por:</div>
+          <div style={{ fontSize: 11.5, color: "#8fa1b5", padding: "6px 10px" }}>Local do exame:</div>
           {opcoes.map((op) => (
             <button key={`${op.medico}-${op.local}`} type="button"
               onClick={() => { const p = trocar(email, op); setAberto(false); if (p && onTrocar) onTrocar(p); }}
@@ -65,7 +65,7 @@ export default function TrocaPerfil({ email, onTrocar, completo }) {
               <span style={{ width: 30, height: 22, borderRadius: 4, background: op.logo ? "#fff" : "#25324a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
                 {op.logo && <img src={op.logo} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />}
               </span>
-              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{op.rotulo}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{op.rotuloCurto || op.rotulo}</span>
               {op.ativo && <FiCheck color="#3ddc97" />}
             </button>
           ))}
@@ -79,8 +79,8 @@ export default function TrocaPerfil({ email, onTrocar, completo }) {
   );
 }
 
-// Linha "Laudado por: ..." no cabeçalho dos exames, com a troca quando houver
-// mais de uma opção.
+// Linha "Local do exame: ..." no cabeçalho dos exames (a clínica e o logo que
+// saem no PDF), com a troca quando houver mais de um local.
 export function SeletorPerfilLaudo() {
   const email = localStorage.getItem("userEmail") || "";
   const [versao, setVersao] = useState(0);
@@ -91,18 +91,18 @@ export function SeletorPerfilLaudo() {
   const estilo = { fontSize: 12.5, color: "#9fb3c8", display: "flex", alignItems: "center", gap: 6, justifyContent: "center", flexWrap: "wrap", margin: "2px 0 8px" };
   if (opcoes.length <= 1) {
     const p = perfilAtivo(dados);
-    if (!p.nomeMedico && !p.nomeClinica) return null;
-    return <div style={estilo}>Laudado por: <b style={{ color: "#dce6ef" }}>{opcoes[0]?.rotulo}</b></div>;
+    if (!p.nomeClinica) return null;
+    return <div style={estilo}>Local do exame: <b style={{ color: "#dce6ef" }}>{p.nomeClinica}</b></div>;
   }
   return (
     <div style={estilo} data-versao={versao}>
-      Laudado por:
+      Local do exame:
       <select
         value={ativo}
         onChange={(e) => { trocar(email, opcoes[Number(e.target.value)]); setVersao((v) => v + 1); }}
         style={{ background: "#f7fbff", color: "#16202c", border: "1.5px solid #0eb8d0", borderRadius: 6, padding: "4px 8px", fontSize: 13, maxWidth: "80vw" }}
       >
-        {opcoes.map((o, i) => <option key={i} value={i}>{o.rotulo}</option>)}
+        {opcoes.map((o, i) => <option key={i} value={i}>{o.rotuloCurto || o.rotulo}</option>)}
       </select>
     </div>
   );

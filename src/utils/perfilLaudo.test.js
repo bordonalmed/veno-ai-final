@@ -25,7 +25,7 @@ describe("um profissional com até 3 locais de atendimento", () => {
     expect(localStorage.getItem("logoClinica")).toBe("data:LOGO-B");
     expect(localStorage.getItem("telefoneClinica")).toBe("(16) 3333-3333");
     expect(localStorage.getItem("assinaturaMedico")).toBe("data:SIG-J");
-    expect(opcoesDePerfil(d).map((o) => o.rotulo)).toEqual(["Dr. José · Clínica A", "Dr. José · Clínica B"]);
+    expect(opcoesDePerfil(d).map((o) => o.rotuloCurto)).toEqual(["Clínica A", "Clínica B"]);
     expect(opcoesDePerfil(d).find((o) => o.ativo).rotulo).toBe("Dr. José · Clínica B");
   });
 
