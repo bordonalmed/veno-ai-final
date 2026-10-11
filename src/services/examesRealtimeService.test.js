@@ -46,4 +46,13 @@ describe("exames salvos", () => {
     await s.criarExame({ nome: "Ana", data: "2026-10-11", tipoNome: "Aorta e Ilíacas", laudo: "nova" });
     expect(todos()).toHaveLength(3);
   });
+
+  it("dois exames salvos no mesmo instante não se sobrescrevem", async () => {
+    const agora = jest.spyOn(Date, "now").mockReturnValue(1791745688996);
+    const s = servico();
+    await s.criarExame({ nome: "Ana", data: "2026-10-11", tipoNome: "Aorta e Ilíacas", laudo: "a" });
+    await s.criarExame({ nome: "Bruno", data: "2026-10-11", tipoNome: "Aorta e Ilíacas", laudo: "b" });
+    agora.mockRestore();
+    expect(todos().map((e) => e.nome)).toEqual(["Ana", "Bruno"]);
+  });
 });

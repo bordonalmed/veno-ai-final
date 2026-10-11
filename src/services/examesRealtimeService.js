@@ -232,7 +232,9 @@ class ExamesRealtimeService {
       }
       console.log('📝 ExamesRealtimeService: Criando novo exame...');
 
-      const localId = Date.now().toString();
+      // hora + sufixo aleatório: dois exames salvos no mesmo milissegundo
+      // (ex.: duplo clique) tinham o mesmo id e um sobrescrevia o outro
+      const localId = `${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
       const storageKey = getStorageKey(dadosExame.tipoNome);
       const novoExame = {
         ...dadosExame,
