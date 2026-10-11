@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
+import { desenharCabecalhoLaudo, desenharAssinatura } from "../utils/pdfCabecalho";
 import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { FiPaperclip, FiX, FiMousePointer } from "react-icons/fi";
 import { MapaInterativoFAV, adicionarMapaFAVAoPdf } from "../components/MapaFAV";
@@ -316,44 +317,19 @@ function FistulaArteriovenosa() {
     const lados = ["exame"]; // uma página (o exame não tem lado)
     const cabecalhoPaciente = gerarCabecalhoLaudo({ nome, idade, data });
 
-    function addCabecalho(y) {
-      let yLogo = 14; // topo do logo
-      let yAtual = yLogo;
-      const logoHeight = 20; // altura do logo
-      const logoSpacing = 8; // espaço após o logo antes do conteúdo
-      
-      if (logoClinica) {
-        try {
-          doc.addImage(logoClinica, 'PNG', 95, yLogo, logoHeight, logoHeight); // quadrado 20x20
-        } catch (e) {}
-      }
-      doc.setFontSize(9);
-      let cabecalho = [];
-      if (nomeClinica) cabecalho.push(nomeClinica);
-      if (enderecoClinica) cabecalho.push(enderecoClinica);
-      if (telefoneClinica) cabecalho.push("Tel: " + telefoneClinica);
-      if (emailClinica) cabecalho.push(emailClinica);
-      // Alinhar o cabeçalho à direita, na mesma altura do logo
-      cabecalho.forEach((txt, idx) => {
-        doc.setFont(undefined, "bold");
-        doc.text(txt, 200, yLogo + 5 + idx * 5, { align: "right" });
+    function addCabecalho() {
+      // logo à esquerda (proporcional) e dados da clínica à direita
+      return desenharCabecalhoLaudo(doc, {
+        logo: logoClinica,
+        linhas: [nomeClinica, enderecoClinica, telefoneClinica && "Tel: " + telefoneClinica, emailClinica],
+        fonteCorpo,
       });
-      doc.setFont(undefined, "normal");
-      doc.setFontSize(fonteCorpo);
-      // Só reserva a altura do logo quando há logo; sem logo, o texto sobe.
-      if (logoClinica) return yLogo + logoHeight + logoSpacing;
-      if (cabecalho.length) return yLogo + 5 + (cabecalho.length - 1) * 5 + 10;
-      return 20;
     }
 
     function addRodape() {
       const yRodape = 280; // margem inferior de 1cm
       doc.setFontSize(8);
-      if (assinaturaMedico) {
-        try {
-          doc.addImage(assinaturaMedico, 'PNG', 150, yRodape - 18, 50, 15);
-        } catch (e) {}
-      }
+      desenharAssinatura(doc, assinaturaMedico, yRodape);
       doc.text("Assinatura: ________________", 200, yRodape, { align: "right" });
       let yInfo = yRodape + 5;
       if (nomeMedico) { doc.setFont(undefined, "bold"); doc.text(nomeMedico, 200, yInfo, { align: "right" }); yInfo += 4; }
