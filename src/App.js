@@ -17,6 +17,7 @@ import Planos from "./pages/Planos";
 import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
 // Usar Supabase em vez de Firebase
 import { AuthService } from "./services/supabaseAuthService";
+import { ativarPerfilDoUsuario, limparPerfilAtivo } from "./utils/perfilLaudo";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -84,6 +85,7 @@ function AppContent() {
         console.log('Verificando login:', { userEmail, isLoggedIn, userUID });
         
         if (userEmail && isLoggedIn === 'true' && userUID) {
+          ativarPerfilDoUsuario(userEmail); // logo, assinatura e dados deste usuário
           setLogado(true);
           console.log('Usuário logado detectado:', userEmail);
         } else {
@@ -160,6 +162,7 @@ function AppContent() {
       localStorage.setItem("userEmail", result.user.email);
       localStorage.setItem("userUID", result.user.uid || result.user.id);
       localStorage.setItem("isLoggedIn", "true");
+      ativarPerfilDoUsuario(result.user.email);
       
       // Navegar para home
       setLogado(true);
@@ -189,6 +192,7 @@ function AppContent() {
       localStorage.setItem("userEmail", result.user.email);
       localStorage.setItem("userUID", result.user.uid || result.user.id);
       localStorage.setItem("isLoggedIn", "true");
+      ativarPerfilDoUsuario(result.user.email);
       
       // Verificar e sincronizar status Premium no servidor (verifica Hotmart também)
       try {
@@ -229,6 +233,7 @@ function AppContent() {
     localStorage.removeItem("userPassword");
     localStorage.removeItem("userPlano");
     localStorage.removeItem("userPremium");
+    limparPerfilAtivo(); // o próximo usuário não herda logo/assinatura
     
     setLogado(false);
     navigate('/');
