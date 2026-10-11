@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiArrowLeft, FiUser, FiFileText, FiCreditCard, FiSend, FiMessageCircle, FiMail, FiCheckCircle,
-  FiAlertTriangle, FiLoader, FiLock, FiBriefcase, FiImage, FiEdit3, FiExternalLink,
+  FiAlertTriangle, FiLoader, FiLock, FiBriefcase, FiImage, FiEdit3, FiExternalLink, FiPlus,
 } from "react-icons/fi";
 import { FaGem } from "react-icons/fa";
 import { TrialManager } from "../utils/trialManager";
 import { AuthService } from "../services/supabaseAuthService";
 import {
-  ativarPerfilDoUsuario, carregarDadosPerfil, salvarDadosPerfil, perfilVazio, MAX_PERFIS, progressoPerfil,
+  ativarPerfilDoUsuario, carregarDadosPerfil, salvarDadosPerfil, normalizarDados, perfilAtivo, progressoPerfil,
+  medicoVazio, localVazio, MAX_MEDICOS, MAX_LOCAIS,
 } from "../utils/perfilLaudo";
 import {
   TEMA, Card, CampoTexto, grade2, botao, UploadImagem, CampoAssinatura, PreviaLaudo, ESPECIALIDADES,
@@ -47,6 +48,23 @@ function useLargura() {
   return w;
 }
 
+// Abas de médicos / locais, com o botão de adicionar no fim.
+function Abas({ itens, ativo, onEscolher, onAdicionar, rotuloAdicionar }) {
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {itens.map((t, i) => (
+        <button key={i} type="button" onClick={() => onEscolher(i)}
+          style={{ ...botao(TEMA.destaque, ativo !== i), padding: "7px 13px", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {t}{ativo === i ? " ✓" : ""}
+        </button>
+      ))}
+      {onAdicionar && (
+        <button type="button" onClick={onAdicionar} style={{ ...botao(TEMA.suave, true), padding: "7px 13px", borderStyle: "dashed" }}><FiPlus /> {rotuloAdicionar}</button>
+      )}
+    </div>
+  );
+}
+
 export default function Configuracoes() {
   const navigate = useNavigate();
   const largura = useLargura();
@@ -57,7 +75,8 @@ export default function Configuracoes() {
   const temAcesso = isPremium || trial.status === "ativo" || trial.status === "nao_iniciado";
 
   const [secao, setSecao] = useState(() => (new URLSearchParams(window.location.search).get("secao") || "perfil"));
-  const [dados, setDados] = useState(() => carregarDadosPerfil(email) || ativarPerfilDoUsuario(email) || { perfis: [perfilVazio()], ativo: 0 });
+  const [dados, setDados] = useState(() => carregarDadosPerfil(email) || ativarPerfilDoUsuario(email) || normalizarDados(null));
+  const [remover, setRemover] = useState(null); // { tipo: "medico"|"local", indice }
   const [nomeCompleto, setNomeCompleto] = useState(() => localStorage.getItem("nomeCompleto") || "");
   const [envio, setEnvio] = useState(lerEnvio);
   const [status, setStatus] = useState({ tipo: "ok", texto: "Tudo salvo" });
@@ -65,12 +84,27 @@ export default function Configuracoes() {
   const [confirmarAssinatura, setConfirmarAssinatura] = useState(false);
   const primeira = useRef(true);
 
-  const perfil = dados.perfis[dados.ativo] || perfilVazio();
-  const setCampo = (campo) => (valor) => setDados((d) => {
-    const perfis = d.perfis.slice();
-    perfis[d.ativo] = { ...perfis[d.ativo], [campo]: valor };
-    return { ...d, perfis };
-  });
+  // médico e local em uso (são os que saem nos laudos)
+  const iMedico = dados.medicoAtivo;
+  const medico = dados.medicos[iMedico];
+  const iLocal = medico.localAtivo;
+  const local = medico.locais[iLocal];
+  const perfil = perfilAtivo(dados);
+  const mudarMedico = (fn) => setDados((d) => ({ ...d, medicos: d.medicos.map((m, i) => (i === d.medicoAtivo ? fn(m) : m)) }));
+  const setMedicoCampo = (campo) => (valor) => mudarMedico((m) => ({ ...m, [campo]: valor }));
+  const setLocalCampo = (campo) => (valor) => mudarMedico((m) => ({ ...m, locais: m.locais.map((l, i) => (i === m.localAtivo ? { ...l, [campo]: valor } : l)) }));
+  const escolherMedico = (i) => setDados((d) => ({ ...d, medicoAtivo: i }));
+  const escolherLocal = (i) => mudarMedico((m) => ({ ...m, localAtivo: i }));
+  const adicionarMedico = () => setDados((d) => ({ ...d, medicos: [...d.medicos, medicoVazio()], medicoAtivo: d.medicos.length }));
+  const adicionarLocal = () => mudarMedico((m) => ({ ...m, locais: [...m.locais, localVazio()], localAtivo: m.locais.length }));
+  function confirmarRemocao() {
+    if (remover?.tipo === "medico") {
+      setDados((d) => ({ ...d, medicos: d.medicos.filter((_, i) => i !== remover.indice), medicoAtivo: 0 }));
+    } else if (remover?.tipo === "local") {
+      mudarMedico((m) => ({ ...m, locais: m.locais.filter((_, i) => i !== remover.indice), localAtivo: 0 }));
+    }
+    setRemover(null);
+  }
 
   // Salvamento automático: meio segundo depois da última alteração.
   useEffect(() => {
@@ -106,7 +140,10 @@ export default function Configuracoes() {
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgba(14,184,208,0.08)", border: `1px solid rgba(14,184,208,0.25)`, borderRadius: 10, padding: "10px 14px" }}>
           <div style={{ flex: "1 1 200px" }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: TEMA.texto }}>{progresso.feitos === progresso.total ? "Laudo personalizado" : `Perfil ${progresso.feitos} de ${progresso.total} itens`}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: TEMA.texto }}>
+              Em uso nos laudos: {perfil.nomeMedico?.trim() || "médico sem nome"}{perfil.nomeClinica?.trim() ? ` · ${perfil.nomeClinica.trim()}` : ""}
+            </div>
+            <div style={{ fontSize: 12, color: TEMA.suave }}>{progresso.feitos === progresso.total ? "Laudo personalizado." : `Perfil ${progresso.feitos} de ${progresso.total} itens.`}</div>
             <div style={{ fontSize: 12, color: TEMA.suave }}>{progresso.faltam.length ? `Falta: ${progresso.faltam.join(", ")}` : "Logo, assinatura e dados aparecem em todos os laudos em PDF."}</div>
           </div>
           <div style={{ flex: "1 1 140px", height: 8, background: "#25324a", borderRadius: 4, overflow: "hidden" }}>
@@ -114,44 +151,56 @@ export default function Configuracoes() {
           </div>
         </div>
 
-        {isPremium && (
-          <Card titulo="Médicos que assinam os laudos" icone={<FaGem />} descricao="Premium: até 3 médicos, cada um com logo, assinatura e dados próprios. O selecionado é usado nos laudos.">
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {Array.from({ length: MAX_PERFIS }, (_, i) => (
-                <button key={i} type="button" onClick={() => setDados((d) => ({ ...d, ativo: i }))}
-                  style={{ ...botao(TEMA.destaque, dados.ativo !== i), padding: "8px 14px" }}>
-                  {dados.perfis[i]?.nomeMedico?.trim() || `Médico ${i + 1}`}{dados.ativo === i ? " · em uso" : ""}
-                </button>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        <Card titulo="Médico" icone={<FiUser />}>
-          <div style={grade2}>
-            <CampoTexto label="Nome que aparece no laudo" value={perfil.nomeMedico} onChange={setCampo("nomeMedico")} placeholder="Dr. João Silva" />
-            <CampoTexto label="CRM / UF" value={perfil.crm} onChange={setCampo("crm")} placeholder="12345 PR" />
-            <CampoTexto label="Especialidade" value={perfil.especialidade} onChange={setCampo("especialidade")} placeholder="Angiologia e Cirurgia Vascular" lista={ESPECIALIDADES} />
+        <Card titulo="Médicos" icone={<FiUser />}
+          descricao={isPremium ? `Até ${MAX_MEDICOS} médicos por conta, cada um com assinatura e até ${MAX_LOCAIS} locais de atendimento.` : `No Premium: até ${MAX_MEDICOS} médicos por conta, cada um com até ${MAX_LOCAIS} locais (clínica e logo próprios).`}>
+          <Abas
+            itens={dados.medicos.map((m, i) => m.nomeMedico?.trim() || `Médico ${i + 1}`)}
+            ativo={iMedico}
+            onEscolher={escolherMedico}
+            onAdicionar={isPremium && dados.medicos.length < MAX_MEDICOS ? adicionarMedico : null}
+            rotuloAdicionar="Adicionar médico"
+          />
+          <div style={{ ...grade2, marginTop: 14 }}>
+            <CampoTexto label="Nome que aparece no laudo" value={medico.nomeMedico} onChange={setMedicoCampo("nomeMedico")} placeholder="Dr. João Silva" />
+            <CampoTexto label="CRM / UF" value={medico.crm} onChange={setMedicoCampo("crm")} placeholder="12345 PR" />
+            <CampoTexto label="Especialidade" value={medico.especialidade} onChange={setMedicoCampo("especialidade")} placeholder="Angiologia e Cirurgia Vascular" lista={ESPECIALIDADES} />
           </div>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: TEMA.suave, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><FiEdit3 /> Assinatura (rodapé do laudo) — envie uma foto ou assine na tela</div>
+            <CampoAssinatura valor={medico.assinaturaMedico} onChange={setMedicoCampo("assinaturaMedico")} />
+          </div>
+          {dados.medicos.length > 1 && (
+            <button type="button" style={{ ...botao(TEMA.erro, true), marginTop: 14 }} onClick={() => setRemover({ tipo: "medico", indice: iMedico })}>
+              Remover {medico.nomeMedico?.trim() || `Médico ${iMedico + 1}`}
+            </button>
+          )}
         </Card>
 
-        <Card titulo="Clínica" icone={<FiBriefcase />} descricao="Aparece no canto superior direito do laudo.">
-          <div style={grade2}>
-            <CampoTexto label="Nome da clínica" value={perfil.nomeClinica} onChange={setCampo("nomeClinica")} placeholder="Clínica Vascular" />
-            <CampoTexto label="Telefone" value={perfil.telefoneClinica} onChange={setCampo("telefoneClinica")} placeholder="(43) 99999-9999" type="tel" />
-            <CampoTexto label="Endereço" value={perfil.enderecoClinica} onChange={setCampo("enderecoClinica")} placeholder="Rua, número - bairro - cidade/UF" />
-            <CampoTexto label="E-mail" value={perfil.emailClinica} onChange={setCampo("emailClinica")} placeholder="contato@clinica.com.br" type="email" />
+        <Card titulo={`Locais de atendimento${medico.nomeMedico?.trim() ? ` de ${medico.nomeMedico.trim()}` : ""}`} icone={<FiBriefcase />}
+          descricao="Cada local tem a sua clínica e o seu logo. O local selecionado é o que sai no laudo.">
+          <Abas
+            itens={medico.locais.map((l, i) => l.nomeClinica?.trim() || `Local ${i + 1}`)}
+            ativo={iLocal}
+            onEscolher={escolherLocal}
+            onAdicionar={isPremium && medico.locais.length < MAX_LOCAIS ? adicionarLocal : null}
+            rotuloAdicionar="Adicionar local"
+          />
+          <div style={{ ...grade2, marginTop: 14 }}>
+            <CampoTexto label="Nome da clínica" value={local.nomeClinica} onChange={setLocalCampo("nomeClinica")} placeholder="Clínica Vascular" />
+            <CampoTexto label="Telefone" value={local.telefoneClinica} onChange={setLocalCampo("telefoneClinica")} placeholder="(43) 99999-9999" type="tel" />
+            <CampoTexto label="Endereço" value={local.enderecoClinica} onChange={setLocalCampo("enderecoClinica")} placeholder="Rua, número - bairro - cidade/UF" />
+            <CampoTexto label="E-mail" value={local.emailClinica} onChange={setLocalCampo("emailClinica")} placeholder="contato@clinica.com.br" type="email" />
           </div>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: TEMA.suave, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><FiImage /> Logo deste local — bordas vazias são cortadas e a imagem é reduzida automaticamente</div>
+            <UploadImagem valor={local.logoClinica} onChange={setLocalCampo("logoClinica")} rotulo="Logo" maxW={800} maxH={400} />
+          </div>
+          {medico.locais.length > 1 && (
+            <button type="button" style={{ ...botao(TEMA.erro, true), marginTop: 14 }} onClick={() => setRemover({ tipo: "local", indice: iLocal })}>
+              Remover {local.nomeClinica?.trim() || `Local ${iLocal + 1}`}
+            </button>
+          )}
         </Card>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-          <Card titulo="Logo" icone={<FiImage />} descricao="Canto superior esquerdo do laudo. As bordas vazias são cortadas e a imagem é reduzida automaticamente.">
-            <UploadImagem valor={perfil.logoClinica} onChange={setCampo("logoClinica")} rotulo="Logo" maxW={800} maxH={400} />
-          </Card>
-          <Card titulo="Assinatura" icone={<FiEdit3 />} descricao="Rodapé do laudo, acima do seu nome e CRM. Envie uma foto ou assine na tela.">
-            <CampoAssinatura valor={perfil.assinaturaMedico} onChange={setCampo("assinaturaMedico")} />
-          </Card>
-        </div>
       </div>
 
       <div style={{ position: larga ? "sticky" : "static", top: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
@@ -291,6 +340,21 @@ export default function Configuracoes() {
           <main>{conteudo}</main>
         </div>
       </div>
+
+      {remover && (
+        <div onClick={() => setRemover(null)} style={{ position: "fixed", inset: 0, background: "rgba(8,14,22,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1002, padding: 15 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#151b26", border: "1px solid #2a3441", borderRadius: 10, padding: 22, width: "100%", maxWidth: 420 }}>
+            <h3 style={{ margin: "0 0 10px", fontSize: 17, display: "flex", alignItems: "center", gap: 8 }}><FiAlertTriangle color={TEMA.erro} /> {remover.tipo === "medico" ? "Remover médico?" : "Remover local?"}</h3>
+            <p style={{ color: "#aab6c2", fontSize: 14, marginBottom: 20 }}>
+              {remover.tipo === "medico" ? "O médico, a assinatura e os locais dele serão apagados." : "O local, com a clínica e o logo, será apagado."} Os laudos já salvos não mudam.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button type="button" style={botao("#38445e")} onClick={() => setRemover(null)}>Cancelar</button>
+              <button type="button" style={botao(TEMA.erro)} onClick={confirmarRemocao}>Remover</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmarAssinatura && (
         <div onClick={() => setConfirmarAssinatura(false)} style={{ position: "fixed", inset: 0, background: "rgba(8,14,22,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1002, padding: 15 }}>

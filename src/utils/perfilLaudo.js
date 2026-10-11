@@ -1,29 +1,92 @@
-// Perfil do laudo (médico, clínica, logo e assinatura) guardado POR USUÁRIO.
-// Antes ficava em chaves soltas do navegador ("logoClinica", "crm"...), que
-// passavam de um usuário para outro no mesmo computador. Agora cada e-mail tem
-// o seu registro; as chaves soltas continuam existindo só como cópia do perfil
-// ativo, porque é delas que os exames leem na hora de gerar o PDF.
+// Perfil do laudo guardado POR USUÁRIO (conta de login):
+//   conta -> até MAX_MEDICOS médicos (nome, CRM, especialidade, assinatura)
+//   médico -> até MAX_LOCAIS locais de atendimento (clínica, endereço,
+//             telefone, e-mail e logo)
+// Ex.: o Dr. José atende na clínica A (logo A) e na clínica B (logo B).
+// Os exames leem o médico + local "em uso" das chaves soltas do navegador
+// ("nomeMedico", "logoClinica"...), que são só uma cópia da combinação ativa.
 
-export const CAMPOS_PERFIL = [
-  "nomeMedico", "crm", "especialidade",
-  "nomeClinica", "enderecoClinica", "telefoneClinica", "emailClinica",
-  "logoClinica", "assinaturaMedico",
-];
-export const MAX_PERFIS = 3; // Premium: até 3 médicos
+// Limites (Premium). Um futuro plano para clínicas é só mudar estes números.
+export const MAX_MEDICOS = 3;
+export const MAX_LOCAIS = 3;
 
-// campo do perfil -> chave usada pelos exames
+export const CAMPOS_MEDICO = ["nomeMedico", "crm", "especialidade", "assinaturaMedico"];
+export const CAMPOS_LOCAL = ["nomeClinica", "enderecoClinica", "telefoneClinica", "emailClinica", "logoClinica"];
+export const CAMPOS_PERFIL = [...CAMPOS_MEDICO, ...CAMPOS_LOCAL];
+
 const CHAVE_LEGADA = { especialidade: "especialidadeLaudo" };
 const chaveLegada = (campo) => CHAVE_LEGADA[campo] || campo;
 const CHAVES_ANTIGAS_PREMIUM = ["configLaudoPremium", "perfilLaudoAtivo"];
 const CHAVE_DONO = "perfilLaudoDono";
 
-export const perfilVazio = () => Object.fromEntries(CAMPOS_PERFIL.map((c) => [c, ""]));
+const vazio = (campos) => Object.fromEntries(campos.map((c) => [c, ""]));
+export const localVazio = () => vazio(CAMPOS_LOCAL);
+export const medicoVazio = () => ({ ...vazio(CAMPOS_MEDICO), locais: [localVazio()], localAtivo: 0 });
+export const perfilVazio = () => vazio(CAMPOS_PERFIL);
 const chaveUsuario = (email) => `perfilLaudo:${String(email || "").trim().toLowerCase()}`;
+const limitar = (n, max) => Math.min(Math.max(0, parseInt(n, 10) || 0), max - 1);
+const temAlgo = (o, campos) => campos.some((c) => String(o?.[c] || "").trim());
 
-function normalizarDados(d) {
-  const perfis = Array.from({ length: MAX_PERFIS }, (_, i) => ({ ...perfilVazio(), ...(d?.perfis?.[i] || {}) }));
-  const ativo = Math.min(Math.max(0, parseInt(d?.ativo, 10) || 0), MAX_PERFIS - 1);
-  return { perfis, ativo };
+// Perfil "achatado" antigo (médico + clínica juntos) -> médico com 1 local.
+function medicoDoPerfilAntigo(p) {
+  const m = { ...medicoVazio(), ...Object.fromEntries(CAMPOS_MEDICO.map((c) => [c, p?.[c] || ""])) };
+  m.locais = [{ ...localVazio(), ...Object.fromEntries(CAMPOS_LOCAL.map((c) => [c, p?.[c] || ""])) }];
+  return m;
+}
+
+export function normalizarDados(d) {
+  let medicos;
+  let medicoAtivo;
+  if (Array.isArray(d?.medicos)) {
+    medicos = d.medicos;
+    medicoAtivo = d.medicoAtivo;
+  } else if (Array.isArray(d?.perfis)) {
+    // versão anterior: { perfis: [perfil achatado], ativo } — perfis vazios saem
+    const ativo = limitar(d.ativo, d.perfis.length || 1);
+    medicos = d.perfis.map((p, i) => ({ p, i })).filter(({ p, i }) => i === ativo || temAlgo(p, CAMPOS_PERFIL));
+    medicoAtivo = Math.max(0, medicos.findIndex(({ i }) => i === ativo));
+    medicos = medicos.map(({ p }) => medicoDoPerfilAntigo(p));
+  } else {
+    medicos = [];
+    medicoAtivo = 0;
+  }
+  medicos = medicos.slice(0, MAX_MEDICOS).map((m) => {
+    const locais = (Array.isArray(m?.locais) && m.locais.length ? m.locais : [localVazio()])
+      .slice(0, MAX_LOCAIS).map((l) => ({ ...localVazio(), ...l }));
+    return { ...medicoVazio(), ...m, locais, localAtivo: limitar(m?.localAtivo, locais.length) };
+  });
+  if (!medicos.length) medicos = [medicoVazio()];
+  return { versao: 2, medicos, medicoAtivo: limitar(medicoAtivo, medicos.length) };
+}
+
+// Combinação médico + local, no formato que os exames usam.
+export function perfilCombinado(dados, iMedico, iLocal) {
+  const d = normalizarDados(dados);
+  const m = d.medicos[iMedico ?? d.medicoAtivo] || d.medicos[0];
+  const l = m.locais[iLocal ?? m.localAtivo] || m.locais[0];
+  return { ...perfilVazio(), ...Object.fromEntries(CAMPOS_MEDICO.map((c) => [c, m[c] || ""])), ...l };
+}
+export const perfilAtivo = (dados) => perfilCombinado(dados);
+
+// Todas as combinações (para a troca rápida): "Dr. José · Clínica A".
+export function opcoesDePerfil(dados) {
+  const d = normalizarDados(dados);
+  const out = [];
+  d.medicos.forEach((m, im) => m.locais.forEach((l, il) => {
+    out.push({
+      medico: im, local: il,
+      ativo: im === d.medicoAtivo && il === m.localAtivo,
+      rotulo: `${m.nomeMedico?.trim() || `Médico ${im + 1}`}${l.nomeClinica?.trim() ? ` · ${l.nomeClinica.trim()}` : m.locais.length > 1 ? ` · Local ${il + 1}` : ""}`,
+      logo: l.logoClinica,
+    });
+  }));
+  return out;
+}
+
+export function selecionarCombinacao(dados, iMedico, iLocal) {
+  const d = normalizarDados(dados);
+  const medicos = d.medicos.map((m, i) => (i === iMedico ? { ...m, localAtivo: limitar(iLocal, m.locais.length) } : m));
+  return { ...d, medicos, medicoAtivo: limitar(iMedico, medicos.length) };
 }
 
 function lerChavesLegadas() {
@@ -36,7 +99,6 @@ function aplicarChavesLegadas(perfil) {
     if (v) localStorage.setItem(chaveLegada(c), v);
     else localStorage.removeItem(chaveLegada(c));
   });
-  // compatibilidade: algumas telas ainda leem "especialidade"
   if (perfil?.especialidade) localStorage.setItem("especialidade", perfil.especialidade);
 }
 
@@ -49,15 +111,15 @@ export function carregarDadosPerfil(email) {
   }
 }
 
-// Grava o perfil do usuário e atualiza as chaves que os exames leem.
-// Não lança erro: devolve { ok: false, erro } quando o navegador está cheio.
+// Grava os perfis do usuário e copia a combinação em uso para as chaves dos
+// exames. Não lança erro: devolve { ok: false, erro } com o navegador cheio.
 export function salvarDadosPerfil(email, dados) {
   const d = normalizarDados(dados);
   try {
     localStorage.setItem(chaveUsuario(email), JSON.stringify(d));
-    aplicarChavesLegadas(d.perfis[d.ativo]);
+    aplicarChavesLegadas(perfilAtivo(d));
     localStorage.setItem(CHAVE_DONO, String(email || "").trim().toLowerCase());
-    return { ok: true };
+    return { ok: true, dados: d };
   } catch (e) {
     const cheio = e && (e.name === "QuotaExceededError" || e.code === 22 || /quota/i.test(e.message || ""));
     return {
@@ -69,7 +131,7 @@ export function salvarDadosPerfil(email, dados) {
   }
 }
 
-// Ao entrar: carrega o perfil deste usuário. Na primeira vez, adota o que já
+// Ao entrar: carrega os perfis deste usuário. Na primeira vez, adota o que já
 // estava salvo no navegador só se não pertencer a outro usuário.
 export function ativarPerfilDoUsuario(email) {
   if (!email) return null;
@@ -97,14 +159,14 @@ export function ativarPerfilDoUsuario(email) {
   return dados;
 }
 
-// Ao sair: tira o perfil ativo do navegador (fica guardado no registro do usuário).
+// Ao sair: tira o perfil em uso do navegador (fica guardado no registro do usuário).
 export function limparPerfilAtivo() {
   CAMPOS_PERFIL.forEach((c) => localStorage.removeItem(chaveLegada(c)));
   localStorage.removeItem("especialidade");
   CHAVES_ANTIGAS_PREMIUM.forEach((k) => localStorage.removeItem(k));
 }
 
-// Itens que deixam o laudo personalizado (cartão "Complete seu perfil").
+// Itens que deixam o laudo personalizado (cartão "Personalize seus laudos").
 export const ITENS_ESSENCIAIS = [
   ["nomeMedico", "Nome do médico"],
   ["crm", "CRM"],
@@ -113,8 +175,12 @@ export const ITENS_ESSENCIAIS = [
   ["assinaturaMedico", "Assinatura"],
 ];
 export function progressoPerfil(perfil) {
-  const feitos = ITENS_ESSENCIAIS.filter(([c]) => String(perfil?.[c] || "").trim());
-  return { feitos: feitos.length, total: ITENS_ESSENCIAIS.length, faltam: ITENS_ESSENCIAIS.filter(([c]) => !String(perfil?.[c] || "").trim()).map(([, t]) => t) };
+  const tem = (c) => String(perfil?.[c] || "").trim();
+  return {
+    feitos: ITENS_ESSENCIAIS.filter(([c]) => tem(c)).length,
+    total: ITENS_ESSENCIAIS.length,
+    faltam: ITENS_ESSENCIAIS.filter(([c]) => !tem(c)).map(([, t]) => t),
+  };
 }
 
 // Assistente de primeiro acesso: "feito" ou "pulado" por usuário.

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { SeletorPerfilLaudo } from "../components/perfil/TrocaPerfil";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { desenharCabecalhoLaudo, desenharAssinatura } from "../utils/pdfCabecalho";
@@ -811,6 +812,7 @@ function CarotidasVertebrais() {
       }}>
         Carótidas e Vertebrais
       </h1>
+      <SeletorPerfilLaudo />
 
       <div style={{
         width: "100%",
