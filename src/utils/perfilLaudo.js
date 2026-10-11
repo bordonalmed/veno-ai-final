@@ -90,6 +90,8 @@ export function opcoesDePerfil(dados) {
       medico: im, local: il,
       ativo: im === d.medicoAtivo && il === m.localAtivo,
       rotulo: `${m.nomeMedico?.trim() || `Médico ${im + 1}`}${l.nomeClinica?.trim() ? ` · ${l.nomeClinica.trim()}` : m.locais.length > 1 ? ` · Local ${il + 1}` : ""}`,
+      // com um profissional só, o que muda é o local: mostra só a clínica
+      rotuloCurto: MAX_MEDICOS > 1 ? undefined : (l.nomeClinica?.trim() || `Local ${il + 1}`),
       logo: l.logoClinica,
     });
   }));
