@@ -9,6 +9,7 @@ import { TrialManager } from "../utils/trialManager";
 import BoasVindasPerfil from "../components/perfil/BoasVindasPerfil";
 import { carregarDadosPerfil, progressoPerfil, boasVindasPendente, perfilAtivo, EVENTO_PERFIL_ATUALIZADO } from "../utils/perfilLaudo";
 import TrocaPerfil from "../components/perfil/TrocaPerfil";
+import examesRealtimeService from "../services/examesRealtimeService";
 
 const COLOR_STYLES = {
   blue: { border: "#3f93e0", ring: "rgba(63,147,224,0.1)", glow: "rgba(63,147,224,0.55)" },
@@ -39,6 +40,9 @@ export default function Home({ onLogout }) {
   const [perfilLaudo, setPerfilLaudo] = useState(lerPerfil);
   const progresso = progressoPerfil(perfilLaudo);
   const [mostrarBoasVindas, setMostrarBoasVindas] = useState(() => boasVindasPendente(userEmail) && progressoPerfil(lerPerfil()).feitos < 5);
+  // no menu não há exame em edição: o próximo "Salvar" cria um exame novo
+  useEffect(() => { examesRealtimeService.encerrarEdicao(); }, []);
+
   // perfil chegou da conta (cadastrado em outro computador)
   useEffect(() => {
     const atualizar = () => {

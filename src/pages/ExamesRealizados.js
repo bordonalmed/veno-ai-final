@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { saveAs } from "file-saver";
-import { FiArrowLeft, FiTrash2, FiX, FiWifi, FiWifiOff, FiMessageCircle, FiMail, FiMoreVertical, FiAlertTriangle, FiClipboard, FiRefreshCw, FiCheckSquare, FiSquare, FiSearch, FiCalendar, FiEye, FiEdit2, FiPrinter } from "react-icons/fi";
+import { FiMapPin, FiArrowLeft, FiTrash2, FiX, FiWifi, FiWifiOff, FiMessageCircle, FiMail, FiMoreVertical, FiAlertTriangle, FiClipboard, FiRefreshCw, FiCheckSquare, FiSquare, FiSearch, FiCalendar, FiEye, FiEdit2, FiPrinter } from "react-icons/fi";
 import { MdSort } from "react-icons/md";
 import { FaHospital } from "react-icons/fa";
 import { GiLeg } from "react-icons/gi";
 import examesRealtimeService from "../services/examesRealtimeService";
 import { TrialManager } from "../utils/trialManager";
-import { carimbarMarcaVenoAIPdfLib } from "../utils/pdfMarca";
+import { gerarPDFExame, formatarDataDiaMesAno } from "../utils/pdfExameSalvo";
 
 // Helpers para exames salvos (localStorage)
 const STORAGE_KEY_TO_LABEL = {
@@ -61,120 +59,14 @@ function temAcessoPremium() {
   return trial.status === "ativo";
 }
 
-// Formata data para exibição: dia, mês, ano (DD/MM/YYYY)
-function formatarDataDiaMesAno(val) {
-  if (val == null || String(val).trim() === "") return "";
-  const s = String(val).trim();
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); // YYYY-MM-DD (input date)
-  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
-  const dma = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(s); // DD/MM/YYYY ou DD-MM-YYYY
-  if (dma) return `${dma[1].padStart(2,"0")}/${dma[2].padStart(2,"0")}/${dma[3]}`;
-  return s;
-}
-
-// Função para formatar o laudo com melhor espaçamento
+// Laudo como foi salvo (os separadores "====" entre membros já vêm no texto).
+// Antes cada linha em branco virava um separador gigante na visualização.
 function formatarLaudoParaVisualizacao(laudo) {
-  if (!laudo) return "Laudo não disponível";
-  
-  // Dividir o laudo em partes (para exames de ambos os lados)
-  const partes = laudo.split('\n\n');
-  
-  // Se há múltiplas partes (exames de ambos os lados)
-  if (partes.length > 1) {
-    return partes.map((parte, index) => {
-      // Adicionar separador visual entre as partes com muito mais espaçamento
-      const separador = index > 0 ? '\n\n\n\n' + '='.repeat(80) + '\n\n\n\n' : '';
-      return separador + parte;
-    }).join('');
-  }
-  
-  return laudo;
+  return laudo ? String(laudo).replace(/\*\*/g, "") : "Laudo não disponível";
 }
 
-// Linhas que são cabeçalho repetido no laudo (não desenhar; usamos cabeçalho padronizado)
-function isLinhaCabecalhoRedundante(linhaTrim) {
-  return /^PACIENTE\s*:/i.test(linhaTrim) || /^DATA\s*:/i.test(linhaTrim) || /^TIPO\s*:/i.test(linhaTrim) || /^IDADE\s*:/i.test(linhaTrim);
-}
-
-async function gerarPDFExame(exame) {
-  try {
-    const doc = await PDFDocument.create();
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-    
-    let page = doc.addPage([595, 842]); // A4 Portrait
-    let y = 800;
-    const left = 50;
-    const lineHeight = 14;
-    const marginBottom = 60;
-    
-    const laudo = (exame.laudo != null && exame.laudo !== "") ? String(exame.laudo) : "Laudo não disponível";
-    const todasLinhas = laudo.split(/\r?\n/);
-    
-    const blocos = [];
-    let blocoAtual = [];
-    for (const linha of todasLinhas) {
-      const trim = linha.trim();
-      if (/^=+$/.test(trim)) {
-        if (blocoAtual.length > 0) {
-          blocos.push(blocoAtual);
-          blocoAtual = [];
-        }
-      } else {
-        blocoAtual.push(linha);
-      }
-    }
-    if (blocoAtual.length > 0) blocos.push(blocoAtual);
-    
-    for (let i = 0; i < blocos.length; i++) {
-      if (i > 0) {
-        page = doc.addPage([595, 842]);
-        y = 800;
-      }
-      
-      // Cabeçalho padronizado: nome, idade, data (uma vez por exame)
-      page.drawText(`PACIENTE: ${exame.nome || "—"}`, { x: left, y, font: fontBold, size: 12, color: rgb(0,0,0) }); y -= lineHeight;
-      if (exame.idade != null && String(exame.idade).trim() !== "") {
-        page.drawText(`IDADE: ${exame.idade} anos`, { x: left, y, font: font, size: 12, color: rgb(0,0,0) }); y -= lineHeight;
-      }
-      page.drawText(`DATA: ${formatarDataDiaMesAno(exame.data) || "—"}`, { x: left, y, font: font, size: 12, color: rgb(0,0,0) }); y -= lineHeight * 1.2;
-      
-      let dentroConclusao = false;
-      for (const linha of blocos[i]) {
-        const linhaTrim = linha.trim();
-        if (!linhaTrim) {
-          y -= lineHeight * 0.5;
-          continue;
-        }
-        if (isLinhaCabecalhoRedundante(linhaTrim)) continue; // evita duplicar nome, data, tipo, idade
-        
-        if (y < marginBottom) {
-          page = doc.addPage([595, 842]);
-          y = 800;
-        }
-        
-        if (/^CONCLUSÃO\s*:/i.test(linhaTrim)) dentroConclusao = true;
-        const isComentarioOuObservacao = /^(Comentário(s)?|Observa(ção|ções))(\s*\([^)]+\))?\s*:?/i.test(linhaTrim);
-        if (isComentarioOuObservacao) dentroConclusao = false;
-        if (/^(PACIENTE:|DOPPLER\s)/i.test(linhaTrim)) dentroConclusao = false;
-        
-        const isTitulo = /^(PACIENTE:|DOPPLER|Sistema|CONCLUSÃO|Veias Perfurantes)/i.test(linhaTrim);
-        const usarNegrito = (isTitulo || dentroConclusao) && !isComentarioOuObservacao;
-        page.drawText(linhaTrim, { x: left, y, font: usarNegrito ? fontBold : font, size: 11, color: rgb(0,0,0) });
-        y -= lineHeight;
-      }
-    }
-    
-    carimbarMarcaVenoAIPdfLib(doc, font, rgb);
-    const pdfBytes = await doc.save();
-    const dataArquivo = (exame.data && formatarDataDiaMesAno(exame.data)) ? formatarDataDiaMesAno(exame.data).replace(/\//g, "-") : "sem_data";
-    const nomeArquivo = `Laudo_${(exame.nome || "paciente").replace(/\s+/g,"_")}_${dataArquivo}.pdf`;
-    saveAs(new Blob([pdfBytes], { type: "application/pdf" }), nomeArquivo);
-  } catch (error) {
-    console.error("Erro ao gerar PDF:", error);
-    alert("Erro ao gerar PDF. Tente novamente.");
-  }
-}
+const SEM_LOCAL = "__sem_local__";
+const localDoExame = (e) => String(e?.localExame || "").trim();
 
 export default function ExamesRealizados() {
   const navigate = useNavigate();
@@ -184,6 +76,7 @@ export default function ExamesRealizados() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [exameVisualizando, setExameVisualizando] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [filtroLocal, setFiltroLocal] = useState("todos");
   const [busca, setBusca] = useState("");
   const [examesSelecionados, setExamesSelecionados] = useState([]);
   const [modoSelecao, setModoSelecao] = useState(false);
@@ -200,6 +93,9 @@ export default function ExamesRealizados() {
 
   // Ref para armazenar o ID do listener
   const listenerIdRef = useRef(null);
+
+  // Voltou para a lista: nenhuma edição em andamento.
+  useEffect(() => { examesRealtimeService.encerrarEdicao(); }, []);
 
   // Configurar sincronização em tempo real
   useEffect(() => {
@@ -277,12 +173,15 @@ export default function ExamesRealizados() {
     };
   }, []);
 
+  // exames sem nome/tipo não quebram mais a busca
+  const termo = busca.trim().toLowerCase();
   const examesFiltrados = exames.filter(exame => {
     const matchTipo = filtroTipo === "todos" || exame.tipoNome === filtroTipo;
-    const matchBusca = exame.nome.toLowerCase().includes(busca.toLowerCase()) || 
-                      (exame.data && exame.data.includes(busca)) || (formatarDataDiaMesAno(exame.data) || "").toLowerCase().includes(busca.toLowerCase()) ||
-                      exame.tipoNome.toLowerCase().includes(busca.toLowerCase());
-    return matchTipo && matchBusca;
+    const local = localDoExame(exame);
+    const matchLocal = filtroLocal === "todos" || (filtroLocal === SEM_LOCAL ? !local : local === filtroLocal);
+    const campos = [exame.nome, exame.data, formatarDataDiaMesAno(exame.data), exame.tipoNome, local];
+    const matchBusca = !termo || campos.some((c) => String(c || "").toLowerCase().includes(termo));
+    return matchTipo && matchLocal && matchBusca;
   });
 
   const examesOrdenados = [...examesFiltrados].sort((a, b) => {
@@ -291,7 +190,10 @@ export default function ExamesRealizados() {
     return new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0);
   });
 
-  const tiposUnicos = [...new Set(exames.map(e => e.tipoNome))];
+  const tiposUnicos = [...new Set(exames.map(e => e.tipoNome).filter(Boolean))];
+  const locaisUnicos = [...new Set(exames.map(localDoExame).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const temSemLocal = exames.some((e) => !localDoExame(e));
+  const contarLocal = (l) => exames.filter((e) => (l === SEM_LOCAL ? !localDoExame(e) : localDoExame(e) === l)).length;
 
   function handleEditarExame(exame) {
     // Navegar para a página específica do tipo de exame
@@ -309,8 +211,10 @@ export default function ExamesRealizados() {
     
     const rota = rotas[exame.tipoNome];
     if (rota) {
-      // Salvar dados do exame para edição
+      // Salvar dados do exame para edição; ao salvar, atualiza este exame
+      // (antes criava um exame novo, duplicando)
       localStorage.setItem("exameEmEdicao", JSON.stringify(exame));
+      examesRealtimeService.iniciarEdicao(exame);
       navigate(rota);
     }
   }
@@ -575,7 +479,6 @@ export default function ExamesRealizados() {
                 }
               };
               configurarSincronizacao();
-              alert('🔄 Sincronização reiniciada!');
             }}
             disabled={carregando}
             style={{
@@ -720,7 +623,7 @@ export default function ExamesRealizados() {
             </label>
             <input
               type="text"
-              placeholder="Nome, data ou tipo..."
+              placeholder="Nome, data, tipo ou local..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               style={{
@@ -766,6 +669,41 @@ export default function ExamesRealizados() {
               ))}
             </select>
           </div>
+
+          {/* Filtro por local do exame */}
+          {(locaisUnicos.length > 0) && (
+            <div>
+              <label style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                marginBottom: "4px",
+                fontSize: "12px",
+                color: "#aaa"
+              }}>
+                <FiMapPin size={13} /> Local do exame:
+              </label>
+              <select
+                value={filtroLocal}
+                onChange={(e) => setFiltroLocal(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "6px",
+                  border: "none",
+                  fontSize: "14px",
+                  background: "#fff",
+                  color: "#333"
+                }}
+              >
+                <option value="todos">Todos os locais ({exames.length})</option>
+                {locaisUnicos.map(l => (
+                  <option key={l} value={l}>{l} ({contarLocal(l)})</option>
+                ))}
+                {temSemLocal && <option value={SEM_LOCAL}>Sem local registrado ({contarLocal(SEM_LOCAL)})</option>}
+              </select>
+            </div>
+          )}
 
           {/* Ordenação */}
           <div>
@@ -908,6 +846,7 @@ export default function ExamesRealizados() {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><FiCalendar size={12} /> {formatarDataDiaMesAno(exame.data) || exame.data}</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><FaHospital size={12} /> {exame.tipoNome}</span>
                     {exame.lado && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><GiLeg size={12} /> {exame.lado}</span>}
+                    {localDoExame(exame) && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#9fd7e2" }}><FiMapPin size={12} /> {localDoExame(exame)}</span>}
                   </div>
                 </div>
 
@@ -1292,7 +1231,7 @@ export default function ExamesRealizados() {
                   const digits = whatsappNumeroPaciente.replace(/\D/g, "");
                   if (!digits.length) return;
                   const waNumber = digits.startsWith("55") ? digits : (digits.length <= 11 ? "55" + digits : digits);
-                  const msg = `Olá! Segue o resultado do seu exame (envie o laudo em PDF em anexo).\nPaciente: ${whatsappExame.nome || ""}\nExame: ${whatsappExame.tipoNome || ""}\nData: ${whatsappExame.data || ""}`;
+                  const msg = `Olá! Segue o resultado do seu exame (envie o laudo em PDF em anexo).\nPaciente: ${whatsappExame.nome || ""}\nExame: ${whatsappExame.tipoNome || ""}\nData: ${formatarDataDiaMesAno(whatsappExame.data) || ""}`;
                   window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
                   setWhatsappExame(null);
                   setWhatsappNumeroPaciente("");
@@ -1399,7 +1338,7 @@ export default function ExamesRealizados() {
                   const email = emailPaciente.trim();
                   if (!email) return;
                   const subject = `Resultado do exame - ${emailExame.nome || "Paciente"}`;
-                  const body = `Olá!\n\nSegue o resultado do seu exame.\n\nPaciente: ${emailExame.nome || ""}\nExame: ${emailExame.tipoNome || ""}\nData: ${emailExame.data || ""}\n\nAnexe o laudo em PDF (gerado pelo botão PDF). Apenas formato PDF é aceito por segurança.`;
+                  const body = `Olá!\n\nSegue o resultado do seu exame.\n\nPaciente: ${emailExame.nome || ""}\nExame: ${emailExame.tipoNome || ""}\nData: ${formatarDataDiaMesAno(emailExame.data) || ""}\n\nAnexe o laudo em PDF (gerado pelo botão PDF). Apenas formato PDF é aceito por segurança.`;
                   window.open(`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
                   setEmailExame(null);
                   setEmailPaciente("");
