@@ -99,8 +99,8 @@ export default function Home({ onLogout }) {
       {mostrarBoasVindas && (
         <BoasVindasPerfil email={userEmail} onFechar={() => { setMostrarBoasVindas(false); setPerfilLaudo(lerPerfil()); }} />
       )}
-      {/* Botões - Canto superior direito */}
-      <div style={{ position: "absolute", right: 25, top: 25, display: "flex", gap: 12, alignItems: "center" }}>
+      {/* Perfil do laudo (logo ou iniciais) - canto superior esquerdo, longe do logo do VENO.AI */}
+      <div style={{ position: "absolute", left: 25, top: 25 }}>
         <button
           onClick={() => navigate("/configuracoes")}
           title="Meu perfil do laudo (logo, assinatura e dados)"
@@ -115,6 +115,9 @@ export default function Home({ onLogout }) {
             ? <img src={perfilLaudo.logoClinica} alt="perfil" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             : iniciais}
         </button>
+      </div>
+      {/* Botões - Canto superior direito */}
+      <div style={{ position: "absolute", right: 25, top: 25, display: "flex", gap: 12, alignItems: "center" }}>
         <button
           onClick={() => navigate("/exames-realizados")}
           style={{
