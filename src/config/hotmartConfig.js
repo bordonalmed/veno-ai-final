@@ -7,7 +7,7 @@ export const HOTMART_CONFIG = {
   CHECKOUT_URL: 'https://pay.hotmart.com/S102049895B',
   
   // URL do webhook (substitua pelo seu domínio)
-  WEBHOOK_URL: 'https://seu-dominio.com/api/hotmart-webhook',
+  WEBHOOK_URL: 'https://venoai.xyz/.netlify/functions/hotmart-webhook',
   
   // Eventos do webhook que você quer receber
   WEBHOOK_EVENTS: [
