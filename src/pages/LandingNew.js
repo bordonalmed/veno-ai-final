@@ -15,8 +15,8 @@ import "./landing.css";
 
 const PUB = process.env.PUBLIC_URL || "";
 const LADO = "Direito";
-// logo com o brilho original (fundo transparente, sem margem): ver public/venoai-logo-brilho.webp
-const LOGO = `${PUB}/venoai-logo-brilho.webp`;
+// o mesmo logo, recortado sem a margem vazia do arquivo original (fica maior no mesmo espaço)
+const LOGO = `${PUB}/venoai-logo-vitrine.webp`;
 
 const magnaVazia = { coxa: "", perna: "", tornozelo: "", inicio: "", inicio_valor: "", fim: "", fim_valor: "" };
 const parvaVazia = { proximal: "", distal: "", inicio: "", inicio_valor: "", fim: "", fim_valor: "" };
