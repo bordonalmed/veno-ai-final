@@ -45,7 +45,7 @@
 .lp-marca { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: 0.05em; }
 /* marca: logo limpo, sem brilho */
 .lp-logo-nav { height: 52px; width: auto; margin-block: -6px; }
-.lp-logo-hero { display: block; width: clamp(120px, 12vw, 160px); height: auto; margin: 0 0 18px; }
+.lp-logo-hero { display: block; width: clamp(170px, 17vw, 230px); height: auto; margin: -6px 0 10px -8px; }
 .lp-logo-brilho { width: 120px; height: auto; }
 .lp-logo-final { display: block; width: clamp(110px, 11vw, 140px); height: auto; margin: 0 auto 22px; }
 .lp-rodape-marca { display: inline-flex; align-items: center; gap: 10px; }
@@ -65,7 +65,9 @@
 
 /* hero */
 .lp-hero { padding-block: 40px 64px; background: radial-gradient(900px 480px at 85% 10%, rgba(14, 184, 208, 0.12), transparent 70%), radial-gradient(700px 420px at 0% 100%, rgba(63, 127, 224, 0.10), transparent 70%); }
-.lp-hero-grid { display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: 48px; align-items: center; }
+.lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); gap: 56px; align-items: center; }
+.lp-hero-grid > .lp-demo { max-width: 430px; width: 100%; justify-self: end; }
+.lp-hero .lp-slogan { font-size: 15.5px; letter-spacing: 0.16em; margin-bottom: 20px; }
 .lp-sobre { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
 .lp-hero h1 { font-size: clamp(32px, 4.3vw, 50px); font-weight: 800; }
 .lp-hero h1 em { font-style: normal; color: var(--accent); }
@@ -83,10 +85,10 @@
 .lp-demo-acao { font-size: 12.5px; font-weight: 600; color: #0b6f80; background: #e2f5f8; border-radius: 999px; padding: 4px 11px; display: inline-flex; align-items: center; gap: 6px; min-height: 26px; transition: opacity 0.25s; }
 .lp-demo-corpo { display: grid; grid-template-columns: minmax(0, 1fr); }
 .lp-demo-desenho { background: var(--paper); border-bottom: 1px solid #e3e8ee; padding: 8px 6px 4px; display: flex; align-items: center; justify-content: center; }
-.lp-demo-desenho svg { width: 100%; height: 360px; }
+.lp-demo-desenho svg { width: 100%; height: 270px; }
 .lp-demo-laudo { position: relative; min-width: 0; display: flex; flex-direction: column; }
 .lp-demo-laudo-tit { font-size: 12px; font-weight: 700; color: #3d4b5c; padding: 10px 14px 6px; }
-.lp-demo-txt { font-family: var(--mono); font-size: 12px; line-height: 1.6; color: #1b2533; padding: 0 14px 14px; height: 210px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; scroll-behavior: smooth; }
+.lp-demo-txt { font-family: var(--mono); font-size: 12px; line-height: 1.6; color: #1b2533; padding: 0 14px 14px; height: 150px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; scroll-behavior: smooth; }
 .lp-demo-txt .lin { display: block; border-radius: 3px; padding-inline: 3px; margin-inline: -3px; transition: background 0.6s; }
 .lp-demo-txt .lin.nova { background: #c9f1f7; }
 .lp-demo-txt .lin.tit { font-weight: 600; }
@@ -193,6 +195,7 @@
 
 @media (max-width: 980px) {
   .lp-hero-grid, .lp-pdf { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .lp-hero-grid > .lp-demo { justify-self: center; max-width: 520px; }
   .lp-exames { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lp-pontos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lp-ponto:nth-child(3) { border-left: none; }
@@ -203,7 +206,8 @@
   .lp-wrap { padding-inline: 16px; }
   .lp-hero { padding-block: 24px 44px; }
   .lp-logo-nav { height: 46px; margin-block: -4px; }
-  .lp-logo-hero { width: 120px; margin: 0 auto 14px; }
+  .lp-logo-hero { width: 170px; margin: 0 auto 8px; }
+  .lp-hero .lp-slogan { font-size: 13.5px; letter-spacing: 0.12em; }
   .lp-hero-grid > div:first-child { text-align: center; }
   .lp-hero-grid > div:first-child .lp-hero-sub { margin-inline: auto; }
   .lp-hero-garantias { justify-content: center; }
@@ -214,9 +218,9 @@
   .lp-exames { gap: 10px; }
   .lp-exame-txt { padding: 10px 12px 12px; }
   .lp-exame-txt p { display: none; }
-  .lp-demo-desenho svg { height: 300px; }
+  .lp-demo-desenho svg { height: 260px; }
   .lp-demo-tit small { display: none; }
-  .lp-demo-txt { font-size: 10.5px; height: 190px; padding-inline: 10px; }
+  .lp-demo-txt { font-size: 10.5px; height: 150px; padding-inline: 10px; }
   .lp-autor { grid-template-columns: minmax(0, 1fr); }
   .lp-links { display: none; }
   .lp-acoes .lp-btn-texto { padding-inline: 6px; }
