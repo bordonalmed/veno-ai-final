@@ -43,7 +43,7 @@
 .lp-nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: rgba(13, 20, 31, 0.86); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(36, 52, 75, 0.7); }
 .lp-nav-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 12px; }
 .lp-marca { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: 0.05em; }
-.lp-selo-logo { width: 40px; height: 40px; border-radius: 10px; overflow: hidden; display: inline-block; flex-shrink: 0; background: linear-gradient(135deg, #101824 0%, #1c2740 100%); box-shadow: 0 2px 10px rgba(22, 147, 224, 0.35); }
+.lp-selo-logo { width: 52px; height: 52px; border-radius: 12px; overflow: hidden; display: inline-block; flex-shrink: 0; background: linear-gradient(135deg, #101824 0%, #1c2740 100%); box-shadow: 0 2px 10px rgba(22, 147, 224, 0.35); }
 .lp-selo-logo img { width: 124%; height: 124%; margin: -12%; display: block; }
 .lp-selo-logo.grande { width: 96px; height: 96px; border-radius: 22px; }
 .lp-links { display: flex; align-items: center; gap: 22px; font-size: 14.5px; color: var(--fg-2); }
