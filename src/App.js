@@ -236,8 +236,9 @@ function AppContent() {
   return (
     <ErrorBoundary>
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login onLogin={login} onCadastrar={cadastrarUsuario} />} />
+        {/* quem já está logado (site ou app instalado) vai direto para o menu dos exames */}
+        <Route path="/" element={logado ? <Navigate to="/home" replace /> : <Landing />} />
+        <Route path="/login" element={logado ? <Navigate to="/home" replace /> : <Login onLogin={login} onCadastrar={cadastrarUsuario} />} />
         <Route path="/home" element={logado ? <Home onLogout={logout}/> : <Navigate to="/login" />} />
         <Route path="/mmii-venoso" element={logado ? <MMIIVenoso /> : <Navigate to="/login" />} />
         <Route path="/mmii-arterial" element={logado ? <MMIIArterial /> : <Navigate to="/login" />} />
