@@ -15,6 +15,8 @@ import "./landing.css";
 
 const PUB = process.env.PUBLIC_URL || "";
 const LADO = "Direito";
+// logo com o brilho original (fundo transparente, sem margem): ver public/venoai-logo-brilho.webp
+const LOGO = `${PUB}/venoai-logo-brilho.webp`;
 
 const magnaVazia = { coxa: "", perna: "", tornozelo: "", inicio: "", inicio_valor: "", fim: "", fim_valor: "" };
 const parvaVazia = { proximal: "", distal: "", inicio: "", inicio_valor: "", fim: "", fim_valor: "" };
@@ -149,11 +151,28 @@ export default function LandingNew() {
   };
   const estadoFinal = useMemo(() => estadoNoPasso(ULTIMO), []);
 
+  // Barra "Começar teste grátis" presa embaixo no celular: aparece quando o
+  // botão do topo sai da tela e some quando a chamada final aparece.
+  const [barra, setBarra] = useState(false);
+  useEffect(() => {
+    const topo = document.querySelector(".lp-hero .lp-hero-ctas");
+    const fim = document.querySelector(".lp-final");
+    if (!topo || !fim || typeof IntersectionObserver === "undefined") return undefined;
+    const visto = { topo: true, fim: false };
+    const io = new IntersectionObserver((itens) => {
+      // "fim" continua valendo depois de passar dele (no rodapé)
+      itens.forEach((it) => { if (it.target === topo) visto.topo = it.isIntersecting || it.boundingClientRect.top > 0; else visto.fim = it.isIntersecting || it.boundingClientRect.top < 0; });
+      setBarra(!visto.topo && !visto.fim);
+    });
+    io.observe(topo); io.observe(fim);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <div className="lp">
       <header className="lp-nav">
         <div className="lp-wrap lp-nav-in">
-          <a href="#topo" className="lp-marca" onClick={ir("topo")} aria-label="VENO.AI — início"><img className="lp-logo-nav" src={`${PUB}/venoai-logo.png`} alt="VENO.AI" /></a>
+          <a href="#topo" className="lp-marca" onClick={ir("topo")} aria-label="VENO.AI — início"><img className="lp-logo-nav" src={LOGO} alt="VENO.AI" /></a>
           <nav className="lp-links" aria-label="Seções">
             <a href="#exames" onClick={ir("exames")}>Exames</a>
             <a href="#como" className="esc" onClick={ir("como")}>Como funciona</a>
@@ -171,7 +190,7 @@ export default function LandingNew() {
         <section className="lp-hero" id="topo">
           <div className="lp-wrap lp-hero-grid">
             <div>
-              <img className="lp-logo-hero" src={`${PUB}/venoai-logo.png`} alt="VENO.AI" />
+              <img className="lp-logo-hero" src={LOGO} alt="VENO.AI" />
               <p className="lp-sobre">Para quem lauda Doppler vascular</p>
               <h1>Laudos de Doppler vascular <em>em minutos</em>, com seu logo e assinatura.</h1>
               <p className="lp-hero-sub">Clique nos vasos do desenho e o laudo se escreve sozinho, com a conclusão pronta. Salve em PDF ou envie ao paciente pelo WhatsApp.</p>
@@ -293,13 +312,17 @@ export default function LandingNew() {
                 </ul>
               </div>
             </div>
+            <div className="lp-meio-cta">
+              <button type="button" className="lp-btn lp-btn-cheio" onClick={cadastrar}>Fazer meu primeiro laudo grátis</button>
+              <span>{DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos · sem cartão de crédito</span>
+            </div>
           </div>
         </section>
 
         <section className="lp-faixa">
           <div className="lp-wrap">
             <div className="lp-autor">
-              <div className="lp-autor-selo"><img className="lp-logo-brilho" src={`${PUB}/venoai-logo.png`} alt="" /></div>
+              <div className="lp-autor-selo"><img className="lp-logo-brilho" src={LOGO} alt="" /></div>
               <div>
                 <blockquote>Criado por um cirurgião vascular que lauda Doppler todos os dias, para a rotina real do consultório.</blockquote>
                 <p>A nomenclatura, a ordem dos vasos e as conclusões seguem a prática da ultrassonografia vascular.</p>
@@ -327,9 +350,10 @@ export default function LandingNew() {
                 <button type="button" className="lp-btn lp-btn-vazio" onClick={cadastrar}>Criar conta grátis</button>
               </div>
               <div className="lp-plano pro">
-                <span className="selo">Mais escolhido</span>
+                <span className="selo">Recomendado</span>
                 <h3>Premium</h3>
                 <div className="lp-preco">R$ 97<small>por mês</small></div>
+                <p className="lp-ancora">Cerca de <b>R$ 3,20 por dia</b>, menos que um único exame Doppler por mês.</p>
                 <ul>
                   <li>Laudos ilimitados</li>
                   <li>Até 3 locais de atendimento</li>
@@ -360,7 +384,7 @@ export default function LandingNew() {
 
         <section className="lp-final">
           <div className="lp-wrap">
-            <img className="lp-logo-final" src={`${PUB}/venoai-logo.png`} alt="VENO.AI" />
+            <img className="lp-logo-final" src={LOGO} alt="VENO.AI" />
             <h2>Seu próximo laudo de Doppler pode ficar pronto em 2 minutos.</h2>
             <p>{DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos grátis, sem cartão de crédito.</p>
             <div className="lp-hero-ctas">
@@ -371,9 +395,13 @@ export default function LandingNew() {
         </section>
       </main>
 
+      <div className={`lp-barra${barra ? " on" : ""}`} aria-hidden={!barra}>
+        <button type="button" className="lp-btn lp-btn-cheio" onClick={cadastrar} tabIndex={barra ? 0 : -1}>Começar teste grátis</button>
+      </div>
+
       <footer className="lp-rodape">
         <div className="lp-wrap lp-rodape-in">
-          <span className="lp-rodape-marca"><img src={`${PUB}/venoai-logo.png`} alt="" />© {new Date().getFullYear()} VENO.AI · Laudos de Doppler vascular</span>
+          <span className="lp-rodape-marca"><img src={LOGO} alt="" />© {new Date().getFullYear()} VENO.AI · Laudos de Doppler vascular</span>
           <span><a href="/planos">Planos</a> · <a href="/login">Entrar</a></span>
         </div>
       </footer>
