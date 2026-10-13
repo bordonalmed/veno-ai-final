@@ -19,12 +19,17 @@ import ConfirmacaoPagamento from "./pages/ConfirmacaoPagamento";
 import { AuthService } from "./services/supabaseAuthService";
 import { ativarPerfilDoUsuario, limparPerfilAtivo } from "./utils/perfilLaudo";
 import { iniciarSincronizacaoPerfil, sincronizarPerfilComConta } from "./services/perfilSyncService";
+import { migrarPlanoLegado, sincronizarPlano } from "./services/planoService";
+import AvisoPlano from "./components/AvisoPlano";
 
 // perfil do laudo: cópia no navegador + conta no Supabase (qualquer computador)
 iniciarSincronizacaoPerfil();
 function entrarComPerfil(email) {
   ativarPerfilDoUsuario(email);
   sincronizarPerfilComConta(email).catch(() => {});
+  // plano (Premium / teste) vem da conta: vale em qualquer computador
+  migrarPlanoLegado(email);
+  sincronizarPlano(email).catch(() => {});
 }
 
 class ErrorBoundary extends Component {
@@ -202,25 +207,6 @@ function AppContent() {
       localStorage.setItem("isLoggedIn", "true");
       entrarComPerfil(result.user.email);
       
-      // Verificar e sincronizar status Premium no servidor (verifica Hotmart também)
-      try {
-        const { TrialManager } = await import('./utils/trialManager');
-        
-        // Verificar Premium no servidor (inclui verificação Hotmart)
-        const planoServidor = await TrialManager.verificarPremiumNoServidor(result.user.email);
-        
-        // Se servidor retornou premium, garantir que está salvo localmente
-        if (planoServidor === 'premium') {
-          localStorage.setItem(`plano_${result.user.email}`, 'premium');
-          localStorage.setItem('plano_premium', 'true');
-          console.log('✅ Premium confirmado e sincronizado do servidor/Hotmart');
-        }
-        
-        console.log('✅ Status Premium verificado e sincronizado');
-      } catch (error) {
-        console.warn('Erro ao verificar Premium:', error);
-      }
-      
       // Marcar como logado
       setLogado(true);
 
@@ -268,6 +254,7 @@ function AppContent() {
         <Route path="/confirmacao-pagamento" element={<ConfirmacaoPagamento />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <AvisoPlano />
     </ErrorBoundary>
   );
 }

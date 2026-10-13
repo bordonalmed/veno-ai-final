@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiLogOut, FiSettings, FiList, FiZap } from "react-icons/fi";
+import { FiLogOut, FiSettings, FiList } from "react-icons/fi";
 import { GiBiceps, GiBrain, GiLeg } from "react-icons/gi";
 import IconeAbdome from "../components/IconeAbdome";
 import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
-import { TrialManager } from "../utils/trialManager";
 import BoasVindasPerfil from "../components/perfil/BoasVindasPerfil";
 import { carregarDadosPerfil, progressoPerfil, boasVindasPendente, perfilAtivo, EVENTO_PERFIL_ATUALIZADO } from "../utils/perfilLaudo";
 import TrocaPerfil from "../components/perfil/TrocaPerfil";
@@ -54,8 +53,6 @@ export default function Home({ onLogout }) {
     return () => window.removeEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
   }, []);
   const nomeMedico = perfilLaudo.nomeMedico || localStorage.getItem("nomeMedico") || "";
-  const [planoUsuario, setPlanoUsuario] = useState('trial');
-  const [carregandoPlano, setCarregandoPlano] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
   // Hook para detectar mudanças no tamanho da tela
@@ -70,27 +67,6 @@ export default function Home({ onLogout }) {
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  useEffect(() => {
-    const verificarPlano = async () => {
-      if (!userEmail) {
-        setCarregandoPlano(false);
-        return;
-      }
-      
-      try {
-        // Verificar plano (agora verifica no Firebase também)
-        const planoVerificado = await TrialManager.verificarPlanoUsuario(userEmail);
-        setPlanoUsuario(planoVerificado);
-      } catch (error) {
-        console.error('Erro ao verificar plano:', error);
-        setPlanoUsuario('trial');
-      } finally {
-        setCarregandoPlano(false);
-      }
-    };
-    
-    verificarPlano();
-  }, [userEmail]);
   
   const handleUpgrade = () => {
     navigate("/planos");
@@ -224,47 +200,6 @@ export default function Home({ onLogout }) {
       {/* Status do Trial */}
       <TrialStatus userEmail={userEmail} onUpgrade={handleUpgrade} />
       
-      {/* Botão de Upgrade Promocional */}
-      {userEmail && !carregandoPlano && planoUsuario === "trial" && (
-        <div style={{
-          background: "rgba(255, 149, 0, 0.1)",
-          border: "1px solid rgba(255, 149, 0, 0.3)",
-          color: "#ff9500",
-          padding: "10px 16px",
-          borderRadius: 8,
-          margin: "10px 20px",
-          textAlign: "center",
-          fontSize: 14
-        }}>
-          <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiZap /> Upgrade para Premium</span>
-          <span style={{ opacity: 0.8, marginLeft: 8 }}>• Laudos ilimitados</span>
-          <button
-            onClick={handleUpgrade}
-            style={{
-              background: "transparent",
-              color: "#ff9500",
-              border: "1px solid #ff9500",
-              borderRadius: 6,
-              padding: "6px 12px",
-              fontWeight: 600,
-              fontSize: 12,
-              cursor: "pointer",
-              marginLeft: 8,
-              transition: "all 0.3s ease"
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = "#ff9500";
-              e.target.style.color = "#fff";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "transparent";
-              e.target.style.color = "#ff9500";
-            }}
-          >
-            R$ 97/mês
-          </button>
-        </div>
-      )}
       
       {nomeMedico && (
         <div style={{ width: "100%", maxWidth: 820, padding: "0 20px", marginTop: 8, boxSizing: "border-box" }}>

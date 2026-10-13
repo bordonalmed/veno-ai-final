@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import EnviarLaudo from "../components/EnviarLaudo";
+import { liberarLaudo } from "../services/planoService";
 import { temAcessoEnvio } from "../utils/envioLaudo";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
@@ -253,6 +254,7 @@ function MMSSArterial() {
       alert('Preencha todos os campos obrigatórios antes de salvar!');
       return;
     }
+    if (!(await liberarLaudo({ tipoNome: "MMSS Arterial", nome, data }))) return;
 
     const dadosExame = {
       nome,
@@ -276,12 +278,14 @@ function MMSSArterial() {
     }
   }
 
-  function handleSalvarTXT() {
+  async function handleSalvarTXT() {
+    if (!(await liberarLaudo({ tipoNome: "MMSS Arterial", nome, data }))) return;
     const blob = new Blob([gerarTextoLaudo()], { type: "text/plain;charset=utf-8" });
     saveAs(blob, `Laudo_${nome}_${data}.txt`);
   }
 
   async function handleSalvarPDF(opcoes = {}) {
+    if (!(await liberarLaudo({ tipoNome: "MMSS Arterial", nome, data }))) return opcoes && opcoes.retornarBlob ? { bloqueado: true } : undefined;
     // Buscar dados do localStorage
     const nomeMedico = localStorage.getItem("nomeMedico") || "";
     const crm = localStorage.getItem("crm") || "";

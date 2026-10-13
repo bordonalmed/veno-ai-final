@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiStar, FiZap, FiAward, FiCreditCard } from "react-icons/fi";
 import { FaGem } from "react-icons/fa";
+import { ehPremium, statusTeste, linkPagamento, DIAS_TESTE, LAUDOS_TESTE } from "../services/planoService";
 
 const FAQ = [
   {
-    pergunta: "O que acontece quando o trial de 7 dias acaba?",
-    resposta: "Você pode assinar o Premium a qualquer momento para continuar gerando laudos ilimitados. Seus dados e exames salvos continuam disponíveis."
+    pergunta: "Como funciona o teste gratuito?",
+    resposta: "Começa no seu primeiro laudo e vale por 7 dias ou 5 laudos (o que acabar primeiro). Gerar de novo o laudo do mesmo paciente não conta outra vez."
+  },
+  {
+    pergunta: "O que acontece quando o teste acaba?",
+    resposta: "Para gerar novos laudos é preciso assinar o Premium. Seus exames já feitos continuam disponíveis em Exames Realizados."
   },
   {
     pergunta: "Preciso de cartão de crédito para o teste gratuito?",
-    resposta: "Não. O Trial Gratuito não pede nenhum dado de pagamento — é só começar a usar."
+    resposta: "Não. O Teste Gratuito não pede nenhum dado de pagamento — é só começar a usar."
   },
   {
     pergunta: "Posso cancelar o Premium quando quiser?",
@@ -20,28 +25,33 @@ const FAQ = [
     pergunta: "O pagamento é seguro?",
     resposta: "Sim, o pagamento do plano Premium é processado pela Hotmart, uma das maiores plataformas de pagamento do Brasil."
   },
+  {
+    pergunta: "Usei outro e-mail no pagamento. E agora?",
+    resposta: "O Premium é ligado ao e-mail da sua conta no VENO.AI. Ao assinar por aqui, o pagamento já abre com esse e-mail; se pagou com outro, fale com o suporte informando os dois e-mails."
+  },
 ];
 
 export default function Planos() {
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("userEmail");
+  const premium = ehPremium(userEmail || "");
+  const teste = statusTeste(userEmail || "");
 
   const [mostrarConfirmacaoPremium, setMostrarConfirmacaoPremium] = useState(false);
 
   const planos = [
     {
       id: "trial",
-      nome: "Trial Gratuito",
+      nome: "Teste Gratuito",
       preco: "R$ 0",
-      periodo: "7 dias",
+      periodo: `${DIAS_TESTE} dias ou ${LAUDOS_TESTE} laudos`,
       icone: <FiStar size={24} />,
       cor: "#11b581",
       recursos: [
-        "Acesso completo por 7 dias",
-        "Até 5 laudos gerados",
-        "Todos os templates",
-        "Armazenamento local",
-        "PDF completo"
+        `Tudo do Premium por ${DIAS_TESTE} dias`,
+        `Até ${LAUDOS_TESTE} laudos`,
+        "Começa no primeiro laudo",
+        "Sem cartão de crédito",
       ],
       popular: false,
       trial: true
@@ -55,49 +65,48 @@ export default function Planos() {
       cor: "#0eb8d0",
       recursos: [
         "Laudos ilimitados",
-        "Uso ilimitado no tempo",
-        "Todos os templates",
-        "Suporte prioritário",
-        "Armazenamento em nuvem",
-        "Relatórios detalhados",
-        "Templates personalizados"
+        "7 tipos de exame com mapa interativo",
+        "PDF com seu logo e assinatura",
+        "Até 3 locais de atendimento",
+        "Envio do laudo por WhatsApp e e-mail",
+        "Exames e perfil salvos na nuvem (qualquer computador)",
+        "Cancele quando quiser",
       ],
       popular: true
     }
   ];
 
+  // O teste começa sozinho no primeiro laudo; este botão não reinicia o
+  // teste nem mexe no Premium (antes ele zerava o teste e tirava o Premium).
   function iniciarTrial() {
-    if (userEmail) {
-      localStorage.setItem(`plano_${userEmail}`, "trial");
-      localStorage.setItem(`trial_${userEmail}`, JSON.stringify({
-        inicio: new Date().toISOString(),
-        laudosGerados: [],
-        status: "ativo"
-      }));
-
-      alert("🎯 Trial Gratuito iniciado! Você tem 7 dias e 5 laudos para testar todos os recursos.");
-      navigate("/home");
-    } else {
-      alert("🎯 Trial Gratuito selecionado! Faça login para começar seus 7 dias de teste.");
-      navigate("/login");
-    }
+    if (!userEmail) { navigate("/login"); return; }
+    navigate("/home");
   }
 
   function solicitarPremium() {
     if (!userEmail) {
-      alert("💎 Plano Premium selecionado! Faça login para continuar.");
       navigate("/login");
       return;
     }
+    if (premium) { navigate("/home"); return; }
     setMostrarConfirmacaoPremium(true);
   }
 
   function confirmarPagamentoPremium() {
-    localStorage.setItem("emailCompraPendente", userEmail);
-    const hotmartLink = "https://pay.hotmart.com/S102049895B";
-    window.open(hotmartLink, "_blank");
+    window.open(linkPagamento(userEmail), "_blank", "noopener,noreferrer");
     setMostrarConfirmacaoPremium(false);
     navigate("/confirmacao-pagamento");
+  }
+
+  function textoBotao(plano) {
+    if (!userEmail) return plano.trial ? "Criar conta e testar" : "Assinar Premium";
+    if (plano.trial) {
+      if (premium) return "Você já é Premium";
+      if (teste.status === "ativo") return `Em teste: ${teste.diasRestantes} ${teste.diasRestantes === 1 ? "dia" : "dias"} e ${teste.laudosRestantes} ${teste.laudosRestantes === 1 ? "laudo" : "laudos"}`;
+      if (teste.status === "expirado") return "Teste encerrado";
+      return "Começar a usar";
+    }
+    return premium ? "Seu plano atual" : "Assinar Premium";
   }
 
   function handleEscolherPlano(planoId) {
@@ -175,7 +184,7 @@ export default function Planos() {
             margin: "0 auto",
             lineHeight: 1.4
           }}>
-            Teste gratuitamente por 7 dias ou aproveite todos os recursos com o plano Premium
+            Teste grátis por {DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos, sem cartão. Depois, Premium por R$ 97/mês.
           </p>
         </div>
 
@@ -317,7 +326,7 @@ export default function Planos() {
                 }}
               >
                 <FiCheck size={16} />
-                {plano.trial ? "Começar Trial Gratuito" : "Assinar Premium"}
+                {textoBotao(plano)}
               </div>
             </button>
           ))}
@@ -389,7 +398,7 @@ export default function Planos() {
             </h3>
             <p style={{ margin: "0 0 20px", fontSize: 14, lineHeight: 1.5, color: "#c7d4db" }}>
               Você será redirecionado para o pagamento seguro via Hotmart, em uma nova aba.
-              Após o pagamento, seu plano será ativado automaticamente.
+              Use o e-mail <strong>{userEmail}</strong> no pagamento: é a ele que o Premium fica ligado.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button

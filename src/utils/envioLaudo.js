@@ -1,7 +1,7 @@
 // Envio do laudo ao paciente: mensagem pronta (modelo editável em
 // Configurações), telefone normalizado para o WhatsApp e compartilhamento
 // com o PDF já anexado quando o aparelho permite (celular).
-import { TrialManager } from "./trialManager";
+import { ehPremium, statusTeste } from "../services/planoService";
 import { formatarDataDiaMesAno } from "./pdfExameSalvo";
 
 export const CHAVE_MODELO = "modeloMensagemLaudo";
@@ -22,8 +22,8 @@ export const VARIAVEIS_MENSAGEM = [
 // Mesmo critério em todas as telas: Premium, ou teste gratuito ativo / ainda
 // não iniciado (antes Configurações e Exames Realizados discordavam).
 export function temAcessoEnvio(email = localStorage.getItem("userEmail") || "") {
-  if (localStorage.getItem("plano_premium") === "true" || localStorage.getItem(`plano_${email}`) === "premium") return true;
-  const t = TrialManager.verificarTrial(email);
+  if (ehPremium(email)) return true;
+  const t = statusTeste(email);
   return t.status === "ativo" || t.status === "nao_iniciado";
 }
 

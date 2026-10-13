@@ -43,7 +43,11 @@ export default function EnviarLaudo({ aberto, onFechar, obterPdf, info, telefone
     if (!gerando.current) {
       gerando.current = true;
       Promise.resolve(obterPdf())
-        .then((r) => (r?.blob ? setPdf(r) : setErroPdf("Preencha o exame antes de enviar (nome, idade e data).")))
+        .then((r) => {
+          if (r?.bloqueado) { onFechar(); return; } // teste gratuito encerrado: aparece o aviso do plano
+          if (r?.blob) setPdf(r);
+          else setErroPdf("Preencha o exame antes de enviar (nome, idade e data).");
+        })
         .catch(() => setErroPdf("Não foi possível gerar o PDF."));
     }
     // eslint-disable-next-line

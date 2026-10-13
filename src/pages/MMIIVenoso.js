@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import EnviarLaudo from "../components/EnviarLaudo";
+import { liberarLaudo } from "../services/planoService";
 import { temAcessoEnvio } from "../utils/envioLaudo";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
@@ -499,6 +500,7 @@ function MMIIVenoso() {
       setErro("Preencha nome, data e lado antes de salvar o exame!");
       return;
     }
+    if (!(await liberarLaudo({ tipoNome: "Doppler Venoso de Membros Inferiores", nome, data }))) return;
     
     // Gera o laudo sempre a partir do estado atual (e não do laudoTexto já
     // exibido), pra garantir que reflita edições feitas depois de
@@ -558,11 +560,12 @@ function MMIIVenoso() {
   // exibido), pra garantir que reflita edições feitas depois de
   // "Visualizar Laudo" — por exemplo, ao salvar direto de dentro do Mapa
   // Interativo, sem precisar fechá-lo antes.
-  function handleSalvarTXT() {
+  async function handleSalvarTXT() {
     if (!nome || !data || !lado) {
       alert("Preencha nome, data e lado antes de salvar o exame!");
       return;
     }
+    if (!(await liberarLaudo({ tipoNome: "Doppler Venoso de Membros Inferiores", nome, data }))) return;
     const laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes });
     const blob = new Blob([laudo], { type: "text/plain;charset=utf-8" });
     saveAs(blob, `Laudo_${nome}_${data}.txt`);
@@ -584,6 +587,7 @@ function MMIIVenoso() {
     if (!paraEnvio && !window.confirm("Isso vai baixar o PDF e limpar o formulário para um novo exame. Deseja continuar?")) {
       return;
     }
+    if (!(await liberarLaudo({ tipoNome: "Doppler Venoso de Membros Inferiores", nome, data }))) return opcoes && opcoes.retornarBlob ? { bloqueado: true } : undefined;
     const laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes });
     // Buscar dados do localStorage
     const nomeMedico = localStorage.getItem("nomeMedico") || "";
