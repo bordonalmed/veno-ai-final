@@ -191,7 +191,7 @@ export default function LandingNew() {
           <div className="lp-wrap lp-hero-grid">
             <div>
               <img className="lp-logo-hero" src={LOGO} alt="VENO.AI" />
-              <p className="lp-sobre">Para quem lauda Doppler vascular</p>
+              <p className="lp-sobre">Inteligência para o laudo vascular</p>
               <h1>Laudos de Doppler vascular <em>em minutos</em>, com seu logo e assinatura.</h1>
               <p className="lp-hero-sub">Clique nos vasos do desenho e o laudo se escreve sozinho, com a conclusão pronta. Salve em PDF ou envie ao paciente pelo WhatsApp.</p>
               <div className="lp-hero-ctas">
