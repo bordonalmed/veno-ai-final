@@ -93,7 +93,7 @@ function DemoAoVivo() {
     const el = caixa.current;
     if (el) {
       const alvo = mudaram.length ? el.querySelector(`[data-l="${mudaram[0]}"]`) : null;
-      el.scrollTop = alvo ? Math.max(0, alvo.offsetTop - 120) : 0;
+      el.scrollTop = alvo ? Math.max(0, alvo.offsetTop - 50) : 0;
     }
     const t = setTimeout(() => setNovas([]), 1500);
     return () => clearTimeout(t);
@@ -191,7 +191,7 @@ export default function LandingNew() {
           <div className="lp-wrap lp-hero-grid">
             <div>
               <img className="lp-logo-hero" src={LOGO} alt="VENO.AI" />
-              <p className="lp-sobre">Para quem lauda Doppler vascular</p>
+              <p className="lp-sobre lp-slogan">Inteligência para o laudo vascular</p>
               <h1>Laudos de Doppler vascular <em>em minutos</em>, com seu logo e assinatura.</h1>
               <p className="lp-hero-sub">Clique nos vasos do desenho e o laudo se escreve sozinho, com a conclusão pronta. Salve em PDF ou envie ao paciente pelo WhatsApp.</p>
               <div className="lp-hero-ctas">
