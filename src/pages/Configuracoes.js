@@ -8,7 +8,7 @@ import { FaGem } from "react-icons/fa";
 import { TrialManager } from "../utils/trialManager";
 import { AuthService } from "../services/supabaseAuthService";
 import { EVENTO_PERFIL_NA_CONTA } from "../services/perfilSyncService";
-import { ehPremium, linkPagamento } from "../services/planoService";
+import { ehPremium, linkPagamento, premiumAte } from "../services/planoService";
 import { lerModeloMensagem, salvarModeloMensagem, montarMensagem, MODELO_PADRAO, VARIAVEIS_MENSAGEM } from "../utils/envioLaudo";
 import {
   ativarPerfilDoUsuario, carregarDadosPerfil, salvarDadosPerfil, normalizarDados, perfilAtivo, progressoPerfil, EVENTO_PERFIL_ATUALIZADO,
@@ -292,7 +292,11 @@ export default function Configuracoes() {
 
   let planoTitulo, planoTexto, planoCor;
   if (isPremium) {
-    planoTitulo = "Premium"; planoTexto = "Laudos ilimitados, até 3 locais de atendimento e envio por WhatsApp/e-mail."; planoCor = TEMA.ok;
+    const ate = premiumAte(email);
+    planoTitulo = "Premium"; planoCor = TEMA.ok;
+    planoTexto = ate
+      ? `Assinatura cancelada: o Premium continua até ${new Date(ate).toLocaleDateString("pt-BR")}.`
+      : "Laudos ilimitados, até 3 locais de atendimento e envio por WhatsApp/e-mail.";
   } else if (trial.status === "ativo") {
     planoTitulo = "Teste gratuito";
     planoTexto = `Restam ${trial.diasRestantes} ${trial.diasRestantes === 1 ? "dia" : "dias"} e ${trial.laudosRestantes} ${trial.laudosRestantes === 1 ? "laudo" : "laudos"}.`;
