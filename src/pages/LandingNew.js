@@ -67,6 +67,13 @@ function DemoAoVivo() {
   const [novas, setNovas] = useState([]);
   const anterior = useRef(laudoDe(estadoNoPasso(ULTIMO)).split("\n"));
   const caixa = useRef(null);
+  const pausaAte = useRef(0);
+  const [noFim, setNoFim] = useState(false);
+  const verFim = () => {
+    const el = caixa.current;
+    if (el) setNoFim(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
+  };
+  const pausar = (ms) => () => { pausaAte.current = Date.now() + ms; };
 
   const estado = useMemo(() => estadoNoPasso(passo), [passo]);
   const laudo = useMemo(() => laudoDe(estado), [estado]);
@@ -77,8 +84,10 @@ function DemoAoVivo() {
     if (calmo) return undefined;
     let timer;
     const avancar = (n) => {
+      // parado enquanto o visitante lê o laudo (mouse em cima ou toque)
+      if (Date.now() < pausaAte.current) { timer = setTimeout(() => avancar(n), 400); return; }
       setPasso(n);
-      timer = setTimeout(() => avancar(n >= ULTIMO ? 0 : n + 1), n >= ULTIMO ? 4200 : n === 0 ? 1600 : 2300);
+      timer = setTimeout(() => avancar(n >= ULTIMO ? 0 : n + 1), n >= ULTIMO ? 5200 : n === 0 ? 1600 : 2300);
     };
     timer = setTimeout(() => avancar(0), 3500);
     return () => clearTimeout(timer);
@@ -92,8 +101,12 @@ function DemoAoVivo() {
     setNovas(mudaram);
     const el = caixa.current;
     if (el) {
-      const alvo = mudaram.length ? el.querySelector(`[data-l="${mudaram[0]}"]`) : null;
-      el.scrollTop = alvo ? Math.max(0, alvo.offsetTop - 50) : 0;
+      // no último passo mostra a conclusão; nos outros, a primeira linha que mudou
+      const conclusao = linhas.findIndex((l) => /^CONCLUS/.test(l.trim()));
+      const linha = passo === ULTIMO && mudaram.length && conclusao >= 0 ? conclusao : mudaram[0];
+      const alvo = linha !== undefined ? el.querySelector(`[data-l="${linha}"]`) : null;
+      el.scrollTop = alvo ? Math.max(0, alvo.offsetTop - 40) : 0;
+      verFim();
     }
     const t = setTimeout(() => setNovas([]), 1500);
     return () => clearTimeout(t);
@@ -101,7 +114,14 @@ function DemoAoVivo() {
   }, [laudo]);
 
   return (
-    <div className="lp-demo" aria-label="Demonstração: o laudo é escrito conforme os achados marcados no desenho">
+    <div
+      className="lp-demo"
+      aria-label="Demonstração: o laudo é escrito conforme os achados marcados no desenho"
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") pausaAte.current = Infinity; }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") pausaAte.current = Date.now() + 1200; }}
+      onTouchStart={pausar(9000)}
+      onFocus={pausar(9000)}
+    >
       <div className="lp-demo-top">
         <div className="lp-demo-tit"><MarcaVenoMap escala={0.62} /><span className="sep">|</span> Doppler venoso de MMII <small>· {LADO}</small></div>
         <span className="lp-demo-acao" aria-live="polite">{PASSOS[passo].acao}</span>
@@ -118,11 +138,11 @@ function DemoAoVivo() {
             varizes={estado.varizes}
           />
         </div>
-        <div className="lp-demo-laudo">
-          <div className="lp-demo-laudo-tit">Laudo — atualizado em tempo real</div>
-          <div className="lp-demo-txt" ref={caixa}>
+        <div className={`lp-demo-laudo${noFim ? " fim" : ""}`}>
+          <div className="lp-demo-laudo-tit">Laudo — atualizado em tempo real <small>role para ler ↓</small></div>
+          <div className="lp-demo-txt" ref={caixa} onScroll={verFim} tabIndex={0} aria-label="Texto do laudo de exemplo">
             {linhas.map((l, i) => (
-              <span key={i} data-l={i} className={`lin${novas.includes(i) ? " nova" : ""}${/^[A-ZÁÉÍÓÚÇ ]+:$|^Sistema|^Veias Perfurantes|^DOPPLER/.test(l.trim()) ? " tit" : ""}`}>{l || " "}</span>
+              <span key={i} data-l={i} className={`lin${novas.includes(i) ? " nova" : ""}${/^[A-ZÁÉÍÓÚÂÊÔÃÕÇ ]+:$|^Sistema|^Veias Perfurantes|^DOPPLER/.test(l.trim()) ? " tit" : ""}`}>{l || " "}</span>
             ))}
           </div>
         </div>
