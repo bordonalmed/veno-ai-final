@@ -1,6 +1,9 @@
 # Netlify Redirects para VENO.AI
 # Redireciona todas as rotas para index.html (SPA)
 
+# Funções do servidor (aviso da Hotmart etc.) — antes da regra do app
+/api/*    /.netlify/functions/:splat   200
+
 /*    /index.html   200
 
 # Redirects específicos (opcional)
