@@ -3,8 +3,8 @@
 // - Premium vale por usuário (antes havia uma marca para o navegador inteiro,
 //   e o segundo médico do mesmo computador herdava o Premium do primeiro).
 // - A conta (Supabase) é a fonte: Premium marcado lá vale em qualquer
-//   computador. Nesta etapa o app nunca tira o Premium sozinho — quem já é
-//   Premium continua sendo (a retirada virá do aviso da Hotmart).
+//   computador. O Premium só é retirado quando a Hotmart avisa (reembolso,
+//   chargeback ou fim da assinatura cancelada); Premium antigo continua.
 // - Teste gratuito: 7 dias ou 5 laudos, começando no primeiro laudo. Fica
 //   registrado na conta (função registrar_laudo_teste do Supabase); sem ela,
 //   fica neste navegador. Gerar de novo o laudo do mesmo paciente/exame/data
@@ -140,18 +140,44 @@ export async function liberarLaudo(info) {
   return d.permitido;
 }
 
-// Ao entrar / abrir o app: traz o plano da conta. Só acrescenta Premium,
-// nunca tira (quem já é Premium continua).
+// Ao entrar / abrir o app: traz o plano da conta (função meu_plano do
+// Supabase, que também aplica compras da Hotmart e o fim do período pago).
+// Só tira o Premium deste navegador quando a conta diz que ele foi retirado
+// por um aviso da Hotmart (reembolso, chargeback, fim da assinatura); Premium
+// antigo ou ativado à mão nunca é retirado aqui.
+let meuPlanoIndisponivel = false;
+async function lerPlanoDaConta(user) {
+  if (!meuPlanoIndisponivel) {
+    const { data, error } = await supabase.rpc("meu_plano");
+    if (!error && data && typeof data === "object") return data;
+    if (error && /PGRST202|42883|does not exist|could not find/i.test(`${error.code || ""} ${error.message || ""}`)) meuPlanoIndisponivel = true;
+    else if (error) return null;
+  }
+  let resp = await supabase.from("users").select("premium, plano, trial_comeco, trial_laudos").eq("id", user.id).maybeSingle();
+  if (resp.error) resp = await supabase.from("users").select("premium, plano").eq("id", user.id).maybeSingle();
+  if (resp.error) return null;
+  const c = resp.data || {};
+  return { premium: c.premium === true || c.plano === "premium", trial_comeco: c.trial_comeco, trial_laudos: c.trial_laudos };
+}
+
+export function premiumAte(email = emailAtual()) {
+  try { return localStorage.getItem(`plano_ate_${email}`) || null; } catch (_) { return null; }
+}
+
 export async function sincronizarPlano(email = emailAtual()) {
   migrarPlanoLegado(email);
   const user = await usuarioDaConta();
   if (!user || !email) return { ok: false, premium: ehPremium(email) };
-  let resp = await supabase.from("users").select("premium, plano, trial_comeco, trial_laudos").eq("id", user.id).maybeSingle();
-  if (resp.error) resp = await supabase.from("users").select("premium, plano").eq("id", user.id).maybeSingle();
-  if (resp.error) return { ok: false, premium: ehPremium(email) };
-  const conta = resp.data || {};
+  let conta;
+  try { conta = await lerPlanoDaConta(user); } catch (_) { conta = null; }
+  if (!conta) return { ok: false, premium: ehPremium(email) };
   const eraPremium = ehPremium(email);
-  if (conta.premium === true || conta.plano === "premium") marcarPremium(email);
+  try {
+    if (conta.premium) marcarPremium(email);
+    else if (conta.revogado) localStorage.removeItem(`plano_${email}`);
+    if (conta.premium && conta.premium_ate) localStorage.setItem(`plano_ate_${email}`, conta.premium_ate);
+    else localStorage.removeItem(`plano_ate_${email}`);
+  } catch (_) {}
   if (!ehPremium(email) && conta.trial_comeco) {
     gravarTeste(email, { inicio: conta.trial_comeco, chaves: Array.isArray(conta.trial_laudos) ? conta.trial_laudos : [] });
   }
