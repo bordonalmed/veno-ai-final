@@ -24,7 +24,8 @@ export default function Login({ onLogin, onCadastrar }) {
   const [erro, setErro] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
-  const [modo, setModo] = useState("login"); // "login", "cadastro" ou "recuperar"
+  // "login", "cadastro" ou "recuperar"; vindo do "Teste grátis" da vitrine (?cadastro) já abre o cadastro
+  const [modo, setModo] = useState(() => (new URLSearchParams(window.location.search).has("cadastro") ? "cadastro" : "login"));
   const navigate = useNavigate();
 
   const [emailRecuperacao, setEmailRecuperacao] = useState("");
