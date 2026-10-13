@@ -153,7 +153,7 @@ export default function LandingNew() {
     <div className="lp">
       <header className="lp-nav">
         <div className="lp-wrap lp-nav-in">
-          <a href="#topo" className="lp-marca" onClick={ir("topo")} aria-label="VENO.AI — início"><span className="lp-selo-logo"><img src={`${PUB}/venoai-logo.png`} alt="VENO.AI" /></span></a>
+          <a href="#topo" className="lp-marca" onClick={ir("topo")} aria-label="VENO.AI — início"><img className="lp-logo-nav" src={`${PUB}/venoai-logo.png`} alt="VENO.AI" /></a>
           <nav className="lp-links" aria-label="Seções">
             <a href="#exames" onClick={ir("exames")}>Exames</a>
             <a href="#como" className="esc" onClick={ir("como")}>Como funciona</a>
@@ -171,6 +171,7 @@ export default function LandingNew() {
         <section className="lp-hero" id="topo">
           <div className="lp-wrap lp-hero-grid">
             <div>
+              <img className="lp-logo-hero" src={`${PUB}/venoai-logo.png`} alt="VENO.AI" />
               <p className="lp-sobre">Para quem lauda Doppler vascular</p>
               <h1>Laudos de Doppler vascular <em>em minutos</em>, com seu logo e assinatura.</h1>
               <p className="lp-hero-sub">Clique nos vasos do desenho e o laudo se escreve sozinho, com a conclusão pronta. Salve em PDF ou envie ao paciente pelo WhatsApp.</p>
@@ -298,7 +299,7 @@ export default function LandingNew() {
         <section className="lp-faixa">
           <div className="lp-wrap">
             <div className="lp-autor">
-              <div className="lp-autor-selo"><span className="lp-selo-logo grande"><img src={`${PUB}/venoai-logo.png`} alt="" /></span></div>
+              <div className="lp-autor-selo"><img className="lp-logo-brilho" src={`${PUB}/venoai-logo.png`} alt="" /></div>
               <div>
                 <blockquote>Criado por um cirurgião vascular que lauda Doppler todos os dias, para a rotina real do consultório.</blockquote>
                 <p>A nomenclatura, a ordem dos vasos e as conclusões seguem a prática da ultrassonografia vascular.</p>
@@ -359,6 +360,7 @@ export default function LandingNew() {
 
         <section className="lp-final">
           <div className="lp-wrap">
+            <img className="lp-logo-final" src={`${PUB}/venoai-logo.png`} alt="VENO.AI" />
             <h2>Seu próximo laudo de Doppler pode ficar pronto em 2 minutos.</h2>
             <p>{DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos grátis, sem cartão de crédito.</p>
             <div className="lp-hero-ctas">
@@ -371,7 +373,7 @@ export default function LandingNew() {
 
       <footer className="lp-rodape">
         <div className="lp-wrap lp-rodape-in">
-          <span>© {new Date().getFullYear()} VENO.AI · Laudos de Doppler vascular</span>
+          <span className="lp-rodape-marca"><img src={`${PUB}/venoai-logo.png`} alt="" />© {new Date().getFullYear()} VENO.AI · Laudos de Doppler vascular</span>
           <span><a href="/planos">Planos</a> · <a href="/login">Entrar</a></span>
         </div>
       </footer>

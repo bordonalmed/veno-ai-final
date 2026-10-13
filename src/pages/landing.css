@@ -43,9 +43,17 @@
 .lp-nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: rgba(13, 20, 31, 0.86); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(36, 52, 75, 0.7); }
 .lp-nav-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 12px; }
 .lp-marca { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: 0.05em; }
-.lp-selo-logo { width: 52px; height: 52px; border-radius: 12px; overflow: hidden; display: inline-block; flex-shrink: 0; background: linear-gradient(135deg, #101824 0%, #1c2740 100%); box-shadow: 0 2px 10px rgba(22, 147, 224, 0.35); }
-.lp-selo-logo img { width: 124%; height: 124%; margin: -12%; display: block; }
-.lp-selo-logo.grande { width: 96px; height: 96px; border-radius: 22px; }
+/* marca: o mesmo logo e o mesmo brilho azul da tela inicial do programa */
+.lp-logo-nav { height: 62px; width: auto; margin-block: -8px; filter: drop-shadow(0 4px 14px rgba(0, 224, 255, 0.45)); }
+.lp-logo-hero { display: block; width: clamp(130px, 13vw, 178px); height: auto; margin: -8px 0 14px -10px; filter: drop-shadow(0 8px 25px rgba(0, 224, 255, 0.56)); animation: lpBrilho 3s ease-in-out infinite alternate; }
+.lp-logo-brilho { width: 120px; height: auto; filter: drop-shadow(0 8px 25px rgba(0, 224, 255, 0.5)); }
+.lp-logo-final { display: block; width: clamp(110px, 11vw, 140px); height: auto; margin: 0 auto 18px; filter: drop-shadow(0 8px 25px rgba(0, 224, 255, 0.56)); animation: lpBrilho 3s ease-in-out infinite alternate; }
+.lp-rodape-marca { display: inline-flex; align-items: center; gap: 10px; }
+.lp-rodape-marca img { width: 38px; height: auto; filter: drop-shadow(0 2px 8px rgba(0, 224, 255, 0.35)); }
+@keyframes lpBrilho {
+  from { filter: drop-shadow(0 8px 25px rgba(0, 224, 255, 0.56)); }
+  to { filter: drop-shadow(0 12px 38px rgba(0, 224, 255, 0.82)); }
+}
 .lp-links { display: flex; align-items: center; gap: 22px; font-size: 14.5px; color: var(--fg-2); }
 .lp-links a:hover { color: var(--fg); }
 .lp-acoes { display: flex; align-items: center; gap: 10px; }
@@ -60,7 +68,7 @@
 .lp-btn-peq { padding: 9px 16px; font-size: 14.5px; }
 
 /* hero */
-.lp-hero { padding-block: 56px 64px; background: radial-gradient(900px 480px at 85% 10%, rgba(14, 184, 208, 0.12), transparent 70%), radial-gradient(700px 420px at 0% 100%, rgba(63, 127, 224, 0.10), transparent 70%); }
+.lp-hero { padding-block: 40px 64px; background: radial-gradient(900px 480px at 85% 10%, rgba(14, 184, 208, 0.12), transparent 70%), radial-gradient(700px 420px at 0% 100%, rgba(63, 127, 224, 0.10), transparent 70%); }
 .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: 48px; align-items: center; }
 .lp-sobre { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
 .lp-hero h1 { font-size: clamp(32px, 4.3vw, 50px); font-weight: 800; }
@@ -197,7 +205,12 @@
 }
 @media (max-width: 640px) {
   .lp-wrap { padding-inline: 16px; }
-  .lp-hero { padding-block: 32px 44px; }
+  .lp-hero { padding-block: 24px 44px; }
+  .lp-logo-nav { height: 54px; }
+  .lp-logo-hero { width: 128px; margin: -4px auto 10px; }
+  .lp-hero-grid > div:first-child { text-align: center; }
+  .lp-hero-grid > div:first-child .lp-hero-sub { margin-inline: auto; }
+  .lp-hero-garantias { justify-content: center; }
   .lp-faixa { padding-block: 52px; }
   .lp-passos, .lp-compara, .lp-planos { grid-template-columns: minmax(0, 1fr); }
   .lp-exame.destaque { grid-column: span 2; flex-direction: column; }
@@ -214,6 +227,7 @@
   .lp-hero-ctas .lp-btn { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .lp-logo-hero, .lp-logo-final { animation: none; }
   .lp-btn, .lp-exame, .lp-demo-txt .lin, .lp-demo-acao { transition: none; }
   .lp-demo-txt { scroll-behavior: auto; }
 }
