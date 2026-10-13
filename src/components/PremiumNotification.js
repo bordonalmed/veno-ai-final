@@ -1,40 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { FaCrown } from 'react-icons/fa';
-import { TrialManager } from '../utils/trialManager';
+import { EVENTO_PLANO_ATUALIZADO } from '../services/planoService';
 
 export default function PremiumNotification({ userEmail }) {
   const [mostrarNotificacao, setMostrarNotificacao] = useState(false);
-  const [plano, setPlano] = useState('trial');
 
+  // aparece quando a conta acabou de trazer o Premium para este navegador
   useEffect(() => {
-    const verificarStatus = async () => {
-      if (!userEmail) return;
-
-      try {
-        // Verificar plano (agora verifica no Firebase também)
-        const planoVerificado = await TrialManager.verificarPlanoUsuario(userEmail);
-        const planoLocal = localStorage.getItem(`plano_${userEmail}`);
-        
-        setPlano(planoVerificado);
-
-        // Se detectou Premium no Firebase mas não tinha localmente, mostrar notificação
-        if (planoVerificado === 'premium' && planoLocal !== 'premium') {
-          setMostrarNotificacao(true);
-          
-          // Auto-esconder após 5 segundos
-          setTimeout(() => {
-            setMostrarNotificacao(false);
-          }, 5000);
-        }
-      } catch (error) {
-        console.error('Erro ao verificar status Premium:', error);
+    let timer;
+    const f = (e) => {
+      if (e.detail?.ativouAgora && (!userEmail || e.detail.email === userEmail)) {
+        setMostrarNotificacao(true);
+        clearTimeout(timer);
+        timer = setTimeout(() => setMostrarNotificacao(false), 5000);
       }
     };
-
-    verificarStatus();
+    window.addEventListener(EVENTO_PLANO_ATUALIZADO, f);
+    return () => { window.removeEventListener(EVENTO_PLANO_ATUALIZADO, f); clearTimeout(timer); };
   }, [userEmail]);
 
-  if (!mostrarNotificacao || plano !== 'premium') {
+  if (!mostrarNotificacao) {
     return null;
   }
 
@@ -59,10 +44,10 @@ export default function PremiumNotification({ userEmail }) {
         <div style={{ fontSize: 24, display: 'flex' }}><FaCrown /></div>
         <div>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>
-            Status Premium Detectado!
+            Premium ativo!
           </div>
           <div style={{ fontSize: 12, opacity: 0.9 }}>
-            Seu plano Premium foi sincronizado automaticamente
+            Seu plano Premium foi confirmado na sua conta
           </div>
         </div>
       </div>

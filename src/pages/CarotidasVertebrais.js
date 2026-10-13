@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import EnviarLaudo from "../components/EnviarLaudo";
+import { liberarLaudo } from "../services/planoService";
 import { temAcessoEnvio } from "../utils/envioLaudo";
 import { SeletorPerfilLaudo } from "../components/perfil/TrocaPerfil";
 import { saveAs } from "file-saver";
@@ -235,6 +236,7 @@ function CarotidasVertebrais() {
       setErro("Preencha nome e data antes de salvar o exame!");
       return;
     }
+    if (!(await liberarLaudo({ tipoNome: "Carótidas e Vertebrais", nome, data }))) return;
     
     const todosVasos = { ...carotidasDireitas, ...carotidasEsquerdas, ...vertebrais };
     const erroValidacao = validarVasos(todosVasos);
@@ -274,12 +276,13 @@ function CarotidasVertebrais() {
 
   // Gera o TXT sempre a partir do estado atual (não do laudoTexto já exibido) -- permite chamar
   // isso também de dentro do Mapa Interativo, sem precisar visualizar o laudo antes.
-  function handleSalvarTXT() {
+  async function handleSalvarTXT() {
     setErro("");
     if (!nome || !data) {
       setErro("Preencha nome e data antes de salvar o exame!");
       return;
     }
+    if (!(await liberarLaudo({ tipoNome: "Carótidas e Vertebrais", nome, data }))) return;
     const erroValidacao = validarVasos(todosOsVasos);
     if (erroValidacao) {
       setErro(erroValidacao);
@@ -304,6 +307,7 @@ function CarotidasVertebrais() {
       setErro(erroValidacao);
       return;
     }
+    if (!(await liberarLaudo({ tipoNome: "Carótidas e Vertebrais", nome, data }))) return opcoes && opcoes.retornarBlob ? { bloqueado: true } : undefined;
     const laudo = montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais });
 
     const nomeMedico = localStorage.getItem("nomeMedico") || "";

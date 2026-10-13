@@ -39,7 +39,7 @@ describe("envio do laudo", () => {
     expect(temAcessoEnvio()).toBe(true); // teste ainda não iniciado
     localStorage.setItem("trial_a@x.com", JSON.stringify({ inicio: "2020-01-01T00:00:00Z", laudosGerados: [] }));
     expect(temAcessoEnvio()).toBe(false); // teste vencido
-    localStorage.setItem("plano_premium", "true");
+    localStorage.setItem("plano_a@x.com", "premium");
     expect(temAcessoEnvio()).toBe(true);
   });
 });

@@ -1,204 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import { FiRefreshCw, FiTarget, FiAlertTriangle } from 'react-icons/fi';
+import React, { useEffect, useState } from 'react';
+import { FiTarget, FiAlertTriangle, FiClock } from 'react-icons/fi';
 import { FaCrown } from 'react-icons/fa';
-import { TrialManager } from '../utils/trialManager';
+import { ehPremium, statusTeste, EVENTO_PLANO_ATUALIZADO, DIAS_TESTE, LAUDOS_TESTE } from '../services/planoService';
 
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+// Faixa do plano no menu: Premium, teste (dias e laudos restantes) ou teste
+// encerrado. Atualiza sozinha quando o plano muda (conta / novo laudo).
 export default function TrialStatus({ userEmail, onUpgrade }) {
-  const [plano, setPlano] = useState('trial');
-  const [carregando, setCarregando] = useState(true);
-  
+  const ler = () => ({ premium: ehPremium(userEmail), teste: statusTeste(userEmail) });
+  const [estado, setEstado] = useState(ler);
+
   useEffect(() => {
-    const verificarPlano = async () => {
-      if (!userEmail) {
-        setCarregando(false);
-        return;
-      }
-      
-      try {
-        // Verificar plano (agora verifica no Firebase também)
-        const planoVerificado = await TrialManager.verificarPlanoUsuario(userEmail);
-        setPlano(planoVerificado);
-      } catch (error) {
-        console.error('Erro ao verificar plano:', error);
-        setPlano('trial');
-      } finally {
-        setCarregando(false);
-      }
-    };
-    
-    verificarPlano();
+    const atualizar = () => setEstado(ler());
+    atualizar();
+    window.addEventListener(EVENTO_PLANO_ATUALIZADO, atualizar);
+    return () => window.removeEventListener(EVENTO_PLANO_ATUALIZADO, atualizar);
+    // eslint-disable-next-line
   }, [userEmail]);
-  
-  const trial = TrialManager.obterStatusTrial(userEmail);
 
-  // Mostrar carregamento enquanto verifica plano
-  if (carregando) {
-    return (
-      <div style={{
-        background: "rgba(14, 184, 208, 0.1)",
-        border: "1px solid rgba(14, 184, 208, 0.3)",
-        color: "#0eb8d0",
-        padding: "8px 16px",
-        borderRadius: 8,
-        margin: "8px 20px",
-        textAlign: "center",
-        fontSize: 14
-      }}>
-        <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiRefreshCw /> Verificando status...</span>
-      </div>
-    );
-  }
+  if (!userEmail) return null;
+  const { premium, teste } = estado;
 
-  // Se for Premium, mostrar status premium
-  if (plano === 'premium') {
-    return (
-      <div style={{
-        background: "rgba(255, 149, 0, 0.1)",
-        border: "1px solid rgba(255, 149, 0, 0.3)",
-        color: "#ff9500",
-        padding: "8px 16px",
-        borderRadius: 8,
-        margin: "8px 20px",
-        textAlign: "center",
-        fontSize: 14
-      }}>
-        <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FaCrown /> Plano Premium Ativo</span>
-        <span style={{ opacity: 0.8, marginLeft: 8 }}>• Laudos ilimitados</span>
-      </div>
-    );
-  }
-
-  // Se trial não foi iniciado, mostrar botão para iniciar
-  if (trial.status === 'nao_iniciado') {
-    return (
-      <div style={{
-        background: "rgba(17, 181, 129, 0.1)",
-        border: "1px solid rgba(17, 181, 129, 0.3)",
-        color: "#11b581",
-        padding: "8px 16px",
-        borderRadius: 8,
-        margin: "8px 20px",
-        textAlign: "center",
-        fontSize: 14
-      }}>
-        <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiTarget /> Teste Gratuito Disponível</span>
-        <span style={{ opacity: 0.8, marginLeft: 8 }}>• 7 dias + 5 laudos</span>
-      </div>
-    );
-  }
-
-  // Se trial está ativo, mostrar status
-  if (trial.status === 'ativo') {
-    return (
-      <div style={{
-        background: "rgba(14, 184, 208, 0.1)",
-        border: "1px solid rgba(14, 184, 208, 0.3)",
-        color: "#0eb8d0",
-        padding: "8px 16px",
-        borderRadius: 8,
-        margin: "8px 20px",
-        textAlign: "center",
-        fontSize: 14
-      }}>
-        <span style={{ fontWeight: 600 }}>⏰ Trial Ativo</span>
-        <span style={{ opacity: 0.8, marginLeft: 8 }}>
-          • {trial.diasRestantes} dias • {trial.laudosRestantes} laudos
-        </span>
-      </div>
-    );
-  }
-
-  // Se trial expirou, mostrar upgrade
-  if (trial.status === 'expirado') {
-    return (
-      <div style={{
-        background: "linear-gradient(135deg, #ff6b35, #e55a2b)",
-        color: "#fff",
-        padding: "12px 20px",
-        borderRadius: 10,
-        margin: "10px 20px",
-        textAlign: "center",
-        boxShadow: "0 4px 15px rgba(255, 107, 53, 0.3)"
-      }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <FiAlertTriangle /> Trial Expirado
-        </div>
-        <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
-          {trial.motivo === 'tempo' ? 'Seus 7 dias acabaram!' : 'Você usou todos os 5 laudos!'}
-        </div>
-        <button
-          onClick={onUpgrade}
-          style={{
-            background: "#fff",
-            color: "#ff6b35",
-            border: "none",
-            borderRadius: 6,
-            padding: "8px 16px",
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: "pointer",
-            transition: "all 0.3s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = "translateY(-2px)";
-            e.target.style.boxShadow = "0 4px 12px rgba(255,255,255,0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = "translateY(0)";
-            e.target.style.boxShadow = "none";
-          }}
-        >
-          Upgrade para Premium
+  const faixa = (cor, conteudo, botao) => (
+    <div style={{
+      background: `${cor}1a`, border: `1px solid ${cor}55`, color: cor, padding: "8px 14px", borderRadius: 8,
+      margin: "8px 20px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, flexWrap: "wrap", textAlign: "center",
+    }}>
+      {conteudo}
+      {botao && (
+        <button onClick={onUpgrade} style={{ background: cor, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+          {botao}
         </button>
-      </div>
-    );
-  }
+      )}
+    </div>
+  );
 
-  // Se trial está ativo, mostrar opção de upgrade
-  if (trial.status === 'ativo') {
-    return (
-      <div style={{
-        background: "linear-gradient(135deg, #0eb8d0, #0ca8b8)",
-        color: "#fff",
-        padding: "12px 20px",
-        borderRadius: 10,
-        margin: "10px 20px",
-        textAlign: "center",
-        boxShadow: "0 4px 15px rgba(14, 184, 208, 0.3)"
-      }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
-          ⏰ Trial Ativo
-        </div>
-        <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
-          {trial.diasRestantes} dias restantes • {trial.laudosRestantes} laudos restantes
-        </div>
-        <button
-          onClick={onUpgrade}
-          style={{
-            background: "#fff",
-            color: "#0eb8d0",
-            border: "none",
-            borderRadius: 6,
-            padding: "8px 16px",
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: "pointer",
-            transition: "all 0.3s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = "translateY(-2px)";
-            e.target.style.boxShadow = "0 4px 12px rgba(255,255,255,0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = "translateY(0)";
-            e.target.style.boxShadow = "none";
-          }}
-        >
-          Upgrade para Premium
-        </button>
-      </div>
-    );
+  if (premium) {
+    return faixa("#ff9500", <>
+      <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FaCrown /> Plano Premium ativo</span>
+      <span style={{ opacity: 0.85 }}>• Laudos ilimitados</span>
+    </>);
   }
-
-  return null;
+  if (teste.status === 'nao_iniciado') {
+    return faixa("#11b581", <>
+      <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiTarget /> Teste gratuito</span>
+      <span style={{ opacity: 0.85 }}>• {DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos, a partir do primeiro laudo</span>
+    </>, "Ver planos");
+  }
+  if (teste.status === 'ativo') {
+    return faixa("#0eb8d0", <>
+      <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiClock /> Teste gratuito</span>
+      <span style={{ opacity: 0.85 }}>• restam {plural(teste.diasRestantes, "dia", "dias")} e {plural(teste.laudosRestantes, "laudo", "laudos")}</span>
+    </>, "Assinar Premium");
+  }
+  return faixa("#ff6b35", <>
+    <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiAlertTriangle /> Teste gratuito encerrado</span>
+    <span style={{ opacity: 0.85 }}>• {teste.motivo === 'laudos' ? `você usou os ${LAUDOS_TESTE} laudos` : `os ${DIAS_TESTE} dias acabaram`}</span>
+  </>, "Assinar Premium");
 }

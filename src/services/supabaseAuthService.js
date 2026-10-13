@@ -103,8 +103,9 @@ class SupabaseAuthService {
           premium: false,
           trial_ativo: true,
           trial_inicio: new Date().toISOString(),
-          data_cadastro: new Date().toISOString(),
-          ...userData
+          data_cadastro: new Date().toISOString()
+          // (antes espalhava userData aqui; o campo "trialStatus" não existe
+          // na tabela e o cadastro do perfil falhava)
         })
         .select();
 
@@ -192,8 +193,9 @@ class SupabaseAuthService {
       localStorage.setItem('isLoggedIn', 'true');
       if (userProfile) {
         localStorage.setItem('userData', JSON.stringify(userProfile));
-        if (userProfile.plano) {
-          localStorage.setItem(`plano_${email}`, userProfile.plano);
+        // só acrescenta o Premium; nunca rebaixa quem já é Premium
+        if (userProfile.premium === true || userProfile.plano === 'premium') {
+          localStorage.setItem(`plano_${data.user.email}`, 'premium');
         }
       }
 

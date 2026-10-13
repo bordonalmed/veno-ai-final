@@ -8,6 +8,7 @@ import { FaGem } from "react-icons/fa";
 import { TrialManager } from "../utils/trialManager";
 import { AuthService } from "../services/supabaseAuthService";
 import { EVENTO_PERFIL_NA_CONTA } from "../services/perfilSyncService";
+import { ehPremium, linkPagamento } from "../services/planoService";
 import { lerModeloMensagem, salvarModeloMensagem, montarMensagem, MODELO_PADRAO, VARIAVEIS_MENSAGEM } from "../utils/envioLaudo";
 import {
   ativarPerfilDoUsuario, carregarDadosPerfil, salvarDadosPerfil, normalizarDados, perfilAtivo, progressoPerfil, EVENTO_PERFIL_ATUALIZADO,
@@ -17,12 +18,7 @@ import {
   TEMA, Card, CampoTexto, grade2, botao, UploadImagem, CampoAssinatura, PreviaLaudo, ESPECIALIDADES,
 } from "../components/perfil/PerfilCampos";
 
-const HOTMART_CHECKOUT_URL = "https://pay.hotmart.com/S102049895B";
 const HOTMART_ASSINATURAS_URL = "https://consumer.hotmart.com";
-
-function isUsuarioPremium(email) {
-  return localStorage.getItem("plano_premium") === "true" || localStorage.getItem(`plano_${email}`) === "premium";
-}
 
 const SECOES = [
   { id: "perfil", label: "Perfil do laudo", icon: <FiFileText /> },
@@ -63,7 +59,7 @@ export default function Configuracoes() {
   const largura = useLargura();
   const larga = largura >= 980;
   const email = localStorage.getItem("userEmail") || "";
-  const isPremium = isUsuarioPremium(email);
+  const isPremium = ehPremium(email);
   const trial = TrialManager.verificarTrial(email);
   const temAcesso = isPremium || trial.status === "ativo" || trial.status === "nao_iniciado";
 
@@ -386,7 +382,7 @@ export default function Configuracoes() {
             <p style={{ color: "#aab6c2", fontSize: 14, marginBottom: 20 }}>Você será levado para a página de pagamento da Hotmart. Após o pagamento, o plano é ativado.</p>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button type="button" style={botao("#38445e")} onClick={() => setConfirmarAssinatura(false)}>Cancelar</button>
-              <button type="button" style={botao(TEMA.ok)} onClick={() => { setConfirmarAssinatura(false); window.open(HOTMART_CHECKOUT_URL, "_blank"); navigate("/confirmacao-pagamento"); }}>Continuar</button>
+              <button type="button" style={botao(TEMA.ok)} onClick={() => { setConfirmarAssinatura(false); window.open(linkPagamento(email), "_blank", "noopener,noreferrer"); navigate("/confirmacao-pagamento"); }}>Continuar</button>
             </div>
           </div>
         </div>

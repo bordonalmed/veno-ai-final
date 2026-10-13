@@ -44,14 +44,6 @@ function corDoTipo(tipoNome) {
   return TIPO_COR[tipoNome] || "#6f8890";
 }
 
-function isUsuarioPremium() {
-  const userEmail = localStorage.getItem("userEmail") || "";
-  return (
-    localStorage.getItem("plano_premium") === "true" ||
-    localStorage.getItem(`plano_${userEmail}`) === "premium"
-  );
-}
-
 // Laudo como foi salvo (os separadores "====" entre membros já vêm no texto).
 // Antes cada linha em branco virava um separador gigante na visualização.
 function formatarLaudoParaVisualizacao(laudo) {
@@ -80,7 +72,6 @@ export default function ExamesRealizados() {
   const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [confirmacao, setConfirmacao] = useState(null); // { tipo: 'excluirUm'|'excluirSelecionados'|'limparTudo', exame? }
   const [confirmaLimparTudo, setConfirmaLimparTudo] = useState(false);
-  const isPremium = isUsuarioPremium();
   const podeEnviar = temAcessoEnvio();
 
   // Ref para armazenar o ID do listener
