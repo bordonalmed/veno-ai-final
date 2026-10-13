@@ -153,7 +153,7 @@ export default function LandingNew() {
     <div className="lp">
       <header className="lp-nav">
         <div className="lp-wrap lp-nav-in">
-          <a href="#topo" className="lp-marca" onClick={ir("topo")}><span className="lp-selo-logo"><img src={`${PUB}/venoai-logo.png`} alt="" /></span>VENO.AI</a>
+          <a href="#topo" className="lp-marca" onClick={ir("topo")} aria-label="VENO.AI — início"><span className="lp-selo-logo"><img src={`${PUB}/venoai-logo.png`} alt="VENO.AI" /></span></a>
           <nav className="lp-links" aria-label="Seções">
             <a href="#exames" onClick={ir("exames")}>Exames</a>
             <a href="#como" className="esc" onClick={ir("como")}>Como funciona</a>
