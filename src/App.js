@@ -89,21 +89,29 @@ function AppContent() {
   
   // Verificar se usuário está logado ao carregar a página
   useEffect(() => {
-    const verificarLogin = () => {
+    const verificarLogin = async () => {
       try {
         const userEmail = localStorage.getItem('userEmail');
         const isLoggedIn = localStorage.getItem('isLoggedIn');
         const userUID = localStorage.getItem('userUID');
-        
+
         console.log('Verificando login:', { userEmail, isLoggedIn, userUID });
-        
+
         if (userEmail && isLoggedIn === 'true' && userUID) {
           entrarComPerfil(userEmail); // logo, assinatura e dados deste usuário
           setLogado(true);
           console.log('Usuário logado detectado:', userEmail);
         } else {
-          setLogado(false);
-          console.log('Usuário não logado');
+          // volta do "Continuar com Google/Apple" (ou sessão já aberta neste navegador)
+          const social = await AuthService.concluirLoginSocial();
+          if (social) {
+            entrarComPerfil(social.email);
+            setLogado(true);
+            navigate('/home', { replace: true });
+          } else {
+            setLogado(false);
+            console.log('Usuário não logado');
+          }
         }
       } catch (error) {
         console.error('Erro ao verificar login:', error);

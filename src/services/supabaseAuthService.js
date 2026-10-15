@@ -215,6 +215,85 @@ class SupabaseAuthService {
     }
   }
 
+  // ---------- Entrar com Google / Apple (Supabase OAuth) ----------
+
+  // Quais provedores estão ligados no painel do Supabase
+  // (Authentication → Providers). O botão só aparece depois de ligado.
+  async provedoresAtivos() {
+    if (this._provedores) return this._provedores;
+    if (this.useLocalStorage || !supabaseConfig.url) return {};
+    try {
+      const r = await fetch(`${supabaseConfig.url}/auth/v1/settings`, { headers: { apikey: supabaseConfig.anonKey } });
+      const j = r.ok ? await r.json() : {};
+      this._provedores = j.external || {};
+    } catch (_) {
+      this._provedores = {};
+    }
+    return this._provedores;
+  }
+
+  // Leva ao Google/Apple; a volta é em /login e quem conclui é concluirLoginSocial.
+  async entrarComProvedor(provedor) {
+    if (!supabase) return { success: false, error: 'Entrar com Google indisponível no momento.' };
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: provedor,
+      options: {
+        redirectTo: `${window.location.origin}/login`,
+        queryParams: provedor === 'google' ? { prompt: 'select_account' } : undefined,
+      },
+    });
+    if (error) return { success: false, error: this.getErrorMessage(error.message) };
+    return { success: true };
+  }
+
+  // Na volta do Google/Apple (ou com uma sessão já aberta no navegador):
+  // cria o perfil na tabela users se for o primeiro acesso e grava o login
+  // como no login por senha. Mesmo e-mail = mesma conta (o Supabase liga as
+  // contas), então o Premium comprado com esse e-mail continua valendo.
+  async concluirLoginSocial() {
+    if (!supabase) return null;
+    let session = null;
+    try {
+      ({ data: { session } } = await supabase.auth.getSession());
+    } catch (_) {
+      return null;
+    }
+    const u = session && session.user;
+    if (!u || !u.email) return null;
+
+    let perfil = null;
+    try {
+      ({ data: perfil } = await supabase.from('users').select('*').eq('id', u.id).maybeSingle());
+      if (!perfil) {
+        const meta = u.user_metadata || {};
+        await supabase.from('users').insert({
+          id: u.id,
+          email: u.email,
+          nome: meta.full_name || meta.name || u.email.split('@')[0],
+          plano: 'trial',
+          premium: false,
+          trial_ativo: true,
+          trial_inicio: new Date().toISOString(),
+          data_cadastro: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.error('Perfil do login social:', e);
+    }
+
+    this.currentUser = { email: u.email, uid: u.id, ...u, ...(perfil || {}) };
+    localStorage.setItem('userEmail', u.email);
+    localStorage.setItem('userUID', u.id);
+    localStorage.setItem('isLoggedIn', 'true');
+    if (perfil) {
+      localStorage.setItem('userData', JSON.stringify(perfil));
+      if (perfil.premium === true || perfil.plano === 'premium') {
+        localStorage.setItem(`plano_${u.email}`, 'premium');
+      }
+    }
+    return { email: u.email, uid: u.id };
+  }
+
   // Logout no Supabase
   async logoutSupabase() {
     try {
