@@ -22,7 +22,7 @@ import {
 import { SafenaMagnaExtra, SafenaParvaExtra } from "./SafenaExtraFields";
 import {
   profOptions, supOptions, perfurantesStatusOptions, perfurantesSegmentoOptions,
-  varizesTipoOptions, varizesRegiaoLabel, normalizarVarizesLado,
+  normalizarVarizesLado,
   montarLaudo,
 } from "../utils/mmiiVenosoLaudo";
 
@@ -75,13 +75,13 @@ const CALF_DOTS = [
   { key: "Veias Tibiais posteriores", label: "Tp", x: 157, y: 428 },
 ];
 
-// Cores próprias para os "adesivos" de variz, fora da paleta de status dos
-// vasos (azul suficiente, vermelho insuficiente, preto, laranja, cinza) pra
-// não confundir: variz não é achado de status de veia, é achado de pele.
+// Varizes são todas vermelhas: o tipo é dado só pelo calibre do traço
+// (superficial grossa, reticular média, micro fina) — ver TRACO_LARGURA.
+export const VARIZ_COR = "#d62828";
 export const VARIZ_CORES = {
-  "Varizes Superficiais": "#6f42c1",
-  "Varizes Reticulares": "#138d75",
-  "Microvarizes": "#d63384",
+  "Varizes Superficiais": VARIZ_COR,
+  "Varizes Reticulares": VARIZ_COR,
+  "Microvarizes": VARIZ_COR,
 };
 
 // O contorno do ícone de variz é uma elipse (mais alta que larga, não um
@@ -175,13 +175,22 @@ export const VARIZ_SPOTS = [
   { regiao: "postPe", view: "posterior", x: 150, y: 597 },
 ];
 
-// Varizes desenhadas à mão (botão "Desenhar varizes"): mesma cor do ícone do
-// tipo, com espessura que lembra o calibre (superficial grossa, micro fina).
+// Varizes desenhadas à mão (botão "Desenhar varizes"): todas vermelhas, o
+// calibre do traço é o que diferencia o tipo.
 export const TRACO_LARGURA = {
-  "Varizes Superficiais": 3.4,
-  "Varizes Reticulares": 2,
-  "Microvarizes": 1.4,
+  "Varizes Superficiais": 4.6,
+  "Varizes Reticulares": 2.4,
+  "Microvarizes": 1.2,
 };
+
+// Amostra do traço (cor + calibre), para legendas e botões das canetas.
+export function VarizLinhaLegenda({ tipo, largura = 26 }) {
+  return (
+    <svg width={largura} height={10} viewBox="0 0 26 10" style={{ verticalAlign: "middle", flexShrink: 0 }} aria-hidden="true">
+      <path d="M 2.5,7 Q 8,1 13,5 T 23.5,3" fill="none" stroke={VARIZ_CORES[tipo]} strokeWidth={TRACO_LARGURA[tipo]} strokeLinecap="round" />
+    </svg>
+  );
+}
 const VISTA_DA_COLUNA = { medial: "anterior", posterior: "posterior" };
 
 // Curva suave passando pelos pontos (quadráticas pelos pontos médios).
@@ -380,15 +389,12 @@ export function DesenhoMMIIVenoso({
           {perfMarkers.map((mk, i) => (
             <polygon key={i} points={trianguloPontos(mk.x, mk.y, PERFURANTE_TRIANGULO_RAIO)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
           ))}
-          {VARIZ_SPOTS.filter((spot) => spot.view === "medial" && (interativo || vz[spot.regiao])).map((spot) => {
-            const chave = `variz:${spot.regiao}`;
-            const ativo = chaveAtiva === chave;
-            return (
-              <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
-                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} escala={VARIZ_ESCALA} />
-              </g>
-            );
-          })}
+          {/* varizes marcadas por região (exames antigos / formulário): só exibe */}
+          {VARIZ_SPOTS.filter((spot) => spot.view === "medial" && vz[spot.regiao]).map((spot) => (
+            <g key={spot.regiao} pointerEvents="none">
+              <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={false} escala={VARIZ_ESCALA} />
+            </g>
+          ))}
           {desenharTracos(VISTA_DA_COLUNA.medial)}
           {camadaDesenho(VISTA_DA_COLUNA.medial)}
         </g>
@@ -418,15 +424,12 @@ export function DesenhoMMIIVenoso({
               </g>
             );
           })}
-          {VARIZ_SPOTS.filter((spot) => spot.view === "posterior" && (interativo || vz[spot.regiao])).map((spot) => {
-            const chave = `variz:${spot.regiao}`;
-            const ativo = chaveAtiva === chave;
-            return (
-              <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
-                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} escala={VARIZ_ESCALA} />
-              </g>
-            );
-          })}
+          {/* varizes marcadas por região (exames antigos / formulário): só exibe */}
+          {VARIZ_SPOTS.filter((spot) => spot.view === "posterior" && vz[spot.regiao]).map((spot) => (
+            <g key={spot.regiao} pointerEvents="none">
+              <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={false} escala={VARIZ_ESCALA} />
+            </g>
+          ))}
           {desenharTracos(VISTA_DA_COLUNA.posterior)}
           {camadaDesenho(VISTA_DA_COLUNA.posterior)}
         </g>
@@ -465,9 +468,7 @@ function BarraDesenhoVarizes({ ferramenta, onFerramenta, totalTracos, onDesfazer
             key={tipo} type="button" onClick={() => onFerramenta(tipo)} aria-pressed={ativo(tipo)}
             style={{ ...base, borderColor: ativo(tipo) ? VARIZ_CORES[tipo] : "#cfd9e2", background: ativo(tipo) ? `${VARIZ_CORES[tipo]}1a` : "#fff", color: VARIZ_CORES[tipo] }}
           >
-            <svg width={22} height={10} viewBox="0 0 22 10" aria-hidden="true">
-              <path d="M 2,7 Q 7,1 11,5 T 20,3" fill="none" stroke={VARIZ_CORES[tipo]} strokeWidth={TRACO_LARGURA[tipo]} strokeLinecap="round" />
-            </svg>
+            <VarizLinhaLegenda tipo={tipo} />
             {rotulo}
           </button>
         ))}
@@ -588,17 +589,6 @@ export default function MapaInterativo({
         <SafenaParvaExtra status={s["Safena Parva"]} valores={pv} onChange={(val) => onParva(l, val)} />
       </>
     );
-  } else if (selecionado?.tipo === "variz") {
-    tituloPainel = `Varizes — ${varizesRegiaoLabel[selecionado.key]}`;
-    painel = (
-      <div style={linhaCampo}>
-        <span style={rotulo}>Tipo:</span>
-        <select value={vz[selecionado.key] || ""} onChange={(e) => onVarizes(l, { ...vz, [selecionado.key]: e.target.value })} style={selectStyle}>
-          <option value="">Nenhuma</option>
-          {varizesTipoOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-      </div>
-    );
   }
 
   // ● (círculo geométrico comum) em vez de emoji de bolinha colorida: emoji de
@@ -615,10 +605,10 @@ export default function MapaInterativo({
         <span>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-        <span>Varizes (toque nos ícones tracejados ou use Desenhar varizes):</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Superficiais"] }}><VarizLegendaIcone tipo="Varizes Superficiais" /> superficiais</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Reticulares"] }}><VarizLegendaIcone tipo="Varizes Reticulares" /> reticulares</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Microvarizes"] }}><VarizLegendaIcone tipo="Microvarizes" /> microvarizes</span>
+        <span>Varizes (use Desenhar varizes):</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Superficiais" /> superficiais</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Reticulares" /> reticulares</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Microvarizes" /> microvarizes</span>
       </div>
     </>
   );
