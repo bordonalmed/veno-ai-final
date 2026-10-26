@@ -178,9 +178,9 @@ export const VARIZ_SPOTS = [
 // Varizes desenhadas à mão (botão "Desenhar varizes"): todas vermelhas, o
 // calibre do traço é o que diferencia o tipo.
 export const TRACO_LARGURA = {
-  "Varizes Superficiais": 4.6,
-  "Varizes Reticulares": 2.4,
-  "Microvarizes": 1.2,
+  "Varizes Superficiais": 5.4,
+  "Varizes Reticulares": 2.6,
+  "Microvarizes": 0.8,
 };
 
 // Amostra do traço (cor + calibre), para legendas e botões das canetas.
