@@ -87,7 +87,7 @@ function carregarExameEmEdicao() {
 const lados = ["Direito", "Esquerdo", "Ambos"];
 
 // Bloco de campos por lado
-function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes, onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes, jsfDiametro, setJsfDiametro, jspDiametro, setJspDiametro, observacao, onObservacao, varizes, onVarizes }) {
+function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes, onProfundas, onSuperficiais, onMagna, onParva, onPerfurantes, jsfDiametro, setJsfDiametro, jspDiametro, setJspDiametro, observacao, onObservacao, varizes, onVarizes, onAbrirMapa }) {
   return (
     <div style={{
       marginBottom: 'clamp(12px, 2vw, 16px)', 
@@ -221,7 +221,7 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
           )}
         </div>
       ))}
-      {/* Varizes: cada região (coxa/perna/tornozelo/pé) tem seu próprio tipo */}
+      {/* Varizes: desenhadas no Mapa; aqui fica o resumo */}
       <div style={{
         marginTop: 'clamp(12px, 2.5vw, 16px)',
         marginBottom: 'clamp(8px, 2vw, 12px)',
@@ -230,7 +230,7 @@ function BlocoCampos({ lado, profundas, superficiais, magna, parva, perfurantes,
       }}>
         Varizes
       </div>
-      <VarizesRegioes valores={varizes} onChange={onVarizes} />
+      <VarizesRegioes valores={varizes} onChange={onVarizes} onAbrirMapa={onAbrirMapa} />
       {/* Bloco de veias perfurantes (lista - permite múltiplas por lado) */}
       <div style={{
         marginTop: 'clamp(12px, 2.5vw, 16px)',
@@ -1063,6 +1063,7 @@ function MMIIVenoso() {
                 width: isMobile ? '100%' : '50%'
               }}>
                 <BlocoCampos
+                  onAbrirMapa={() => { setMostrarMapa(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   lado={lado}
                   profundas={profundas[lado]}
                   superficiais={superficiais[lado]}
@@ -1298,6 +1299,7 @@ function MMIIVenoso() {
                 marginRight: isMobile ? 0 : 'clamp(6px, 1.5vw, 10px)'
               }}>
                 <BlocoCampos
+                  onAbrirMapa={() => { setMostrarMapa(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   lado="Direito"
                   profundas={profundas.Direito}
                   superficiais={superficiais.Direito}
@@ -1330,6 +1332,7 @@ function MMIIVenoso() {
                 marginLeft: isMobile ? 0 : 'clamp(6px, 1.5vw, 10px)'
               }}>
                 <BlocoCampos
+                  onAbrirMapa={() => { setMostrarMapa(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   lado="Esquerdo"
                   profundas={profundas.Esquerdo}
                   superficiais={superficiais.Esquerdo}

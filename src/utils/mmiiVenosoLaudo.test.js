@@ -91,6 +91,29 @@ describe("montarLaudo — varizes (pontos no desenho, laudo só com os tipos)", 
   it("sem nenhuma variz marcada, não imprime nada sobre varizes", () => {
     expect(montarUmLado()).not.toContain("arizes");
   });
+
+  it("varizes desenhadas à mão entram no laudo pelo tipo, junto com os pontos", () => {
+    const tracos = [
+      { tipo: "Microvarizes", vista: "anterior", pts: [[150, 100], [152, 110]] },
+      { tipo: "Varizes Superficiais", vista: "posterior", pts: [[160, 400]] },
+    ];
+    const laudo = montarUmLado({ varizes: { antCoxaMedia: "Varizes Reticulares", tracos } });
+    expect(laudo).toContain("Varizes superficiais, varizes reticulares e microvarizes.");
+  });
+
+  it("traços inválidos são descartados e exame sem desenho não ganha a chave tracos", () => {
+    const n = normalizarVarizesLado({
+      tracos: [
+        { tipo: "Microvarizes", vista: "anterior", pts: [[1.234, 5.678], ["x", 2]] },
+        { tipo: "Outro", vista: "anterior", pts: [[1, 1]] },
+        { tipo: "Microvarizes", vista: "lateral", pts: [[1, 1]] },
+        { tipo: "Microvarizes", vista: "anterior", pts: [] },
+      ],
+    });
+    expect(n.tracos).toEqual([{ tipo: "Microvarizes", vista: "anterior", pts: [[1.2, 5.7]] }]);
+    expect(normalizarVarizesLado({ antPe: "Microvarizes" }).tracos).toBeUndefined();
+    expect(normalizarVarizesLado({ tracos: [] }).tracos).toBeUndefined();
+  });
 });
 
 describe("montarLaudo — veias perfurantes", () => {

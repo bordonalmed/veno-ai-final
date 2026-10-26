@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { FiPaperclip, FiX } from "react-icons/fi";
+import React, { useRef, useState } from "react";
+import { FiPaperclip, FiX, FiEdit2, FiRotateCcw, FiTrash2, FiCheck } from "react-icons/fi";
+import { FaEraser } from "react-icons/fa";
 import MapaLayout from "./MapaLayout";
 import {
   MEDIAL_SILHOUETTE,
@@ -21,7 +22,7 @@ import {
 import { SafenaMagnaExtra, SafenaParvaExtra } from "./SafenaExtraFields";
 import {
   profOptions, supOptions, perfurantesStatusOptions, perfurantesSegmentoOptions,
-  varizesTipoOptions, varizesRegiaoLabel, normalizarVarizesLado,
+  normalizarVarizesLado,
   montarLaudo,
 } from "../utils/mmiiVenosoLaudo";
 
@@ -74,13 +75,13 @@ const CALF_DOTS = [
   { key: "Veias Tibiais posteriores", label: "Tp", x: 157, y: 428 },
 ];
 
-// Cores próprias para os "adesivos" de variz, fora da paleta de status dos
-// vasos (azul suficiente, vermelho insuficiente, preto, laranja, cinza) pra
-// não confundir: variz não é achado de status de veia, é achado de pele.
+// Varizes são todas vermelhas: o tipo é dado só pelo calibre do traço
+// (superficial grossa, reticular média, micro fina) — ver TRACO_LARGURA.
+export const VARIZ_COR = "#d62828";
 export const VARIZ_CORES = {
-  "Varizes Superficiais": "#6f42c1",
-  "Varizes Reticulares": "#138d75",
-  "Microvarizes": "#d63384",
+  "Varizes Superficiais": VARIZ_COR,
+  "Varizes Reticulares": VARIZ_COR,
+  "Microvarizes": VARIZ_COR,
 };
 
 // O contorno do ícone de variz é uma elipse (mais alta que larga, não um
@@ -174,6 +175,39 @@ export const VARIZ_SPOTS = [
   { regiao: "postPe", view: "posterior", x: 150, y: 597 },
 ];
 
+// Varizes desenhadas à mão (botão "Desenhar varizes"): todas vermelhas, o
+// calibre do traço é o que diferencia o tipo.
+export const TRACO_LARGURA = {
+  "Varizes Superficiais": 4.6,
+  "Varizes Reticulares": 2.4,
+  "Microvarizes": 1.2,
+};
+
+// Amostra do traço (cor + calibre), para legendas e botões das canetas.
+export function VarizLinhaLegenda({ tipo, largura = 26 }) {
+  return (
+    <svg width={largura} height={10} viewBox="0 0 26 10" style={{ verticalAlign: "middle", flexShrink: 0 }} aria-hidden="true">
+      <path d="M 2.5,7 Q 8,1 13,5 T 23.5,3" fill="none" stroke={VARIZ_CORES[tipo]} strokeWidth={TRACO_LARGURA[tipo]} strokeLinecap="round" />
+    </svg>
+  );
+}
+const VISTA_DA_COLUNA = { medial: "anterior", posterior: "posterior" };
+
+// Curva suave passando pelos pontos (quadráticas pelos pontos médios).
+export function caminhoTraco(pts) {
+  if (!pts || !pts.length) return "";
+  const [x0, y0] = pts[0];
+  if (pts.length === 1) return `M ${x0},${y0} l 0.5,0.5`;
+  let d = `M ${x0},${y0}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [x, y] = pts[i];
+    const [nx, ny] = pts[i + 1];
+    d += ` Q ${x},${y} ${(x + nx) / 2},${(y + ny) / 2}`;
+  }
+  const [xl, yl] = pts[pts.length - 1];
+  return `${d} L ${xl},${yl}`;
+}
+
 const PROFUNDA_LABELS = {
   "Veia Femoral Comum": "Veia Femoral Comum",
   "Veia Femoral Superficial": "Veia Femoral Superficial",
@@ -191,6 +225,8 @@ const PROFUNDA_LABELS = {
 export function DesenhoMMIIVenoso({
   lado, profundas, superficiais, magna, parva, perfurantes, varizes,
   onSelecionar, chaveAtiva = null, width = "100%", height, style,
+  // ferramenta: tipo de variz (caneta) ou "borracha"; null = modo normal
+  ferramenta = null, onTracosChange,
 }) {
   const l = lado;
   const p = profundas || {};
@@ -199,9 +235,90 @@ export function DesenhoMMIIVenoso({
   const pv = parva || {};
   const perfs = Array.isArray(perfurantes) ? perfurantes : [];
   const vz = normalizarVarizesLado(varizes);
+  const tracos = vz.tracos || [];
+  const editandoTracos = typeof onTracosChange === "function" && !!ferramenta;
+  const apagando = editandoTracos && ferramenta === "borracha";
+  const riscando = editandoTracos && !apagando;
   const interativo = typeof onSelecionar === "function";
-  const selecionar = (tipo, key) => { if (interativo) onSelecionar(tipo, key); };
-  const clicavel = interativo ? { cursor: "pointer" } : undefined;
+  // enquanto desenha ou apaga, tocar no desenho não abre a caixa do vaso
+  const selecionar = (tipo, key) => { if (interativo && !editandoTracos) onSelecionar(tipo, key); };
+  const clicavel = interativo && !editandoTracos ? { cursor: "pointer" } : undefined;
+
+  // Traço em andamento: o ref guarda os pontos (sem depender do ciclo do
+  // React entre um movimento e outro) e o estado redesenha a linha.
+  const tracoRef = useRef(null);
+  const [tracoAtual, setTracoAtual] = useState(null);
+
+  // Ponto do toque/mouse no sistema do desenho da perna (o grupo espelhado
+  // já desfaz o espelho da perna direita, então o traço é salvo sempre no
+  // sistema da perna esquerda, como os VARIZ_SPOTS).
+  function pontoNoDesenho(e) {
+    const alvo = e.currentTarget;
+    const svg = alvo.ownerSVGElement;
+    const matriz = alvo.getScreenCTM && alvo.getScreenCTM();
+    if (!svg || !matriz) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const r = pt.matrixTransform(matriz.inverse());
+    return [Math.round(r.x * 10) / 10, Math.round(r.y * 10) / 10];
+  }
+  function terminarTraco() {
+    const t = tracoRef.current;
+    tracoRef.current = null;
+    setTracoAtual(null);
+    if (t) onTracosChange([...tracos, t]);
+  }
+  function camadaDesenho(vista) {
+    if (!riscando) return null;
+    return (
+      <rect
+        x={0} y={-VIEW_TY} width={300} height={VIEW_H} fill="#fff" fillOpacity={0.001}
+        style={{ touchAction: "none", cursor: "crosshair" }}
+        onPointerDown={(e) => {
+          const pt = pontoNoDesenho(e);
+          if (!pt) return;
+          e.preventDefault();
+          try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* navegador sem suporte */ }
+          tracoRef.current = { tipo: ferramenta, vista, pts: [pt] };
+          setTracoAtual(tracoRef.current);
+        }}
+        onPointerMove={(e) => {
+          const t = tracoRef.current;
+          if (!t || t.vista !== vista) return;
+          const pt = pontoNoDesenho(e);
+          if (!pt) return;
+          const [ux, uy] = t.pts[t.pts.length - 1];
+          if (Math.hypot(pt[0] - ux, pt[1] - uy) < 1.5) return;
+          tracoRef.current = { ...t, pts: [...t.pts, pt] };
+          setTracoAtual(tracoRef.current);
+        }}
+        onPointerUp={terminarTraco}
+        onPointerCancel={terminarTraco}
+      />
+    );
+  }
+  function desenharTracos(vista) {
+    return (
+      <>
+        {tracos.map((t, i) => (t.vista === vista ? (
+          <g key={`traco-${i}`}>
+            <path d={caminhoTraco(t.pts)} fill="none" stroke={VARIZ_CORES[t.tipo]} strokeWidth={TRACO_LARGURA[t.tipo]} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+            {apagando && (
+              <path
+                d={caminhoTraco(t.pts)} fill="none" stroke="#000" strokeOpacity={0.001} strokeWidth={14} strokeLinecap="round"
+                style={{ cursor: "pointer" }}
+                onClick={() => onTracosChange(tracos.filter((_, j) => j !== i))}
+              />
+            )}
+          </g>
+        ) : null))}
+        {tracoAtual && tracoAtual.vista === vista && (
+          <path d={caminhoTraco(tracoAtual.pts)} fill="none" stroke={VARIZ_CORES[tracoAtual.tipo]} strokeWidth={TRACO_LARGURA[tracoAtual.tipo]} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+        )}
+      </>
+    );
+  }
 
   // A geometria (silhuetas, veias) foi desenhada para a perna ESQUERDA.
   // Para a perna DIREITA, espelha o desenho (a perna direita é a imagem
@@ -253,7 +370,7 @@ export function DesenhoMMIIVenoso({
   const colMedial = COLS[0], colPosterior = COLS[1];
 
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width={width} height={height} style={style}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width={width} height={height} style={riscando ? { ...style, touchAction: "none", userSelect: "none" } : style}>
       {/* MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda + perfurantes */}
       <g transform={`translate(${colMedial.tx},${VIEW_TY})`}>
         <g transform={mirrorTransform}>
@@ -272,15 +389,14 @@ export function DesenhoMMIIVenoso({
           {perfMarkers.map((mk, i) => (
             <polygon key={i} points={trianguloPontos(mk.x, mk.y, PERFURANTE_TRIANGULO_RAIO)} fill={CORES["pérvia e incompetente"]} stroke="#fff" strokeWidth={1.3} strokeLinejoin="round" />
           ))}
-          {VARIZ_SPOTS.filter((spot) => spot.view === "medial" && (interativo || vz[spot.regiao])).map((spot) => {
-            const chave = `variz:${spot.regiao}`;
-            const ativo = chaveAtiva === chave;
-            return (
-              <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
-                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} escala={VARIZ_ESCALA} />
-              </g>
-            );
-          })}
+          {/* varizes marcadas por região (exames antigos / formulário): só exibe */}
+          {VARIZ_SPOTS.filter((spot) => spot.view === "medial" && vz[spot.regiao]).map((spot) => (
+            <g key={spot.regiao} pointerEvents="none">
+              <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={false} escala={VARIZ_ESCALA} />
+            </g>
+          ))}
+          {desenharTracos(VISTA_DA_COLUNA.medial)}
+          {camadaDesenho(VISTA_DA_COLUNA.medial)}
         </g>
         <text x={mx(212.7)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSF</text>
         <text x={mx(111)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>Femoral</text>
@@ -308,15 +424,14 @@ export function DesenhoMMIIVenoso({
               </g>
             );
           })}
-          {VARIZ_SPOTS.filter((spot) => spot.view === "posterior" && (interativo || vz[spot.regiao])).map((spot) => {
-            const chave = `variz:${spot.regiao}`;
-            const ativo = chaveAtiva === chave;
-            return (
-              <g key={spot.regiao} style={clicavel} onClick={() => selecionar("variz", spot.regiao)}>
-                <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={ativo} escala={VARIZ_ESCALA} />
-              </g>
-            );
-          })}
+          {/* varizes marcadas por região (exames antigos / formulário): só exibe */}
+          {VARIZ_SPOTS.filter((spot) => spot.view === "posterior" && vz[spot.regiao]).map((spot) => (
+            <g key={spot.regiao} pointerEvents="none">
+              <VarizIcon tipo={vz[spot.regiao]} cx={spot.x} cy={spot.y} ativo={false} escala={VARIZ_ESCALA} />
+            </g>
+          ))}
+          {desenharTracos(VISTA_DA_COLUNA.posterior)}
+          {camadaDesenho(VISTA_DA_COLUNA.posterior)}
         </g>
         <text x={mx(230)} y={310} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSP</text>
         <text x={mx(135)} y={345} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>V. Poplítea</text>
@@ -324,6 +439,58 @@ export function DesenhoMMIIVenoso({
         <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">posterior</text>
       </g>
     </svg>
+  );
+}
+
+const CANETAS_VARIZ = [
+  ["Varizes Superficiais", "Superficial"],
+  ["Varizes Reticulares", "Reticular"],
+  ["Microvarizes", "Micro"],
+];
+
+// Barra do modo desenho: canetas por tipo, borracha, desfazer e limpar.
+function BarraDesenhoVarizes({ ferramenta, onFerramenta, totalTracos, onDesfazer, onLimpar }) {
+  const base = { display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: "pointer", border: "1.5px solid #cfd9e2", background: "#fff", color: "#1a2530" };
+  if (!ferramenta) {
+    return (
+      <button type="button" onClick={() => onFerramenta("Varizes Superficiais")} style={{ ...base, borderColor: "#0eb8d0", color: "#0a7f91" }}>
+        <FiEdit2 /> Desenhar varizes
+      </button>
+    );
+  }
+  const ativo = (f) => ferramenta === f;
+  const desabilitado = totalTracos === 0;
+  return (
+    <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+        {CANETAS_VARIZ.map(([tipo, rotulo]) => (
+          <button
+            key={tipo} type="button" onClick={() => onFerramenta(tipo)} aria-pressed={ativo(tipo)}
+            style={{ ...base, borderColor: ativo(tipo) ? VARIZ_CORES[tipo] : "#cfd9e2", background: ativo(tipo) ? `${VARIZ_CORES[tipo]}1a` : "#fff", color: VARIZ_CORES[tipo] }}
+          >
+            <VarizLinhaLegenda tipo={tipo} />
+            {rotulo}
+          </button>
+        ))}
+        <button type="button" onClick={() => onFerramenta("borracha")} aria-pressed={ativo("borracha")} style={{ ...base, borderColor: ativo("borracha") ? "#1a2530" : "#cfd9e2", background: ativo("borracha") ? "#eef2f5" : "#fff" }}>
+          <FaEraser /> Borracha
+        </button>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+        <button type="button" onClick={onDesfazer} disabled={desabilitado} style={{ ...base, opacity: desabilitado ? 0.45 : 1, cursor: desabilitado ? "default" : "pointer" }}>
+          <FiRotateCcw /> Desfazer
+        </button>
+        <button type="button" onClick={onLimpar} disabled={desabilitado} style={{ ...base, color: "#c0392b", opacity: desabilitado ? 0.45 : 1, cursor: desabilitado ? "default" : "pointer" }}>
+          <FiTrash2 /> Limpar
+        </button>
+        <button type="button" onClick={() => onFerramenta(null)} style={{ ...base, background: "#28a745", borderColor: "#28a745", color: "#fff" }}>
+          <FiCheck /> Concluir
+        </button>
+      </div>
+      <div style={{ fontSize: 11.5, color: "#5c6b78", textAlign: "center" }}>
+        {ferramenta === "borracha" ? "Toque num traço para apagar." : "Desenhe sobre a perna com o dedo, a caneta ou o mouse."}
+      </div>
+    </div>
   );
 }
 
@@ -341,6 +508,7 @@ export default function MapaInterativo({
   embutido,
 }) {
   const [selecionado, setSelecionado] = useState(null);
+  const [ferramenta, setFerramenta] = useState(null);
 
   if (!aberto) return null;
 
@@ -421,17 +589,6 @@ export default function MapaInterativo({
         <SafenaParvaExtra status={s["Safena Parva"]} valores={pv} onChange={(val) => onParva(l, val)} />
       </>
     );
-  } else if (selecionado?.tipo === "variz") {
-    tituloPainel = `Varizes — ${varizesRegiaoLabel[selecionado.key]}`;
-    painel = (
-      <div style={linhaCampo}>
-        <span style={rotulo}>Tipo:</span>
-        <select value={vz[selecionado.key] || ""} onChange={(e) => onVarizes(l, { ...vz, [selecionado.key]: e.target.value })} style={selectStyle}>
-          <option value="">Nenhuma</option>
-          {varizesTipoOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-      </div>
-    );
   }
 
   // ● (círculo geométrico comum) em vez de emoji de bolinha colorida: emoji de
@@ -448,10 +605,10 @@ export default function MapaInterativo({
         <span>Gc=Gastrocnêmicas · Ta=Tibiais Ant. · So=Soleares · Tp=Tibiais Post.</span>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#5c6b78", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-        <span>Varizes (clique nos ícones tracejados):</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Superficiais"] }}><VarizLegendaIcone tipo="Varizes Superficiais" /> superficiais</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Varizes Reticulares"] }}><VarizLegendaIcone tipo="Varizes Reticulares" /> reticulares</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Microvarizes"] }}><VarizLegendaIcone tipo="Microvarizes" /> microvarizes</span>
+        <span>Varizes (use Desenhar varizes):</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Superficiais" /> superficiais</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Reticulares" /> reticulares</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Microvarizes" /> microvarizes</span>
       </div>
     </>
   );
@@ -568,11 +725,24 @@ export default function MapaInterativo({
       ladoAtivo={ladoAtivo}
       onTrocarLado={(op) => { onTrocarLado(op); setSelecionado(null); }}
       desenho={
-        <DesenhoMMIIVenoso
-          lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
-          onSelecionar={selecionar} chaveAtiva={chaveAtiva}
-          style={{ width: "100%", maxWidth: 560, maxHeight: "74vh", display: "block" }}
-        />
+        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <BarraDesenhoVarizes
+            ferramenta={ferramenta}
+            onFerramenta={(f) => { setFerramenta(f); if (f) setSelecionado(null); }}
+            totalTracos={(vz.tracos || []).length}
+            onDesfazer={() => onVarizes(l, { ...vz, tracos: (vz.tracos || []).slice(0, -1) })}
+            onLimpar={() => {
+              if (window.confirm(`Apagar todos os traços desenhados no membro ${l.toLowerCase()}?`)) onVarizes(l, { ...vz, tracos: [] });
+            }}
+          />
+          <DesenhoMMIIVenoso
+            lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
+            onSelecionar={selecionar} chaveAtiva={chaveAtiva}
+            ferramenta={ferramenta}
+            onTracosChange={(novos) => onVarizes(l, { ...vz, tracos: novos })}
+            style={{ width: "100%", maxWidth: 560, maxHeight: "74vh", display: "block" }}
+          />
+        </div>
       }
       legenda={legenda}
       painel={painel}

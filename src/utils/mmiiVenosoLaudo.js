@@ -64,9 +64,31 @@ const REGIAO_ANTIGA = { coxa: "antCoxaMedia", perna: "antPernaMedia", tornozelo:
 export function varizesVazias() {
   return Object.fromEntries(varizesRegioes.map((r) => [r, ""]));
 }
+// Varizes desenhadas à mão no Mapa Interativo: cada traço guarda o tipo, a
+// vista (anterior/posterior) e os pontos no sistema de coordenadas do desenho
+// da perna esquerda (o mesmo dos VARIZ_SPOTS) — na perna direita o desenho é
+// espelhado na hora de mostrar, então os traços acompanham.
+export const VISTAS_TRACO = ["anterior", "posterior"];
+export function normalizarTracos(tracos) {
+  if (!Array.isArray(tracos)) return [];
+  return tracos
+    .filter((t) => t && varizesTipoOptions.includes(t.tipo) && VISTAS_TRACO.includes(t.vista) && Array.isArray(t.pts))
+    .map((t) => ({
+      tipo: t.tipo,
+      vista: t.vista,
+      pts: t.pts
+        .filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+        .map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]),
+    }))
+    .filter((t) => t.pts.length > 0);
+}
+
 export function normalizarVarizesLado(v) {
   const out = varizesVazias();
   if (!v) return out;
+  // só cria a chave quando há traços, pra exames sem desenho ficarem iguais
+  const tracos = normalizarTracos(v.tracos);
+  if (tracos.length) out.tracos = tracos;
   if (v.tipo !== undefined || v.localizacao !== undefined) {
     (v.localizacao || []).forEach((loc) => {
       const k = REGIAO_ANTIGA[String(loc).toLowerCase()];
@@ -86,7 +108,8 @@ export function normalizarVarizesLado(v) {
 const ORDEM_TIPOS_VARIZ = ["Varizes Superficiais", "Varizes Reticulares", "Microvarizes"];
 function agruparVarizesPorTipo(varizesLado) {
   const v = normalizarVarizesLado(varizesLado);
-  const presentes = ORDEM_TIPOS_VARIZ.filter((t) => Object.values(v).includes(t)).map((t) => t.toLowerCase());
+  const tiposTracos = (v.tracos || []).map((t) => t.tipo);
+  const presentes = ORDEM_TIPOS_VARIZ.filter((t) => Object.values(v).includes(t) || tiposTracos.includes(t)).map((t) => t.toLowerCase());
   if (!presentes.length) return [];
   const texto = presentes.length === 1 ? presentes[0] : `${presentes.slice(0, -1).join(", ")} e ${presentes[presentes.length - 1]}`;
   return [texto.charAt(0).toUpperCase() + texto.slice(1)];
