@@ -21,6 +21,7 @@ import {
   perfurantesStatusOptions, perfurantesSegmentoOptions,
   montarLaudo, varizesVazias, normalizarVarizesLado,
 } from "../utils/mmiiVenosoLaudo";
+import { confirmarPdfELimpar } from "../utils/limparAposPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIVenoso";
@@ -584,7 +585,7 @@ function MMIIVenoso() {
     // "Salvar PDF" baixa o PDF e já limpa o formulário pro próximo paciente
     // (não dá pra desfazer) — confirma antes pra evitar perder o que estava
     // preenchido se o clique foi sem querer ou antes de revisar tudo.
-    if (!paraEnvio && !window.confirm("Isso vai baixar o PDF e limpar o formulário para um novo exame. Deseja continuar?")) {
+    if (!paraEnvio && !confirmarPdfELimpar()) {
       return;
     }
     if (!(await liberarLaudo({ tipoNome: "Doppler Venoso de Membros Inferiores", nome, data }))) return opcoes && opcoes.retornarBlob ? { bloqueado: true } : undefined;
@@ -822,7 +823,47 @@ function MMIIVenoso() {
     // "Enviar laudo" usa o mesmo PDF (com mapa e anexos, se marcados)
     if (opcoes && opcoes.retornarBlob) return { blob: doc.output("blob"), nomeArquivo: nomeArquivoPdf };
     doc.save(nomeArquivoPdf);
-    // O formulário continua preenchido (dá para ajustar e salvar de novo).
+    // Como avisa a confirmação: PDF baixado, formulário limpo pro próximo paciente.
+    limparFormulario();
+  }
+
+  // Volta tudo ao estado inicial da página (mesmos valores dos useState).
+  function limparFormulario() {
+    setNome("");
+    setIdade("");
+    setData("");
+    setLado("");
+    setProfundas({
+      Direito: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+      Esquerdo: Object.fromEntries(veiasProfundas.map(v=>[v, profOptions[0]])),
+    });
+    setSuperficiais({
+      Direito: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+      Esquerdo: Object.fromEntries(veiasSuperficiais.map(v=>[v, supOptions[0]])),
+    });
+    setMagna({
+      Direito: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+      Esquerdo: {coxa:"",perna:"",tornozelo:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+    });
+    setParva({
+      Direito: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+      Esquerdo: {proximal:"",distal:"",inicio:"",inicio_valor:"",fim:"",fim_valor:""},
+    });
+    setPerfurantes({
+      Direito: [{ status: "pérvia e competente", segmento: "", valor: "" }],
+      Esquerdo: [{ status: "pérvia e competente", segmento: "", valor: "" }]
+    });
+    setObservacoes({ Direito: '', Esquerdo: '' });
+    setLaudoTexto("");
+    setJsfDiametro({ Direito: "", Esquerdo: "" });
+    setJspDiametro({ Direito: "", Esquerdo: "" });
+    setErro("");
+    setVarizes({ Direito: varizesVazias(), Esquerdo: varizesVazias() });
+    setAnexos([]);
+    setMostrarEsquema(false);
+    setIncluirEsquemaPdf(false);
+    setMostrarMapa(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function handleVoltarMenu() {

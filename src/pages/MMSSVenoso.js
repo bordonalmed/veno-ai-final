@@ -25,6 +25,7 @@ import {
   gerarBlocoMembro,
   ladosDoExame,
 } from "../utils/mmssVenosoLaudo";
+import { confirmarPdfELimpar } from "../utils/limparAposPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMSSVenoso";
@@ -312,6 +313,8 @@ function MMSSVenoso() {
   }
 
   async function handleSalvarPDF(opcoes = {}) {
+    // Salvar PDF limpa o formulário depois (padrão de todos os exames): confirma antes.
+    if (!(opcoes && opcoes.retornarBlob) && !confirmarPdfELimpar()) return;
     if (!(await liberarLaudo({ tipoNome: "MMSS Venoso", nome, data }))) return opcoes && opcoes.retornarBlob ? { bloqueado: true } : undefined;
     // Buscar dados do localStorage
     const nomeMedico = localStorage.getItem("nomeMedico") || "";
@@ -535,6 +538,18 @@ function MMSSVenoso() {
     // "Enviar laudo" usa o mesmo PDF (com mapa e anexos, se marcados)
     if (opcoes && opcoes.retornarBlob) return { blob: doc.output("blob"), nomeArquivo: nomeArquivoPdf };
     doc.save(nomeArquivoPdf);
+    limparFormulario();
+  }
+
+  // Volta tudo ao estado inicial da página, pro próximo paciente.
+  function limparFormulario() {
+    setNome(""); setIdade(""); setData(""); setLado(""); setErro("");
+    setMostrarLaudo(false); setAnexos([]);
+    setVeias({ Direito: veiasPadrao(), Esquerdo: veiasPadrao() });
+    setObservacoes({ Direito: "", Esquerdo: "" });
+    setExtras({ Direito: extraPadrao(), Esquerdo: extraPadrao() });
+    setMostrarMapa(true); setIncluirMapaPdf(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // Funções para gerenciar anexos de imagens

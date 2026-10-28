@@ -14,6 +14,7 @@ import examesRealtimeService from '../services/examesRealtimeService';
 import CarotidasMapaInterativo, { adicionarMapaCarotidasAoPdf } from "../components/CarotidasMapaInterativo";
 import CamposCarotida from "../components/CamposCarotida";
 import { vasoPadrao, normalizarVaso, normalizarSistema, montarLaudo, validarVasos } from "../utils/carotidasLaudo";
+import { confirmarPdfELimpar } from "../utils/limparAposPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesCarotidasVertebrais";
@@ -307,6 +308,8 @@ function CarotidasVertebrais() {
       setErro(erroValidacao);
       return;
     }
+    // Salvar PDF limpa o formulário depois (padrão de todos os exames): confirma antes.
+    if (!(opcoes && opcoes.retornarBlob) && !confirmarPdfELimpar()) return;
     if (!(await liberarLaudo({ tipoNome: "Carótidas e Vertebrais", nome, data }))) return opcoes && opcoes.retornarBlob ? { bloqueado: true } : undefined;
     const laudo = montarLaudo({ nome, idade, data, carotidasDireitas, carotidasEsquerdas, vertebrais });
 
