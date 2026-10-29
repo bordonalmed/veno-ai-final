@@ -5,6 +5,8 @@ import { MdSort } from "react-icons/md";
 import { FaHospital } from "react-icons/fa";
 import { GiLeg } from "react-icons/gi";
 import examesRealtimeService from "../services/examesRealtimeService";
+import { AuthService } from "../services/supabaseAuthService";
+import { limparPerfilAtivo } from "../utils/perfilLaudo";
 import { gerarPDFExame, montarPDFExame, perfilParaExame, formatarDataDiaMesAno } from "../utils/pdfExameSalvo";
 import { temAcessoEnvio, textoEnvio } from "../utils/envioLaudo";
 import EnviarLaudo from "../components/EnviarLaudo";
@@ -71,6 +73,8 @@ export default function ExamesRealizados() {
   const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [confirmacao, setConfirmacao] = useState(null); // { tipo: 'excluirUm'|'excluirSelecionados'|'limparTudo', exame? }
   const [confirmaLimparTudo, setConfirmaLimparTudo] = useState(false);
+  const [nuvem, setNuvem] = useState({ semSessao: false, pendentes: 0 });
+  const usaNuvem = examesRealtimeService.useSupabase;
   const podeEnviar = temAcessoEnvio();
 
   // Ref para armazenar o ID do listener
@@ -101,6 +105,7 @@ export default function ExamesRealizados() {
             // Atualizar status de sincronização
             setSincronizando(metadata.hasPendingWrites);
             setIsOffline(metadata.isOffline);
+            if (metadata.nuvem) setNuvem(metadata.nuvem);
             
             // Parar loading após primeira carga
             if (carregando) {
@@ -457,6 +462,32 @@ export default function ExamesRealizados() {
           </div>
         </div>
         
+        {/* Aviso: exames que não estão indo para a nuvem */}
+        {usaNuvem && nuvem.semSessao && (
+          <div style={{ background: "#3a1f22", border: "1.5px solid #e74c3c", borderRadius: 10, padding: "12px 14px", margin: "4px 0 12px", fontSize: 13.5, lineHeight: 1.45, color: "#ffd6d1" }}>
+            <div style={{ fontWeight: 800, color: "#ff8a7a", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><FiAlertTriangle /> Este aparelho está desconectado da nuvem</div>
+            Os exames salvos aqui não aparecem nos seus outros aparelhos (e os de lá não aparecem aqui). Para corrigir, saia e entre de novo com seu e-mail e senha. Os exames deste aparelho são enviados sozinhos depois disso.
+            <div style={{ marginTop: 10 }}>
+              <button
+                onClick={async () => {
+                  try { await AuthService.logout(); } catch (_) { /* segue */ }
+                  ["userEmail", "userPassword", "userPlano", "userPremium", "isLoggedIn", "userUID"].forEach((k) => localStorage.removeItem(k));
+                  limparPerfilAtivo();
+                  window.location.href = "/login";
+                }}
+                style={{ background: "#e74c3c", color: "#fff", border: "none", borderRadius: 6, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                Sair e entrar de novo
+              </button>
+            </div>
+          </div>
+        )}
+        {usaNuvem && !nuvem.semSessao && nuvem.pendentes > 0 && (
+          <div style={{ background: "#13303a", border: "1px solid #0eb8d0", borderRadius: 10, padding: "10px 14px", margin: "4px 0 12px", fontSize: 13, color: "#bfeff6", display: "flex", alignItems: "center", gap: 8 }}>
+            <FiRefreshCw /> Enviando {nuvem.pendentes} exame(s) deste aparelho para a nuvem…
+          </div>
+        )}
+
         {/* Segunda linha: Botões de ação simplificados */}
         <div style={{ 
           display: "flex", 
@@ -481,6 +512,7 @@ export default function ExamesRealizados() {
                       setExames(examesAtualizados);
                       setSincronizando(metadata.hasPendingWrites);
                       setIsOffline(metadata.isOffline);
+                      if (metadata.nuvem) setNuvem(metadata.nuvem);
                       if (carregando) setCarregando(false);
                     },
                     (error) => {
@@ -850,6 +882,9 @@ export default function ExamesRealizados() {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><FaHospital size={12} /> {exame.tipoNome}</span>
                     {exame.lado && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><GiLeg size={12} /> {exame.lado}</span>}
                     {localDoExame(exame) && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#9fd7e2" }}><FiMapPin size={12} /> {localDoExame(exame)}</span>}
+                    {usaNuvem && exame.origem === "localStorage" && (
+                      <span title="Ainda não foi para a nuvem: só aparece neste aparelho" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#f5a623", fontWeight: 600 }}><FiWifiOff size={12} /> só neste aparelho</span>
+                    )}
                   </div>
                   {ultimoEnvio(exame) && (
                     <div style={{ marginTop: 6, fontSize: "11.5px", color: "#3ddc97", display: "flex", alignItems: "center", gap: 4 }}>
