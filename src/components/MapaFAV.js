@@ -15,6 +15,7 @@ import {
   ehProtese,
   normalizarExtra,
 } from "../utils/favLaudo";
+import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 // Membro superior para FAV: artérias (vermelho) e veias superficiais (azul)
 // do braço e antebraço, sobre o mesmo desenho do braço do MMSS (braço direito
@@ -285,16 +286,16 @@ export async function adicionarMapaFAVAoPdf(doc, lado, extra) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const svg = renderToStaticMarkup(<DesenhoFAV lado={lado} extra={e} width={BRACO_W * 2} height={BRACO_H * 2} />);
   const dataUrl = await svgParaImagemDataUrl(svg, BRACO_W * 2, BRACO_H * 2);
-  doc.addPage();
-  let y = 16;
+  const { topo, base } = novaPaginaComCabecalho(doc);
+  let y = topo;
   doc.setFontSize(13);
   doc.setFont(undefined, "bold");
   const titulo = e.modo === "Avaliação" ? "Mapa — Avaliação de Fístula Arteriovenosa" : "Mapa — Confecção de Fístula Arteriovenosa";
   doc.text(`${titulo} (${lado === "Esquerdo" ? "MSE" : "MSD"})`, pageWidth / 2, y, { align: "center" });
   doc.setFont(undefined, "normal");
   y += 6;
-  const alturaMm = 225;
-  const larguraMm = alturaMm * (BRACO_W / BRACO_H);
+  // cabe entre o cabeçalho e a assinatura, com espaço para a legenda
+  const { w: larguraMm, h: alturaMm } = caberNaFaixa(225 * (BRACO_W / BRACO_H), 225, base - y - 14);
   doc.addImage(dataUrl, "JPEG", (pageWidth - larguraMm) / 2, y, larguraMm, alturaMm);
   y += alturaMm + 7;
   doc.setFontSize(8.5);

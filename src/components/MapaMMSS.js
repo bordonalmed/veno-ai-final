@@ -13,6 +13,7 @@ import { ITENS_LEGENDA_ARTERIAL as ITENS_LEGENDA_MMII } from "./MapaInterativoAr
 // Mesma legenda do MMII, sem o enxerto (não existe no membro superior).
 const ITENS_LEGENDA_ARTERIAL = ITENS_LEGENDA_MMII.filter(([t]) => t !== "Enxerto / ponte");
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
+import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 // Membro superior, vista anterior (palma para a frente), com pescoço e
 // parte do tórax para mostrar jugular, subclávia e tronco braquiocefálico.
@@ -285,15 +286,15 @@ async function adicionarPaginasAoPdf(doc, lados, titulo, desenhar, itensLegenda,
   for (const ladoAtual of lados) {
     const svg = renderToStaticMarkup(desenhar(ladoAtual));
     const dataUrl = await svgParaImagemDataUrl(svg, BRACO_W, BRACO_H);
-    doc.addPage();
-    let y = 16;
+    const { topo, base } = novaPaginaComCabecalho(doc);
+    let y = topo;
     doc.setFontSize(13);
     doc.setFont(undefined, "bold");
     doc.text(`${titulo} — Membro Superior ${ladoAtual}`, pageWidth / 2, y, { align: "center" });
     doc.setFont(undefined, "normal");
     y += 6;
-    const alturaMm = 215;
-    const larguraMm = alturaMm * (BRACO_W / BRACO_H);
+    // cabe entre o cabeçalho e a assinatura, com espaço para a legenda
+    const { w: larguraMm, h: alturaMm } = caberNaFaixa(215 * (BRACO_W / BRACO_H), 215, base - y - 9 - 4.5 * notas.length);
     doc.addImage(dataUrl, "JPEG", (pageWidth - larguraMm) / 2, y, larguraMm, alturaMm);
     y += alturaMm + 7;
     doc.setFontSize(8.5);

@@ -1,3 +1,5 @@
+import { lerPerfilPdf, novaPaginaComCabecalho } from "./pdfCabecalho";
+
 /**
  * Utilitário para adicionar imagens anexadas ao PDF
  * Replica exatamente a lógica do MMII Venoso
@@ -9,29 +11,29 @@
  * @param {Array} anexos - Array de anexos no formato do MMII Venoso
  * @param {Object} options - Opções de configuração
  * @param {number} options.margin - Margem em mm (padrão: 15)
- * @param {number} options.titleSpace - Espaço para título em mm (padrão: 25)
  */
-export function appendImagesToPdf(pdf, anexos, { margin = 15, titleSpace = 25 } = {}) {
+export function appendImagesToPdf(pdf, anexos, { margin = 15 } = {}) {
   if (!anexos || anexos.length === 0) {
     return;
   }
+  const perfil = lerPerfilPdf();
 
   anexos.forEach((anexo, index) => {
     try {
-      pdf.addPage();
-      
+      // Mesmo cabeçalho (logo + clínica) e rodapé (assinatura) do laudo.
+      const { topo, base } = novaPaginaComCabecalho(pdf, perfil);
+
       // Adicionar título da imagem
-      pdf.setFontSize(14);
+      pdf.setFontSize(12);
       pdf.setFont(undefined, "bold");
-      pdf.text(`Anexo ${index + 1}: ${anexo.name}`, margin, 20);
-      
-      // Adicionar a imagem aproveitando melhor a página
+      pdf.text(`Anexo ${index + 1}: ${anexo.name}`, margin, topo);
+      pdf.setFont(undefined, "normal");
+      const titleSpace = topo + 5;
+
+      // A imagem ocupa o espaço entre o título e a assinatura
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      
-      // Calcular dimensões disponíveis
       const availableWidth = pageWidth - (margin * 2);
-      const availableHeight = pageHeight - titleSpace - (margin * 2);
+      const availableHeight = base - titleSpace;
       
       // Cabe na área disponível SEM distorcer: mantém a proporção da foto
       // (antes ela era esticada para a página inteira) e centraliza.

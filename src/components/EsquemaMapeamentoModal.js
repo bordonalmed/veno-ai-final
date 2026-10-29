@@ -9,6 +9,7 @@ import {
   conclusoesSistemaProfundo,
 } from "../utils/vascularMapping";
 import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_COR, TRACO_LARGURA, VarizLinhaLegenda } from "./MapaInterativo";
+import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 // Monta o desenho (vista anterior + posterior) de UM membro com o mesmo
 // componente do Mapa Interativo, pra o Mapeamento Visual e o PDF saírem
@@ -180,16 +181,20 @@ export async function adicionarEsquemaAoPdf(doc, {
     const { svg } = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
     const dataUrl = await svgParaImagemDataUrl(svg, VIEW_W, VIEW_H);
 
-    doc.addPage();
-    let y = 16;
+    const { topo, base } = novaPaginaComCabecalho(doc);
+    let y = topo;
     doc.setFontSize(13);
     doc.setFont(undefined, "bold");
     doc.text(`Mapeamento Venoso — Membro Inferior ${ladoAtual}`, pageWidth / 2, y, { align: "center" });
     y += 8;
     doc.setFont(undefined, "normal");
 
-    const imgWidthMm = 170;
-    const imgHeightMm = imgWidthMm * (VIEW_H / VIEW_W);
+    // Espaço da legenda e das observações, medido num PDF de rascunho, para
+    // o desenho caber entre o cabeçalho e a assinatura.
+    const rascunho = new jsPDF({ unit: "mm", format: "a4" });
+    const alturaLegenda = desenharLegendaPdf(rascunho, pageWidth, 0);
+    const alturaObs = desenharObservacoesPdf(rascunho, pageWidth, 0, observacoes?.[ladoAtual]);
+    const { w: imgWidthMm, h: imgHeightMm } = caberNaFaixa(170, 170 * (VIEW_H / VIEW_W), base - y - 6 - alturaLegenda - alturaObs);
     const x = (pageWidth - imgWidthMm) / 2;
     doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
     y += imgHeightMm + 6;

@@ -8,6 +8,7 @@ import { CamposArteria } from "./CamposArteria";
 import { CamposEnxertoAorta, CamposFemoroFemoral } from "./CamposAorta";
 import { ArteriaCurva, PadroesStent, COR_ART, COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
+import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 // Abdome em vista anterior (do esterno à raiz das coxas). Lado direito do
 // paciente à esquerda da tela. A aorta fica um pouco à esquerda da linha média
@@ -312,15 +313,15 @@ export async function adicionarMapaAortaAoPdf(doc, arterias, extra) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const svg = renderToStaticMarkup(<DesenhoAortaIliacas arterias={arterias} extra={extra} width={ABD_W * 2} height={ABD_H * 2} />);
   const dataUrl = await svgParaImagemDataUrl(svg, ABD_W * 2, ABD_H * 2);
-  doc.addPage();
-  let y = 16;
+  const { topo, base } = novaPaginaComCabecalho(doc);
+  let y = topo;
   doc.setFontSize(13);
   doc.setFont(undefined, "bold");
   doc.text("Mapeamento — Aorta Abdominal e Artérias Ilíacas", pageWidth / 2, y, { align: "center" });
   doc.setFont(undefined, "normal");
   y += 6;
-  const larguraMm = 170;
-  const alturaMm = larguraMm * (ABD_H / ABD_W);
+  // cabe entre o cabeçalho e a assinatura, com espaço para a legenda
+  const { w: larguraMm, h: alturaMm } = caberNaFaixa(170, 170 * (ABD_H / ABD_W), base - y - 18);
   doc.addImage(dataUrl, "JPEG", (pageWidth - larguraMm) / 2, y, larguraMm, alturaMm);
   y += alturaMm + 7;
   doc.setFontSize(8.5);

@@ -505,8 +505,6 @@ function CarotidasVertebrais() {
       }
     }
     addRodape();
-    // Adicionar anexos como páginas no final do PDF
-    appendImagesToPdf(doc, anexos);
 
     if (incluirMapaPdf) {
       try {
@@ -515,6 +513,9 @@ function CarotidasVertebrais() {
         console.error('Erro ao adicionar mapa interativo ao PDF:', e);
       }
     }
+
+    // Anexos por último (depois do mapeamento), como nos outros exames.
+    appendImagesToPdf(doc, anexos);
 
     carimbarMarcaVenoAI(doc);
     const nomeArquivoPdf = `Laudo_${nome}_${data}.pdf`;

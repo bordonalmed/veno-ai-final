@@ -13,6 +13,7 @@ import { ARTERIAS } from "../utils/mmiiArterialLaudo";
 import { CamposArteria, CamposEnxerto } from "./CamposArteria";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 import { COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
+import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 // Árvore arterial de UMA perna, vista anterior. Desenhada nativamente para a
 // perna ESQUERDA (mesma convenção do Mapa Interativo venoso): medial = x menor,
@@ -291,15 +292,15 @@ export async function adicionarMapaArterialAoPdf(doc, lados, arteriasPorLado, en
       <DesenhoMMIIArterial lado={ladoAtual} arterias={arteriasPorLado[ladoAtual]} enxerto={enxertosPorLado?.[ladoAtual]} width={DESENHO_W} height={DESENHO_H} />
     );
     const dataUrl = await svgParaImagemDataUrl(svg, DESENHO_W, DESENHO_H);
-    doc.addPage();
-    let y = 16;
+    const { topo, base } = novaPaginaComCabecalho(doc);
+    let y = topo;
     doc.setFontSize(13);
     doc.setFont(undefined, "bold");
     doc.text(`Mapeamento Arterial — Membro Inferior ${ladoAtual}`, pageWidth / 2, y, { align: "center" });
     doc.setFont(undefined, "normal");
     y += 6;
-    const alturaMm = 215;
-    const larguraMm = alturaMm * (DESENHO_W / DESENHO_H);
+    // cabe entre o cabeçalho e a assinatura, com espaço para a legenda
+    const { w: larguraMm, h: alturaMm } = caberNaFaixa(215 * (DESENHO_W / DESENHO_H), 215, base - y - 19);
     doc.addImage(dataUrl, "JPEG", (pageWidth - larguraMm) / 2, y, larguraMm, alturaMm);
     y += alturaMm + 7;
 
