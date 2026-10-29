@@ -9,6 +9,7 @@ const ROTULO = {
   "Varizes Superficiais": "superficiais",
   "Varizes Reticulares": "reticulares",
   "Microvarizes": "microvarizes",
+  "Tromboflebite Superficial": "tromboflebite superficial",
 };
 
 export default function VarizesRegioes({ valores, onChange, onAbrirMapa }) {

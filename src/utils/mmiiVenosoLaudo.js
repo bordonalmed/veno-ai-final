@@ -69,10 +69,14 @@ export function varizesVazias() {
 // da perna esquerda (o mesmo dos VARIZ_SPOTS) — na perna direita o desenho é
 // espelhado na hora de mostrar, então os traços acompanham.
 export const VISTAS_TRACO = ["anterior", "posterior"];
+// Tromboflebite superficial só existe como traço desenhado (não nos pontos
+// antigos por região); no desenho é o traço preto.
+export const TROMBOFLEBITE = "Tromboflebite Superficial";
+export const tiposTracoOptions = [...varizesTipoOptions, TROMBOFLEBITE];
 export function normalizarTracos(tracos) {
   if (!Array.isArray(tracos)) return [];
   return tracos
-    .filter((t) => t && varizesTipoOptions.includes(t.tipo) && VISTAS_TRACO.includes(t.vista) && Array.isArray(t.pts))
+    .filter((t) => t && tiposTracoOptions.includes(t.tipo) && VISTAS_TRACO.includes(t.vista) && Array.isArray(t.pts))
     .map((t) => ({
       tipo: t.tipo,
       vista: t.vista,
@@ -110,9 +114,14 @@ function agruparVarizesPorTipo(varizesLado) {
   const v = normalizarVarizesLado(varizesLado);
   const tiposTracos = (v.tracos || []).map((t) => t.tipo);
   const presentes = ORDEM_TIPOS_VARIZ.filter((t) => Object.values(v).includes(t) || tiposTracos.includes(t)).map((t) => t.toLowerCase());
-  if (!presentes.length) return [];
-  const texto = presentes.length === 1 ? presentes[0] : `${presentes.slice(0, -1).join(", ")} e ${presentes[presentes.length - 1]}`;
-  return [texto.charAt(0).toUpperCase() + texto.slice(1)];
+  const linhas = [];
+  if (presentes.length) {
+    const texto = presentes.length === 1 ? presentes[0] : `${presentes.slice(0, -1).join(", ")} e ${presentes[presentes.length - 1]}`;
+    linhas.push(texto.charAt(0).toUpperCase() + texto.slice(1));
+  }
+  // traço preto no desenho: entra no corpo e na conclusão
+  if (tiposTracos.includes(TROMBOFLEBITE)) linhas.push("Tromboflebite superficial em veia varicosa");
+  return linhas;
 }
 export const legendaCampos = {
   "JSF": "JSF",

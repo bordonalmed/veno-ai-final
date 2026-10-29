@@ -101,6 +101,17 @@ describe("montarLaudo — varizes (pontos no desenho, laudo só com os tipos)", 
     expect(laudo).toContain("Varizes superficiais, varizes reticulares e microvarizes.");
   });
 
+  it("traço de tromboflebite superficial entra no corpo e na conclusão", () => {
+    const tracos = [
+      { tipo: "Varizes Superficiais", vista: "anterior", pts: [[150, 380], [160, 400]] },
+      { tipo: "Tromboflebite Superficial", vista: "anterior", pts: [[150, 380], [158, 395]] },
+    ];
+    const laudo = montarUmLado({ varizes: { tracos } });
+    expect(laudo.match(/Tromboflebite superficial em veia varicosa\./g)).toHaveLength(2);
+    expect(laudo).toContain("Varizes superficiais.");
+    expect(normalizarVarizesLado({ antPe: "Tromboflebite Superficial" }).antPe).toBe("");
+  });
+
   it("traços inválidos são descartados e exame sem desenho não ganha a chave tracos", () => {
     const n = normalizarVarizesLado({
       tracos: [
