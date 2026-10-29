@@ -7,6 +7,7 @@ import { NOMES_VASOS, normalizarVaso, paraDesenhoArterial } from "../utils/carot
 import { ArteriaCurva, PadroesStent, COR_ART } from "./ArteriaCurva";
 import CamposCarotida from "./CamposCarotida";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
+import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 // Nomes completos dos 8 vasos editáveis (iguais aos usados no formulário e no laudo).
 export const CAROTIDAS_VESSEL_NAMES = NOMES_VASOS;
@@ -160,8 +161,8 @@ export async function adicionarMapaCarotidasAoPdf(doc, vessels, { nome, data } =
   const svg = renderToStaticMarkup(<DesenhoCarotidas vessels={vessels} width={CAR_W * 2} height={CAR_H * 2} />);
   const dataUrl = await svgParaImagemDataUrl(svg, CAR_W * 2, CAR_H * 2);
 
-  doc.addPage();
-  let y = 16;
+  const { topo, base } = novaPaginaComCabecalho(doc);
+  let y = topo;
   doc.setFontSize(13);
   doc.setFont(undefined, "bold");
   doc.text("Mapeamento — Carótidas e Vertebrais", pageWidth / 2, y, { align: "center" });
@@ -172,8 +173,8 @@ export async function adicionarMapaCarotidasAoPdf(doc, vessels, { nome, data } =
     doc.text(`Paciente: ${nome}${data ? "  •  " + data : ""}`, pageWidth / 2, y, { align: "center" });
     y += 5;
   }
-  const larguraMm = 160;
-  const alturaMm = larguraMm * (CAR_H / CAR_W);
+  // cabe entre o cabeçalho e a assinatura, com espaço para a legenda
+  const { w: larguraMm, h: alturaMm } = caberNaFaixa(160, 160 * (CAR_H / CAR_W), base - y - 18);
   doc.addImage(dataUrl, "JPEG", (pageWidth - larguraMm) / 2, y, larguraMm, alturaMm);
   y += alturaMm + 7;
 

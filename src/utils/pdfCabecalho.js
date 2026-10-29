@@ -64,3 +64,55 @@ export function desenharCabecalhoLaudo(doc, { logo, linhas, fonteCorpo = 11 }) {
 export function desenharAssinatura(doc, assinatura, yRodape) {
   return desenharImagemProporcional(doc, assinatura, { x: 150, y: yRodape - 18, maxW: 50, maxH: 15, alinhar: "direita", alinharBase: true });
 }
+
+// Dados do médico/clínica usados no PDF (os mesmos que as páginas de laudo
+// leem do perfil ativo).
+export function lerPerfilPdf() {
+  const ler = (k) => {
+    try { return localStorage.getItem(k) || ""; } catch (_) { return ""; }
+  };
+  return {
+    logo: ler("logoClinica") || null,
+    assinatura: ler("assinaturaMedico") || null,
+    linhas: [ler("nomeClinica"), ler("enderecoClinica"), ler("telefoneClinica") && "Tel: " + ler("telefoneClinica"), ler("emailClinica")],
+    nomeMedico: ler("nomeMedico"),
+    crm: ler("crm"),
+    especialidade: ler("especialidadeLaudo"),
+  };
+}
+
+export const Y_RODAPE = 280;
+// Conteúdo das páginas de mapeamento e de anexo termina acima da assinatura.
+export const LIMITE_CONTEUDO = 258;
+
+// Rodapé igual ao das páginas do laudo: assinatura, nome, CRM e especialidade.
+export function desenharRodapeLaudo(doc, perfil, yRodape = Y_RODAPE) {
+  doc.setFontSize(8);
+  doc.setFont(undefined, "normal");
+  doc.setTextColor(0, 0, 0);
+  desenharAssinatura(doc, perfil.assinatura, yRodape);
+  doc.text("Assinatura: ________________", MARGEM_DIR, yRodape, { align: "right" });
+  let yInfo = yRodape + 5;
+  if (perfil.nomeMedico) { doc.setFont(undefined, "bold"); doc.text(perfil.nomeMedico, MARGEM_DIR, yInfo, { align: "right" }); yInfo += 4; }
+  if (perfil.crm) { doc.setFont(undefined, "normal"); doc.text("CRM: " + perfil.crm, MARGEM_DIR, yInfo, { align: "right" }); yInfo += 4; }
+  if (perfil.especialidade) { doc.setFont(undefined, "normal"); doc.text(perfil.especialidade, MARGEM_DIR, yInfo, { align: "right" }); }
+  doc.setFont(undefined, "normal");
+}
+
+// Nova página de mapeamento/anexo com o mesmo cabeçalho (logo + dados da
+// clínica) e rodapé (assinatura do médico) das páginas do laudo. Devolve a
+// faixa livre para o conteúdo: de `topo` até `base` (em mm).
+export function novaPaginaComCabecalho(doc, perfil = lerPerfilPdf()) {
+  doc.addPage();
+  const topo = desenharCabecalhoLaudo(doc, { logo: perfil.logo, linhas: perfil.linhas, fonteCorpo: 11 });
+  desenharRodapeLaudo(doc, perfil);
+  doc.setTextColor(0, 0, 0);
+  return { topo, base: LIMITE_CONTEUDO };
+}
+
+// Altura da imagem que cabe no espaço (sem passar da altura original),
+// mantendo a proporção; devolve { w, h } em mm.
+export function caberNaFaixa(larguraOriginal, alturaOriginal, alturaLivre) {
+  const h = Math.max(40, Math.min(alturaOriginal, alturaLivre));
+  return { w: larguraOriginal * (h / alturaOriginal), h };
+}
