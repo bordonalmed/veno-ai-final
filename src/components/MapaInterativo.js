@@ -82,6 +82,8 @@ export const VARIZ_CORES = {
   "Varizes Superficiais": VARIZ_COR,
   "Varizes Reticulares": VARIZ_COR,
   "Microvarizes": VARIZ_COR,
+  // tromboflebite superficial: traço preto, para destacar das varizes
+  "Tromboflebite Superficial": "#111111",
 };
 
 // O contorno do ícone de variz é uma elipse (mais alta que larga, não um
@@ -181,6 +183,7 @@ export const TRACO_LARGURA = {
   "Varizes Superficiais": 5.4,
   "Varizes Reticulares": 2.6,
   "Microvarizes": 0.8,
+  "Tromboflebite Superficial": 3.6,
 };
 
 // Amostra do traço (cor + calibre), para legendas e botões das canetas.
@@ -446,6 +449,7 @@ const CANETAS_VARIZ = [
   ["Varizes Superficiais", "Superficial"],
   ["Varizes Reticulares", "Reticular"],
   ["Microvarizes", "Micro"],
+  ["Tromboflebite Superficial", "Tromboflebite"],
 ];
 
 // Barra do modo desenho: canetas por tipo, borracha, desfazer e limpar.
@@ -609,6 +613,7 @@ export default function MapaInterativo({
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Superficiais" /> superficiais</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Reticulares" /> reticulares</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Microvarizes" /> microvarizes</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Tromboflebite Superficial"] }}><VarizLinhaLegenda tipo="Tromboflebite Superficial" /> tromboflebite superficial</span>
       </div>
     </>
   );

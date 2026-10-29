@@ -8,7 +8,7 @@ import {
   gerarConclusaoVisual,
   conclusoesSistemaProfundo,
 } from "../utils/vascularMapping";
-import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_COR, TRACO_LARGURA, VarizLinhaLegenda } from "./MapaInterativo";
+import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_COR, VARIZ_CORES, TRACO_LARGURA, VarizLinhaLegenda } from "./MapaInterativo";
 import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 // Monta o desenho (vista anterior + posterior) de UM membro com o mesmo
@@ -58,7 +58,7 @@ function montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, pro
 // Desenha no PDF (vetorial) a amostra do traço de variz — vermelho, com o
 // calibre do tipo —, começando em (x, y) em mm; k converte px do desenho em mm.
 function desenharLinhaVarizPdf(doc, tipo, x, y, k) {
-  const rgb = hexParaRgb(VARIZ_COR);
+  const rgb = hexParaRgb(VARIZ_CORES[tipo] || VARIZ_COR);
   doc.setDrawColor(rgb.r, rgb.g, rgb.b);
   doc.setLineWidth(TRACO_LARGURA[tipo] * k);
   doc.setLineCap("round");
@@ -111,14 +111,15 @@ function desenharLegendaPdf(doc, pageWidth, yInicial) {
     ["Varizes superficiais", "Varizes Superficiais"],
     ["Varizes reticulares", "Varizes Reticulares"],
     ["Microvarizes", "Microvarizes"],
+    ["Tromboflebite superficial", "Tromboflebite Superficial"],
   ];
   const escalaLinha = 0.16;
   const larguraIcone = 6;
   const larguraVarizes = legendaVarizes.reduce((acc, [label]) => acc + larguraIcone + 2 + doc.getTextWidth(label) + 8, -8);
   let lx3 = (pageWidth - larguraVarizes) / 2;
-  const rgbVariz = hexParaRgb(VARIZ_COR);
   legendaVarizes.forEach(([label, tipo]) => {
     desenharLinhaVarizPdf(doc, tipo, lx3, y - 2.1, escalaLinha);
+    const rgbVariz = hexParaRgb(VARIZ_CORES[tipo] || VARIZ_COR);
     doc.setTextColor(rgbVariz.r, rgbVariz.g, rgbVariz.b);
     doc.text(label, lx3 + larguraIcone + 2, y);
     lx3 += larguraIcone + 2 + doc.getTextWidth(label) + 8;
@@ -375,6 +376,7 @@ export default function EsquemaMapeamentoModal({
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Superficiais" /> varizes superficiais</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Reticulares" /> reticulares</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Microvarizes" /> microvarizes</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Tromboflebite Superficial"] }}><VarizLinhaLegenda tipo="Tromboflebite Superficial" /> tromboflebite superficial</span>
           </div>
         )}
 
