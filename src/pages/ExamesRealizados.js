@@ -66,7 +66,6 @@ export default function ExamesRealizados() {
   const [filtroLocal, setFiltroLocal] = useState("todos");
   const [busca, setBusca] = useState("");
   const [examesSelecionados, setExamesSelecionados] = useState([]);
-  const [modoSelecao, setModoSelecao] = useState(false);
   const [enviandoExame, setEnviandoExame] = useState(null);
   const [ordenacao, setOrdenacao] = useState("recentes");
   const [menuAbertoId, setMenuAbertoId] = useState(null);
@@ -172,6 +171,12 @@ export default function ExamesRealizados() {
     if (ordenacao === "tipo") return (a.tipoNome || "").localeCompare(b.tipoNome || "");
     return new Date(b.timestamp || b.criadoEm || 0) - new Date(a.timestamp || a.criadoEm || 0);
   });
+
+  // Seleção: só vale o que está visível com a busca/filtros atuais (não
+  // apaga exame escondido por filtro).
+  const estaSelecionado = (exame) => examesSelecionados.some(e => e.id === exame.id);
+  const selecionados = examesFiltrados.filter(estaSelecionado);
+  const todosSelecionados = examesFiltrados.length > 0 && selecionados.length === examesFiltrados.length;
 
   const tiposUnicos = [...new Set(exames.map(e => e.tipoNome).filter(Boolean))];
   const locaisUnicos = [...new Set(exames.map(localDoExame).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -324,18 +329,19 @@ export default function ExamesRealizados() {
   };
 
   const selecionarTodos = () => {
-    setExamesSelecionados(examesFiltrados);
+    setExamesSelecionados(todosSelecionados ? [] : examesFiltrados);
   };
 
   const confirmarExcluirSelecionados = async () => {
-    if (examesSelecionados.length === 0) return;
+    const paraExcluir = selecionados;
+    if (paraExcluir.length === 0) return;
     setConfirmacao(null);
 
     try {
       setCarregando(true);
       
       // Excluir cada exame selecionado
-      for (const exame of examesSelecionados) {
+      for (const exame of paraExcluir) {
         console.log('🗑️ ExamesRealizados: Excluindo exame selecionado:', exame.id);
         
         // Excluir usando o serviço em tempo real
@@ -352,10 +358,9 @@ export default function ExamesRealizados() {
       
       // Limpar seleção
       setExamesSelecionados([]);
-      setModoSelecao(false);
       
       console.log('✅ ExamesRealizados: Exames selecionados excluídos com sucesso');
-      alert(`${examesSelecionados.length} exame(s) excluído(s) com sucesso!`);
+      alert(`${paraExcluir.length} exame(s) excluído(s) com sucesso!`);
       // NÃO atualizar estado local - o listener em tempo real fará isso
     } catch (error) {
       console.error('❌ ExamesRealizados: Erro ao excluir exames selecionados:', error);
@@ -511,70 +516,66 @@ export default function ExamesRealizados() {
             <FiRefreshCw /> Sync
           </button>
           
-          {/* Botão principal: Selecionar */}
+          {/* Seleção: os quadradinhos ficam na frente de cada exame */}
           <button
-            onClick={() => setModoSelecao(!modoSelecao)}
+            onClick={selecionarTodos}
+            disabled={examesFiltrados.length === 0}
             style={{
-              background: modoSelecao ? "#e74c3c" : "#27ae60",
+              background: "#27ae60",
               color: "white",
               border: "none",
-              padding: "8px 16px",
+              padding: "8px 14px",
               borderRadius: "6px",
-              cursor: "pointer",
+              cursor: examesFiltrados.length === 0 ? "not-allowed" : "pointer",
               fontSize: "12px",
               fontWeight: "bold",
+              opacity: examesFiltrados.length === 0 ? 0.5 : 1,
               display: "flex",
               alignItems: "center",
-              gap: "6px",
-              transition: "all 0.3s ease"
+              gap: "6px"
             }}
           >
-            {modoSelecao ? <><FiX /> Cancelar</> : <><FiCheckSquare /> Selecionar</>}
+            {todosSelecionados ? <><FiSquare /> Desmarcar todos</> : <><FiCheckSquare /> Selecionar todos</>}
           </button>
-          
-          {/* Botões de seleção (apenas no modo seleção) */}
-          {modoSelecao && (
+
+          {selecionados.length > 0 && (
             <>
               <button
-                onClick={selecionarTodos}
-                disabled={examesFiltrados.length === 0}
-                style={{
-                  background: "#3498db",
-                  color: "white",
-                  border: "none",
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  cursor: examesFiltrados.length === 0 ? "not-allowed" : "pointer",
-                  fontSize: "11px",
-                  fontWeight: "bold",
-                  opacity: examesFiltrados.length === 0 ? 0.5 : 1,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5
-                }}
-              >
-                <FiCheckSquare /> Todos
-              </button>
-
-              <button
                 onClick={() => setConfirmacao({ tipo: "excluirSelecionados" })}
-                disabled={examesSelecionados.length === 0 || carregando}
+                disabled={carregando}
                 style={{
                   background: "#e74c3c",
                   color: "white",
                   border: "none",
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  cursor: examesSelecionados.length === 0 || carregando ? "not-allowed" : "pointer",
-                  fontSize: "11px",
+                  padding: "8px 14px",
+                  borderRadius: "6px",
+                  cursor: carregando ? "not-allowed" : "pointer",
+                  fontSize: "12px",
                   fontWeight: "bold",
-                  opacity: examesSelecionados.length === 0 || carregando ? 0.5 : 1,
-                  display: "inline-flex",
+                  opacity: carregando ? 0.5 : 1,
+                  display: "flex",
                   alignItems: "center",
-                  gap: 5
+                  gap: "6px"
                 }}
               >
-                <FiTrash2 /> Excluir ({examesSelecionados.length})
+                <FiTrash2 /> Excluir selecionados ({selecionados.length})
+              </button>
+              <button
+                onClick={() => setExamesSelecionados([])}
+                style={{
+                  background: "transparent",
+                  color: "#9fb2c6",
+                  border: "1px solid #38445e",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <FiX /> Limpar seleção
               </button>
             </>
           )}
@@ -792,15 +793,14 @@ export default function ExamesRealizados() {
               role="button"
               tabIndex={0}
               aria-label={`Ver exame de ${exame.nome}`}
-              onClick={() => (modoSelecao ? toggleSelecaoExame(exame) : setExameVisualizando(exame))}
+              onClick={() => setExameVisualizando(exame)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  modoSelecao ? toggleSelecaoExame(exame) : setExameVisualizando(exame);
+                  setExameVisualizando(exame);
                 }
               }}
               style={{
-                background: "#242d43",
                 borderRadius: "8px",
                 padding: "15px",
                 border: "1px solid #0eb8d033",
@@ -808,34 +808,27 @@ export default function ExamesRealizados() {
                 transition: "all 0.2s",
                 position: "relative",
                 cursor: "pointer",
-                borderColor: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d033"
+                borderColor: estaSelecionado(exame) ? "#e74c3c" : "#0eb8d033",
+                background: estaSelecionado(exame) ? "#2e2a3b" : "#242d43"
               }}
             >
-              {/* Checkbox para seleção múltipla */}
-              {modoSelecao && (
-                <div style={{
-                  position: "absolute",
-                  top: "10px",
-                  left: "10px",
-                  zIndex: 10
-                }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                {/* Quadradinho de seleção, na frente do nome */}
+                <label
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  title="Selecionar este exame"
+                  style={{ display: "flex", padding: "6px", margin: "-6px", cursor: "pointer", flexShrink: 0 }}
+                >
                   <input
                     type="checkbox"
-                    checked={examesSelecionados.find(e => e.id === exame.id) ? true : false}
+                    checked={estaSelecionado(exame)}
                     onChange={() => toggleSelecaoExame(exame)}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      cursor: "pointer"
-                    }}
+                    aria-label={`Selecionar exame de ${exame.nome}`}
+                    style={{ width: "22px", height: "22px", margin: 0, cursor: "pointer", accentColor: "#e74c3c" }}
                   />
-                </div>
-              )}
-
-              <div style={{
-                marginLeft: modoSelecao ? "35px" : "0"
-              }}>
+                </label>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 {/* Informações do exame */}
                 <div style={{ marginBottom: "12px" }}>
                   <h3 style={{
@@ -866,7 +859,6 @@ export default function ExamesRealizados() {
                 </div>
 
                 {/* Botões de ação */}
-                {!modoSelecao && (
                   <div style={{
                     display: "flex",
                     gap: "6px",
@@ -1004,25 +996,8 @@ export default function ExamesRealizados() {
                       </>
                     )}
                   </div>
-                )}
 
-                {/* Status de seleção */}
-                {modoSelecao && (
-                  <div style={{
-                    color: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c" : "#0eb8d0",
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                    padding: "8px",
-                    background: examesSelecionados.find(e => e.id === exame.id) ? "#e74c3c20" : "#0eb8d020",
-                    borderRadius: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 5
-                  }}>
-                    {examesSelecionados.find(e => e.id === exame.id) ? <><FiCheckSquare /> Selecionado</> : <><FiSquare /> Não selecionado</>}
-                  </div>
-                )}
+              </div>
               </div>
             </div>
           ))}
@@ -1198,7 +1173,7 @@ export default function ExamesRealizados() {
               <>
                 <h3 style={{ color: "#fff", margin: "0 0 10px 0", fontSize: "17px" }}>Excluir exames selecionados?</h3>
                 <p style={{ color: "#aab6c2", fontSize: "14px", marginBottom: 20 }}>
-                  Tem certeza que deseja excluir <strong style={{ color: "#0eb8d0" }}>{examesSelecionados.length}</strong> exame(s) selecionado(s)? Essa ação não pode ser desfeita.
+                  Tem certeza que deseja excluir <strong style={{ color: "#0eb8d0" }}>{selecionados.length}</strong> exame(s) selecionado(s)? Essa ação não pode ser desfeita.
                 </p>
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                   <button onClick={() => setConfirmacao(null)} style={{ background: "#38445e", color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 600, cursor: "pointer", fontSize: "14px" }}>Cancelar</button>
