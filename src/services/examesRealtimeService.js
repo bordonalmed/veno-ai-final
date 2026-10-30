@@ -61,6 +61,9 @@ class ExamesRealtimeService {
     this.currentUser = null;
     this.unsubscribeListeners = new Map();
     this.useSupabase = supabaseConfig.isConfigured && supabase !== null;
+    // Situação da nuvem para a tela: sem sessão = este aparelho não envia nem
+    // recebe exames; pendentes = exames salvos só neste aparelho.
+    this.estadoNuvem = { semSessao: false, pendentes: 0 };
     this.loadCurrentUser();
     
     if (this.useSupabase) {
@@ -110,7 +113,7 @@ class ExamesRealtimeService {
       // Buscar exames inicialmente
       this.buscarExames().then(result => {
         if (result.success) {
-          onChange(result.exames, { hasPendingWrites: false, isOffline: false });
+          onChange(result.exames, { hasPendingWrites: false, isOffline: false, nuvem: { ...this.estadoNuvem } });
         }
       });
 
@@ -135,7 +138,7 @@ class ExamesRealtimeService {
                 // Recarregar exames quando houver mudança
                 this.buscarExames().then(result => {
                   if (result.success) {
-                    onChange(result.exames, { hasPendingWrites: false, isOffline: false });
+                    onChange(result.exames, { hasPendingWrites: false, isOffline: false, nuvem: { ...this.estadoNuvem } });
                   }
                 });
               }
@@ -152,7 +155,7 @@ class ExamesRealtimeService {
       intervalId = setInterval(() => {
         this.buscarExames().then(result => {
           if (result.success) {
-            onChange(result.exames, { hasPendingWrites: false, isOffline: false });
+            onChange(result.exames, { hasPendingWrites: false, isOffline: false, nuvem: { ...this.estadoNuvem } });
           }
         }).catch(error => {
           if (onError) onError(error);
@@ -511,6 +514,10 @@ class ExamesRealtimeService {
       // Buscar do Supabase se configurado
       if (this.useSupabase && supabase) {
         try {
+          // Sem sessão no Supabase o app continua "logado" (localStorage), mas a
+          // nuvem recusa ler e gravar: os exames ficam só neste aparelho.
+          const { data: sessao } = await supabase.auth.getSession();
+          this.estadoNuvem.semSessao = !sessao?.session;
           console.log('🔍 Buscando exames do Supabase...');
           const { data: supabaseExames, error: supabaseError } = await supabase
             .from('laudos')
@@ -521,7 +528,12 @@ class ExamesRealtimeService {
           if (supabaseError) {
             console.error('❌ Erro ao buscar exames do Supabase:', supabaseError);
             console.warn('⚠️ Buscando apenas de localStorage como fallback');
-          } else if (supabaseExames && supabaseExames.length > 0) {
+          } else if (!this.estadoNuvem.semSessao) {
+            // Nuvem acessível: manda para lá os exames que ficaram só neste
+            // aparelho (salvos quando a nuvem falhou), para aparecerem nos outros.
+            this.enviarPendentes(user, supabaseExames || []).catch(() => {});
+          }
+          if (!supabaseError && supabaseExames && supabaseExames.length > 0) {
             console.log(`✅ ${supabaseExames.length} exames encontrados no Supabase`);
             
             // Converter exames do Supabase para o formato esperado
@@ -556,6 +568,7 @@ class ExamesRealtimeService {
 
       // Buscar do localStorage também (para exames antigos e fallback)
       const tiposLaudo = STORAGE_KEYS;
+      let pendentes = 0;
       
       tiposLaudo.forEach(tipo => {
         const exames = JSON.parse(localStorage.getItem(tipo) || "[]");
@@ -580,6 +593,8 @@ class ExamesRealtimeService {
             );
 
             if (!jaExiste) {
+              const dono = (exame.userId && exame.userId === user.uid) || (exame.userEmail && exame.userEmail === user.email);
+              if (!supabaseId && dono) pendentes++;
               const storageKey = exame.tipo || tipo || getStorageKey(tipoNome);
               todosExames.push({
                 ...exame,
@@ -597,6 +612,8 @@ class ExamesRealtimeService {
         });
       });
 
+      this.estadoNuvem.pendentes = this.useSupabase ? pendentes : 0;
+
       // Ordenar por data mais recente
       todosExames.sort((a, b) => {
         const dateA = new Date(a.timestamp || a.criadoEm || a.dataCriacao || 0);
@@ -610,6 +627,66 @@ class ExamesRealtimeService {
     } catch (error) {
       console.error('❌ ExamesRealtimeService: Erro ao buscar exames:', error);
       return { success: false, exames: [], error: error.message };
+    }
+  }
+
+  // Envia para o Supabase os exames deste usuário que estão só no navegador
+  // (sem supabaseId). Não duplica: pula o que já está na nuvem pelo id local
+  // ou por paciente + data + tipo. Para no primeiro erro (tenta de novo na
+  // próxima busca).
+  async enviarPendentes(user, examesNuvem) {
+    if (this._enviandoPendentes || !this.useSupabase || !supabase) return 0;
+    this._enviandoPendentes = true;
+    let enviados = 0;
+    try {
+      const idsNuvem = new Set(examesNuvem.map((e) => e.dados?.localId).filter(Boolean));
+      const chave = (nome, data, tipo) => `${normalizarNome(nome)}|${data || ""}|${tipo || ""}`;
+      const chavesNuvem = new Set(examesNuvem.map((e) => chave(e.nome, e.data, e.tipo_nome)));
+      for (const tipo of STORAGE_KEYS) {
+        const lista = JSON.parse(localStorage.getItem(tipo) || "[]");
+        let mudou = false;
+        for (const ex of lista) {
+          if (!ex || ex.deletedAt || ex.supabaseId) continue;
+          const dono = (ex.userId && ex.userId === user.uid) || (ex.userEmail && ex.userEmail === user.email);
+          if (!dono) continue;
+          const localId = ex.localId || ex.id;
+          const tipoNome = ex.tipoNome || 'Exame';
+          const nome = ex.nome || ex.paciente || 'Sem nome';
+          if ((localId && idsNuvem.has(localId)) || chavesNuvem.has(chave(nome, ex.data, tipoNome))) continue;
+          const dados = { ...ex, localId };
+          delete dados.origem;
+          const { data, error } = await supabase
+            .from('laudos')
+            .insert({
+              user_id: user.uid,
+              user_email: user.email,
+              tipo_nome: tipoNome,
+              nome,
+              data: ex.data || '',
+              tipo_exame: tipoNome,
+              dados,
+              data_criacao: ex.dataCriacao || ex.timestamp || new Date().toISOString(),
+              data_modificacao: new Date().toISOString(),
+              origem: 'supabase'
+            })
+            .select();
+          if (error || !data?.[0]?.id) {
+            console.warn('⚠️ Exame ainda não foi para a nuvem:', error);
+            if (mudou) localStorage.setItem(tipo, JSON.stringify(lista));
+            return enviados;
+          }
+          ex.supabaseId = data[0].id;
+          ex.origem = 'supabase';
+          idsNuvem.add(localId);
+          mudou = true;
+          enviados++;
+        }
+        if (mudou) localStorage.setItem(tipo, JSON.stringify(lista));
+      }
+      if (enviados) console.log(`☁️ ${enviados} exame(s) deste aparelho enviados para a nuvem`);
+      return enviados;
+    } finally {
+      this._enviandoPendentes = false;
     }
   }
 
