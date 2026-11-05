@@ -296,7 +296,7 @@ export default function Configuracoes() {
     planoTitulo = "Premium"; planoCor = TEMA.ok;
     planoTexto = ate
       ? `Assinatura cancelada: o Premium continua até ${new Date(ate).toLocaleDateString("pt-BR")}.`
-      : "Laudos ilimitados, até 3 locais de atendimento e envio por WhatsApp/e-mail.";
+      : "Laudos ilimitados, até 5 locais de atendimento e envio por WhatsApp/e-mail.";
   } else if (trial.status === "ativo") {
     planoTitulo = "Teste gratuito";
     planoTexto = `Restam ${trial.diasRestantes} ${trial.diasRestantes === 1 ? "dia" : "dias"} e ${trial.laudosRestantes} ${trial.laudosRestantes === 1 ? "laudo" : "laudos"}.`;
