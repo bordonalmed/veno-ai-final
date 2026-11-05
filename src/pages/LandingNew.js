@@ -32,12 +32,36 @@ function estadoBase() {
   };
 }
 
+// Varizes desenhadas à mão, como no Mapa Interativo (coordenadas do desenho
+// da perna esquerda; na direita o desenho espelha). Pontos densificados para
+// a animação "desenhar" o traço aos poucos.
+function densificar(pts, passos = 6) {
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    for (let k = 1; k <= passos; k++) out.push([x0 + ((x1 - x0) * k) / passos, y0 + ((y1 - y0) * k) / passos]);
+  }
+  return out;
+}
+const raio = (cx, cy, r, angulos) => angulos.map((a) => [[cx, cy], [cx + r * Math.cos(a), cy + r * Math.sin(a)]]);
+const TRACOS_DEMO = [
+  { tipo: "Varizes Superficiais", vista: "anterior", pts: [[160, 368], [168, 380], [162, 393], [171, 406], [164, 420], [172, 434], [166, 448], [171, 460]] },
+  { tipo: "Varizes Reticulares", vista: "anterior", pts: [[127, 425], [137, 436], [130, 449], [141, 460], [135, 472]] },
+  { tipo: "Varizes Reticulares", vista: "posterior", pts: [[124, 140], [134, 152], [127, 165], [138, 177], [132, 190]] },
+  ...raio(138, 520, 8, [-2.4, -1.5, -0.6, 0.5, 1.4, 2.5]).map((pts) => ({ tipo: "Microvarizes", vista: "anterior", pts })),
+  ...raio(172, 478, 9, [-2.6, -1.6, -0.5, 0.6, 1.6, 2.6]).map((pts) => ({ tipo: "Microvarizes", vista: "posterior", pts })),
+].map((t) => ({ ...t, pts: densificar(t.pts) }));
+// trecho trombosado da variz da perna (caneta preta)
+const TROMBO_DEMO = { tipo: "Tromboflebite Superficial", vista: "anterior", pts: densificar([[162, 393], [171, 406], [164, 420], [172, 434]]) };
+
 // Passos da demonstração: o que o médico "clica" e o que muda no laudo.
 const PASSOS = [
   { acao: "Exame normal", aplicar: (e) => e },
   { acao: "Clique na JSF → pérvia e incompetente", aplicar: (e) => ({ ...e, superficiais: { ...e.superficiais, JSF: supOptions[1] }, jsf: "7,5" }) },
   { acao: "Clique na safena magna → refluxo da JSF ao joelho", aplicar: (e) => ({ ...e, superficiais: { ...e.superficiais, "Safena Magna": supOptions[1] }, magna: { ...e.magna, coxa: "5,8", inicio: "JSF", fim: "joelho" } }) },
-  { acao: "Marque as varizes no desenho", aplicar: (e) => ({ ...e, varizes: { antPernaProximal: "Varizes Reticulares", antPernaMedia: "Varizes Superficiais", postPernaDistal: "Microvarizes" } }) },
+  { acao: "Desenhe as varizes no local exato", aplicar: (e) => ({ ...e, varizes: { tracos: TRACOS_DEMO } }) },
+  { acao: "Caneta preta → tromboflebite superficial", aplicar: (e) => ({ ...e, varizes: { tracos: [...TRACOS_DEMO, TROMBO_DEMO] } }) },
 ];
 
 function estadoNoPasso(n) {
@@ -77,6 +101,31 @@ function DemoAoVivo() {
 
   const estado = useMemo(() => estadoNoPasso(passo), [passo]);
   const laudo = useMemo(() => laudoDe(estado), [estado]);
+  // Traços novos deste passo aparecem sendo desenhados (0 → 1 em ~1,4 s).
+  const [progresso, setProgresso] = useState(1);
+  const primeiro = useRef(true);
+  useEffect(() => {
+    if (primeiro.current) { primeiro.current = false; return undefined; }
+    const calmo = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (calmo) { setProgresso(1); return undefined; }
+    let raf;
+    const inicio = performance.now();
+    const tick = (agora) => {
+      const t = Math.min(1, (agora - inicio) / 1400);
+      setProgresso(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    setProgresso(0);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [passo]);
+  const varizesDesenho = useMemo(() => {
+    const todos = estado.varizes.tracos;
+    if (!todos || progresso >= 1) return estado.varizes;
+    const jaFeitos = passo > 0 ? (estadoNoPasso(passo - 1).varizes.tracos || []).length : 0;
+    const tracos = todos.map((t, i) => (i < jaFeitos ? t : { ...t, pts: t.pts.slice(0, Math.ceil(t.pts.length * progresso)) }));
+    return { ...estado.varizes, tracos };
+  }, [estado, passo, progresso]);
   const linhas = laudo.split("\n");
 
   useEffect(() => {
@@ -135,7 +184,7 @@ function DemoAoVivo() {
             magna={estado.magna}
             parva={estado.parva}
             perfurantes={[]}
-            varizes={estado.varizes}
+            varizes={varizesDesenho}
           />
         </div>
         <div className={`lp-demo-laudo${noFim ? " fim" : ""}`}>
