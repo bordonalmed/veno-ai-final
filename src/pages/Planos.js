@@ -67,7 +67,7 @@ export default function Planos() {
         "Laudos ilimitados",
         "7 tipos de exame com mapa interativo",
         "PDF com seu logo e assinatura",
-        "Até 3 locais de atendimento",
+        "Até 5 locais de atendimento",
         "Envio do laudo por WhatsApp e e-mail",
         "Exames e perfil salvos na nuvem (qualquer computador)",
         "Cancele quando quiser",

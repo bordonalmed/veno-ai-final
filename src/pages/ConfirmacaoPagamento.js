@@ -62,7 +62,7 @@ export default function ConfirmacaoPagamento() {
           <FiAward size={46} color="#11b581" />
           <h2 style={{ color: "#11b581", margin: "14px 0 8px" }}>Premium ativo!</h2>
           <p style={{ color: "#c7d4db", lineHeight: 1.5, margin: "0 0 22px" }}>
-            Laudos ilimitados, até 3 locais de atendimento e envio de laudos por WhatsApp e e-mail liberados para <strong>{email}</strong>.
+            Laudos ilimitados, até 5 locais de atendimento e envio de laudos por WhatsApp e e-mail liberados para <strong>{email}</strong>.
           </p>
           <button style={botao("#11b581")} onClick={() => navigate("/home")}><FiCheck /> Começar a usar</button>
         </div>

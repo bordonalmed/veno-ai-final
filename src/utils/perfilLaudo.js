@@ -10,7 +10,7 @@
 
 // Limites. O futuro plano para clínicas aumenta MAX_MEDICOS.
 export const MAX_MEDICOS = 1;
-export const MAX_LOCAIS = 3;
+export const MAX_LOCAIS = 5;
 
 export const CAMPOS_MEDICO = ["nomeMedico", "crm", "especialidade", "assinaturaMedico"];
 export const CAMPOS_LOCAL = ["nomeClinica", "enderecoClinica", "telefoneClinica", "emailClinica", "logoClinica"];

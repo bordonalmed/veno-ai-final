@@ -299,7 +299,7 @@ export default function LandingNew() {
               <ul className="lp-lista">
                 <li><span className="ic">1</span><div><b>Seu logo e os dados da clínica</b><span>No topo de cada página, como no seu papel timbrado.</span></div></li>
                 <li><span className="ic">2</span><div><b>Assinatura e CRM no rodapé</b><span>Assinatura digitalizada ou desenhada na tela.</span></div></li>
-                <li><span className="ic">3</span><div><b>Até 3 locais de atendimento</b><span>Atende em mais de uma clínica? Escolha o local e o logo do PDF muda.</span></div></li>
+                <li><span className="ic">3</span><div><b>Até 5 locais de atendimento</b><span>Atende em mais de uma clínica? Escolha o local e o logo do PDF muda.</span></div></li>
                 <li><span className="ic">4</span><div><b>Exames salvos na nuvem</b><span>Reabra, edite e gere o PDF de novo em qualquer computador ou celular.</span></div></li>
               </ul>
             </div>
@@ -376,7 +376,7 @@ export default function LandingNew() {
                 <p className="lp-ancora">Cerca de <b>R$ 3,20 por dia</b>, menos que um único exame Doppler por mês.</p>
                 <ul>
                   <li>Laudos ilimitados</li>
-                  <li>Até 3 locais de atendimento</li>
+                  <li>Até 5 locais de atendimento</li>
                   <li>Envio do laudo por WhatsApp e e-mail</li>
                   <li>Exames e perfil na nuvem</li>
                   <li>Cancele quando quiser</li>
@@ -394,7 +394,7 @@ export default function LandingNew() {
             <div className="lp-faq">
               <details open><summary>Preciso instalar alguma coisa?</summary><p>Não. Funciona no navegador do computador, do tablet ou do celular. Se quiser, dá para instalar como app pelo próprio navegador.</p></details>
               <details><summary>Como funciona o teste grátis?</summary><p>Começa no seu primeiro laudo e vale por {DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos, o que acabar primeiro. Gerar de novo o laudo do mesmo paciente não conta outra vez.</p></details>
-              <details><summary>Consigo colocar o logo da minha clínica?</summary><p>Sim. Em Configurações você coloca logo, endereço, telefone, CRM e assinatura. Com o Premium, até 3 locais com logos diferentes.</p></details>
+              <details><summary>Consigo colocar o logo da minha clínica?</summary><p>Sim. Em Configurações você coloca logo, endereço, telefone, CRM e assinatura. Com o Premium, até 5 locais com logos diferentes.</p></details>
               <details><summary>Posso acrescentar observações ao laudo?</summary><p>Sim. Cada exame tem um campo de observações que entra no texto do laudo.</p></details>
               <details><summary>Meus exames ficam salvos?</summary><p>Ficam na sua conta, protegidos por login, e aparecem em Exames Realizados para reabrir, editar, gerar o PDF ou enviar ao paciente.</p></details>
               <details><summary>Como cancelo o Premium?</summary><p>Pela sua conta na Hotmart, quando quiser, sem multa. O Premium continua até o fim do mês já pago.</p></details>

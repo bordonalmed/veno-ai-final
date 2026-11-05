@@ -16,7 +16,7 @@ function jose() {
   return m;
 }
 
-describe("um profissional com até 3 locais de atendimento", () => {
+describe("um profissional com até 5 locais de atendimento", () => {
   it("o Dr. José atende na clínica A ou B, cada uma com seu logo", () => {
     let d = normalizarDados({ medicos: [jose()], medicoAtivo: 0 });
     expect(perfilAtivo(d)).toMatchObject({ nomeMedico: "Dr. José", nomeClinica: "Clínica A", logoClinica: "data:LOGO-A", assinaturaMedico: "data:SIG-J" });
@@ -29,9 +29,10 @@ describe("um profissional com até 3 locais de atendimento", () => {
     expect(opcoesDePerfil(d).find((o) => o.ativo).rotulo).toBe("Dr. José · Clínica B");
   });
 
-  it("limites: 1 profissional por usuário e 3 locais", () => {
+  it("limites: 1 profissional por usuário e 5 locais", () => {
     expect(MAX_MEDICOS).toBe(1);
-    const muitos = Array.from({ length: 5 }, (_, i) => ({ ...medicoVazio(), nomeMedico: `Dr. ${i}`, locais: Array.from({ length: 5 }, localVazio) }));
+    expect(MAX_LOCAIS).toBe(5);
+    const muitos = Array.from({ length: 5 }, (_, i) => ({ ...medicoVazio(), nomeMedico: `Dr. ${i}`, locais: Array.from({ length: 8 }, localVazio) }));
     const d = normalizarDados({ medicos: muitos, medicoAtivo: 2 });
     expect(d.medicos).toHaveLength(1);
     expect(d.medicos[0].nomeMedico).toBe("Dr. 2"); // fica o que estava em uso
