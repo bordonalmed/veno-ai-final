@@ -326,7 +326,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   const DICAS = { perna: 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = naP; fase.hidden = naP && !temRefluxo(); $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = naP; fase.hidden = naP; $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -462,11 +462,10 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   }
 
   // leitura do ciclo
-  function temRefluxo() { return TUBOS.some((q) => q.estado === 'ruim' && q.nome !== 'Veia perfurante'); }
   const fase = $('fase'), faseK = $('faseK'), faseT = $('faseT'), dopR = $('dopR'), dopN = $('dopN');
   let ultimaFase = '', resumo = '';
   function atualizaFase() {
-    if (st.nivel === 'perna' && !temRefluxo()) return;
+    if (st.nivel === 'perna') return;
     let k, t, tom = 'normal'; const sist = st.tc < SISTOLE, tau = Math.min(Math.max(0, st.tc - SISTOLE), DUR_REFLUXO);
     if (st.nivel === 'perna') {
       const r = TUBOS.find((q) => q.estado === 'ruim' && q.nome !== 'Veia perfurante'); k = 'Membro inferior ' + (ladoMembro === 'Direito' ? 'direito' : 'esquerdo');
@@ -475,10 +474,10 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
       const e = estSel(); k = (TUBOS[st.sel] ? TUBOS[st.sel].nome : 'Veia') + ' · ' + ROTULO[e];
       if (e === 'trombo') { tom = 'refluxo'; t = 'Não compressível · sem fluxo'; }
       else if (sist) t = e === 'recan' ? 'Fluxo reduzido · recanalização parcial' : 'Sangue sobe · válvulas abertas';
-      else if (e !== 'ruim') t = 'Válvulas fecham · sem refluxo'; else { tom = 'refluxo'; t = 'Válvulas não fecham · refluxo <b>' + num(tau) + ' s</b>'; }
+      else if (e !== 'ruim') t = 'Válvulas fecham · sem refluxo'; else { tom = 'refluxo'; t = 'Válvulas não fecham · <b>sangue volta</b>'; }
     }
     const chave = k + t; if (chave !== ultimaFase) { ultimaFase = chave; faseK.textContent = k; faseT.innerHTML = t; fase.dataset.tom = tom; fase.dataset.compacto = st.nivel === 'perna' ? '1' : '0'; }
-    const naPerna = st.nivel === 'perna', n = naPerna ? resumo : 'Doppler (esquemático)', e = estSel(), rr = naPerna ? '' : e === 'ruim' ? 'refluxo ' + num(DUR_REFLUXO) + ' s' : e === 'trombo' ? 'sem fluxo' : 'sem refluxo';
+    const naPerna = st.nivel === 'perna', n = naPerna ? resumo : 'Doppler (esquemático)', e = estSel(), rr = naPerna ? '' : e === 'ruim' ? 'refluxo' : e === 'trombo' ? 'sem fluxo' : 'sem refluxo';
     if (dopN.textContent !== n) dopN.textContent = n; if (dopR.textContent !== rr) { dopR.textContent = rr; dopR.style.color = (e === 'ruim' || e === 'trombo') ? 'var(--refluxo)' : ''; }
   }
   const dop = $('dop'), dctx = dop.getContext('2d');

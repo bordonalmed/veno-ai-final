@@ -25,9 +25,6 @@
 .m3d-fase .t { font-weight: 800; font-size: 16px; line-height: 1.2; margin-top: 4px; }
 .m3d-fase .t b { font-weight: 800; font-variant-numeric: tabular-nums; }
 .m3d-fase[data-tom="refluxo"] .t b { color: var(--m3d-refluxo); }
-.m3d-fase[data-compacto="1"] { top: 12px; max-width: calc(100% - 204px); padding: 6px 10px; border-left-width: 3px; }
-.m3d-fase[data-compacto="1"] .k { display: none; }
-.m3d-fase[data-compacto="1"] .t { font-size: 13px; margin-top: 0; }
 
 .m3d-rot { position: absolute; left: 0; top: 0; font: 600 11px/1 var(--m3d-dado); letter-spacing: .03em; color: var(--m3d-texto); background: rgba(13,20,31,.8); border: 1px solid var(--m3d-linha); border-radius: 999px; padding: 5px 9px; white-space: nowrap; pointer-events: none; transition: opacity .25s; will-change: transform; }
 button.m3d-rot { pointer-events: auto; cursor: pointer; border-color: var(--m3d-ciano); padding: 7px 10px; }
