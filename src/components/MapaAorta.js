@@ -348,7 +348,7 @@ const estiloLaudo = { background: "#f7f9fa", border: "1px solid #dfe6ec", color:
 
 export function MapaInterativoAorta({
   aberto, onFechar, arterias, onArteriaChange, extra, onExtraChange, observacoes, onObservacoes, laudo,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido, anexosProps,
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -358,6 +358,7 @@ export function MapaInterativoAorta({
     <>
       <MapaLayout
         embutido={embutido}
+        anexosProps={anexosProps}
         titulo="Aorta e Ilíacas"
         onFechar={onFechar}
         desenho={<DesenhoAortaIliacas arterias={valores} extra={extra} onSelecionar={setSelecionada} selecionada={selecionada} style={{ display: "block", width: "100%", maxWidth: 520, maxHeight: "72vh" }} />}

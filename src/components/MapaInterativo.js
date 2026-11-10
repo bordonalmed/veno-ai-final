@@ -1,7 +1,8 @@
 import React, { lazy, Suspense, useRef, useState } from "react";
-import { FiPaperclip, FiX, FiEdit2, FiRotateCcw, FiTrash2, FiCheck } from "react-icons/fi";
+import { FiEdit2, FiRotateCcw, FiTrash2, FiCheck } from "react-icons/fi";
 import { FaEraser } from "react-icons/fa";
 import MapaLayout from "./MapaLayout";
+import AnexosMapa from "./AnexosMapa";
 import {
   MEDIAL_SILHOUETTE,
   POSTERIOR_SILHOUETTE,
@@ -338,7 +339,7 @@ export function DesenhoMMIIVenoso({
   // ---- Vista MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda ----
   const magnaResult = construirSegmentosVeia({
     spine: VSM_SPINE, half: VSM_HALF, landmark: LANDMARK_MAGNA,
-    status: s["Safena Magna"], ini: m.inicio, fim: m.fim, iniVal: m.inicio_valor, fimVal: m.fim_valor,
+    status: s["Safena Magna"], ini: m.inicio, fim: m.fim, iniVal: m.inicio_valor, fimVal: m.fim_valor, restante: m.restante,
   });
   const magnaHitD = fitaVeiaSimples(VSM_SPINE, VSM_HALF, LANDMARK_MAGNA.top, LANDMARK_MAGNA.tornozelo);
   const jsfCor = CORES[s["JSF"]] || CORES["pérvia e competente"];
@@ -350,7 +351,7 @@ export function DesenhoMMIIVenoso({
   // ---- Vista POSTERIOR: JSP + Veia Poplítea + Safena Parva + panturrilha ----
   const parvaResult = construirSegmentosVeia({
     spine: VSP_SPINE, half: VSP_HALF, landmark: LANDMARK_PARVA,
-    status: s["Safena Parva"], ini: pv.inicio, fim: pv.fim, iniVal: pv.inicio_valor, fimVal: pv.fim_valor,
+    status: s["Safena Parva"], ini: pv.inicio, fim: pv.fim, iniVal: pv.inicio_valor, fimVal: pv.fim_valor, restante: pv.restante,
   });
   // Área de clique começa abaixo da faixa da Veia Poplítea (POPLITEA_RIBBON vai
   // até y~388), para não roubar o clique destinado a ela logo abaixo do JSP.
@@ -685,35 +686,7 @@ export default function MapaInterativo({
       </div>
 
       {/* Anexos: mesmas imagens (PNG/JPG) que o formulário principal anexa ao PDF */}
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}><FiPaperclip /> Anexos:</div>
-          <span style={{ fontSize: 11, color: "#5c6b78" }}>{anexos.length} arquivo(s)</span>
-        </div>
-        <div
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          onClick={() => document.getElementById('fileInputMapa').click()}
-          style={{ border: "1px dashed #0eb8d0", borderRadius: 6, padding: 10, textAlign: "center", background: "rgba(14,184,208,0.05)", cursor: "pointer", fontSize: 12, color: "#0a7f91" }}
-        >
-          <input id="fileInputMapa" type="file" accept=".png,.jpg,.jpeg" multiple onChange={onFileUpload} style={{ display: "none" }} />
-          Clique ou arraste para anexar (PNG/JPG até 15MB)
-        </div>
-        {anexos.length > 0 && (
-          <div style={{ maxHeight: 120, overflowY: "auto", border: "1px solid #dfe6ec", borderRadius: 6, background: "#f7f9fa", padding: 6, marginTop: 6 }}>
-            {anexos.map((anexo) => (
-              <div key={anexo.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: 4, background: "#fff", borderRadius: 4, marginBottom: 4, border: "1px solid #dfe6ec" }}>
-                <img src={anexo.thumbnail} alt={anexo.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 3, border: "1px solid #dfe6ec" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{anexo.name}</div>
-                  <div style={{ fontSize: 10, color: "#5c6b78" }}>{formatFileSize(anexo.size)}</div>
-                </div>
-                <button onClick={() => onRemoveAnexo(anexo.id)} style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer", display: "inline-flex", alignItems: "center" }}><FiX /></button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <AnexosMapa anexos={anexos} onFileUpload={onFileUpload} onDrop={onDrop} onDragOver={onDragOver} onRemoveAnexo={onRemoveAnexo} formatFileSize={formatFileSize} />
 
       {/* Laudo ao vivo */}
       <div>

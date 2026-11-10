@@ -160,7 +160,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     const pi = v.inicio && v.inicio.indexOf('cm_') === 0, pf = v.fim && v.fim.indexOf('cm_') === 0;
     if (!(v.inicio && v.fim && (!pi || v.inicio_valor) && (!pf || v.fim_valor))) return [{ a: top, b: bot, e: est }];
     let a = G.yFromField(v.inicio, v.inicio_valor, marco), b = G.yFromField(v.fim, v.fim_valor, marco); if (a > b) { const t = a; a = b; b = t; }
-    const out = []; if (a > top + 2) out.push({ a: top, b: a, e: 'ok' }); out.push({ a, b, e: est }); if (b < bot - 2) out.push({ a: b, b: bot, e: 'ok' }); return out;
+    const resto = est === 'ausente' ? estadoDe(v.restante) : 'ok';
+    const out = []; if (a > top + 2) out.push({ a: top, b: a, e: resto }); out.push({ a, b, e: est }); if (b < bot - 2) out.push({ a: b, b: bot, e: resto }); return out;
   }
   const raioSafena = (e, mm, base) => e === 'ausente' ? .013 : e === 'ruim' ? (parseFloat(mm) > 0 ? clamp(parseFloat(mm) * 0.0085, .03, .1) : base * 1.6) : e === 'trombo' ? base * 1.35 : base;
   function geraPerna() {

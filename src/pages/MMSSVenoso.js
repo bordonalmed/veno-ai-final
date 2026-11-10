@@ -11,6 +11,7 @@ import { MapaInterativoMMSSVenoso, adicionarMapaMMSSVenosoAoPdf } from "../compo
 import ExamHeader from "../components/ExamHeader";
 import { CamposVeia, CamposCateter, CamposFAVVenoso } from "../components/CamposVeiaMMSS";
 import { appendImagesToPdf } from "../utils/pdfImages";
+import { extrasParaSalvar, anexosDoExameEmEdicao } from "../utils/exameExtras";
 import "../styles/pdf.css";
 import examesRealtimeService from '../services/examesRealtimeService';
 import {
@@ -195,7 +196,6 @@ function MMSSVenoso() {
   useEffect(() => {
     setLadoMapa(lado === "Esquerdo" ? "Esquerdo" : "Direito");
   }, [lado]);
-  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
@@ -207,6 +207,7 @@ function MMSSVenoso() {
   useEffect(() => {
     const exameEmEdicao = carregarExameEmEdicao();
     if (exameEmEdicao) {
+      setAnexos(anexosDoExameEmEdicao(exameEmEdicao));
       setNome(exameEmEdicao.nome || "");
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
@@ -277,6 +278,15 @@ function MMSSVenoso() {
     setMostrarLaudo(!mostrarLaudo);
   }
 
+  // Mapa no PDF (sempre incluído): o mesmo no PDF da tela e no exame salvo.
+  async function adicionarMapaNoPdf(doc) {
+    try {
+      await adicionarMapaMMSSVenosoAoPdf(doc, ladosDoExame(lado), veias, extras);
+    } catch (e) {
+      console.error("Erro ao adicionar o mapa ao PDF:", e);
+    }
+  }
+
   async function handleSalvarExame() {
     if (!deveMostrarCampos) {
       alert('Preencha todos os campos obrigatórios antes de salvar!');
@@ -284,7 +294,10 @@ function MMSSVenoso() {
     }
     if (!(await liberarLaudo({ tipoNome: "MMSS Venoso", nome, data }))) return;
 
+    // anexos e mapeamento vão junto com o laudo
+    const extrasExame = await extrasParaSalvar(anexos, adicionarMapaNoPdf);
     const dadosExame = {
+      ...extrasExame,
       nome,
       idade,
       data,
@@ -527,9 +540,7 @@ function MMSSVenoso() {
     });
     
     // Adicionar anexos como páginas no final do PDF
-    if (incluirMapaPdf) {
-      await adicionarMapaMMSSVenosoAoPdf(doc, lados, veias, extras);
-    }
+    await adicionarMapaNoPdf(doc);
 
     appendImagesToPdf(doc, anexos);
     
@@ -548,7 +559,7 @@ function MMSSVenoso() {
     setVeias({ Direito: veiasPadrao(), Esquerdo: veiasPadrao() });
     setObservacoes({ Direito: "", Esquerdo: "" });
     setExtras({ Direito: extraPadrao(), Esquerdo: extraPadrao() });
-    setMostrarMapa(true); setIncluirMapaPdf(false);
+    setMostrarMapa(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -689,6 +700,8 @@ function MMSSVenoso() {
       />
 
       <MapaInterativoMMSSVenoso
+
+        anexosProps={{ anexos, onFileUpload: handleFileUpload, onDrop: handleDrop, onDragOver: handleDragOver, onRemoveAnexo: removeAnexo, formatFileSize }}
         aberto={deveMostrarCampos && mostrarMapa}
         embutido
         onFechar={() => setMostrarMapa(false)}
@@ -704,8 +717,6 @@ function MMSSVenoso() {
         laudoMembro={deveMostrarCampos
           ? gerarBlocoMembro(ladoMapa, veias[ladoMapa], extras[ladoMapa], observacoes[ladoMapa])
           : ""}
-        incluirMapaPdf={incluirMapaPdf}
-        onIncluirMapaPdf={setIncluirMapaPdf}
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
         onEnviar={temAcessoEnvio() ? () => setEnviandoLaudo(true) : undefined}

@@ -6,6 +6,7 @@ import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import {
   CORES,
   gerarConclusaoVisual,
+  conclusaoRestante,
   conclusoesSistemaProfundo,
 } from "../utils/vascularMapping";
 import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_COR, VARIZ_CORES, TRACO_LARGURA, VarizLinhaLegenda } from "./MapaInterativo";
@@ -40,8 +41,12 @@ function montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, pro
   const conclusoes = [...conclusoesSistemaProfundo(prof)];
   const cMagna = gerarConclusaoVisual("magna", "JSF", s["Safena Magna"], magnaExtra.inicio, magnaExtra.fim, magnaExtra.inicio_valor, magnaExtra.fim_valor);
   const cParva = gerarConclusaoVisual("parva", "JSP", s["Safena Parva"], parvaExtra.inicio, parvaExtra.fim, parvaExtra.inicio_valor, parvaExtra.fim_valor);
+  const rMagna = conclusaoRestante("magna", "JSF", s["Safena Magna"], magnaExtra.restante, magnaExtra.inicio, magnaExtra.fim, magnaExtra.inicio_valor, magnaExtra.fim_valor);
+  const rParva = conclusaoRestante("parva", "JSP", s["Safena Parva"], parvaExtra.restante, parvaExtra.inicio, parvaExtra.fim, parvaExtra.inicio_valor, parvaExtra.fim_valor);
   if (cMagna) conclusoes.push(cMagna);
+  if (rMagna) conclusoes.push(rMagna);
   if (cParva) conclusoes.push(cParva);
+  if (rParva) conclusoes.push(rParva);
   perfurantesInsuficientes.forEach((perf) => {
     conclusoes.push(
       `Insuficiência de veia perfurante${perf.segmento ? ` (${perf.valor ? perf.valor + " " : ""}${perf.segmento})` : ""}`

@@ -336,7 +336,7 @@ function BotaoModo({ ativo, children, onClick }) {
 
 export function MapaInterativoFAV({
   aberto, onFechar, lado, ladoExame, onTrocarLado, extra, onExtraChange, observacoes, onObservacoes, laudo,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido, anexosProps,
 }) {
   const [selecionado, setSelecionado] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -377,6 +377,7 @@ export function MapaInterativoFAV({
     <>
       <MapaLayout
         embutido={embutido}
+        anexosProps={anexosProps}
         titulo="Fístula Arteriovenosa"
         onFechar={onFechar}
         lado={ladoExame || lado}

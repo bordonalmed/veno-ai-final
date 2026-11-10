@@ -355,7 +355,7 @@ function Previa({ titulo, lados, onFechar, desenhar, legenda }) {
 export function MapaInterativoMMSSArterial({
   aberto, onFechar, lado, ladoAtivo, onTrocarLado,
   arterias, onArteriaChange, extras, onExtraChange, laudoMembro,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido, anexosProps,
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -368,6 +368,7 @@ export function MapaInterativoMMSSArterial({
     <>
       <MapaLayout
         embutido={embutido}
+        anexosProps={anexosProps}
         titulo="MMSS Arterial"
         onFechar={onFechar}
         lado={lado} ladoAtivo={l}
@@ -411,7 +412,7 @@ export function MapaInterativoMMSSArterial({
 export function MapaInterativoMMSSVenoso({
   aberto, onFechar, lado, ladoAtivo, onTrocarLado,
   veias, onVeiaChange, extras, onExtraChange, observacoes, onObservacao, laudoMembro,
-  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido,
+  incluirMapaPdf, onIncluirMapaPdf, onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame, embutido, anexosProps,
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -424,6 +425,7 @@ export function MapaInterativoMMSSVenoso({
     <>
       <MapaLayout
         embutido={embutido}
+        anexosProps={anexosProps}
         titulo="MMSS Venoso"
         onFechar={onFechar}
         lado={lado} ladoAtivo={l}

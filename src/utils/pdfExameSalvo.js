@@ -164,6 +164,35 @@ export async function montarPDFExame(exame, perfil) {
     });
     rodape(pagina);
   });
+
+  // Mapeamento salvo com o exame (as mesmas páginas do PDF da tela).
+  if (exame.mapaPdf) {
+    try {
+      const bytes = Uint8Array.from(atob(String(exame.mapaPdf)), (c) => c.charCodeAt(0));
+      const mapa = await PDFDocument.load(bytes);
+      const paginas = await doc.copyPages(mapa, mapa.getPageIndices());
+      paginas.forEach((p) => doc.addPage(p));
+    } catch (e) {
+      console.error("Não foi possível incluir o mapeamento no PDF:", e);
+    }
+  }
+
+  // Anexos salvos com o exame: uma página por foto, com cabeçalho e assinatura.
+  const anexos = Array.isArray(exame.anexos) ? exame.anexos : [];
+  for (let i = 0; i < anexos.length; i++) {
+    const img = await embutirImagem(doc, anexos[i] && anexos[i].thumbnail);
+    if (!img) continue;
+    const pagina = doc.addPage([LARGURA, ALTURA]);
+    const topo = cabecalho(pagina);
+    txt(pagina, `Anexo ${i + 1}: ${anexos[i].name || ""}`, ESQ, topo, negrito, 12);
+    const alto = topo - 6 * MM - (RODAPE_TOPO + 2 * MM);
+    const larg = DIR - ESQ;
+    const k = Math.min(larg / img.width, alto / img.height);
+    const w = img.width * k, h = img.height * k;
+    pagina.drawImage(img, { x: ESQ + (larg - w) / 2, y: topo - 6 * MM - h, width: w, height: h });
+    rodape(pagina);
+  }
+
   carimbarMarcaVenoAIPdfLib(doc, fonte, rgb);
   return doc.save();
 }

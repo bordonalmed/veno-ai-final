@@ -360,7 +360,7 @@ export default function MapaInterativoArterial({
   laudoMembro,
   incluirMapaPdf, onIncluirMapaPdf,
   onSalvarTXT, onSalvarPDF, onEnviar, onSalvarExame,
-  embutido,
+  embutido, anexosProps,
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -373,6 +373,7 @@ export default function MapaInterativoArterial({
     <>
       <MapaLayout
       embutido={embutido}
+        anexosProps={anexosProps}
         titulo="MMII Arterial"
         onFechar={onFechar}
         lado={lado}

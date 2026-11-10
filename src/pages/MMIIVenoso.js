@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import { desenharCabecalhoLaudo, desenharAssinatura } from "../utils/pdfCabecalho";
 import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { appendImagesToPdf } from "../utils/pdfImages";
+import { extrasParaSalvar, anexosDoExameEmEdicao } from "../utils/exameExtras";
 import { FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
 import { FaStethoscope } from "react-icons/fa";
 import ExamHeader from "../components/ExamHeader";
@@ -414,7 +415,6 @@ function MMIIVenoso() {
   const [varizes, setVarizes] = useState({ Direito: varizesVazias(), Esquerdo: varizesVazias() });
   const [anexos, setAnexos] = useState([]);
   const [mostrarEsquema, setMostrarEsquema] = useState(false);
-  const [incluirEsquemaPdf, setIncluirEsquemaPdf] = useState(false);
   // O Mapa Interativo é a tela principal do exame: abre sozinho assim que o
   // cabeçalho (nome, idade, data e lado) está completo. "Ver formulário"
   // mostra os quadros de preenchimento no lugar dele.
@@ -442,6 +442,7 @@ function MMIIVenoso() {
   useEffect(() => {
     const exameEmEdicao = carregarExameEmEdicao();
     if (exameEmEdicao) {
+      setAnexos(anexosDoExameEmEdicao(exameEmEdicao));
       setNome(exameEmEdicao.nome || "");
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
@@ -495,6 +496,18 @@ function MMIIVenoso() {
     setLaudoTexto(laudo);
   }
 
+  // Mapa no PDF (sempre incluído): o mesmo no PDF da tela e no exame salvo.
+  async function adicionarMapaNoPdf(doc) {
+    try {
+      await adicionarEsquemaAoPdf(doc, {
+        ladosParaMostrar: lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado],
+        superficiais, magna, parva, perfurantes, profundas, varizes, observacoes,
+      });
+    } catch (e) {
+      console.error("Erro ao adicionar o mapa ao PDF:", e);
+    }
+  }
+
   async function handleSalvarExame() {
     setErro("");
     if (!nome || !data || !lado) {
@@ -508,7 +521,10 @@ function MMIIVenoso() {
     // "Visualizar Laudo" — por exemplo, ajustes feitos no Mapa Interativo.
     const laudo = montarLaudo({ nome, data, lado, profundas, superficiais, magna, parva, jsfDiametro, jspDiametro, observacoes, perfurantes, varizes });
 
+    // anexos e mapeamento vão junto com o laudo
+    const extrasExame = await extrasParaSalvar(anexos, adicionarMapaNoPdf);
     const dadosExame = {
+      ...extrasExame,
       nome,
       idade,
       data,
@@ -798,22 +814,7 @@ function MMIIVenoso() {
     });
 
 
-    if (incluirEsquemaPdf) {
-      try {
-        await adicionarEsquemaAoPdf(doc, {
-          ladosParaMostrar: lados,
-          superficiais,
-          magna,
-          parva,
-          perfurantes,
-          profundas,
-          varizes,
-          observacoes,
-        });
-      } catch (e) {
-        console.error('Erro ao adicionar esquema de mapeamento ao PDF:', e);
-      }
-    }
+    await adicionarMapaNoPdf(doc);
 
     // Anexos por último (depois do mapeamento), sem distorcer as fotos.
     appendImagesToPdf(doc, anexos);
@@ -861,7 +862,7 @@ function MMIIVenoso() {
     setVarizes({ Direito: varizesVazias(), Esquerdo: varizesVazias() });
     setAnexos([]);
     setMostrarEsquema(false);
-    setIncluirEsquemaPdf(false);
+   
     setMostrarMapa(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -1054,8 +1055,6 @@ function MMIIVenoso() {
         onSalvarPDF={handleSalvarPDF}
         onEnviar={temAcessoEnvio() ? () => setEnviandoLaudo(true) : undefined}
         onAbrirMapeamentoVisual={() => setMostrarEsquema(true)}
-        incluirMapeamentoVisualPdf={incluirEsquemaPdf}
-        onIncluirMapeamentoVisualPdf={setIncluirEsquemaPdf}
         anexos={anexos}
         onFileUpload={handleFileUpload}
         onDrop={handleDrop}
@@ -1143,14 +1142,6 @@ function MMIIVenoso() {
                   overflowY: "auto"
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 'clamp(6px, 1.5vw, 8px)', marginBottom: 'clamp(6px, 1.5vw, 8px)' }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 'clamp(10px, 2vw, 12px)', color: "#333", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={incluirEsquemaPdf}
-                        onChange={e => setIncluirEsquemaPdf(e.target.checked)}
-                      />
-                      Incluir Mapeamento Visual no PDF
-                    </label>
                     <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
                     <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setMostrarEsquema(true)}>
                       <FaStethoscope /> Mapeamento Visual
@@ -1428,14 +1419,6 @@ function MMIIVenoso() {
             gap: 'clamp(6px, 1.5vw, 8px)',
             marginBottom: 'clamp(6px, 1.5vw, 8px)'
           }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 'clamp(10px, 2vw, 12px)', color: "#333", cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={incluirEsquemaPdf}
-                onChange={e => setIncluirEsquemaPdf(e.target.checked)}
-              />
-              Incluir Mapeamento Visual no PDF
-            </label>
             <div style={{ display: "flex", gap: 'clamp(6px, 1.5vw, 8px)', flexWrap: "wrap" }}>
             <button style={{ ...buttonStyle, background: "#6f42c1", fontSize: 'clamp(10px, 2vw, 12px)', padding: "clamp(4px, 1.5vw, 6px) clamp(8px, 2vw, 12px)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setMostrarEsquema(true)}>
               <FaStethoscope /> Mapeamento Visual

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import AnexosMapa from "./AnexosMapa";
 import { FiEye, FiX, FiList } from "react-icons/fi";
 // Fonte do "Map" escrito à mão, empacotada no app (funciona offline).
 import "@fontsource/caveat/latin-700.css";
@@ -117,7 +118,7 @@ export default function MapaLayout({
   painel, tituloPainel, onFecharPainel,
   placeholderPainel = "Clique em um vaso no desenho para registrar o achado.",
   conteudo,
-  incluirPdf, onIncluirPdf, labelIncluirPdf = "Incluir Mapeamento no PDF",
+  anexosProps,
   onVisualizarImagem,
   onSalvarTXT, onSalvarPDF, onSalvarExame, onEnviar,
   // embutido: o mapa é a própria tela do exame (dentro da página, logo abaixo
@@ -195,12 +196,7 @@ export default function MapaLayout({
 
   const rodape = (
     <div style={{ borderTop: `1px solid ${COR.borda}`, padding: larga ? "10px 18px" : "8px 10px", background: "#fff", display: "flex", flexDirection: larga ? "row" : "column", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-      {onIncluirPdf ? (
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: COR.texto, cursor: "pointer" }}>
-          <input type="checkbox" checked={!!incluirPdf} onChange={(e) => onIncluirPdf(e.target.checked)} />
-          {labelIncluirPdf}
-        </label>
-      ) : <span />}
+      <span />
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", width: larga ? "auto" : "100%" }}>
         {onVisualizarImagem && (
           <button onClick={onVisualizarImagem} style={botaoMapaStyle("#6f42c1", !larga)}><FiEye /> Visualizar imagem do PDF</button>
@@ -246,14 +242,14 @@ export default function MapaLayout({
             </div>
             <div style={{ overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
               {caixaPainel || caixaVazia}
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}{anexosProps && <AnexosMapa {...anexosProps} />}</div>
             </div>
           </div>
         ) : (
           <div style={{ flex: 1, minHeight: 0, overflowY: embutido ? "visible" : "auto", padding: 10, paddingBottom: painel ? "52vh" : 10, display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ flexShrink: 0 }}>{blocoDesenho}</div>
             {!painel && caixaVazia}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}{anexosProps && <AnexosMapa {...anexosProps} />}</div>
           </div>
         )}
 
