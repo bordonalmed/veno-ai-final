@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import AnexosMapa from "./AnexosMapa";
 import { FiEye, FiX, FiList } from "react-icons/fi";
 // Fonte do "Map" escrito à mão, empacotada no app (funciona offline).
 import "@fontsource/caveat/latin-700.css";
@@ -117,6 +118,7 @@ export default function MapaLayout({
   painel, tituloPainel, onFecharPainel,
   placeholderPainel = "Clique em um vaso no desenho para registrar o achado.",
   conteudo,
+  anexosProps,
   onVisualizarImagem,
   onSalvarTXT, onSalvarPDF, onSalvarExame, onEnviar,
   // embutido: o mapa é a própria tela do exame (dentro da página, logo abaixo
@@ -240,14 +242,14 @@ export default function MapaLayout({
             </div>
             <div style={{ overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
               {caixaPainel || caixaVazia}
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}{anexosProps && <AnexosMapa {...anexosProps} />}</div>
             </div>
           </div>
         ) : (
           <div style={{ flex: 1, minHeight: 0, overflowY: embutido ? "visible" : "auto", padding: 10, paddingBottom: painel ? "52vh" : 10, display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ flexShrink: 0 }}>{blocoDesenho}</div>
             {!painel && caixaVazia}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>{conteudo}{anexosProps && <AnexosMapa {...anexosProps} />}</div>
           </div>
         )}
 

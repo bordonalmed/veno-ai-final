@@ -657,6 +657,8 @@ function AortaIliacas() {
       />
 
       <MapaInterativoAorta
+
+        anexosProps={{ anexos, onFileUpload: handleFileUpload, onDrop: handleDrop, onDragOver: handleDragOver, onRemoveAnexo: removeAnexo, formatFileSize }}
         aberto={deveMostrarCampos && mostrarMapa}
         embutido
         onFechar={() => setMostrarMapa(false)}

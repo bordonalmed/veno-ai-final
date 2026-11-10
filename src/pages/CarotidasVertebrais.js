@@ -967,6 +967,8 @@ function CarotidasVertebrais() {
       />
 
       <CarotidasMapaInterativo
+
+        anexosProps={{ anexos, onFileUpload: handleFileUpload, onDrop: handleDrop, onDragOver: handleDragOver, onRemoveAnexo: removeAnexo, formatFileSize }}
         aberto={formReady && mostrarMapa}
         embutido
         onFechar={() => setMostrarMapa(false)}

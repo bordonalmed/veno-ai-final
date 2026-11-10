@@ -202,7 +202,7 @@ export async function adicionarMapaCarotidasAoPdf(doc, vessels, { nome, data } =
 // ao lado do desenho (ou subindo da parte de baixo no celular).
 export default function CarotidasMapaInterativo({
   aberto, onFechar, vessels, onChange, nome, data,
-  onSalvarExame, onSalvarTXT, onSalvarPDF, onEnviar, incluirMapaPdf, onIncluirMapaPdf, embutido
+  onSalvarExame, onSalvarTXT, onSalvarPDF, onEnviar, incluirMapaPdf, onIncluirMapaPdf, embutido, anexosProps
 }) {
   const [selected, setSelected] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
@@ -268,6 +268,7 @@ export default function CarotidasMapaInterativo({
     <>
       <MapaLayout
         embutido={embutido}
+        anexosProps={anexosProps}
         titulo="Carótidas e Vertebrais"
         onFechar={onFechar}
         desenho={desenho}
