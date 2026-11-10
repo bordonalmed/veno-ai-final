@@ -1,0 +1,65 @@
+/* Mapa 3D do MMII Venoso — tudo escopado em .m3d (visual escuro, independente do tema da página). */
+.m3d {
+  --m3d-fundo: #0d141f; --m3d-painel: #131d2b; --m3d-linha: #24364a;
+  --m3d-texto: #eef3f8; --m3d-suave: #9fb2c6;
+  --m3d-ciano: #0eb8d0; --m3d-ciano-tinta: #04222a;
+  --m3d-refluxo: #ff5d5d; --m3d-normal: #3ddc97;
+  --m3d-dado: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  width: 100%; display: flex; flex-direction: column; gap: 8px;
+  color: var(--m3d-texto); font-family: inherit; color-scheme: dark;
+}
+.m3d *, .m3d *::before, .m3d *::after { box-sizing: border-box; }
+.m3d [hidden] { display: none !important; }
+.m3d button { font: inherit; color: inherit; }
+.m3d button:focus-visible { outline: 3px solid var(--m3d-ciano); outline-offset: 2px; }
+
+.m3d-palco { position: relative; width: 100%; height: min(70vh, 640px); min-height: 380px; border-radius: 14px; overflow: hidden; background: var(--m3d-fundo); border: 1px solid var(--m3d-linha); }
+.m3d-gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.m3d-gl:active { cursor: grabbing; }
+.m3d-semgl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--m3d-suave); font-size: 15px; line-height: 1.4; }
+.m3d-veu { position: absolute; inset: 0; background: var(--m3d-fundo); opacity: 1; transition: opacity .22s; pointer-events: none; display: flex; align-items: center; justify-content: center; font: 600 12px/1 var(--m3d-dado); letter-spacing: .1em; text-transform: uppercase; color: var(--m3d-ciano); }
+
+.m3d-fase { position: absolute; left: 12px; top: 58px; max-width: min(340px, calc(100% - 60px)); background: rgba(13,20,31,.84); border: 1px solid var(--m3d-linha); border-left: 4px solid var(--m3d-normal); border-radius: 12px; padding: 9px 13px; pointer-events: none; }
+.m3d-fase[data-tom="refluxo"] { border-left-color: var(--m3d-refluxo); }
+.m3d-fase .k { font: 600 10.5px/1.25 var(--m3d-dado); letter-spacing: .07em; color: var(--m3d-suave); text-transform: uppercase; }
+.m3d-fase .t { font-weight: 800; font-size: 16px; line-height: 1.2; margin-top: 4px; }
+.m3d-fase .t b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.m3d-fase[data-tom="refluxo"] .t b { color: var(--m3d-refluxo); }
+
+.m3d-rot { position: absolute; left: 0; top: 0; font: 600 11px/1 var(--m3d-dado); letter-spacing: .03em; color: var(--m3d-texto); background: rgba(13,20,31,.8); border: 1px solid var(--m3d-linha); border-radius: 999px; padding: 5px 9px; white-space: nowrap; pointer-events: none; transition: opacity .25s; will-change: transform; }
+button.m3d-rot { pointer-events: auto; cursor: pointer; border-color: var(--m3d-ciano); padding: 7px 10px; }
+.m3d-rot[data-ruim="1"] { border-color: var(--m3d-refluxo); color: #ffd9d9; }
+.m3d-topo { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; align-items: center; }
+.m3d-ico { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--m3d-linha); background: rgba(13,20,31,.8); border-radius: 50%; color: var(--m3d-texto); cursor: pointer; }
+.m3d-ico svg { width: 20px; height: 20px; }
+.m3d-ico[aria-pressed="true"] { border-color: var(--m3d-ciano); color: var(--m3d-ciano); }
+.m3d-nomes { min-height: 38px; border: 1px solid var(--m3d-linha); background: rgba(13,20,31,.8); border-radius: 999px; font-weight: 700; font-size: 12.5px; color: var(--m3d-suave); cursor: pointer; padding: 0 13px; }
+.m3d-nomes[aria-pressed="true"] { border-color: var(--m3d-ciano); color: var(--m3d-texto); }
+
+.m3d-rolagem { position: absolute; right: 4px; top: 58px; bottom: 14px; width: 30px; touch-action: none; cursor: pointer; transition: opacity .25s; }
+.m3d-rolagem::before { content: ""; position: absolute; left: 12px; top: 0; bottom: 0; width: 6px; border-radius: 3px; background: rgba(159,178,198,.18); }
+.m3d-rolagem[data-livre="0"] { opacity: .25; pointer-events: none; }
+.m3d-polegar { position: absolute; left: 9px; width: 12px; border-radius: 6px; background: var(--m3d-ciano); min-height: 28px; }
+.m3d-rolagem:focus-visible { outline: 3px solid var(--m3d-ciano); outline-offset: 0; border-radius: 8px; }
+
+.m3d-leg { position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 12px; font: 600 11px/1.2 var(--m3d-dado); color: var(--m3d-suave); pointer-events: none; max-width: calc(100% - 60px); }
+.m3d-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.m3d-leg i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.m3d-doppler { position: absolute; left: 12px; right: 44px; bottom: 12px; max-width: 400px; background: rgba(13,20,31,.86); border: 1px solid var(--m3d-linha); border-radius: 12px; padding: 7px 10px 5px; pointer-events: none; }
+.m3d-doppler .k { display: flex; justify-content: space-between; gap: 8px; font: 600 10px/1.3 var(--m3d-dado); letter-spacing: .05em; color: var(--m3d-suave); text-transform: uppercase; }
+.m3d-dop { display: block; width: 100%; height: 52px; margin-top: 4px; }
+
+.m3d-controles { display: flex; gap: 7px; align-items: stretch; }
+
+/* tela cheia: cobre a página (também no iPhone, que não tem a API de tela cheia) */
+.m3d.m3d--cheia { position: fixed; inset: 0; z-index: 2147483000; background: var(--m3d-fundo); padding: calc(env(safe-area-inset-top, 0px) + 8px) calc(env(safe-area-inset-right, 0px) + 8px) calc(env(safe-area-inset-bottom, 0px) + 8px) calc(env(safe-area-inset-left, 0px) + 8px); }
+.m3d.m3d--cheia .m3d-palco { flex: 1 1 auto; height: auto; min-height: 0; }
+.m3d.m3d--cheia .m3d-nota { display: none; }
+.m3d-seg { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; background: var(--m3d-painel); border: 1px solid var(--m3d-linha); border-radius: 12px; padding: 4px; }
+.m3d-seg button { border: 0; background: transparent; border-radius: 8px; min-height: 40px; font-weight: 800; font-size: 14px; color: var(--m3d-suave); cursor: pointer; padding: 0 4px; }
+.m3d-seg button[aria-pressed="true"] { background: var(--m3d-ciano); color: var(--m3d-ciano-tinta); }
+.m3d-mini { flex: 0 0 auto; min-height: 44px; border: 1px solid var(--m3d-linha); background: var(--m3d-painel); color: var(--m3d-texto); border-radius: 11px; font-weight: 700; font-size: 13.5px; cursor: pointer; padding: 0 12px; }
+.m3d-mini[aria-pressed="true"] { border-color: var(--m3d-ciano); background: #0f3a46; color: #fff; }
+.m3d-nota { margin: 0; font-size: 12px; line-height: 1.4; color: #5c6b78; }
+.m3d-nota b { color: #1a2530; font-weight: 700; }

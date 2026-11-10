@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { lazy, Suspense, useRef, useState } from "react";
 import { FiPaperclip, FiX, FiEdit2, FiRotateCcw, FiTrash2, FiCheck } from "react-icons/fi";
 import { FaEraser } from "react-icons/fa";
 import MapaLayout from "./MapaLayout";
@@ -25,6 +25,9 @@ import {
   normalizarVarizesLado,
   montarLaudo,
 } from "../utils/mmiiVenosoLaudo";
+
+// 3D carregado só quando o médico toca no botão (three.js fica fora do pacote inicial)
+const Mapa3D = lazy(() => import("./mapa3d/Mapa3D"));
 
 // Layout simples e direto: só 2 vistas (medial + posterior — as mesmas do
 // Esquema de Mapeamento), sem régua/grade. As veias profundas da coxa
@@ -513,6 +516,7 @@ export default function MapaInterativo({
 }) {
   const [selecionado, setSelecionado] = useState(null);
   const [ferramenta, setFerramenta] = useState(null);
+  const [vista3d, setVista3d] = useState(false);
 
   if (!aberto) return null;
 
@@ -731,6 +735,22 @@ export default function MapaInterativo({
       onTrocarLado={(op) => { onTrocarLado(op); setSelecionado(null); }}
       desenho={
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div role="group" aria-label="Visualização do mapa" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", maxWidth: 260, padding: 3, borderRadius: 10, border: "1.5px solid #0eb8d0", background: "#f7fbff" }}>
+            {[["2D", false], ["3D", true]].map(([rot, v]) => (
+              <button
+                key={rot}
+                type="button"
+                aria-pressed={vista3d === v}
+                onClick={() => { setVista3d(v); if (v) { setFerramenta(null); setSelecionado(null); } }}
+                style={{ minHeight: 36, border: 0, borderRadius: 7, fontWeight: 800, fontSize: 14, cursor: "pointer", background: vista3d === v ? "#0eb8d0" : "transparent", color: vista3d === v ? "#04222a" : "#0a7f91" }}
+              >{rot}</button>
+            ))}
+          </div>
+          {vista3d ? (
+            <Suspense fallback={<div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>}>
+              <Mapa3D key={l} lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz} />
+            </Suspense>
+          ) : (<>
           <BarraDesenhoVarizes
             ferramenta={ferramenta}
             onFerramenta={(f) => { setFerramenta(f); if (f) setSelecionado(null); }}
@@ -747,6 +767,7 @@ export default function MapaInterativo({
             onTracosChange={(novos) => onVarizes(l, { ...vz, tracos: novos })}
             style={{ width: "100%", maxWidth: 560, maxHeight: "74vh", display: "block" }}
           />
+          </>)}
         </div>
       }
       legenda={legenda}
