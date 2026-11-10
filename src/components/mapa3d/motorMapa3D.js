@@ -326,7 +326,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   const DICAS = { perna: 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = naP; fase.hidden = naP; $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -482,7 +482,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   }
   const dop = $('dop'), dctx = dop.getContext('2d');
   function desenhaDoppler() {
-    if (st.nivel === 'perna') return;
+    if (st.nivel === 'perna' || $('dopBox').hidden) return;
     const w = dop.width, h = dop.height, y0 = h * 0.52, ampC = h * 0.46, ampB = h * 0.44, px = Math.max(1, w / 420 * 1.2), f = fatorFluxo();
     dctx.clearRect(0, 0, w, h);
     for (const sinal of [1, -1]) { dctx.beginPath(); dctx.moveTo(0, y0); for (let x = 0; x <= w; x += 2) { const v = velocidade(x / w * CICLO, st.dil >= 0.99 ? 1 : 0) * f, vv = sinal > 0 ? Math.max(0, v) : Math.min(0, v); dctx.lineTo(x, y0 - vv * (sinal > 0 ? ampC : ampB)); } dctx.lineTo(w, y0); dctx.closePath(); dctx.fillStyle = sinal > 0 ? 'rgba(14,184,208,.75)' : 'rgba(255,93,93,.85)'; dctx.fill(); }

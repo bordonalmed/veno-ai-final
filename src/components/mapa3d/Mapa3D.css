@@ -60,6 +60,6 @@ button.m3d-rot { pointer-events: auto; cursor: pointer; border-color: var(--m3d-
 .m3d-seg button { border: 0; background: transparent; border-radius: 8px; min-height: 40px; font-weight: 800; font-size: 14px; color: var(--m3d-suave); cursor: pointer; padding: 0 4px; }
 .m3d-seg button[aria-pressed="true"] { background: var(--m3d-ciano); color: var(--m3d-ciano-tinta); }
 .m3d-mini { flex: 0 0 auto; min-height: 44px; border: 1px solid var(--m3d-linha); background: var(--m3d-painel); color: var(--m3d-texto); border-radius: 11px; font-weight: 700; font-size: 13.5px; cursor: pointer; padding: 0 12px; }
-.m3d-mini[aria-pressed="true"] { border-color: var(--m3d-ciano); background: rgba(14,184,208,.16); }
+.m3d-mini[aria-pressed="true"] { border-color: var(--m3d-ciano); background: #0f3a46; color: #fff; }
 .m3d-nota { margin: 0; font-size: 12px; line-height: 1.4; color: #5c6b78; }
 .m3d-nota b { color: #1a2530; font-weight: 700; }
