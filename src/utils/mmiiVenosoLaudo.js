@@ -1,3 +1,5 @@
+import { conclusaoRestante, estadoRestante, ausenciaParcial } from "./vascularMapping";
+
 // Lógica de laudo do MMII Venoso extraída para módulo compartilhado, para que
 // tanto o formulário (MMIIVenoso.js) quanto o Mapa Interativo possam gerar o
 // mesmo texto a partir do mesmo estado, sem duplicar a árvore de decisão.
@@ -240,6 +242,14 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
       conclusoes.push("Ausência de safena parva identificável ao exame");
     }
   }
+  {
+    const r = conclusaoRestante("magna", "JSF", superficiais["Safena Magna"], magna.restante, magna.inicio, magna.fim, magna.inicio_valor, magna.fim_valor);
+    if (r) conclusoes.push(r);
+  }
+  {
+    const r = conclusaoRestante("parva", "JSP", superficiais["Safena Parva"], parva.restante, parva.inicio, parva.fim, parva.inicio_valor, parva.fim_valor);
+    if (r) conclusoes.push(r);
+  }
   if (superficiais["Safena Magna"] === "não compressível e sem fluxo (trombose)") {
     conclusoes.push("Tromboflebite da safena magna");
   }
@@ -292,6 +302,7 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
         const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
         const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
         linhas.push(`  > Segmento ${rotulo}: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
+        if (superficiais[l][v] === "ausente" && estadoRestante(magna[l].restante) !== "pérvia e competente" && ausenciaParcial("JSF", ini, fim, ini_val, fim_val)) linhas.push(`  > Segmento presente: ${estadoRestante(magna[l].restante)}`);
       }
       if (v === "Safena Parva" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente")) {
         const rotulo = superficiais[l][v] === "ausente" ? "ausente" : "insuficiente";
@@ -304,6 +315,7 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
         const ini_fmt = ini && legendaCampos[ini] && ini_val ? `${ini_val} ${legendaCampos[ini]}` : legendaCampos[ini] || ini;
         const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
         linhas.push(`  > Segmento ${rotulo}: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
+        if (superficiais[l][v] === "ausente" && estadoRestante(parva[l].restante) !== "pérvia e competente" && ausenciaParcial("JSP", ini, fim, ini_val, fim_val)) linhas.push(`  > Segmento presente: ${estadoRestante(parva[l].restante)}`);
       }
     });
     linhas.push("");

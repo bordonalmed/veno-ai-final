@@ -338,7 +338,7 @@ export function DesenhoMMIIVenoso({
   // ---- Vista MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda ----
   const magnaResult = construirSegmentosVeia({
     spine: VSM_SPINE, half: VSM_HALF, landmark: LANDMARK_MAGNA,
-    status: s["Safena Magna"], ini: m.inicio, fim: m.fim, iniVal: m.inicio_valor, fimVal: m.fim_valor,
+    status: s["Safena Magna"], ini: m.inicio, fim: m.fim, iniVal: m.inicio_valor, fimVal: m.fim_valor, restante: m.restante,
   });
   const magnaHitD = fitaVeiaSimples(VSM_SPINE, VSM_HALF, LANDMARK_MAGNA.top, LANDMARK_MAGNA.tornozelo);
   const jsfCor = CORES[s["JSF"]] || CORES["pérvia e competente"];
@@ -350,7 +350,7 @@ export function DesenhoMMIIVenoso({
   // ---- Vista POSTERIOR: JSP + Veia Poplítea + Safena Parva + panturrilha ----
   const parvaResult = construirSegmentosVeia({
     spine: VSP_SPINE, half: VSP_HALF, landmark: LANDMARK_PARVA,
-    status: s["Safena Parva"], ini: pv.inicio, fim: pv.fim, iniVal: pv.inicio_valor, fimVal: pv.fim_valor,
+    status: s["Safena Parva"], ini: pv.inicio, fim: pv.fim, iniVal: pv.inicio_valor, fimVal: pv.fim_valor, restante: pv.restante,
   });
   // Área de clique começa abaixo da faixa da Veia Poplítea (POPLITEA_RIBBON vai
   // até y~388), para não roubar o clique destinado a ela logo abaixo do JSP.

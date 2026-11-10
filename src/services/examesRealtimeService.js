@@ -54,6 +54,18 @@ function getStorageKey(tipoNome = 'Exame') {
 const ehUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ""));
 const normalizarNome = (v) => String(v || "").trim().toLowerCase();
 // Local de atendimento em uso (clínica escolhida em "Local do exame").
+// Grava a lista no navegador. Fotos e mapa ocupam espaço: se o navegador não
+// tiver lugar, a cópia local fica sem eles (o exame na nuvem continua completo).
+function gravarListaLocal(chave, lista) {
+  const tenta = (l) => { try { localStorage.setItem(chave, JSON.stringify(l)); return true; } catch (_) { return false; } };
+  if (tenta(lista)) return true;
+  const semPeso = (e, soNuvem) => (e && (e.anexos || e.mapaPdf) && (!soNuvem || e.supabaseId))
+    ? (({ anexos, mapaPdf, ...resto }) => ({ ...resto, extrasSoNaNuvem: true }))(e) : e;
+  if (tenta(lista.map((e) => semPeso(e, true)))) return true;
+  if (tenta(lista.map((e) => semPeso(e, false)))) return true;
+  throw new Error("Sem espaço no navegador para salvar o exame");
+}
+
 const localEmUso = () => (typeof localStorage !== "undefined" && localStorage.getItem("nomeClinica")) || "";
 
 class ExamesRealtimeService {
@@ -305,7 +317,7 @@ class ExamesRealtimeService {
       } else {
         examesExistentes.push(novoExame);
       }
-      localStorage.setItem(storageKey, JSON.stringify(examesExistentes));
+      gravarListaLocal(storageKey, examesExistentes);
       
       console.log('✅ ExamesRealtimeService: Exame criado:', novoExame.id);
       return { success: true, id: novoExame.id, supabaseId: novoExame.supabaseId, localId: novoExame.localId };
@@ -370,7 +382,7 @@ class ExamesRealtimeService {
           mudou = true;
           return { ...e, ...exameAtualizado, modificadoPor: user.uid };
         });
-        if (mudou) { localStorage.setItem(tipo, JSON.stringify(novos)); noNavegador = true; }
+        if (mudou) { gravarListaLocal(tipo, novos); noNavegador = true; }
       }
 
       if (noSupabase || noNavegador) {

@@ -8,6 +8,7 @@ import examesRealtimeService from "../services/examesRealtimeService";
 import { AuthService } from "../services/supabaseAuthService";
 import { limparPerfilAtivo } from "../utils/perfilLaudo";
 import { gerarPDFExame, montarPDFExame, perfilParaExame, formatarDataDiaMesAno } from "../utils/pdfExameSalvo";
+import { prepararExameParaEdicao } from "../utils/exameExtras";
 import { temAcessoEnvio, textoEnvio } from "../utils/envioLaudo";
 import EnviarLaudo from "../components/EnviarLaudo";
 
@@ -233,7 +234,7 @@ export default function ExamesRealizados() {
     if (rota) {
       // Salvar dados do exame para edição; ao salvar, atualiza este exame
       // (antes criava um exame novo, duplicando)
-      localStorage.setItem("exameEmEdicao", JSON.stringify(exame));
+      localStorage.setItem("exameEmEdicao", JSON.stringify(prepararExameParaEdicao(exame)));
       examesRealtimeService.iniciarEdicao(exame);
       navigate(rota);
     }

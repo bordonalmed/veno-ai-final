@@ -11,6 +11,7 @@ import { MapaInterativoMMSSArterial, adicionarMapaMMSSArterialAoPdf } from "../c
 import ExamHeader from "../components/ExamHeader";
 import { CamposArteria, CamposManobras, CamposFAV } from "../components/CamposArteria";
 import { appendImagesToPdf } from "../utils/pdfImages";
+import { extrasParaSalvar, anexosDoExameEmEdicao } from "../utils/exameExtras";
 import "../styles/pdf.css";
 import examesRealtimeService from '../services/examesRealtimeService';
 import {
@@ -172,7 +173,6 @@ function MMSSArterial() {
   useEffect(() => {
     setLadoMapa(lado === "Esquerdo" ? "Esquerdo" : "Direito");
   }, [lado]);
-  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
@@ -184,6 +184,7 @@ function MMSSArterial() {
   useEffect(() => {
     const exameEmEdicao = carregarExameEmEdicao();
     if (exameEmEdicao) {
+      setAnexos(anexosDoExameEmEdicao(exameEmEdicao));
       setNome(exameEmEdicao.nome || "");
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
@@ -250,6 +251,15 @@ function MMSSArterial() {
     setMostrarLaudo(!mostrarLaudo);
   }
 
+  // Mapa no PDF (sempre incluído): o mesmo no PDF da tela e no exame salvo.
+  async function adicionarMapaNoPdf(doc) {
+    try {
+      await adicionarMapaMMSSArterialAoPdf(doc, ladosDoExame(lado), { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo });
+    } catch (e) {
+      console.error("Erro ao adicionar o mapa ao PDF:", e);
+    }
+  }
+
   async function handleSalvarExame() {
     if (!deveMostrarCampos) {
       alert('Preencha todos os campos obrigatórios antes de salvar!');
@@ -257,7 +267,10 @@ function MMSSArterial() {
     }
     if (!(await liberarLaudo({ tipoNome: "MMSS Arterial", nome, data }))) return;
 
+    // anexos e mapeamento vão junto com o laudo
+    const extrasExame = await extrasParaSalvar(anexos, adicionarMapaNoPdf);
     const dadosExame = {
+      ...extrasExame,
       nome,
       idade,
       data,
@@ -500,9 +513,7 @@ function MMSSArterial() {
     });
     
     // Adicionar anexos como páginas no final do PDF
-    if (incluirMapaPdf) {
-      await adicionarMapaMMSSArterialAoPdf(doc, lados, { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo });
-    }
+    await adicionarMapaNoPdf(doc);
 
     appendImagesToPdf(doc, anexos);
     
@@ -520,7 +531,7 @@ function MMSSArterial() {
     setMostrarLaudo(false); setAnexos([]);
     setArteriasDireito(arteriasPadrao()); setArteriasEsquerdo(arteriasPadrao());
     setExtras({ Direito: extraPadrao(), Esquerdo: extraPadrao() });
-    setMostrarMapa(true); setIncluirMapaPdf(false);
+    setMostrarMapa(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -674,8 +685,6 @@ function MMSSArterial() {
         laudoMembro={deveMostrarCampos
           ? gerarBlocoMembro(ladoMapa, ladoMapa === "Direito" ? arteriasDireito : arteriasEsquerdo, extras[ladoMapa])
           : ""}
-        incluirMapaPdf={incluirMapaPdf}
-        onIncluirMapaPdf={setIncluirMapaPdf}
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
         onEnviar={temAcessoEnvio() ? () => setEnviandoLaudo(true) : undefined}

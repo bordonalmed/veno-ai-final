@@ -164,9 +164,34 @@ export function classifyAusencia(veinLabel, topField, ini, fim, iniVal, fimVal) 
   return `Ausência de safena ${veinLabel} identificável ao exame`;
 }
 
+// Ausência parcial da safena: estado do trecho que está presente.
+export const RESTANTE_OPCOES = [
+  "pérvia e competente",
+  "pérvia e incompetente",
+  "não compressível e sem fluxo (trombose)",
+];
+export const estadoRestante = (r) => (RESTANTE_OPCOES.includes(r) ? r : RESTANTE_OPCOES[0]);
+
+// Ausência que não pega a safena toda (sobra trecho presente).
+export function ausenciaParcial(topField, ini, fim, iniVal, fimVal) {
+  if (!ini || !fim) return false;
+  if ((ini.indexOf("cm_") === 0 && !iniVal) || (fim.indexOf("cm_") === 0 && !fimVal)) return false;
+  return !(ini === topField && fim === "tornozelo");
+}
+
+// Conclusão do trecho presente quando ele não é normal (ex.: ausência
+// parcial com o restante insuficiente ou trombosado).
+export function conclusaoRestante(veinLabel, topField, status, restante, ini, fim, iniVal, fimVal) {
+  if (status !== "ausente" || !ausenciaParcial(topField, ini, fim, iniVal, fimVal)) return null;
+  const r = estadoRestante(restante);
+  if (r === "pérvia e incompetente") return `Insuficiência do segmento remanescente da safena ${veinLabel}`;
+  if (r === "não compressível e sem fluxo (trombose)") return `Tromboflebite do segmento remanescente da safena ${veinLabel}`;
+  return null;
+}
+
 // Retorna os trechos coloridos (path + cor) da veia, a partir dos MESMOS
 // campos que o formulario ja usa (status, inicio, fim, inicio_valor, fim_valor).
-export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim, iniVal, fimVal }) {
+export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim, iniVal, fimVal, restante }) {
   if (status === "ausente") {
     const needIniA = ini && ini.indexOf("cm_") === 0;
     const needFimA = fim && fim.indexOf("cm_") === 0;
@@ -182,15 +207,16 @@ export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim
     let yStartA = yFromField(ini, iniVal, landmark);
     let yEndA = yFromField(fim, fimVal, landmark);
     if (yStartA > yEndA) { const t = yStartA; yStartA = yEndA; yEndA = t; }
+    const corResto = CORES[estadoRestante(restante)];
     const segmentsA = [];
     if (yStartA > landmark.top + 2) {
-      segmentsA.push({ d: pathFromTriples(sliceSpine(spine, half, landmark.top, yStartA)), color: CORES["pérvia e competente"] });
+      segmentsA.push({ d: pathFromTriples(sliceSpine(spine, half, landmark.top, yStartA)), color: corResto });
     }
     segmentsA.push({ d: catmullRom(sliceSpine(spine, half, yStartA, yEndA).map((p) => [p[0], p[1]]), false), color: CORES.ausente, tracejado: true });
     if (yEndA < landmark.tornozelo - 2) {
-      segmentsA.push({ d: pathFromTriples(sliceSpine(spine, half, yEndA, landmark.tornozelo)), color: CORES["pérvia e competente"] });
+      segmentsA.push({ d: pathFromTriples(sliceSpine(spine, half, yEndA, landmark.tornozelo)), color: corResto });
     }
-    const dotColorA = yStartA <= landmark.top + 2 ? "#ffffff" : CORES["pérvia e competente"];
+    const dotColorA = yStartA <= landmark.top + 2 ? "#ffffff" : corResto;
     const dotStrokeA = yStartA <= landmark.top + 2 ? CORES.ausente : undefined;
     return {
       segments: segmentsA,

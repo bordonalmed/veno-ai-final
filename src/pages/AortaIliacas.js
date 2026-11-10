@@ -12,6 +12,7 @@ import ExamHeader from "../components/ExamHeader";
 import { CamposArteria } from "../components/CamposArteria";
 import { CamposEnxertoAorta, CamposFemoroFemoral } from "../components/CamposAorta";
 import { appendImagesToPdf } from "../utils/pdfImages";
+import { extrasParaSalvar, anexosDoExameEmEdicao } from "../utils/exameExtras";
 import "../styles/pdf.css";
 import examesRealtimeService from '../services/examesRealtimeService';
 import {
@@ -173,7 +174,6 @@ function AortaIliacas() {
   // cabeçalho (nome, idade e data) está completo. "Ver formulário"
   // mostra os quadros de preenchimento no lugar dele.
   const [mostrarMapa, setMostrarMapa] = useState(true);
-  const [incluirMapaPdf, setIncluirMapaPdf] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
@@ -185,6 +185,7 @@ function AortaIliacas() {
   useEffect(() => {
     const exameEmEdicao = carregarExameEmEdicao();
     if (exameEmEdicao) {
+      setAnexos(anexosDoExameEmEdicao(exameEmEdicao));
       setNome(exameEmEdicao.nome || "");
       setIdade(exameEmEdicao.idade || "");
       setData(exameEmEdicao.data || "");
@@ -237,6 +238,15 @@ function AortaIliacas() {
     setMostrarLaudo(!mostrarLaudo);
   }
 
+  // Mapa no PDF (sempre incluído): o mesmo no PDF da tela e no exame salvo.
+  async function adicionarMapaNoPdf(doc) {
+    try {
+      await adicionarMapaAortaAoPdf(doc, arterias, extra);
+    } catch (e) {
+      console.error("Erro ao adicionar o mapa ao PDF:", e);
+    }
+  }
+
   async function handleSalvarExame() {
     if (!deveMostrarCampos) {
       alert('Preencha todos os campos obrigatórios antes de salvar!');
@@ -244,7 +254,10 @@ function AortaIliacas() {
     }
     if (!(await liberarLaudo({ tipoNome: "Aorta e Ilíacas", nome, data }))) return;
 
+    // anexos e mapeamento vão junto com o laudo
+    const extrasExame = await extrasParaSalvar(anexos, adicionarMapaNoPdf);
     const dadosExame = {
+      ...extrasExame,
       nome,
       idade,
       data,
@@ -486,9 +499,7 @@ function AortaIliacas() {
     });
     
     // Adicionar anexos como páginas no final do PDF
-    if (incluirMapaPdf) {
-      await adicionarMapaAortaAoPdf(doc, arterias, extra);
-    }
+    await adicionarMapaNoPdf(doc);
 
     appendImagesToPdf(doc, anexos);
     
@@ -505,7 +516,7 @@ function AortaIliacas() {
     setNome(""); setIdade(""); setData(""); setErro("");
     setMostrarLaudo(false); setAnexos([]);
     setArterias(arteriasPadrao()); setExtra(extraPadrao()); setObservacoes("");
-    setMostrarMapa(true); setIncluirMapaPdf(false);
+    setMostrarMapa(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -656,8 +667,6 @@ function AortaIliacas() {
         observacoes={observacoes}
         onObservacoes={setObservacoes}
         laudo={gerarTextoLaudo()}
-        incluirMapaPdf={incluirMapaPdf}
-        onIncluirMapaPdf={setIncluirMapaPdf}
         onSalvarTXT={handleSalvarTXT}
         onSalvarPDF={handleSalvarPDF}
         onEnviar={temAcessoEnvio() ? () => setEnviandoLaudo(true) : undefined}

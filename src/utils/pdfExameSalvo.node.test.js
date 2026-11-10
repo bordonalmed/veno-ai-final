@@ -13,3 +13,13 @@ it("gera o PDF com logo, assinatura e linhas longas sem quebrar", async () => {
   const doc = await PDFDocument.load(bytes);
   expect(doc.getPageCount()).toBeGreaterThan(1);
 });
+
+it("inclui as páginas do mapeamento e os anexos salvos com o exame", async () => {
+  const mapa = await PDFDocument.create();
+  mapa.addPage([595, 842]); mapa.addPage([595, 842]);
+  const mapaPdf = Buffer.from(await mapa.save()).toString("base64");
+  const base = { nome: "Ana", data: "2026-10-11", laudo: "DOPPLER VENOSO\nCONCLUSÃO:\nNormal." };
+  const so = await PDFDocument.load(await montarPDFExame(base, {}));
+  const tudo = await PDFDocument.load(await montarPDFExame({ ...base, mapaPdf, anexos: [{ name: "foto.png", thumbnail: PNG }, { name: "quebrada", thumbnail: "data:image/png;base64,xx" }] }, {}));
+  expect(tudo.getPageCount()).toBe(so.getPageCount() + 2 + 1);
+});

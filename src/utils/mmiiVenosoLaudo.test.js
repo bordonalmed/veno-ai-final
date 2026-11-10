@@ -181,3 +181,42 @@ describe("montarLaudo — lado 'Ambos'", () => {
     expect(blocos[1]).not.toContain("Insuficiência total da safena magna");
   });
 });
+
+describe("montarLaudo — ausência parcial da safena com o segmento presente alterado", () => {
+  const sup = (status) => ({ ...estadoBase().superficiais, "Safena Magna": status });
+  const ausenteCoxa = { ...estadoBase().magna, inicio: "JSF", fim: "joelho" };
+
+  it("sem escolher, o segmento presente continua normal (laudo igual ao de antes)", () => {
+    const laudo = montarUmLado({ superficiais: sup("ausente"), magna: ausenteCoxa });
+    expect(laudo).toContain("Ausência parcial da safena magna");
+    expect(laudo).not.toContain("Segmento presente");
+    expect(laudo).not.toContain("segmento remanescente");
+  });
+
+  it("segmento presente insuficiente entra no corpo e na conclusão", () => {
+    const laudo = montarUmLado({ superficiais: sup("ausente"), magna: { ...ausenteCoxa, restante: "pérvia e incompetente" } });
+    expect(laudo).toContain("> Segmento presente: pérvia e incompetente");
+    expect(laudo).toContain("Ausência parcial da safena magna");
+    expect(laudo).toContain("Insuficiência do segmento remanescente da safena magna");
+  });
+
+  it("segmento presente trombosado vira tromboflebite do remanescente", () => {
+    const laudo = montarUmLado({ superficiais: sup("ausente"), magna: { ...ausenteCoxa, restante: "não compressível e sem fluxo (trombose)" } });
+    expect(laudo).toContain("Tromboflebite do segmento remanescente da safena magna");
+  });
+
+  it("na ausência total não há segmento presente", () => {
+    const laudo = montarUmLado({ superficiais: sup("ausente"), magna: { ...estadoBase().magna, inicio: "JSF", fim: "tornozelo", restante: "pérvia e incompetente" } });
+    expect(laudo).toContain("Ausência total da safena magna");
+    expect(laudo).not.toContain("remanescente");
+    expect(laudo).not.toContain("Segmento presente");
+  });
+
+  it("vale também para a safena parva", () => {
+    const laudo = montarUmLado({
+      superficiais: { ...estadoBase().superficiais, "Safena Parva": "ausente" },
+      parva: { ...estadoBase().parva, inicio: "JSP", fim: "cm_acima_tornozelo", fim_valor: "10", restante: "pérvia e incompetente" },
+    });
+    expect(laudo).toContain("Insuficiência do segmento remanescente da safena parva");
+  });
+});

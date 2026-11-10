@@ -1,4 +1,5 @@
 import React from "react";
+import { RESTANTE_OPCOES } from "../utils/vascularMapping";
 
 // Componentes extras das safenas (diâmetros + início/término do refluxo).
 // Extraídos para módulo compartilhado para que tanto o formulário
@@ -171,6 +172,27 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
           )}
         </label>
       </div>
+      {status === "ausente" && (
+        <label style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+          marginTop: 'clamp(3px, 1vw, 5px)',
+          fontWeight: 500,
+          fontSize: 'clamp(10px, 2vw, 12px)'
+        }}>Segmento presente:
+          <select
+            value={valores.restante || RESTANTE_OPCOES[0]}
+            onChange={e => onChange({ ...valores, restante: e.target.value })}
+            style={{
+              marginLeft: 'clamp(2px, 1vw, 3px)',
+              fontSize: 'clamp(10px, 2vw, 12px)',
+              padding: 'clamp(1px, 0.5vw, 2px)',
+              maxWidth: '100%'
+            }}
+          >
+            {RESTANTE_OPCOES.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
+      )}
     </div>
   );
 }
@@ -317,6 +339,27 @@ export function SafenaParvaExtra({ status, valores, onChange }) {
           )}
         </label>
       </div>
+      {status === "ausente" && (
+        <label style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+          marginTop: 'clamp(3px, 1vw, 5px)',
+          fontWeight: 500,
+          fontSize: 'clamp(10px, 2vw, 12px)'
+        }}>Segmento presente:
+          <select
+            value={valores.restante || RESTANTE_OPCOES[0]}
+            onChange={e => onChange({ ...valores, restante: e.target.value })}
+            style={{
+              marginLeft: 'clamp(2px, 1vw, 3px)',
+              fontSize: 'clamp(10px, 2vw, 12px)',
+              padding: 'clamp(1px, 0.5vw, 2px)',
+              maxWidth: '100%'
+            }}
+          >
+            {RESTANTE_OPCOES.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
+      )}
     </div>
   );
 }

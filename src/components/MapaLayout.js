@@ -117,7 +117,6 @@ export default function MapaLayout({
   painel, tituloPainel, onFecharPainel,
   placeholderPainel = "Clique em um vaso no desenho para registrar o achado.",
   conteudo,
-  incluirPdf, onIncluirPdf, labelIncluirPdf = "Incluir Mapeamento no PDF",
   onVisualizarImagem,
   onSalvarTXT, onSalvarPDF, onSalvarExame, onEnviar,
   // embutido: o mapa é a própria tela do exame (dentro da página, logo abaixo
@@ -195,12 +194,7 @@ export default function MapaLayout({
 
   const rodape = (
     <div style={{ borderTop: `1px solid ${COR.borda}`, padding: larga ? "10px 18px" : "8px 10px", background: "#fff", display: "flex", flexDirection: larga ? "row" : "column", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-      {onIncluirPdf ? (
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: COR.texto, cursor: "pointer" }}>
-          <input type="checkbox" checked={!!incluirPdf} onChange={(e) => onIncluirPdf(e.target.checked)} />
-          {labelIncluirPdf}
-        </label>
-      ) : <span />}
+      <span />
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", width: larga ? "auto" : "100%" }}>
         {onVisualizarImagem && (
           <button onClick={onVisualizarImagem} style={botaoMapaStyle("#6f42c1", !larga)}><FiEye /> Visualizar imagem do PDF</button>
