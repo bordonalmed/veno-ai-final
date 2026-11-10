@@ -42,7 +42,11 @@ export default function Mapa3D(props) {
         <span className="m3d-rot" data-m3d="rV1" style={{ opacity: 0 }}>válvula</span>
         <span className="m3d-rot" data-m3d="rV2" style={{ opacity: 0 }}>válvula</span>
         <span className="m3d-rot" data-m3d="lSel" style={{ opacity: 0 }} />
-        <button type="button" className="m3d-nomes" data-m3d="bNomes" aria-pressed="false">Nomes</button>
+        <div className="m3d-topo">
+          <button type="button" className="m3d-ico" data-m3d="bPausa" aria-pressed="false" aria-label="Pausar animação" />
+          <button type="button" className="m3d-ico" data-m3d="bTela" aria-pressed="false" aria-label="Tela cheia" />
+          <button type="button" className="m3d-nomes" data-m3d="bNomes" aria-pressed="false">Nomes</button>
+        </div>
         <div className="m3d-leg" data-m3d="leg" />
         <div className="m3d-rolagem" data-m3d="rolagem" role="scrollbar" aria-controls="m3d-palco" aria-orientation="vertical" aria-label="Mover a vista para cima e para baixo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} tabIndex={0}>
           <div className="m3d-polegar" data-m3d="polegar" />
@@ -60,7 +64,6 @@ export default function Mapa3D(props) {
           <button type="button" data-m3d="nDentro" aria-pressed="false">Dentro</button>
         </div>
         <button type="button" className="m3d-mini" data-m3d="bCor" aria-pressed="false">Doppler</button>
-        <button type="button" className="m3d-mini" data-m3d="bPausa" aria-pressed="false">Pausar</button>
       </div>
       <p className="m3d-nota">
         <b data-m3d="dica" />{" "}

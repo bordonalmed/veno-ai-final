@@ -47,7 +47,6 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
 
   const SISTOLE = 1.5, CICLO = 4.3, DUR_REFLUXO = 2.3, VMAX = 5.2;
   const st = { nivel: 'perna', dil: 0, o: 0, t: 0, tc: 0, v: 0, pausado: false, doppler: false, sel: 0, trocando: false, pronto: false, semZoomAte: 0 };
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) st.pausado = true;
   function velocidade(tc, dil) {
     if (tc < SISTOLE) return Math.pow(Math.sin(Math.PI * tc / SISTOLE), 0.8);
     const tau = tc - SISTOLE, vN = tau < 0.22 ? -0.35 * Math.sin(Math.PI * tau / 0.22) : 0; let vR = 0;
@@ -131,7 +130,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   }
   function texturaFluxo() {
     const c = document.createElement('canvas'); c.width = 64; c.height = 4; const g = c.getContext('2d');
-    const gr = g.createLinearGradient(0, 0, 64, 0); gr.addColorStop(0, '#b4b4b4'); gr.addColorStop(.55, '#b4b4b4'); gr.addColorStop(.8, '#ffffff'); gr.addColorStop(1, '#b4b4b4');
+    const gr = g.createLinearGradient(0, 0, 64, 0); gr.addColorStop(0, '#5a5a5a'); gr.addColorStop(.45, '#5a5a5a'); gr.addColorStop(.7, '#ffffff'); gr.addColorStop(.82, '#ffffff'); gr.addColorStop(1, '#5a5a5a');
     g.fillStyle = gr; g.fillRect(0, 0, 64, 4);
     const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.encoding = T.sRGBEncoding; return t;
   }
@@ -144,7 +143,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   let TUBOS = [], AMOSTRAS = [], ROT_P = [];
   function tubo(o) {
     const curva = new T.CatmullRomCurve3(o.pts), comp = curva.getLength(); let tex = null;
-    if (o.estado === 'ruim' || o.estado === 'recan') { tex = texBase.clone(); tex.needsUpdate = true; tex.repeat.set(Math.max(1.5, comp * 2.0), 1); }
+    if (o.estado === 'ruim' || o.estado === 'recan') { tex = texBase.clone(); tex.needsUpdate = true; tex.repeat.set(Math.max(2, comp * 2.6), 1); }
     const mat = new T.MeshStandardMaterial({ color: COR3[o.estado].clone(), map: tex, roughness: 0.45, emissive: COR3[o.estado].clone().multiplyScalar(0.3) });
     const leve = o.estado === 'ausente' || (o.discreto && o.estado === 'ok');
     if (leve) { mat.transparent = true; mat.opacity = o.estado === 'ausente' ? 0.5 : 0.4; }
@@ -327,7 +326,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   const DICAS = { perna: 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = naP; fase.hidden = naP; $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = naP; fase.hidden = naP && !temRefluxo(); $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -416,8 +415,27 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   const bCor = $('bCor'), bPausa = $('bPausa');
   ouvir($('bNomes'), 'click', () => { st.nomes = !st.nomes; $('bNomes').setAttribute('aria-pressed', String(!!st.nomes)); });
   ouvir(bCor, 'click', () => { st.doppler = !st.doppler; bCor.setAttribute('aria-pressed', String(st.doppler)); });
-  function mostraPausa() { bPausa.textContent = st.pausado ? 'Continuar' : 'Pausar'; bPausa.setAttribute('aria-pressed', String(st.pausado)); }
+  function mostraPausa() {
+    bPausa.innerHTML = st.pausado ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>';
+    bPausa.setAttribute('aria-label', st.pausado ? 'Continuar animação' : 'Pausar animação'); bPausa.setAttribute('aria-pressed', String(st.pausado));
+  }
   ouvir(bPausa, 'click', () => { st.pausado = !st.pausado; mostraPausa(); }); mostraPausa();
+  // tela cheia: API do navegador quando existe; senão (iPhone) o 3D cobre a página
+  const bTela = $('bTela'); let cheia = false;
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function mostraTela() {
+    bTela.innerHTML = cheia ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    bTela.setAttribute('aria-label', cheia ? 'Sair da tela cheia' : 'Tela cheia'); bTela.setAttribute('aria-pressed', String(cheia));
+  }
+  function poeCheia(v) {
+    cheia = v; raiz.classList.toggle('m3d--cheia', v); document.documentElement.style.overflow = v ? 'hidden' : ''; mostraTela();
+    if (v) { const pf = raiz.requestFullscreen || raiz.webkitRequestFullscreen; if (pf && !fsEl()) { try { const r = pf.call(raiz); if (r && r.catch) r.catch(() => {}); } catch (_) {} } }
+    else if (fsEl() === raiz) { const sf = document.exitFullscreen || document.webkitExitFullscreen; try { const r = sf.call(document); if (r && r.catch) r.catch(() => {}); } catch (_) {} }
+  }
+  ouvir(bTela, 'click', () => poeCheia(!cheia)); mostraTela();
+  const aoMudarFs = () => { if (cheia && fsEl() !== raiz) poeCheia(false); };
+  ouvir(document, 'fullscreenchange', aoMudarFs); ouvir(document, 'webkitfullscreenchange', aoMudarFs);
+  ouvir(document, 'keydown', (e) => { if (e.key === 'Escape' && cheia) poeCheia(false); });
   [0, 1, 2, 3, 4].forEach((i) => ouvir($('l' + i), 'click', () => { const r = ROT_P[i]; if (!r || r.v < 0 || st.nivel !== 'perna' || st.trocando) return; st.sel = r.v; camP.alvo.copy(r.p); alvoMarca.visible = true; camP.dist = 2.6; setTimeout(() => { if (vivo) irPara('veia'); }, 620); }));
 
   // rótulos presos ao 3D
@@ -444,21 +462,22 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   }
 
   // leitura do ciclo
+  function temRefluxo() { return TUBOS.some((q) => q.estado === 'ruim' && q.nome !== 'Veia perfurante'); }
   const fase = $('fase'), faseK = $('faseK'), faseT = $('faseT'), dopR = $('dopR'), dopN = $('dopN');
   let ultimaFase = '', resumo = '';
   function atualizaFase() {
-    if (st.nivel === 'perna') return;
+    if (st.nivel === 'perna' && !temRefluxo()) return;
     let k, t, tom = 'normal'; const sist = st.tc < SISTOLE, tau = Math.min(Math.max(0, st.tc - SISTOLE), DUR_REFLUXO);
     if (st.nivel === 'perna') {
-      const r = TUBOS.find((q) => q.estado === 'ruim' && q.nome !== 'Veia perfurante'); k = 'Membro inferior esquerdo · do mapa 2D';
-      if (sist) t = 'Panturrilha contrai · sangue sobe'; else if (!r) t = 'Relaxa · válvulas seguram o sangue'; else { tom = 'refluxo'; t = 'Refluxo: ' + r.nome.toLowerCase() + ' <b>' + num(tau) + ' s</b>'; }
+      const r = TUBOS.find((q) => q.estado === 'ruim' && q.nome !== 'Veia perfurante'); k = 'Membro inferior ' + (ladoMembro === 'Direito' ? 'direito' : 'esquerdo');
+      if (sist) t = '↑ Sangue sobe'; else if (!r) t = 'Válvulas seguram o sangue'; else { tom = 'refluxo'; t = '↓ Refluxo ' + r.nome.toLowerCase() + ' <b>' + num(tau) + ' s</b>'; }
     } else {
       const e = estSel(); k = (TUBOS[st.sel] ? TUBOS[st.sel].nome : 'Veia') + ' · ' + ROTULO[e];
       if (e === 'trombo') { tom = 'refluxo'; t = 'Não compressível · sem fluxo'; }
       else if (sist) t = e === 'recan' ? 'Fluxo reduzido · recanalização parcial' : 'Sangue sobe · válvulas abertas';
       else if (e !== 'ruim') t = 'Válvulas fecham · sem refluxo'; else { tom = 'refluxo'; t = 'Válvulas não fecham · refluxo <b>' + num(tau) + ' s</b>'; }
     }
-    const chave = k + t; if (chave !== ultimaFase) { ultimaFase = chave; faseK.textContent = k; faseT.innerHTML = t; fase.dataset.tom = tom; }
+    const chave = k + t; if (chave !== ultimaFase) { ultimaFase = chave; faseK.textContent = k; faseT.innerHTML = t; fase.dataset.tom = tom; fase.dataset.compacto = st.nivel === 'perna' ? '1' : '0'; }
     const naPerna = st.nivel === 'perna', n = naPerna ? resumo : 'Doppler (esquemático)', e = estSel(), rr = naPerna ? '' : e === 'ruim' ? 'refluxo ' + num(DUR_REFLUXO) + ' s' : e === 'trombo' ? 'sem fluxo' : 'sem refluxo';
     if (dopN.textContent !== n) dopN.textContent = n; if (dopR.textContent !== rr) { dopR.textContent = rr; dopR.style.color = (e === 'ruim' || e === 'trombo') ? 'var(--refluxo)' : ''; }
   }
@@ -506,10 +525,10 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
       const vOk = Math.max(0, velocidade(st.tc, 0)), vRuim = velocidade(st.tc, 1);
       for (const tb of TUBOS) {
         const v = tb.estado === 'ruim' ? vRuim : tb.estado === 'trombo' || tb.estado === 'ausente' ? 0 : tb.estado === 'recan' ? vOk * 0.45 : vOk;
-        if (tb.tex) tb.tex.offset.x -= v * dtA * 2.6;
+        if (tb.tex) tb.tex.offset.x -= v * dtA * 4.2;
         if (st.doppler && tb.estado !== 'trombo' && tb.estado !== 'ausente') { corTmp.copy(v < -0.02 ? COR3.ruim : COR3.ok); tb.mat.color.lerp(corTmp, 0.18); }
         else tb.mat.color.lerp(COR3[tb.estado], 0.18);
-        tb.mat.emissive.copy(tb.mat.color).multiplyScalar(0.3);
+        tb.mat.emissive.copy(tb.mat.color).multiplyScalar(tb.estado === 'ruim' ? 0.3 + 0.55 * Math.max(0, -v) : 0.3);
       }
       posiciona(true);
       if (alvoMarca.visible) { alvoMarca.position.copy(camP.alvo); alvoMarca.quaternion.copy(camP3.quaternion); alvoMarca.scale.setScalar((1 + 0.12 * Math.sin(agora * 0.006)) * clamp(camP.dist / 6, 0.35, 1.4)); }
@@ -537,6 +556,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   return function parar() {
     vivo = false; cancelAnimationFrame(rafId); clearTimeout(tGerar); clearTimeout(tGerar2);
     for (const [el, tipo, fn, op] of ouvintes) el.removeEventListener(tipo, fn, op);
+    if (cheia) poeCheia(false);
     if (ro) ro.disconnect(); else window.removeEventListener('resize', aoRedimensionar);
     for (const cena of [cenaP, cenaV]) cena.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
