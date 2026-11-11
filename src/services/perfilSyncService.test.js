@@ -65,4 +65,37 @@ describe("perfil do laudo na conta (Supabase)", () => {
     expect(await s.enviarPerfilParaConta("g@x.com")).toMatchObject({ ok: false, motivo: "sem-conta" });
     expect(perfilAtivo(carregarDadosPerfil("g@x.com")).nomeClinica).toBe("Haz"); // segue funcionando local
   });
+
+  it("perfil da conta com data 0 (enviado antes da data existir) chega no computador novo", async () => {
+    estado.remoto = perfilCom("Dr. Gabriel", "Haz", 0);
+    require("../utils/perfilLaudo").ativarPerfilDoUsuario("g@x.com"); // perfil vazio local, também data 0
+    const r = await servico().sincronizarPerfilComConta("g@x.com");
+    expect(r).toMatchObject({ ok: true, trouxe: true });
+    expect(perfilAtivo(carregarDadosPerfil("g@x.com"))).toMatchObject({ nomeMedico: "Dr. Gabriel", nomeClinica: "Haz" });
+  });
+
+  it("navegador vazio, mesmo com data mais nova, não apaga o perfil da conta", async () => {
+    estado.remoto = perfilCom("Dr. Gabriel", "Haz", 1000);
+    const vazio = normalizarDados(null); vazio.atualizadoEm = 5000; vazio.boasVindas = "pulado";
+    salvarDadosPerfil("g@x.com", vazio, { tocar: false });
+    await servico().sincronizarPerfilComConta("g@x.com");
+    expect(perfilAtivo(carregarDadosPerfil("g@x.com"))).toMatchObject({ nomeMedico: "Dr. Gabriel", nomeClinica: "Haz" });
+    expect(estado.upserts.every((u) => perfilAtivo(u.perfil_laudo).nomeClinica === "Haz")).toBe(true);
+  });
+
+  it("resposta das boas-vindas vai para a conta e vale em outro computador", async () => {
+    const { marcarBoasVindas, boasVindasPendente, ativarPerfilDoUsuario } = require("../utils/perfilLaudo");
+    ativarPerfilDoUsuario("g@x.com");
+    expect(boasVindasPendente("g@x.com")).toBe(true);
+    marcarBoasVindas("g@x.com", "pulado");
+    const r = await servico().enviarPerfilParaConta("g@x.com");
+    expect(r.ok).toBe(true);
+    const naConta = estado.upserts[estado.upserts.length - 1].perfil_laudo;
+    expect(naConta.boasVindas).toBe("pulado");
+    // outro computador
+    localStorage.clear(); estado.remoto = naConta;
+    require("../utils/perfilLaudo").ativarPerfilDoUsuario("g@x.com");
+    await servico().sincronizarPerfilComConta("g@x.com");
+    expect(require("../utils/perfilLaudo").boasVindasPendente("g@x.com")).toBe(false);
+  });
 });
