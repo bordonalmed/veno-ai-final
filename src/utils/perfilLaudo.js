@@ -69,7 +69,12 @@ export function normalizarDados(d) {
   });
   if (!medicos.length) medicos = [medicoVazio()];
   const atualizadoEm = Number(d?.atualizadoEm) || 0; // usado na sincronização com a conta
-  return { versao: 2, medicos, medicoAtivo: limitar(medicoAtivo, medicos.length), atualizadoEm, ...(arquivados.length ? { arquivados } : {}) };
+  // boas-vindas respondidas ("feito"/"pulado") vão junto, para não perguntar de novo em outro computador
+  const boasVindas = d?.boasVindas === "feito" || d?.boasVindas === "pulado" ? d.boasVindas : null;
+  return {
+    versao: 2, medicos, medicoAtivo: limitar(medicoAtivo, medicos.length), atualizadoEm,
+    ...(arquivados.length ? { arquivados } : {}), ...(boasVindas ? { boasVindas } : {}),
+  };
 }
 
 // Combinação médico + local, no formato que os exames usam.
@@ -205,18 +210,44 @@ export function progressoPerfil(perfil) {
   };
 }
 
-// Assistente de primeiro acesso: "feito" ou "pulado" por usuário.
+// Assistente de primeiro acesso: "feito" ou "pulado" por usuário. Fica no
+// navegador e no perfil (que vai para a conta), para valer em qualquer computador.
 const chaveBoasVindas = (email) => `perfilBoasVindas:${String(email || "").trim().toLowerCase()}`;
-export const boasVindasPendente = (email) => !!email && !localStorage.getItem(chaveBoasVindas(email));
-export const marcarBoasVindas = (email, estado) => { try { localStorage.setItem(chaveBoasVindas(email), estado); } catch (_) {} };
+export const boasVindasPendente = (email) => {
+  if (!email) return false;
+  try { if (localStorage.getItem(chaveBoasVindas(email))) return false; } catch (_) { return false; }
+  return !carregarDadosPerfil(email)?.boasVindas;
+};
+export const marcarBoasVindas = (email, estado) => {
+  try { localStorage.setItem(chaveBoasVindas(email), estado); } catch (_) {}
+  const d = carregarDadosPerfil(email);
+  if (d && d.boasVindas !== estado) salvarDadosPerfil(email, { ...d, boasVindas: estado });
+};
+
+// O perfil tem algum dado preenchido (médico ou local)?
+export function perfilTemConteudo(dados) {
+  if (!dados) return false;
+  const d = normalizarDados(dados);
+  return d.medicos.some((m) => temAlgo(m, CAMPOS_MEDICO) || m.locais.some((l) => temAlgo(l, CAMPOS_LOCAL)));
+}
 
 // Perfil que veio da conta (outro computador): substitui o local se for mais
-// novo. Devolve true quando trocou.
+// novo, ou se o deste navegador ainda estiver vazio (perfis enviados antes da
+// data de alteração existir chegam com data 0 e empatavam com o local vazio).
+// Devolve true quando trocou.
 export function aplicarDadosDaConta(email, remoto) {
   if (!remoto) return false;
   const r = normalizarDados(remoto);
   const local = carregarDadosPerfil(email);
-  if (local && (local.atualizadoEm || 0) >= (r.atualizadoEm || 0)) return false;
+  const remotoTem = perfilTemConteudo(r), localTem = perfilTemConteudo(local);
+  if (!remotoTem && !r.boasVindas) return false;
+  if (local && localTem && (local.atualizadoEm || 0) >= (r.atualizadoEm || 0)) return false;
+  if (local && !localTem && !remotoTem) {
+    // só a resposta das boas-vindas veio da conta: guarda sem mexer no resto
+    if (local.boasVindas) return false;
+    r.medicos = local.medicos; r.medicoAtivo = local.medicoAtivo;
+  }
+  if (local && !r.boasVindas && local.boasVindas) r.boasVindas = local.boasVindas;
   const res = salvarDadosPerfil(email, r, { tocar: false });
   if (res.ok && typeof window !== "undefined") window.dispatchEvent(new CustomEvent(EVENTO_PERFIL_ATUALIZADO, { detail: { email } }));
   return res.ok;
@@ -224,6 +255,5 @@ export function aplicarDadosDaConta(email, remoto) {
 
 // O perfil local tem algo a enviar para a conta?
 export function temPerfilParaEnviar(dados) {
-  const d = normalizarDados(dados);
-  return d.medicos.some((m) => temAlgo(m, CAMPOS_MEDICO) || m.locais.some((l) => temAlgo(l, CAMPOS_LOCAL)));
+  return perfilTemConteudo(dados) || !!normalizarDados(dados).boasVindas;
 }

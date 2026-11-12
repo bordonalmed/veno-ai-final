@@ -6,7 +6,8 @@ import IconeAbdome from "../components/IconeAbdome";
 import TrialStatus from "../components/TrialStatus";
 import PremiumNotification from "../components/PremiumNotification";
 import BoasVindasPerfil from "../components/perfil/BoasVindasPerfil";
-import { carregarDadosPerfil, progressoPerfil, boasVindasPendente, perfilAtivo, EVENTO_PERFIL_ATUALIZADO } from "../utils/perfilLaudo";
+import { carregarDadosPerfil, progressoPerfil, boasVindasPendente, marcarBoasVindas, perfilAtivo, EVENTO_PERFIL_ATUALIZADO } from "../utils/perfilLaudo";
+import { aguardarPerfilDaConta } from "../services/perfilSyncService";
 import TrocaPerfil from "../components/perfil/TrocaPerfil";
 import examesRealtimeService from "../services/examesRealtimeService";
 
@@ -38,7 +39,23 @@ export default function Home({ onLogout }) {
   const lerPerfil = () => { const d = carregarDadosPerfil(userEmail); return d ? perfilAtivo(d) : {}; };
   const [perfilLaudo, setPerfilLaudo] = useState(lerPerfil);
   const progresso = progressoPerfil(perfilLaudo);
-  const [mostrarBoasVindas, setMostrarBoasVindas] = useState(() => boasVindasPendente(userEmail) && progressoPerfil(lerPerfil()).feitos < 5);
+  const [mostrarBoasVindas, setMostrarBoasVindas] = useState(false);
+  // Primeiro acesso: o usuário entra no sistema; depois que o perfil da conta
+  // chega (pode já existir, de outro computador), só PERGUNTA se quer cadastrar
+  // os dados do laudo agora. O assistente completo abre só se ele aceitar.
+  const [perguntar, setPerguntar] = useState(false);
+  useEffect(() => {
+    let vivo = true, t = 0;
+    aguardarPerfilDaConta().then(() => {
+      t = setTimeout(() => {
+        if (!vivo) return;
+        const p = lerPerfil();
+        setPerfilLaudo(p);
+        if (boasVindasPendente(userEmail) && progressoPerfil(p).feitos < progressoPerfil(p).total) setPerguntar(true);
+      }, 1200);
+    });
+    return () => { vivo = false; clearTimeout(t); };
+  }, [userEmail]);
   // no menu não há exame em edição: o próximo "Salvar" cria um exame novo
   useEffect(() => { examesRealtimeService.encerrarEdicao(); }, []);
 
@@ -47,7 +64,7 @@ export default function Home({ onLogout }) {
     const atualizar = () => {
       const p = lerPerfil();
       setPerfilLaudo(p);
-      if (progressoPerfil(p).feitos >= 3) setMostrarBoasVindas(false);
+      if (progressoPerfil(p).feitos >= 3) { setMostrarBoasVindas(false); setPerguntar(false); }
     };
     window.addEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
     return () => window.removeEventListener(EVENTO_PERFIL_ATUALIZADO, atualizar);
@@ -86,6 +103,27 @@ export default function Home({ onLogout }) {
     }}>
       {/* Notificação de Status Premium */}
       <PremiumNotification userEmail={userEmail} />
+      {perguntar && !mostrarBoasVindas && (
+        <div role="dialog" aria-modal="true" aria-label="Personalizar laudos" style={{ position: "fixed", inset: 0, zIndex: 1900, background: "rgba(6,10,18,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, boxSizing: "border-box" }}>
+          <div style={{ background: "#121a28", border: "1px solid #2a3a52", borderRadius: 16, width: "100%", maxWidth: 440, padding: "22px 22px 18px", color: "#fff", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", boxSizing: "border-box" }}>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>Bem-vindo ao VENO.AI 👋</div>
+            <div style={{ fontSize: 14.5, color: "#c8d6e5", marginTop: 8, lineHeight: 1.45 }}>
+              Quer cadastrar agora os dados que saem no seu laudo? Seu nome e CRM, a clínica (endereço, telefone e logo) e a assinatura. Leva 1 minuto.
+            </div>
+            <div style={{ fontSize: 12.5, color: "#8fa1b5", marginTop: 8 }}>Você pode fazer isso depois em Configurações.</div>
+            <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => { setPerguntar(false); setMostrarBoasVindas(true); }}
+                style={{ flex: "1 1 160px", background: "#0eb8d0", color: "#04222a", border: "none", borderRadius: 10, padding: "12px 14px", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+                Cadastrar agora
+              </button>
+              <button type="button" onClick={() => { marcarBoasVindas(userEmail, "pulado"); setPerguntar(false); }}
+                style={{ flex: "1 1 120px", background: "transparent", color: "#c8d6e5", border: "1px solid #34465f", borderRadius: 10, padding: "12px 14px", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                Depois
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {mostrarBoasVindas && (
         <BoasVindasPerfil email={userEmail} onFechar={() => { setMostrarBoasVindas(false); setPerfilLaudo(lerPerfil()); }} />
       )}
@@ -208,7 +246,7 @@ export default function Home({ onLogout }) {
         </div>
       )}
 
-      {!mostrarBoasVindas && progresso.feitos < progresso.total && (
+      {!mostrarBoasVindas && !perguntar && progresso.feitos < progresso.total && (
         <div style={{ width: "100%", maxWidth: 820, padding: "0 20px", marginTop: 12, boxSizing: "border-box" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", background: "rgba(14,184,208,0.08)", border: "1px solid rgba(14,184,208,0.35)", borderRadius: 12, padding: "12px 16px" }}>
             <div style={{ flex: "1 1 220px", minWidth: 0 }}>

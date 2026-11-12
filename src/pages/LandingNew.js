@@ -209,6 +209,35 @@ const EXAMES = [
   { img: "fav.webp", tag: "acesso", nome: "Fístula arteriovenosa", cobre: "Confecção (mapeamento pré-FAV) e avaliação de FAV braquiocefálica, braquiobasílica e outras.", ex: "mapeamento para confecção" },
 ];
 
+// Vídeo curto da tela real do 3D (perna, safena com refluxo e por dentro da
+// veia). Sem som; não toca sozinho para quem pediu menos movimento.
+function Video3D() {
+  const ref = useRef(null);
+  const [calmo, setCalmo] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (m && m.matches) { setCalmo(true); return; }
+    const v = ref.current;
+    if (v) { const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+  }, []);
+  return (
+    <figure className="lp-3d-video">
+      <video
+        ref={ref}
+        poster={`${PUB}/vitrine/mapa-3d-capa.webp`}
+        muted loop playsInline preload="metadata"
+        autoPlay={!calmo}
+        controls={calmo}
+        aria-label="Tela do VENO.AI: perna em 3D com refluxo na safena magna e a veia vista por dentro"
+      >
+        <source src={`${PUB}/vitrine/mapa-3d.webm`} type="video/webm" />
+        <source src={`${PUB}/vitrine/mapa-3d.mp4`} type="video/mp4" />
+      </video>
+      <figcaption>Tela real do VENO.AI: a perna, a safena com refluxo e a veia por dentro.</figcaption>
+    </figure>
+  );
+}
+
 export default function LandingNew() {
   const navigate = useNavigate();
   const cadastrar = () => navigate("/login?cadastro=1");
@@ -244,6 +273,7 @@ export default function LandingNew() {
           <a href="#topo" className="lp-marca" onClick={ir("topo")} aria-label="VENO.AI — início"><img className="lp-logo-nav" src={LOGO} alt="VENO.AI" /></a>
           <nav className="lp-links" aria-label="Seções">
             <a href="#exames" onClick={ir("exames")}>Exames</a>
+            <a href="#mapa-3d" onClick={ir("mapa-3d")}>3D <span className="lp-novo">Novo</span></a>
             <a href="#como" className="esc" onClick={ir("como")}>Como funciona</a>
             <a href="#pdf" className="esc" onClick={ir("pdf")}>O laudo</a>
             <a href="#planos" onClick={ir("planos")}>Planos</a>
@@ -261,6 +291,9 @@ export default function LandingNew() {
             <div>
               <img className="lp-logo-hero" src={LOGO} alt="VENO.AI" />
               <p className="lp-sobre lp-slogan">Inteligência para o laudo vascular</p>
+              <a href="#mapa-3d" className="lp-aviso3d" onClick={ir("mapa-3d")}>
+                <span className="lp-novo">Novo</span> Mapa venoso em 3D para mostrar ao paciente <span aria-hidden="true">→</span>
+              </a>
               <h1>Laudos de Doppler vascular <em>em minutos</em>, com seu logo e assinatura.</h1>
               <p className="lp-hero-sub">Clique nos vasos do desenho e o laudo se escreve sozinho, com a conclusão pronta. Salve em PDF ou envie ao paciente pelo WhatsApp.</p>
               <div className="lp-hero-ctas">
@@ -317,6 +350,29 @@ export default function LandingNew() {
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="lp-faixa lp-3d" id="mapa-3d">
+          <div className="lp-wrap lp-3d-grid">
+            <div>
+              <div className="lp-cab" style={{ marginBottom: 26 }}>
+                <p className="lp-sobre"><span className="lp-novo">Novidade</span> Mapa em 3D</p>
+                <h2>Mostre ao paciente o que <em>acontece na veia</em> dele</h2>
+                <p>No Map do Doppler venoso de MMII, um toque em <b>3D</b> transforma os achados do exame numa perna em três dimensões. O paciente vê o refluxo de forma realista e entende o tratamento.</p>
+              </div>
+              <ul className="lp-lista">
+                <li><span className="ic">1</span><div><b>A perna do paciente, com os achados do exame</b><span>Safenas com refluxo, perfurantes, varizes desenhadas e trombose vêm do próprio mapa. Nada para refazer.</span></div></li>
+                <li><span className="ic">2</span><div><b>O refluxo aparece onde ele acontece</b><span>O trecho insuficiente fica vermelho e o sangue desce pela perna.</span></div></li>
+                <li><span className="ic">3</span><div><b>Por dentro da veia</b><span>Aproxime e veja as válvulas que não fecham e o sangue voltando.</span></div></li>
+                <li><span className="ic">4</span><div><b>Pronto para o consultório</b><span>Gire com o dedo ou o mouse, use a tela cheia e mostre os nomes das veias quando quiser.</span></div></li>
+              </ul>
+              <div className="lp-hero-ctas">
+                <button type="button" className="lp-btn lp-btn-cheio" onClick={cadastrar}>Testar o 3D grátis</button>
+              </div>
+              <p className="lp-nota3d">Ilustração educativa gerada a partir dos achados do exame.</p>
+            </div>
+            <Video3D />
           </div>
         </section>
 
