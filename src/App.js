@@ -1,4 +1,4 @@
-import React, { useState, Component, useEffect } from "react";
+import React, { useState, Component, useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Landing from "./pages/LandingNew";
 import Login from "./pages/Login";
@@ -21,6 +21,9 @@ import { ativarPerfilDoUsuario, limparPerfilAtivo } from "./utils/perfilLaudo";
 import { iniciarSincronizacaoPerfil, sincronizarPerfilComConta } from "./services/perfilSyncService";
 import { migrarPlanoLegado, sincronizarPlano } from "./services/planoService";
 import AvisoPlano from "./components/AvisoPlano";
+
+// página pública do QR Code do laudo (3D carregado só quando abre)
+const Paciente3D = lazy(() => import("./pages/Paciente3D"));
 
 // perfil do laudo: cópia no navegador + conta no Supabase (qualquer computador)
 iniciarSincronizacaoPerfil();
@@ -252,6 +255,7 @@ function AppContent() {
         <Route path="/exames-realizados" element={logado ? <ExamesRealizados /> : <Navigate to="/login" />} />
         <Route path="/configuracoes" element={logado ? <Configuracoes /> : <Navigate to="/login" />} />
         <Route path="/planos" element={<Planos />} />
+        <Route path="/3d" element={<Suspense fallback={<div style={{ minHeight: "100vh", background: "#0d141f" }} />}><Paciente3D /></Suspense>} />
         <Route path="/confirmacao-pagamento" element={<ConfirmacaoPagamento />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

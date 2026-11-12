@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import { desenharCabecalhoLaudo, desenharAssinatura } from "../utils/pdfCabecalho";
 import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { appendImagesToPdf } from "../utils/pdfImages";
+import { qrsDoExame3D, desenharQr3dRodape } from "../utils/qr3dPdf";
 import { extrasParaSalvar, anexosDoExameEmEdicao } from "../utils/exameExtras";
 import { FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
 import { FaStethoscope } from "react-icons/fa";
@@ -681,6 +682,9 @@ function MMIIVenoso() {
       }
     }
 
+    // QR Code do exame em 3D no rodapé (canto esquerdo) da página de cada membro
+    const qrs = await qrsDoExame3D({ lado, profundas, superficiais, magna, parva, perfurantes, varizes });
+
     let pagina = 0;
     lados.forEach((ladoAtual, idx) => {
       if (pagina > 0) doc.addPage();
@@ -810,6 +814,7 @@ function MMIIVenoso() {
         }
       }
       addRodape();
+      desenharQr3dRodape(doc, qrs[ladoAtual]);
       pagina++;
     });
 

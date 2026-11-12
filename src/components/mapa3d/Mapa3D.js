@@ -7,7 +7,7 @@ import { normalizarVarizesLado } from "../../utils/mmiiVenosoLaudo";
 // ativo no momento em que abre; para refletir uma mudança feita no 2D, o
 // médico volta ao 2D e toca em 3D de novo (o componente é recriado).
 export default function Mapa3D(props) {
-  const { lado } = props;
+  const { lado, nota } = props;
   const raiz = useRef(null);
   // retrato do exame na hora em que o 3D abre
   const retrato = useRef(props);
@@ -67,7 +67,7 @@ export default function Mapa3D(props) {
       </div>
       <p className="m3d-nota">
         <b data-m3d="dica" />{" "}
-        Ilustração educativa gerada a partir dos achados do mapa. Para atualizar, volte ao 2D, mude o achado e toque em 3D de novo.
+        {nota || "Ilustração educativa gerada a partir dos achados do mapa. Para atualizar, volte ao 2D, mude o achado e toque em 3D de novo."}
       </p>
     </div>
   );

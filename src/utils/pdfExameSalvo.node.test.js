@@ -23,3 +23,14 @@ it("inclui as páginas do mapeamento e os anexos salvos com o exame", async () =
   const tudo = await PDFDocument.load(await montarPDFExame({ ...base, mapaPdf, anexos: [{ name: "foto.png", thumbnail: PNG }, { name: "quebrada", thumbnail: "data:image/png;base64,xx" }] }, {}));
   expect(tudo.getPageCount()).toBe(so.getPageCount() + 2 + 1);
 });
+
+it("MMII venoso: QR Code do 3D no rodapé, sem página a mais", async () => {
+  const sup = { JSF: "pérvia e incompetente", "Safena Magna": "pérvia e incompetente", JSP: "pérvia e competente", "Safena Parva": "pérvia e competente" };
+  const base = { nome: "Ana", data: "2026-11-12", laudo: "DOPPLER VENOSO\nCONCLUSÃO:\nInsuficiência da safena magna.", tipoNome: "Doppler Venoso de Membros Inferiores", lado: "Esquerdo",
+    superficiais: { Esquerdo: sup }, profundas: { Esquerdo: {} }, magna: { Esquerdo: { inicio: "JSF", fim: "joelho" } }, parva: { Esquerdo: {} }, perfurantes: { Esquerdo: [] }, varizes: { Esquerdo: {} } };
+  const sem = await montarPDFExame({ ...base, tipoNome: "Outro" }, {});
+  const com = await montarPDFExame(base, {});
+  const a = await PDFDocument.load(sem), b = await PDFDocument.load(com);
+  expect(b.getPageCount()).toBe(a.getPageCount());
+  expect(com.length).toBeGreaterThan(sem.length + 300);
+});
