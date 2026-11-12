@@ -8,6 +8,7 @@ import { FaGem } from "react-icons/fa";
 import { TrialManager } from "../utils/trialManager";
 import { AuthService } from "../services/supabaseAuthService";
 import { EVENTO_PERFIL_NA_CONTA } from "../services/perfilSyncService";
+import { qr3dLigado, ligarQr3d } from "../utils/codigo3d";
 import { ehPremium, linkPagamento, premiumAte } from "../services/planoService";
 import { lerModeloMensagem, salvarModeloMensagem, montarMensagem, MODELO_PADRAO, VARIAVEIS_MENSAGEM } from "../utils/envioLaudo";
 import {
@@ -63,6 +64,7 @@ export default function Configuracoes() {
   const trial = TrialManager.verificarTrial(email);
   const temAcesso = isPremium || trial.status === "ativo" || trial.status === "nao_iniciado";
 
+  const [qr3d, setQr3d] = useState(qr3dLigado);
   const [secao, setSecao] = useState(() => (new URLSearchParams(window.location.search).get("secao") || "perfil"));
   const [dados, setDados] = useState(() => carregarDadosPerfil(email) || ativarPerfilDoUsuario(email) || normalizarDados(null));
   const [remover, setRemover] = useState(null); // { tipo: "medico"|"local", indice }
@@ -185,6 +187,14 @@ export default function Configuracoes() {
               Remover {medico.nomeMedico?.trim() || `Médico ${iMedico + 1}`}
             </button>
           )}
+        </Card>
+
+        <Card titulo="Exame em 3D para o paciente" icone={<FiImage />}
+          descricao="No PDF do Doppler venoso de MMII, a página do mapeamento leva um QR Code: o paciente aponta o celular e vê a perna em 3D com os achados do exame. O código leva só os achados, sem nome nem dados pessoais.">
+          <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14.5, cursor: "pointer" }}>
+            <input type="checkbox" checked={qr3d} onChange={(e) => { ligarQr3d(e.target.checked); setQr3d(e.target.checked); }} style={{ width: 18, height: 18 }} />
+            Incluir o QR Code do exame em 3D no PDF
+          </label>
         </Card>
 
         <Card titulo="Locais de atendimento" icone={<FiBriefcase />}
