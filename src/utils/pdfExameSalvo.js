@@ -7,6 +7,7 @@ import { saveAs } from "file-saver";
 import { carimbarMarcaVenoAIPdfLib } from "./pdfMarca";
 import { carregarDadosPerfil, perfilAtivo, perfilCombinado } from "./perfilLaudo";
 import { tamanhoProporcional } from "./pdfCabecalho";
+import { qrsDoExame3D, desenharQr3dRodapePdfLib, ehMMIIVenoso } from "./qr3dPdf";
 
 const MM = 72 / 25.4; // pontos por mm
 const LARGURA = 595;
@@ -140,6 +141,10 @@ export async function montarPDFExame(exame, perfil) {
   const alturaLinha = 14;
   const largura = DIR - ESQ;
   const blocos = linhasDoLaudo(exame.laudo);
+  // Doppler venoso de MMII: QR Code do exame em 3D no rodapé da última página de cada membro
+  const qrs = ehMMIIVenoso(exame) ? await qrsDoExame3D(exame) : {};
+  const ladosQr = exame.lado === "Ambos" ? ["Direito", "Esquerdo"] : [exame.lado];
+  const ultimas = [];
   blocos.forEach((bloco) => {
     let pagina = doc.addPage([LARGURA, ALTURA]);
     let y = cabecalho(pagina);
@@ -163,7 +168,12 @@ export async function montarPDFExame(exame, perfil) {
       });
     });
     rodape(pagina);
+    ultimas.push(pagina);
   });
+  for (let k = 0; k < ultimas.length; k++) {
+    const png = qrs[ladosQr[k]];
+    if (png && blocos.length === ladosQr.length) await desenharQr3dRodapePdfLib(doc, ultimas[k], png, negrito, rgb);
+  }
 
   // Mapeamento salvo com o exame (as mesmas páginas do PDF da tela).
   if (exame.mapaPdf) {

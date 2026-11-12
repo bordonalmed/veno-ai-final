@@ -190,7 +190,7 @@ export default function Configuracoes() {
         </Card>
 
         <Card titulo="Exame em 3D para o paciente" icone={<FiImage />}
-          descricao="No PDF do Doppler venoso de MMII, a página do mapeamento leva um QR Code: o paciente aponta o celular e vê a perna em 3D com os achados do exame. O código leva só os achados, sem nome nem dados pessoais.">
+          descricao="No PDF do Doppler venoso de MMII, um QR Code pequeno no rodapé do laudo: o paciente aponta o celular e vê a perna em 3D com os achados do exame. O código leva só os achados, sem nome nem dados pessoais.">
           <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14.5, cursor: "pointer" }}>
             <input type="checkbox" checked={qr3d} onChange={(e) => { ligarQr3d(e.target.checked); setQr3d(e.target.checked); }} style={{ width: 18, height: 18 }} />
             Incluir o QR Code do exame em 3D no PDF

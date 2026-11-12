@@ -11,37 +11,6 @@ import {
 } from "../utils/vascularMapping";
 import { DesenhoMMIIVenoso, VIEW_W, VIEW_H, VARIZ_COR, VARIZ_CORES, TRACO_LARGURA, VarizLinhaLegenda } from "./MapaInterativo";
 import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
-import QRCode from "qrcode";
-import { linkExame3D, qr3dLigado } from "../utils/codigo3d";
-import { normalizarVarizesLado } from "../utils/mmiiVenosoLaudo";
-
-const ALTURA_QR = 31; // mm reservados na página do mapeamento
-
-async function qrDoLado(lado, { superficiais, magna, parva, perfurantes, profundas, varizes }) {
-  const link = linkExame3D({
-    lado, profundas: profundas?.[lado], superficiais: superficiais?.[lado], magna: magna?.[lado], parva: parva?.[lado],
-    perfurantes: perfurantes?.[lado], varizes: normalizarVarizesLado(varizes?.[lado]),
-  });
-  return QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 420 });
-}
-
-// Quadro com o QR Code e a explicação para o paciente (só achados, sem dados pessoais).
-function desenharQr3dPdf(doc, pageWidth, y, png) {
-  const lado = 26, x = (pageWidth - 150) / 2;
-  doc.setDrawColor(14, 184, 208); doc.setLineWidth(0.4);
-  doc.roundedRect(x, y, 150, lado + 3, 2, 2, "S");
-  doc.addImage(png, "PNG", x + 1.5, y + 1.5, lado, lado);
-  const tx = x + lado + 6;
-  doc.setTextColor(0, 0, 0); doc.setFont(undefined, "bold"); doc.setFontSize(11.5);
-  doc.text("Veja este exame em 3D", tx, y + 7);
-  doc.setFont(undefined, "normal"); doc.setFontSize(9);
-  doc.splitTextToSize("Aponte a câmera do celular para o código. A perna aparece em 3D com os achados do exame: gire, aproxime e veja o refluxo por dentro da veia.", 150 - lado - 10)
-    .forEach((l, i) => doc.text(l, tx, y + 12.5 + i * 4));
-  doc.setFontSize(7.5); doc.setTextColor(120, 130, 138);
-  doc.text("Ilustração educativa. O código não contém nome nem dados pessoais.", tx, y + lado + 0.5);
-  doc.setTextColor(0, 0, 0); doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.2);
-  return y + lado + 6;
-}
 
 // Monta o desenho (vista anterior + posterior) de UM membro com o mesmo
 // componente do Mapa Interativo, pra o Mapeamento Visual e o PDF saírem
@@ -211,13 +180,10 @@ export async function adicionarEsquemaAoPdf(doc, {
   profundas,
   varizes,
   observacoes,
-  qr3d = qr3dLigado(),
 }) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   for (const ladoAtual of ladosParaMostrar) {
-    let png = null;
-    if (qr3d) { try { png = await qrDoLado(ladoAtual, { superficiais, magna, parva, perfurantes, profundas, varizes }); } catch (e) { png = null; } }
     const { svg } = montarSvgLado({ ladoAtual, superficiais, magna, parva, perfurantes, profundas, varizes });
     const dataUrl = await svgParaImagemDataUrl(svg, VIEW_W, VIEW_H);
 
@@ -234,7 +200,7 @@ export async function adicionarEsquemaAoPdf(doc, {
     const rascunho = new jsPDF({ unit: "mm", format: "a4" });
     const alturaLegenda = desenharLegendaPdf(rascunho, pageWidth, 0);
     const alturaObs = desenharObservacoesPdf(rascunho, pageWidth, 0, observacoes?.[ladoAtual]);
-    const { w: imgWidthMm, h: imgHeightMm } = caberNaFaixa(170, 170 * (VIEW_H / VIEW_W), base - y - 6 - alturaLegenda - alturaObs - (png ? ALTURA_QR : 0));
+    const { w: imgWidthMm, h: imgHeightMm } = caberNaFaixa(170, 170 * (VIEW_H / VIEW_W), base - y - 6 - alturaLegenda - alturaObs);
     const x = (pageWidth - imgWidthMm) / 2;
     doc.addImage(dataUrl, "JPEG", x, y, imgWidthMm, imgHeightMm);
     y += imgHeightMm + 6;
@@ -242,8 +208,7 @@ export async function adicionarEsquemaAoPdf(doc, {
     // Sem "Achados do mapeamento": a conclusão do laudo, logo antes, já traz a mesma informação.
     y = desenharLegendaPdf(doc, pageWidth, y);
 
-    y = desenharObservacoesPdf(doc, pageWidth, y, observacoes?.[ladoAtual]);
-    if (png) desenharQr3dPdf(doc, pageWidth, y + 1, png);
+    desenharObservacoesPdf(doc, pageWidth, y, observacoes?.[ladoAtual]);
   }
 }
 
