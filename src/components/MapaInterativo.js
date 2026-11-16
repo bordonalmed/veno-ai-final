@@ -719,11 +719,6 @@ export default function MapaInterativo({
               >{rot}</button>
             ))}
           </div>
-          {vista3d ? (
-            <Suspense fallback={<div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>}>
-              <Mapa3D key={l} lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz} />
-            </Suspense>
-          ) : (<>
           <BarraDesenhoVarizes
             ferramenta={ferramenta}
             onFerramenta={(f) => { setFerramenta(f); if (f) setSelecionado(null); }}
@@ -733,6 +728,17 @@ export default function MapaInterativo({
               if (window.confirm(`Apagar todos os traços desenhados no membro ${l.toLowerCase()}?`)) onVarizes(l, { ...vz, tracos: [] });
             }}
           />
+          {vista3d ? (
+            <Suspense fallback={<div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>}>
+              {/* no 3D: tocar numa veia abre o mesmo painel do 2D; a caneta desenha na pele */}
+              <Mapa3D
+                key={l} lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
+                ferramenta={ferramenta}
+                onSelecionar={selecionar}
+                onTracosChange={(novos) => onVarizes(l, { ...vz, tracos: novos })}
+              />
+            </Suspense>
+          ) : (<>
           <DesenhoMMIIVenoso
             lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
             onSelecionar={selecionar} chaveAtiva={chaveAtiva}
