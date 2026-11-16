@@ -4,26 +4,61 @@ import { iniciarMapa3D } from "./motorMapa3D";
 import { normalizarVarizesLado } from "../../utils/mmiiVenosoLaudo";
 
 // Visão 3D do Map do MMII Venoso. Monta a perna a partir dos achados do lado
-// ativo no momento em que abre; para refletir uma mudança feita no 2D, o
-// médico volta ao 2D e toca em 3D de novo (o componente é recriado).
+// ativo. Com onSelecionar / onTracosChange (Map do exame), dá para tocar numa
+// veia e alterar o achado no mesmo painel do 2D, e desenhar varizes direto na
+// pele (ferramenta = caneta da barra de desenho); a perna se refaz na hora,
+// sem mexer na câmera. Sem eles (página do paciente), o 3D só mostra.
+function montarExame({ profundas, superficiais, magna, parva, perfurantes, varizes }) {
+  return {
+    profundas: profundas || {},
+    superficiais: superficiais || {},
+    magna: magna || {},
+    parva: parva || {},
+    perfurantes: Array.isArray(perfurantes) ? perfurantes : [],
+    tracos: normalizarVarizesLado(varizes).tracos || [],
+  };
+}
+
 export default function Mapa3D(props) {
-  const { lado, nota } = props;
+  const { lado, nota, profundas, superficiais, magna, parva, perfurantes, varizes, ferramenta } = props;
   const raiz = useRef(null);
-  // retrato do exame na hora em que o 3D abre
-  const retrato = useRef(props);
+  const motor = useRef(null);
+  const ultimas = useRef(props);
+  ultimas.current = props;
 
   useEffect(() => {
-    const { lado, profundas, superficiais, magna, parva, perfurantes, varizes } = retrato.current;
-    const exame = {
-      profundas: profundas || {},
-      superficiais: superficiais || {},
-      magna: magna || {},
-      parva: parva || {},
-      perfurantes: Array.isArray(perfurantes) ? perfurantes : [],
-      tracos: normalizarVarizesLado(varizes).tracos || [],
-    };
-    return iniciarMapa3D(raiz.current, exame, lado);
+    const p = ultimas.current;
+    const editavel = typeof p.onSelecionar === "function" || typeof p.onTracosChange === "function";
+    const opcoes = editavel ? {
+      aoSelecionar: (chave) => { if (typeof ultimas.current.onSelecionar === "function") ultimas.current.onSelecionar(chave.tipo, chave.key); },
+      aoDesenhar: (traco) => {
+        const atual = normalizarVarizesLado(ultimas.current.varizes).tracos || [];
+        if (typeof ultimas.current.onTracosChange === "function") ultimas.current.onTracosChange([...atual, traco]);
+      },
+      aoApagar: (i) => {
+        const atual = normalizarVarizesLado(ultimas.current.varizes).tracos || [];
+        if (typeof ultimas.current.onTracosChange === "function") ultimas.current.onTracosChange(atual.filter((_, j) => j !== i));
+      },
+    } : {};
+    const parar = iniciarMapa3D(raiz.current, montarExame(p), p.lado, opcoes);
+    motor.current = parar;
+    return () => { motor.current = null; parar(); };
   }, []);
+
+  // achado ou traço mudou: refaz a perna sem recriar o 3D
+  const ultimoExame = useRef(null);
+  useEffect(() => {
+    const ex = montarExame({ profundas, superficiais, magna, parva, perfurantes, varizes });
+    const chave = JSON.stringify(ex);
+    if (ultimoExame.current === null) { ultimoExame.current = chave; return; }
+    if (chave === ultimoExame.current) return;
+    ultimoExame.current = chave;
+    if (motor.current && motor.current.atualizar) motor.current.atualizar(ex);
+  }, [profundas, superficiais, magna, parva, perfurantes, varizes]);
+
+  useEffect(() => {
+    if (motor.current && motor.current.caneta) motor.current.caneta(ferramenta || null);
+  }, [ferramenta]);
 
   return (
     <div className="m3d" ref={raiz} data-m3d="raiz">
@@ -67,7 +102,7 @@ export default function Mapa3D(props) {
       </div>
       <p className="m3d-nota">
         <b data-m3d="dica" />{" "}
-        {nota || "Ilustração educativa gerada a partir dos achados do mapa. Para atualizar, volte ao 2D, mude o achado e toque em 3D de novo."}
+        {nota || "Ilustração educativa gerada a partir dos achados do mapa."}
       </p>
     </div>
   );

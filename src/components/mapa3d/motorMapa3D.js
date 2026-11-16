@@ -19,9 +19,15 @@ const porTrechos = (x, t) => { if (x <= t[0][0]) return t[0][1]; for (let i = 0;
 const NS = "http://www.w3.org/2000/svg";
 const RUIM = "pérvia e incompetente";
 
-export function iniciarMapa3D(raiz, exame, ladoMembro) {
+// opcoes (todas opcionais; sem elas o 3D só mostra):
+//   aoSelecionar({ tipo, key })  toque numa veia (abre o mesmo painel do 2D)
+//   aoDesenhar({ tipo, vista, pts })  traço desenhado na pele, já no sistema do mapa 2D
+//   aoApagar(indice)  borracha num traço (índice em exame.tracos)
+// A função devolvida desliga o 3D; .atualizar(exame) refaz as veias sem mexer
+// na câmera e .caneta(tipo | "borracha" | null) liga o desenho.
+export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const $ = (id) => raiz.querySelector('[data-m3d="' + id + '"]');
-  const ex = exame;
+  let ex = exame;
   const SX = ladoMembro === "Direito" ? -1 : 1; // a perna direita é a esquerda espelhada
   let vivo = true, rafId = 0, tGerar2 = 0;
   // todo ouvinte passa por aqui para sair junto quando o 3D fecha
@@ -40,7 +46,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     $('semgl').hidden = false; canvas.hidden = true; veu.style.opacity = '0';
     for (const id of ['bNomes', 'rolagem']) $(id).hidden = true;
     const ctl = raiz.querySelector('.m3d-controles'); if (ctl) ctl.hidden = true;
-    return () => {};
+    const nada = () => {}; nada.atualizar = () => {}; nada.caneta = () => {};
+    return nada;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputEncoding = T.sRGBEncoding;
@@ -88,6 +95,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     const wx = Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h = Math.max(.06, cr(a0[2], b0[2], c0[2], d0[2], t));
     aneisPe.push(anel((a) => new T.Vector3(SX * wx * Math.cos(a), -4.3 + h / 2 + (h / 2) * Math.sin(a) * (Math.sin(a) < 0 ? 0.8 : 1), z)));
   }
+  const PELES = []; // malhas da pele (para desenhar direto nela)
   const mPele = new T.ShaderMaterial({
     transparent: true, depthWrite: false, side: T.FrontSide,
     uniforms: { cor: { value: new T.Vector3(0.98, 0.74, 0.6) } },
@@ -97,7 +105,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   for (const g of [casca(aneisPerna), casca(aneisPe)]) {
     const p = g.attributes.position, n = g.attributes.normal, i0 = Math.floor(p.count / 2), sY = secao(clamp(p.getY(i0), -3.85, 4.3));
     if ((p.getX(i0) - sY[2]) * n.getX(i0) + (p.getZ(i0) - sY[3]) * n.getZ(i0) < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i]; ix[i] = ix[i + 1]; ix[i + 1] = t; } g.index.needsUpdate = true; g.computeVertexNormals(); }
-    const m = new T.Mesh(g, mPele); m.renderOrder = 2; cenaP.add(m);
+    const m = new T.Mesh(g, mPele); m.renderOrder = 2; cenaP.add(m); PELES.push(m);
   }
   const plat = new T.Mesh(new T.CylinderGeometry(1.5, 1.5, 0.06, 56), new T.MeshBasicMaterial({ color: new T.Color(0x17232f).convertSRGBToLinear() }));
   plat.position.set(0, -4.36, 0.55); cenaP.add(plat);
@@ -128,6 +136,31 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     if (vista === 'anterior') { const y3 = clamp(Y3M(y), -3.8, 4.2), ref = tab(T_GSV, y3)[0], hw = limA(y)[1], dx = x - G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0]; return ponto(y3, ref - clamp(dx / hw, -1.2, 1.2) * 90, .955); }
     const y3 = clamp(Y3P(y), -3.8, 4.2), l = limP(y); return ponto(y3, 270 - clamp((x - l[0]) / l[1], -1, 1) * 90, .955);
   }
+  // inverso de sobe(): ponto da pele -> { vista, x, y } no mapa 2D da perna esquerda
+  const inverte = (tab2) => { const t = tab2.map(([a, b]) => [b, a]).sort((p, q) => p[0] - q[0]); return (y3) => porTrechos(y3, t); };
+  const Y2M = inverte([[10, 4.3], [48, 3.75], [320, .1], [552, -3.55], [612, -4.3]]);
+  const Y2P = inverte([[10, 4.3], [314, .1], [535, -3.5], [622, -4.3]]);
+  const difAng = (a, b) => { let d = (a - b) % 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; };
+  function anguloNaPele(P) {
+    const s2 = secao(clamp(P.y, -3.85, 4.3));
+    const lx = (P.x - s2[2]) / (SX * s2[0]), lz = (P.z - s2[3]) / s2[1];
+    return (Math.atan2(lz, lx) * 180 / Math.PI + 360) % 360;
+  }
+  function desce(P, vista) {
+    const y3 = clamp(P.y, -3.8, 4.2), ang = anguloNaPele(P);
+    if (vista === 'anterior') {
+      const y = Y2M(y3), ref = tab(T_GSV, y3)[0], hw = limA(y)[1], cx = G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0];
+      return [Math.round((cx + clamp(difAng(ref, ang) / 90, -1.2, 1.2) * hw) * 10) / 10, Math.round(y * 10) / 10];
+    }
+    const y = Y2P(y3), l = limP(y);
+    return [Math.round((l[0] + clamp(difAng(270, ang) / 90, -1, 1) * l[1]) * 10) / 10, Math.round(y * 10) / 10];
+  }
+  // a vista do traço: a que deixa os pontos mais perto do centro dela
+  function vistaDoTraco(pts3) {
+    let a = 0, p = 0;
+    for (const P of pts3) { const ang = anguloNaPele(P); a += Math.abs(difAng(tab(T_GSV, clamp(P.y, -3.8, 4.2))[0], ang)) / 108; p += Math.abs(difAng(270, ang)) / 90; }
+    return a <= p ? 'anterior' : 'posterior';
+  }
   function texturaFluxo() {
     const c = document.createElement('canvas'); c.width = 64; c.height = 4; const g = c.getContext('2d');
     const gr = g.createLinearGradient(0, 0, 64, 0); gr.addColorStop(0, '#5a5a5a'); gr.addColorStop(.45, '#5a5a5a'); gr.addColorStop(.7, '#ffffff'); gr.addColorStop(.82, '#ffffff'); gr.addColorStop(1, '#5a5a5a');
@@ -148,11 +181,18 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     const leve = o.estado === 'ausente' || (o.discreto && o.estado === 'ok');
     if (leve) { mat.transparent = true; mat.opacity = o.estado === 'ausente' ? 0.5 : 0.4; }
     gVeias.add(new T.Mesh(new T.TubeGeometry(curva, Math.max(8, Math.round(comp * 16)), leve && o.estado === 'ok' ? o.r * 0.7 : o.r, 10, false), mat));
-    const t = { nome: o.nome, estado: o.estado, curva, tex, mat }; TUBOS.push(t);
+    const t = { nome: o.nome, chave: o.chave || null, estado: o.estado, curva, tex, mat }; TUBOS.push(t);
     if (o.estado !== 'ausente' && !o.semToque) for (let k = 0; k < 30; k++) AMOSTRAS.push({ p: curva.getPointAt(k / 29), v: TUBOS.length - 1 });
     return TUBOS.length - 1;
   }
-  function bola(p, r, estado) { const c = COR3[estado]; const m = new T.Mesh(new T.SphereGeometry(r, 20, 14), new T.MeshStandardMaterial({ color: c.clone(), roughness: 0.35, emissive: c.clone().multiplyScalar(0.35) })); m.position.copy(p); gVeias.add(m); }
+  function bola(p, r, estado, nome, chave) {
+    const c = COR3[estado], mat = new T.MeshStandardMaterial({ color: c.clone(), roughness: 0.35, emissive: c.clone().multiplyScalar(0.35) });
+    const m = new T.Mesh(new T.SphereGeometry(r, 20, 14), mat); m.position.copy(p); gVeias.add(m);
+    if (!nome) return;
+    // junção: entra como "tubo" curtinho para o toque, o rótulo e a cor
+    TUBOS.push({ nome, chave, estado, curva: new T.CatmullRomCurve3([p.clone(), p.clone().add(new T.Vector3(0, 0.001, 0))]), tex: null, mat, junc: true });
+    for (let k = 0; k < 6; k++) AMOSTRAS.push({ p: p.clone(), v: TUBOS.length - 1 });
+  }
   // trechos de uma safena, com a mesma regra do mapa 2D (início/fim do refluxo ou da ausência)
   function trechosSafena(status, v, marco) {
     const est = estadoDe(status), top = marco.top, bot = marco.tornozelo;
@@ -169,42 +209,43 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     gVeias.clear(); TUBOS = []; AMOSTRAS = []; ROT_P = [];
     const p = ex.profundas, s = ex.superficiais, e = (k) => estadoDe(p[k]);
     // sistema profundo
-    const iFem = tubo({ nome: 'Veia femoral superficial', estado: e('Veia Femoral Superficial'), r: .072, pts: trecho(T_FEM, .6, 2.92) });
-    tubo({ nome: 'Veia femoral comum', estado: e('Veia Femoral Comum'), r: .08, pts: trecho(T_FEM, 2.92, 4.25) });
+    const iFem = tubo({ nome: 'Veia femoral superficial', chave: { tipo: 'profunda', key: 'Veia Femoral Superficial' }, estado: e('Veia Femoral Superficial'), r: .072, pts: trecho(T_FEM, .6, 2.92) });
+    tubo({ nome: 'Veia femoral comum', chave: { tipo: 'profunda', key: 'Veia Femoral Comum' }, estado: e('Veia Femoral Comum'), r: .08, pts: trecho(T_FEM, 2.92, 4.25) });
     const q292 = tab(T_FEM, 2.92);
-    tubo({ nome: 'Veia femoral profunda', discreto: true, estado: e('Veia Femoral Profunda'), r: .055, pts: [ponto(.4, 100, .3), ponto(1.2, 105, .3), ponto(2.0, 115, .34), ponto(2.6, 132, .4), ponto(2.92, q292[0], q292[1])] });
-    const iPop = tubo({ nome: 'Veia poplítea', estado: e('Veia Poplítea'), r: .066, pts: trecho(T_POP, -.9, .6) });
+    tubo({ nome: 'Veia femoral profunda', chave: { tipo: 'profunda', key: 'Veia Femoral Profunda' }, discreto: true, estado: e('Veia Femoral Profunda'), r: .055, pts: [ponto(.4, 100, .3), ponto(1.2, 105, .3), ponto(2.0, 115, .34), ponto(2.6, 132, .4), ponto(2.92, q292[0], q292[1])] });
+    const iPop = tubo({ nome: 'Veia poplítea', chave: { tipo: 'profunda', key: 'Veia Poplítea' }, estado: e('Veia Poplítea'), r: .066, pts: trecho(T_POP, -.9, .6) });
     const popB = ponto(-.9, 270, .42);
-    tubo({ nome: 'Veias tibiais posteriores', discreto: true, estado: e('Veias Tibiais posteriores'), r: .03, pts: [ponto(-3.5, 205, .62), ponto(-2.6, 225, .42), ponto(-1.7, 245, .38), popB] });
-    tubo({ nome: 'Veias tibiais anteriores', discreto: true, estado: e('Veias Tibiais anteriores'), r: .028, pts: [ponto(-3.5, 80, .6), ponto(-2.6, 65, .42), ponto(-1.7, 62, .36), ponto(-1.2, 40, .15), popB] });
-    tubo({ nome: 'Veias gastrocnêmicas', discreto: true, estado: e('Veias Gastrocnêmicas'), r: .026, pts: [ponto(-2.0, 250, .72), ponto(-1.5, 258, .66), ponto(-1.1, 265, .55), popB] });
-    tubo({ nome: 'Veias soleares', discreto: true, estado: e('Veias Soleares'), r: .026, pts: [ponto(-2.5, 290, .55), ponto(-1.9, 285, .5), ponto(-1.3, 278, .46), popB] });
+    tubo({ nome: 'Veias tibiais posteriores', chave: { tipo: 'profunda', key: 'Veias Tibiais posteriores' }, discreto: true, estado: e('Veias Tibiais posteriores'), r: .03, pts: [ponto(-3.5, 205, .62), ponto(-2.6, 225, .42), ponto(-1.7, 245, .38), popB] });
+    tubo({ nome: 'Veias tibiais anteriores', chave: { tipo: 'profunda', key: 'Veias Tibiais anteriores' }, discreto: true, estado: e('Veias Tibiais anteriores'), r: .028, pts: [ponto(-3.5, 80, .6), ponto(-2.6, 65, .42), ponto(-1.7, 62, .36), ponto(-1.2, 40, .15), popB] });
+    tubo({ nome: 'Veias gastrocnêmicas', chave: { tipo: 'profunda', key: 'Veias Gastrocnêmicas' }, discreto: true, estado: e('Veias Gastrocnêmicas'), r: .026, pts: [ponto(-2.0, 250, .72), ponto(-1.5, 258, .66), ponto(-1.1, 265, .55), popB] });
+    tubo({ nome: 'Veias soleares', chave: { tipo: 'profunda', key: 'Veias Soleares' }, discreto: true, estado: e('Veias Soleares'), r: .026, pts: [ponto(-2.5, 290, .55), ponto(-1.9, 285, .5), ponto(-1.3, 278, .46), popB] });
     // safena magna e JSF
     const yM = (y) => porTrechos(y, [[48, 3.75], [320, .1], [552, -3.55]]); let iMag = -1, iMagRuim = -1;
     for (const tr of trechosSafena(s['Safena Magna'], ex.magna, G.LANDMARK_MAGNA)) {
       const ya = yM(tr.b), yb = yM(tr.a), meio = (ya + yb) / 2;
-      const i = tubo({ nome: 'Safena magna', estado: tr.e, r: raioSafena(tr.e, meio > .1 ? ex.magna.coxa : ex.magna.perna, .034), pts: trecho(T_GSV, ya, yb) });
+      const i = tubo({ nome: 'Safena magna', chave: { tipo: 'superficial', key: 'Safena Magna' }, estado: tr.e, r: raioSafena(tr.e, meio > .1 ? ex.magna.coxa : ex.magna.perna, .034), pts: trecho(T_GSV, ya, yb) });
       if (tr.e === 'ruim' && iMagRuim < 0) iMagRuim = i; if (iMag < 0 || (ya <= 1.6 && yb >= 1.6)) iMag = i;
     }
-    bola(ponto(3.72, 131, .52), .1, estadoDe(s['JSF']));
+    bola(ponto(3.72, 131, .52), .1, estadoDe(s['JSF']), 'Junção safeno-femoral', { tipo: 'superficial', key: 'JSF' });
     // safena parva e JSP
     const yP = (y) => porTrechos(y, [[314, .1], [535, -3.5]]); let iPar = -1;
     for (const tr of trechosSafena(s['Safena Parva'], ex.parva, G.LANDMARK_PARVA)) {
-      const ya = yP(tr.b), yb = yP(tr.a), i = tubo({ nome: 'Safena parva', estado: tr.e, r: raioSafena(tr.e, '', .03), pts: trecho(T_SSV, ya, yb) });
+      const ya = yP(tr.b), yb = yP(tr.a), i = tubo({ nome: 'Safena parva', chave: { tipo: 'superficial', key: 'Safena Parva' }, estado: tr.e, r: raioSafena(tr.e, '', .03), pts: trecho(T_SSV, ya, yb) });
       if (iPar < 0 || (ya <= -1.9 && yb >= -1.9)) iPar = i;
     }
-    bola(ponto(.1, 268, .5), .085, estadoDe(s['JSP']));
+    bola(ponto(.1, 268, .5), .085, estadoDe(s['JSP']), 'Junção safeno-poplítea', { tipo: 'superficial', key: 'JSP' });
     // perfurantes insuficientes (ligam a safena magna ao sistema profundo)
     for (const q of ex.perfurantes) { if (q.status !== RUIM || !q.segmento) continue; const o = G.posicaoPerfurante(q.segmento, q.valor); if (!o) continue; const y3 = yM(o.y), g = tab(T_GSV, y3); tubo({ nome: 'Veia perfurante', estado: 'ruim', r: .024, semToque: true, pts: [ponto(y3 - .05, g[0] + 30, .45), ponto(y3, g[0] + 14, .7), ponto(y3, g[0], g[1])] }); bola(ponto(y3, g[0], .93), .07, 'ruim'); }
     // varizes desenhadas: cada traço do 2D vira um trajeto rente à pele
     const RV = { 'Varizes Superficiais': .034, 'Varizes Reticulares': .018, 'Microvarizes': .008, 'Tromboflebite Superficial': .026 };
-    for (const t of ex.tracos) {
+    (ex.tracos || []).forEach((t, iTraco) => {
       const pts = []; let u = null;
       for (const q of t.pts) { if (u && Math.hypot(q[0] - u[0], q[1] - u[1]) < 2.5) continue; u = q; pts.push(sobe(q[0], q[1], t.vista)); }
-      if (pts.length < 2) continue;
+      if (pts.length < 2) pts.push(pts[0].clone().add(new T.Vector3(0, 0.01, 0)));
       const cor = t.tipo === 'Tromboflebite Superficial' ? 0x6b7280 : 0xe23b3b;
-      gVeias.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), pts.length * 6, RV[t.tipo] || .02, 7, false), new T.MeshStandardMaterial({ color: new T.Color(cor).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(cor).convertSRGBToLinear().multiplyScalar(0.3) })));
-    }
+      const mt = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), pts.length * 6, RV[t.tipo] || .02, 7, false), new T.MeshStandardMaterial({ color: new T.Color(cor).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(cor).convertSRGBToLinear().multiplyScalar(0.3) }));
+      mt.userData.traco = iTraco; gVeias.add(mt);
+    });
     const qm = tab(T_GSV, 1.6);
     ROT_P = [
       { el: $('l0'), txt: 'JSF', p: ponto(3.6, 137, .7), v: iMag, ruim: s['JSF'] === RUIM },
@@ -216,7 +257,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     for (const r of ROT_P) { r.el.textContent = r.txt; r.el.dataset.ruim = r.ruim ? '1' : '0'; }
     const tem = (e) => TUBOS.some((t) => t.estado === e), ponto2 = (c, t) => '<span><i style="background:' + c + '"></i>' + t + '</span>';
     $('leg').innerHTML = ponto2('#3d8fe0', 'competente') + (tem('ruim') ? ponto2('#e23b3b', 'refluxo') : '') + (tem('trombo') ? ponto2('#6b7280', 'trombose') : '') + (tem('recan') ? ponto2('#d99a3d', 'recanalização') : '') + (tem('ausente') ? ponto2('#aab4bc', 'ausente') : '');
-    const primeiroRuim = TUBOS.findIndex((t) => t.estado === 'ruim' && t.nome !== 'Veia perfurante');
+    const primeiroRuim = TUBOS.findIndex((t) => t.estado === 'ruim' && t.nome !== 'Veia perfurante' && !t.junc);
     st.sel = primeiroRuim >= 0 ? primeiroRuim : iMag;
   }
   const alvoMarca = new T.Mesh(new T.RingGeometry(.145, .16, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, side: T.DoubleSide }));
@@ -324,7 +365,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   const alvoDilVeia = () => { const e = estSel(); return e === 'ruim' ? 1 : e === 'trombo' ? 0.5 : 0; };
   const fatorFluxo = () => { const e = estSel(); return e === 'trombo' ? 0 : e === 'recan' ? 0.45 : 1; };
   const nPerna = $('nPerna'), nVeia = $('nVeia'), nDentro = $('nDentro'), dica = $('dica');
-  const DICAS = { perna: 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
+  const DICAS = { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
     dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
@@ -389,25 +430,85 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   ouvir(barraR, 'pointermove', (e) => { if (pegaR) rolaPara((e.clientY - pegaR.topo - pegaR.desl) / pegaR.curso); });
   const soltaR = () => { pegaR = null; }; ouvir(barraR, 'pointerup', soltaR); ouvir(barraR, 'pointercancel', soltaR);
   ouvir(barraR, 'keydown', (e) => { const d = e.key === 'ArrowDown' ? 0.08 : e.key === 'ArrowUp' ? -0.08 : e.key === 'PageDown' ? 0.3 : e.key === 'PageUp' ? -0.3 : 0; if (d) { e.preventDefault(); rolaPara(rolagem().pos + d); } });
-  const dedos = new Map(); let pinca = 0, pincaMeio = null, toque = null;
+  const dedos = new Map(); let pinca = 0, pincaMeio = null, pincaMeioX = null, toque = null;
+  // ---- desenho na pele (caneta) ----
+  const raio3 = new T.Raycaster(), vRaio = new T.Vector2();
+  let caneta = null, risco = null; // risco: { pts: [Vector3], malha }
+  const CORES_CANETA = { 'Tromboflebite Superficial': 0x6b7280 };
+  const RAIO_CANETA = { 'Varizes Superficiais': .034, 'Varizes Reticulares': .018, 'Microvarizes': .01, 'Tromboflebite Superficial': .026 };
+  function naPele(e) {
+    const m = ndc(e); vRaio.set(m[0], m[1]); raio3.setFromCamera(vRaio, camP3);
+    const h = raio3.intersectObjects(PELES, false)[0];
+    if (!h || h.point.y < -3.8 || h.point.y > 4.25) return null;
+    const s2 = secao(h.point.y), c = new T.Vector3(s2[2], h.point.y, s2[3]);
+    return h.point.clone().sub(c).multiplyScalar(0.99).add(c); // um pouco para dentro: fica rente à pele
+  }
+  function desenhaRisco() {
+    if (!risco || risco.pts.length < 2) return;
+    if (risco.malha) { gVeias.remove(risco.malha); risco.malha.geometry.dispose(); }
+    else risco.mat = new T.MeshStandardMaterial({ color: new T.Color(CORES_CANETA[caneta] || 0xe23b3b).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(CORES_CANETA[caneta] || 0xe23b3b).convertSRGBToLinear().multiplyScalar(0.35) });
+    risco.malha = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(risco.pts), risco.pts.length * 4, RAIO_CANETA[caneta] || .02, 6, false), risco.mat);
+    gVeias.add(risco.malha);
+  }
+  function fimRisco(salvar) {
+    const r = risco; risco = null; if (!r) return;
+    if (r.malha) { gVeias.remove(r.malha); r.malha.geometry.dispose(); }
+    if (r.mat) r.mat.dispose();
+    if (!salvar || !r.pts.length || typeof opcoes.aoDesenhar !== 'function') return;
+    const vista = vistaDoTraco(r.pts);
+    const pts = []; for (const P of r.pts) { const q = desce(P, vista), u = pts[pts.length - 1]; if (!u || Math.hypot(q[0] - u[0], q[1] - u[1]) >= 1.5) pts.push(q); }
+    opcoes.aoDesenhar({ tipo: caneta, vista, pts });
+  }
+  function apagaNoToque(e) {
+    if (typeof opcoes.aoApagar !== 'function') return;
+    const m = ndc(e); vRaio.set(m[0], m[1]); raio3.setFromCamera(vRaio, camP3);
+    const alvos = gVeias.children.filter((o) => o.userData.traco !== undefined);
+    const h = raio3.intersectObjects(alvos, false)[0];
+    if (h) { opcoes.aoApagar(h.object.userData.traco); return; }
+    // toque perto (traço fino): procura o traço mais perto na tela
+    const asp = W / Hh; let melhor = null, bd = (40 / Hh) * (40 / Hh);
+    for (const o of alvos) { const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i += 6) { prj.fromBufferAttribute(pos, i).project(camP3); const dx = (prj.x - m[0]) * asp, dy = prj.y - m[1], d = dx * dx + dy * dy; if (d < bd) { bd = d; melhor = o; } } }
+    if (melhor) opcoes.aoApagar(melhor.userData.traco);
+  }
   const ndc = (e) => { const r = canvas.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1)]; };
-  ouvir(canvas, 'pointerdown', (e) => { dedos.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { canvas.setPointerCapture(e.pointerId); } catch (_) {} pinca = 0; pincaMeio = null; toque = dedos.size === 1 ? { t: performance.now(), mov: 0 } : null; });
+  ouvir(canvas, 'pointerdown', (e) => {
+    dedos.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { canvas.setPointerCapture(e.pointerId); } catch (_) {} pinca = 0; pincaMeio = null; pincaMeioX = null; toque = dedos.size === 1 ? { t: performance.now(), mov: 0 } : null;
+    if (dedos.size > 1) { fimRisco(false); return; } // segundo dedo: era gesto, não desenho
+    if (caneta && caneta !== 'borracha' && st.nivel === 'perna' && !(e.buttons & 2)) { const P = naPele(e); risco = { pts: P ? [P] : [] }; }
+  });
   ouvir(canvas, 'pointermove', (e) => {
     const d = dedos.get(e.pointerId); if (!d) return;
     const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY; if (toque) toque.mov += Math.abs(dx) + Math.abs(dy);
+    if (risco && dedos.size === 1) {
+      const P = naPele(e); if (!P) return;
+      const u = risco.pts[risco.pts.length - 1];
+      if (!u || u.distanceTo(P) > 0.035) { risco.pts.push(P); desenhaRisco(); }
+      return;
+    }
+    if (caneta && caneta !== 'borracha' && dedos.size === 1 && st.nivel === 'perna' && (e.buttons & 2)) { camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); return; }
     if (dedos.size === 1 && (e.shiftKey || (e.buttons & 2))) arrastaVertical(dy);
     else if (dedos.size === 1) {
       if (st.nivel === 'perna') { camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); }
       else if (st.nivel === 'veia') { cam.az -= dx * 0.008; cam.pol = clamp(cam.pol - dy * 0.006, 0.3, 2.84); }
       else { cam.tx = clamp(cam.tx + dx * 0.004, -1.5, 1.5); cam.tz = clamp(cam.tz - dy * 0.004, -1.5, 1.5); }
-    } else if (dedos.size === 2) { const [a, b] = Array.from(dedos.values()), dist = Math.hypot(a.x - b.x, a.y - b.y); if (pinca > 0 && dist > 0) { const m = ndc({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }); aproxima(dist / pinca, m[0], m[1]); } pinca = dist; const meio = (a.y + b.y) / 2; if (pincaMeio !== null) arrastaVertical(meio - pincaMeio); pincaMeio = meio; }
+    } else if (dedos.size === 2) { const [a, b] = Array.from(dedos.values()), dist = Math.hypot(a.x - b.x, a.y - b.y); if (pinca > 0 && dist > 0) { const m = ndc({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }); aproxima(dist / pinca, m[0], m[1]); } pinca = dist; const meio = (a.y + b.y) / 2; if (pincaMeio !== null) arrastaVertical(meio - pincaMeio); pincaMeio = meio; const meioX = (a.x + b.x) / 2; if (caneta && pincaMeioX !== null && st.nivel === 'perna') camP.az -= (meioX - pincaMeioX) * 0.008; pincaMeioX = meioX; }
   });
   const solta = (e) => {
-    if (toque && e.type === 'pointerup' && toque.mov < 8 && performance.now() - toque.t < 450 && st.nivel === 'perna') {
+    if (risco) { fimRisco(e.type === 'pointerup'); dedos.delete(e.pointerId); pinca = 0; pincaMeio = null; pincaMeioX = null; toque = null; return; }
+    const tocou = toque && e.type === 'pointerup' && toque.mov < 8 && performance.now() - toque.t < 450 && st.nivel === 'perna';
+    if (tocou && caneta === 'borracha') apagaNoToque(e);
+    else if (tocou && !caneta) {
       const m = ndc(e), s = amostraPerto(m[0], m[1], 70 / Hh);
-      if (s) { if (st.sel === s.v && alvoMarca.visible && camP.dist < 5) { camP.alvo.copy(s.p); irPara('veia'); } else { st.sel = s.v; camP.alvo.copy(s.p); alvoMarca.visible = true; camP.dist = Math.min(camP.dist, 4.2); } }
+      if (s) {
+        const editavel = typeof opcoes.aoSelecionar === 'function';
+        if (!editavel && st.sel === s.v && alvoMarca.visible && camP.dist < 5) { camP.alvo.copy(s.p); irPara('veia'); }
+        else {
+          st.sel = s.v; camP.alvo.copy(s.p); alvoMarca.visible = true; if (!editavel) camP.dist = Math.min(camP.dist, 4.2);
+          if (editavel && TUBOS[s.v] && TUBOS[s.v].chave) opcoes.aoSelecionar({ ...TUBOS[s.v].chave });
+        }
+      }
     }
-    dedos.delete(e.pointerId); pinca = 0; pincaMeio = null; toque = null;
+    dedos.delete(e.pointerId); pinca = 0; pincaMeio = null; pincaMeioX = null; toque = null;
   };
   ouvir(canvas, 'pointerup', solta); ouvir(canvas, 'pointercancel', solta);
   ouvir(canvas, 'contextmenu', (e) => e.preventDefault());
@@ -553,7 +654,23 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
   }
   rafId = requestAnimationFrame(quadro);
 
-  return function parar() {
+  // refaz as veias com o exame novo (achado alterado ou traço novo) sem mexer na câmera
+  function atualizar(novo) {
+    ex = novo;
+    if (!st.pronto) return;
+    const sel = TUBOS[st.sel] && TUBOS[st.sel].chave ? JSON.stringify(TUBOS[st.sel].chave) : null, marcaVis = alvoMarca.visible;
+    geraPerna();
+    if (sel) { const i = TUBOS.findIndex((t) => t.chave && JSON.stringify(t.chave) === sel && (t.estado !== 'ok' || !TUBOS.some((q) => q !== t && q.chave && JSON.stringify(q.chave) === sel && q.estado !== 'ok'))); if (i >= 0) st.sel = i; }
+    alvoMarca.visible = marcaVis;
+    if (st.nivel !== 'perna') { st.dil = alvoDilVeia(); atualizaParede(); }
+  }
+  function poeCaneta(tipo) {
+    caneta = tipo || null; fimRisco(false);
+    canvas.style.cursor = caneta === 'borracha' ? 'pointer' : caneta ? 'crosshair' : '';
+    if (caneta && st.nivel !== 'perna') irPara('perna');
+    dica.textContent = caneta ? (caneta === 'borracha' ? 'Toque num traço para apagar. Dois dedos (ou botão direito) giram a perna.' : 'Desenhe direto na pele da perna. Dois dedos (ou botão direito) giram; a roda ou a pinça dão zoom.') : DICAS[st.nivel];
+  }
+  function parar() {
     vivo = false; cancelAnimationFrame(rafId); clearTimeout(tGerar); clearTimeout(tGerar2);
     for (const [el, tipo, fn, op] of ouvintes) el.removeEventListener(tipo, fn, op);
     if (cheia) poeCheia(false);
@@ -565,5 +682,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro) {
     });
     renderer.dispose();
     if (renderer.forceContextLoss) renderer.forceContextLoss();
-  };
+  }
+  parar.atualizar = atualizar;
+  parar.caneta = poeCaneta;
+  return parar;
 }
