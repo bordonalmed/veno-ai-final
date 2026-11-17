@@ -258,3 +258,17 @@ describe("montarLaudo — tromboflebite da safena com trecho", () => {
     expect(comMagna({ inicio: "JSF", fim: "cm_acima_tornozelo", fim_valor: "8" })).toContain("- Tromboflebite parcial da safena magna");
   });
 });
+
+describe("montarLaudo — diâmetros da safena ausente", () => {
+  const comMagna = (magna) => {
+    const base = estadoBase();
+    return montarUmLado({ superficiais: { ...base.superficiais, "Safena Magna": "ausente" }, magna: { ...base.magna, coxa: "6", perna: "4", ...magna } });
+  };
+  it("ausência: não imprime diâmetro", () => {
+    expect(comMagna({ inicio: "JSF", fim: "tornozelo" })).not.toContain("Diâmetro");
+    expect(comMagna({ inicio: "JSF", fim: "joelho", restante: "pérvia e competente" })).not.toContain("Diâmetro");
+  });
+  it("ausência parcial com o segmento presente insuficiente: imprime diâmetro", () => {
+    expect(comMagna({ inicio: "JSF", fim: "joelho", restante: "pérvia e incompetente" })).toContain("> Diâmetro - Perna: 4 mm");
+  });
+});

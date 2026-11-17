@@ -1,4 +1,4 @@
-import { conclusaoRestante, estadoRestante, estadoRestanteDe, ausenciaParcial, classifyTrombose, segmentoCompleto, TROMBOSE_SUP } from "./vascularMapping";
+import { pedeDiametro, conclusaoRestante, estadoRestante, estadoRestanteDe, ausenciaParcial, classifyTrombose, segmentoCompleto, TROMBOSE_SUP } from "./vascularMapping";
 
 // Lógica de laudo do MMII Venoso extraída para módulo compartilhado, para que
 // tanto o formulário (MMIIVenoso.js) quanto o Mapa Interativo possam gerar o
@@ -293,9 +293,9 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
       const trombomagna = v === "Safena Magna" && superficiais[l][v] === TROMBOSE_SUP && segmentoCompleto(magna[l].inicio, magna[l].fim, magna[l].inicio_valor, magna[l].fim_valor);
       if (v === "Safena Magna" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente" || trombomagna)) {
         const rotulo = superficiais[l][v] === "ausente" ? "ausente" : trombomagna ? "com tromboflebite" : "insuficiente";
-        if (magna[l].coxa && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
-        if (magna[l].perna && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
-        if (magna[l].tornozelo && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
+        if (magna[l].coxa && pedeDiametro(superficiais[l][v], magna[l].restante)) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
+        if (magna[l].perna && pedeDiametro(superficiais[l][v], magna[l].restante)) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
+        if (magna[l].tornozelo && pedeDiametro(superficiais[l][v], magna[l].restante)) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
         const ini = magna[l].inicio;
         const fim = magna[l].fim;
         const ini_val = magna[l].inicio_valor;
@@ -309,8 +309,8 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
       const tromboparva = v === "Safena Parva" && superficiais[l][v] === TROMBOSE_SUP && segmentoCompleto(parva[l].inicio, parva[l].fim, parva[l].inicio_valor, parva[l].fim_valor);
       if (v === "Safena Parva" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente" || tromboparva)) {
         const rotulo = superficiais[l][v] === "ausente" ? "ausente" : tromboparva ? "com tromboflebite" : "insuficiente";
-        if (parva[l].proximal && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
-        if (parva[l].distal && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
+        if (parva[l].proximal && pedeDiametro(superficiais[l][v], parva[l].restante)) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
+        if (parva[l].distal && pedeDiametro(superficiais[l][v], parva[l].restante)) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
         const ini = parva[l].inicio;
         const fim = parva[l].fim;
         const ini_val = parva[l].inicio_valor;

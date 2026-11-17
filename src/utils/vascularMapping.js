@@ -178,6 +178,10 @@ export function classifyTrombose(veinLabel, topField, ini, fim, iniVal, fimVal) 
 export const TROMBOSE_SUP = "não compressível e sem fluxo (trombose)";
 // Status da safena em que se marca um trecho (início/término).
 export const statusComTrecho = (status) => status === "pérvia e incompetente" || status === "ausente" || status === TROMBOSE_SUP;
+// Diâmetros da safena: só quando há refluxo a medir (insuficiente, ou ausência
+// parcial com o segmento presente insuficiente). Trombose e ausência: não.
+export const pedeDiametro = (status, restante) =>
+  status === "pérvia e incompetente" || (status === "ausente" && restante === "pérvia e incompetente");
 // Início e término preenchidos (com os cm, quando o campo pede).
 export function segmentoCompleto(ini, fim, iniVal, fimVal) {
   if (!ini || !fim) return false;
