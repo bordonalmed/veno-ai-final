@@ -1,5 +1,5 @@
 import React from "react";
-import { RESTANTE_OPCOES, opcoesRestante, statusComTrecho, TROMBOSE_SUP } from "../utils/vascularMapping";
+import { RESTANTE_OPCOES, opcoesRestante, statusComTrecho, TROMBOSE_SUP, pedeDiametro } from "../utils/vascularMapping";
 
 // Componentes extras das safenas (diâmetros + início/término do refluxo).
 // Extraídos para módulo compartilhado para que tanto o formulário
@@ -16,7 +16,7 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
       alignItems: 'flex-start',
       background: 'none'
     }}>
-      {status !== TROMBOSE_SUP && (
+      {pedeDiametro(status, valores.restante) && (
       <div style={{
         display: 'flex',
         flexDirection: 'row',
@@ -213,7 +213,7 @@ export function SafenaParvaExtra({ status, valores, onChange }) {
       alignItems: 'flex-start',
       background: 'none'
     }}>
-      {status !== TROMBOSE_SUP && (
+      {pedeDiametro(status, valores.restante) && (
       <div style={{
         display: 'flex',
         flexDirection: 'row',
