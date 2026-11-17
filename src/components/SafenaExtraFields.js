@@ -16,6 +16,7 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
       alignItems: 'flex-start',
       background: 'none'
     }}>
+      {status !== TROMBOSE_SUP && (
       <div style={{
         display: 'flex',
         flexDirection: 'row',
@@ -84,6 +85,7 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
           />
         </label>
       </div>
+      )}
       <div style={{
         display: 'flex',
         flexDirection: 'row',
@@ -211,6 +213,7 @@ export function SafenaParvaExtra({ status, valores, onChange }) {
       alignItems: 'flex-start',
       background: 'none'
     }}>
+      {status !== TROMBOSE_SUP && (
       <div style={{
         display: 'flex',
         flexDirection: 'row',
@@ -260,6 +263,7 @@ export function SafenaParvaExtra({ status, valores, onChange }) {
           />
         </label>
       </div>
+      )}
       <div style={{
         display: 'flex',
         flexDirection: 'row',

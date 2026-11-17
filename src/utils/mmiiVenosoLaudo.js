@@ -293,9 +293,9 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
       const trombomagna = v === "Safena Magna" && superficiais[l][v] === TROMBOSE_SUP && segmentoCompleto(magna[l].inicio, magna[l].fim, magna[l].inicio_valor, magna[l].fim_valor);
       if (v === "Safena Magna" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente" || trombomagna)) {
         const rotulo = superficiais[l][v] === "ausente" ? "ausente" : trombomagna ? "com tromboflebite" : "insuficiente";
-        if (magna[l].coxa) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
-        if (magna[l].perna) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
-        if (magna[l].tornozelo) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
+        if (magna[l].coxa && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
+        if (magna[l].perna && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
+        if (magna[l].tornozelo && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
         const ini = magna[l].inicio;
         const fim = magna[l].fim;
         const ini_val = magna[l].inicio_valor;
@@ -309,8 +309,8 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
       const tromboparva = v === "Safena Parva" && superficiais[l][v] === TROMBOSE_SUP && segmentoCompleto(parva[l].inicio, parva[l].fim, parva[l].inicio_valor, parva[l].fim_valor);
       if (v === "Safena Parva" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente" || tromboparva)) {
         const rotulo = superficiais[l][v] === "ausente" ? "ausente" : tromboparva ? "com tromboflebite" : "insuficiente";
-        if (parva[l].proximal) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
-        if (parva[l].distal) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
+        if (parva[l].proximal && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
+        if (parva[l].distal && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
         const ini = parva[l].inicio;
         const fim = parva[l].fim;
         const ini_val = parva[l].inicio_valor;

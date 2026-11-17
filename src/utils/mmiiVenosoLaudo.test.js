@@ -248,6 +248,11 @@ describe("montarLaudo — tromboflebite da safena com trecho", () => {
     expect(laudo).toContain("- Insuficiência do segmento remanescente da safena magna");
   });
 
+  it("não mostra diâmetros (coxa/perna/tornozelo) na tromboflebite, mesmo se ficaram preenchidos", () => {
+    const laudo = comMagna({ coxa: "7", perna: "5", tornozelo: "3", inicio: "JSF", fim: "joelho" });
+    expect(laudo).not.toContain("Diâmetro");
+  });
+
   it("JSF até o tornozelo é total; cm acima do tornozelo não conta como total", () => {
     expect(comMagna({ inicio: "JSF", fim: "tornozelo" })).toContain("- Tromboflebite total da safena magna");
     expect(comMagna({ inicio: "JSF", fim: "cm_acima_tornozelo", fim_valor: "8" })).toContain("- Tromboflebite parcial da safena magna");
