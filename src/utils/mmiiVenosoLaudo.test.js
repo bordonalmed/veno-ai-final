@@ -220,3 +220,41 @@ describe("montarLaudo — ausência parcial da safena com o segmento presente al
     expect(laudo).toContain("Insuficiência do segmento remanescente da safena parva");
   });
 });
+
+describe("montarLaudo — tromboflebite da safena com trecho", () => {
+  const TROMBO = "não compressível e sem fluxo (trombose)";
+  const comMagna = (magna) => {
+    const base = estadoBase();
+    return montarUmLado({ superficiais: { ...base.superficiais, "Safena Magna": TROMBO }, magna: { ...base.magna, ...magna } });
+  };
+
+  it("sem trecho marcado continua como antes (safena toda)", () => {
+    const laudo = comMagna({});
+    expect(laudo).toContain("- Tromboflebite da safena magna");
+    expect(laudo).not.toContain("Segmento com tromboflebite");
+  });
+
+  it("JSF até o joelho: trecho no corpo e tromboflebite parcial na conclusão", () => {
+    const laudo = comMagna({ inicio: "JSF", fim: "joelho" });
+    expect(laudo).toContain("> Segmento com tromboflebite: de JSF até joelho");
+    expect(laudo).toContain("> Segmento restante: pérvia e competente");
+    expect(laudo).toContain("- Tromboflebite parcial da safena magna");
+  });
+
+  it("trecho no meio da veia é segmentar; restante insuficiente entra na conclusão", () => {
+    const laudo = comMagna({ inicio: "cm_acima_joelho", inicio_valor: "5", fim: "cm_abaixo_joelho", fim_valor: "10", restante: "pérvia e incompetente" });
+    expect(laudo).toContain("de 5 cm acima do joelho até 10 cm abaixo do joelho");
+    expect(laudo).toContain("- Tromboflebite segmentar da safena magna");
+    expect(laudo).toContain("- Insuficiência do segmento remanescente da safena magna");
+  });
+
+  it("não mostra diâmetros (coxa/perna/tornozelo) na tromboflebite, mesmo se ficaram preenchidos", () => {
+    const laudo = comMagna({ coxa: "7", perna: "5", tornozelo: "3", inicio: "JSF", fim: "joelho" });
+    expect(laudo).not.toContain("Diâmetro");
+  });
+
+  it("JSF até o tornozelo é total; cm acima do tornozelo não conta como total", () => {
+    expect(comMagna({ inicio: "JSF", fim: "tornozelo" })).toContain("- Tromboflebite total da safena magna");
+    expect(comMagna({ inicio: "JSF", fim: "cm_acima_tornozelo", fim_valor: "8" })).toContain("- Tromboflebite parcial da safena magna");
+  });
+});

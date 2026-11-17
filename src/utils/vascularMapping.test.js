@@ -13,6 +13,9 @@ import {
   posicaoPerfurante,
   trianguloPontos,
   PERFURANTE_TRIANGULO_RAIO,
+  LANDMARK_MAGNA,
+  CORES,
+  construirSegmentosVeia,
 } from "./vascularMapping";
 import { pontosDoPath, pontoDentroDaFaixa } from "./svgPathBounds";
 
@@ -81,5 +84,21 @@ describe("VSM_SPINE/VSM_HALF — trecho da Safena Magna cabe na silhueta medial"
       expect(pontoDentroDaFaixa(silhuetaMedial, x - half, y)).toBe(true);
       expect(pontoDentroDaFaixa(silhuetaMedial, x + half, y)).toBe(true);
     });
+  });
+});
+
+describe("construirSegmentosVeia — tromboflebite num trecho", () => {
+  const TROMBO = "não compressível e sem fluxo (trombose)";
+  const base = { spine: VSM_SPINE, half: VSM_HALF, landmark: LANDMARK_MAGNA, status: TROMBO };
+  it("com trecho: só o trecho fica escuro; o resto segue o segmento restante", () => {
+    const r = construirSegmentosVeia({ ...base, ini: "JSF", fim: "joelho" });
+    expect(r.segments.map((x) => x.color)).toEqual([CORES[TROMBO], CORES["pérvia e competente"]]);
+    const r2 = construirSegmentosVeia({ ...base, ini: "joelho", fim: "tornozelo", restante: "pérvia e incompetente" });
+    expect(r2.segments.map((x) => x.color)).toEqual([CORES["pérvia e incompetente"], CORES[TROMBO]]);
+  });
+  it("sem trecho: a safena toda escura, como antes", () => {
+    const r = construirSegmentosVeia({ ...base });
+    expect(r.segments).toHaveLength(1);
+    expect(r.segments[0].color).toBe(CORES[TROMBO]);
   });
 });

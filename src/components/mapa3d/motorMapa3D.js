@@ -196,11 +196,12 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   // trechos de uma safena, com a mesma regra do mapa 2D (início/fim do refluxo ou da ausência)
   function trechosSafena(status, v, marco) {
     const est = estadoDe(status), top = marco.top, bot = marco.tornozelo;
-    if (est !== 'ruim' && est !== 'ausente') return [{ a: top, b: bot, e: est }];
+    if (est !== 'ruim' && est !== 'ausente' && est !== 'trombo') return [{ a: top, b: bot, e: est }];
     const pi = v.inicio && v.inicio.indexOf('cm_') === 0, pf = v.fim && v.fim.indexOf('cm_') === 0;
     if (!(v.inicio && v.fim && (!pi || v.inicio_valor) && (!pf || v.fim_valor))) return [{ a: top, b: bot, e: est }];
     let a = G.yFromField(v.inicio, v.inicio_valor, marco), b = G.yFromField(v.fim, v.fim_valor, marco); if (a > b) { const t = a; a = b; b = t; }
-    const resto = est === 'ausente' ? estadoDe(v.restante) : 'ok';
+    // ausência: o trecho presente pode ser normal, com refluxo ou trombosado; tromboflebite: o resto é pérvio (normal ou com refluxo)
+    const resto = est === 'ausente' ? estadoDe(v.restante) : est === 'trombo' ? (estadoDe(v.restante) === 'ruim' ? 'ruim' : 'ok') : 'ok';
     const out = []; if (a > top + 2) out.push({ a: top, b: a, e: resto }); out.push({ a, b, e: est }); if (b < bot - 2) out.push({ a: b, b: bot, e: resto }); return out;
   }
   const raioSafena = (e, mm, base) => e === 'ausente' ? .013 : e === 'ruim' ? (parseFloat(mm) > 0 ? clamp(parseFloat(mm) * 0.0085, .03, .1) : base * 1.6) : e === 'trombo' ? base * 1.35 : base;

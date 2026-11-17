@@ -1,4 +1,4 @@
-import { conclusaoRestante, estadoRestante, ausenciaParcial } from "./vascularMapping";
+import { conclusaoRestante, estadoRestante, estadoRestanteDe, ausenciaParcial, classifyTrombose, segmentoCompleto, TROMBOSE_SUP } from "./vascularMapping";
 
 // Lógica de laudo do MMII Venoso extraída para módulo compartilhado, para que
 // tanto o formulário (MMIIVenoso.js) quanto o Mapa Interativo possam gerar o
@@ -242,6 +242,12 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
       conclusoes.push("Ausência de safena parva identificável ao exame");
     }
   }
+  if (superficiais["Safena Magna"] === TROMBOSE_SUP) {
+    conclusoes.push(classifyTrombose("magna", "JSF", magna.inicio, magna.fim, magna.inicio_valor, magna.fim_valor));
+  }
+  if (superficiais["Safena Parva"] === TROMBOSE_SUP) {
+    conclusoes.push(classifyTrombose("parva", "JSP", parva.inicio, parva.fim, parva.inicio_valor, parva.fim_valor));
+  }
   {
     const r = conclusaoRestante("magna", "JSF", superficiais["Safena Magna"], magna.restante, magna.inicio, magna.fim, magna.inicio_valor, magna.fim_valor);
     if (r) conclusoes.push(r);
@@ -249,12 +255,6 @@ function gerarConclusaoPorLado({ profundas, superficiais, magna, parva, perfuran
   {
     const r = conclusaoRestante("parva", "JSP", superficiais["Safena Parva"], parva.restante, parva.inicio, parva.fim, parva.inicio_valor, parva.fim_valor);
     if (r) conclusoes.push(r);
-  }
-  if (superficiais["Safena Magna"] === "não compressível e sem fluxo (trombose)") {
-    conclusoes.push("Tromboflebite da safena magna");
-  }
-  if (superficiais["Safena Parva"] === "não compressível e sem fluxo (trombose)") {
-    conclusoes.push("Tromboflebite da safena parva");
   }
   if (superficiais["JSF"] === "pérvia e incompetente") {
     conclusoes.push("Incompetência da junção safeno-femoral (JSF)");
@@ -290,11 +290,12 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
       if (v === "JSF" && jsfDiametro && jsfDiametro[l] && jsfDiametro[l] !== "") extra = ` (diâmetro: ${jsfDiametro[l]} mm)`;
       if (v === "JSP" && jspDiametro && jspDiametro[l] && jspDiametro[l] !== "") extra = ` (diâmetro: ${jspDiametro[l]} mm)`;
       linhas.push(`- ${v}: ${superficiais[l][v]}${extra}`);
-      if (v === "Safena Magna" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente")) {
-        const rotulo = superficiais[l][v] === "ausente" ? "ausente" : "insuficiente";
-        if (magna[l].coxa) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
-        if (magna[l].perna) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
-        if (magna[l].tornozelo) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
+      const trombomagna = v === "Safena Magna" && superficiais[l][v] === TROMBOSE_SUP && segmentoCompleto(magna[l].inicio, magna[l].fim, magna[l].inicio_valor, magna[l].fim_valor);
+      if (v === "Safena Magna" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente" || trombomagna)) {
+        const rotulo = superficiais[l][v] === "ausente" ? "ausente" : trombomagna ? "com tromboflebite" : "insuficiente";
+        if (magna[l].coxa && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Coxa: ${magna[l].coxa} mm`);
+        if (magna[l].perna && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Perna: ${magna[l].perna} mm`);
+        if (magna[l].tornozelo && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro - Tornozelo: ${magna[l].tornozelo} mm`);
         const ini = magna[l].inicio;
         const fim = magna[l].fim;
         const ini_val = magna[l].inicio_valor;
@@ -303,11 +304,13 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
         const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
         linhas.push(`  > Segmento ${rotulo}: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
         if (superficiais[l][v] === "ausente" && estadoRestante(magna[l].restante) !== "pérvia e competente" && ausenciaParcial("JSF", ini, fim, ini_val, fim_val)) linhas.push(`  > Segmento presente: ${estadoRestante(magna[l].restante)}`);
+        if (trombomagna && ausenciaParcial("JSF", ini, fim, ini_val, fim_val)) linhas.push(`  > Segmento restante: ${estadoRestanteDe(TROMBOSE_SUP, magna[l].restante)}`);
       }
-      if (v === "Safena Parva" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente")) {
-        const rotulo = superficiais[l][v] === "ausente" ? "ausente" : "insuficiente";
-        if (parva[l].proximal) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
-        if (parva[l].distal) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
+      const tromboparva = v === "Safena Parva" && superficiais[l][v] === TROMBOSE_SUP && segmentoCompleto(parva[l].inicio, parva[l].fim, parva[l].inicio_valor, parva[l].fim_valor);
+      if (v === "Safena Parva" && (superficiais[l][v] === "pérvia e incompetente" || superficiais[l][v] === "ausente" || tromboparva)) {
+        const rotulo = superficiais[l][v] === "ausente" ? "ausente" : tromboparva ? "com tromboflebite" : "insuficiente";
+        if (parva[l].proximal && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro Proximal: ${parva[l].proximal} mm`);
+        if (parva[l].distal && superficiais[l][v] !== TROMBOSE_SUP) linhas.push(`  > Diâmetro Distal: ${parva[l].distal} mm`);
         const ini = parva[l].inicio;
         const fim = parva[l].fim;
         const ini_val = parva[l].inicio_valor;
@@ -316,6 +319,7 @@ export function montarLaudo({ nome, data, lado, profundas, superficiais, magna, 
         const fim_fmt = fim && legendaCampos[fim] && fim_val ? `${fim_val} ${legendaCampos[fim]}` : legendaCampos[fim] || fim;
         linhas.push(`  > Segmento ${rotulo}: de ${ini_fmt || ''} até ${fim_fmt || ''}`);
         if (superficiais[l][v] === "ausente" && estadoRestante(parva[l].restante) !== "pérvia e competente" && ausenciaParcial("JSP", ini, fim, ini_val, fim_val)) linhas.push(`  > Segmento presente: ${estadoRestante(parva[l].restante)}`);
+        if (tromboparva && ausenciaParcial("JSP", ini, fim, ini_val, fim_val)) linhas.push(`  > Segmento restante: ${estadoRestanteDe(TROMBOSE_SUP, parva[l].restante)}`);
       }
     });
     linhas.push("");

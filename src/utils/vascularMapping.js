@@ -164,6 +164,26 @@ export function classifyAusencia(veinLabel, topField, ini, fim, iniVal, fimVal) 
   return `Ausência de safena ${veinLabel} identificável ao exame`;
 }
 
+// Mesma árvore, para o trecho não compressível (tromboflebite): total, parcial
+// ou segmentar conforme o início e o término marcados. Sem trecho marcado,
+// fica como antes ("Tromboflebite da safena ...").
+export function classifyTrombose(veinLabel, topField, ini, fim, iniVal, fimVal) {
+  if (!segmentoCompleto(ini, fim, iniVal, fimVal)) return `Tromboflebite da safena ${veinLabel}`;
+  const daJuncao = ini === topField, ateTornozelo = fim === "tornozelo";
+  if (daJuncao && ateTornozelo) return `Tromboflebite total da safena ${veinLabel}`;
+  if (daJuncao || ateTornozelo) return `Tromboflebite parcial da safena ${veinLabel}`;
+  return `Tromboflebite segmentar da safena ${veinLabel}`;
+}
+
+export const TROMBOSE_SUP = "não compressível e sem fluxo (trombose)";
+// Status da safena em que se marca um trecho (início/término).
+export const statusComTrecho = (status) => status === "pérvia e incompetente" || status === "ausente" || status === TROMBOSE_SUP;
+// Início e término preenchidos (com os cm, quando o campo pede).
+export function segmentoCompleto(ini, fim, iniVal, fimVal) {
+  if (!ini || !fim) return false;
+  return !((ini.indexOf("cm_") === 0 && !iniVal) || (fim.indexOf("cm_") === 0 && !fimVal));
+}
+
 // Ausência parcial da safena: estado do trecho que está presente.
 export const RESTANTE_OPCOES = [
   "pérvia e competente",
@@ -171,6 +191,10 @@ export const RESTANTE_OPCOES = [
   "não compressível e sem fluxo (trombose)",
 ];
 export const estadoRestante = (r) => (RESTANTE_OPCOES.includes(r) ? r : RESTANTE_OPCOES[0]);
+// Opções do trecho que sobra: na ausência, as 3; na tromboflebite, o resto
+// da safena é pérvia (competente ou incompetente).
+export const opcoesRestante = (status) => (status === TROMBOSE_SUP ? RESTANTE_OPCOES.slice(0, 2) : RESTANTE_OPCOES);
+export const estadoRestanteDe = (status, r) => { const e = estadoRestante(r); return opcoesRestante(status).includes(e) ? e : RESTANTE_OPCOES[0]; };
 
 // Ausência que não pega a safena toda (sobra trecho presente).
 export function ausenciaParcial(topField, ini, fim, iniVal, fimVal) {
@@ -182,8 +206,8 @@ export function ausenciaParcial(topField, ini, fim, iniVal, fimVal) {
 // Conclusão do trecho presente quando ele não é normal (ex.: ausência
 // parcial com o restante insuficiente ou trombosado).
 export function conclusaoRestante(veinLabel, topField, status, restante, ini, fim, iniVal, fimVal) {
-  if (status !== "ausente" || !ausenciaParcial(topField, ini, fim, iniVal, fimVal)) return null;
-  const r = estadoRestante(restante);
+  if ((status !== "ausente" && status !== TROMBOSE_SUP) || !ausenciaParcial(topField, ini, fim, iniVal, fimVal)) return null;
+  const r = estadoRestanteDe(status, restante);
   if (r === "pérvia e incompetente") return `Insuficiência do segmento remanescente da safena ${veinLabel}`;
   if (r === "não compressível e sem fluxo (trombose)") return `Tromboflebite do segmento remanescente da safena ${veinLabel}`;
   return null;
@@ -192,6 +216,21 @@ export function conclusaoRestante(veinLabel, topField, status, restante, ini, fi
 // Retorna os trechos coloridos (path + cor) da veia, a partir dos MESMOS
 // campos que o formulario ja usa (status, inicio, fim, inicio_valor, fim_valor).
 export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim, iniVal, fimVal, restante }) {
+  // tromboflebite num trecho: esse trecho escuro, o resto conforme "Segmento restante"
+  if (status === TROMBOSE_SUP && segmentoCompleto(ini, fim, iniVal, fimVal)) {
+    let yS = yFromField(ini, iniVal, landmark), yE = yFromField(fim, fimVal, landmark);
+    if (yS > yE) { const t = yS; yS = yE; yE = t; }
+    const corT = CORES[TROMBOSE_SUP], corR = CORES[estadoRestanteDe(status, restante)];
+    const segs = [];
+    if (yS > landmark.top + 2) segs.push({ d: pathFromTriples(sliceSpine(spine, half, landmark.top, yS)), color: corR });
+    segs.push({ d: pathFromTriples(sliceSpine(spine, half, yS, yE)), color: corT });
+    if (yE < landmark.tornozelo - 2) segs.push({ d: pathFromTriples(sliceSpine(spine, half, yE, landmark.tornozelo)), color: corR });
+    return {
+      segments: segs,
+      dotColor: yS <= landmark.top + 2 ? corT : corR,
+      refluxo: { yStart: yS, yEnd: yE, iniLabel: fmt(ini, iniVal), fimLabel: fmt(fim, fimVal), marcarIni: yS > landmark.top + 2, marcarFim: yE < landmark.tornozelo - 2 },
+    };
+  }
   if (status === "ausente") {
     const needIniA = ini && ini.indexOf("cm_") === 0;
     const needFimA = fim && fim.indexOf("cm_") === 0;
@@ -273,7 +312,7 @@ export function construirSegmentosVeia({ spine, half, landmark, status, ini, fim
 
 export function gerarConclusaoVisual(veinLabel, topField, status, ini, fim, iniVal, fimVal) {
   if (status === "ausente") return classifyAusencia(veinLabel, topField, ini, fim, iniVal, fimVal);
-  if (status === "não compressível e sem fluxo (trombose)") return `Tromboflebite da safena ${veinLabel}`;
+  if (status === TROMBOSE_SUP) return classifyTrombose(veinLabel, topField, ini, fim, iniVal, fimVal);
   if (status === "pérvia e incompetente") return classify(veinLabel, topField, ini, fim, iniVal, fimVal);
   return null;
 }
