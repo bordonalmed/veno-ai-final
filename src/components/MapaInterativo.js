@@ -164,8 +164,8 @@ export function VarizLegendaIcone({ tipo }) {
 export const VARIZ_ESCALA = 0.7;
 export const VARIZ_SPOTS = [
   { regiao: "antCoxaProximal", view: "medial", x: 157, y: 95 },
-  { regiao: "antCoxaMedia", view: "medial", x: 160, y: 175 },
-  { regiao: "antCoxaDistal", view: "medial", x: 162.5, y: 235 },
+  { regiao: "antCoxaMedia", view: "medial", x: 140.5, y: 175 },
+  { regiao: "antCoxaDistal", view: "medial", x: 145, y: 235 },
   { regiao: "antPernaProximal", view: "medial", x: 136, y: 375 },
   { regiao: "antPernaMedia", view: "medial", x: 134, y: 435 },
   { regiao: "antPernaDistal", view: "medial", x: 134, y: 495 },

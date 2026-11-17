@@ -10,7 +10,7 @@ export const POSTERIOR_SILHOUETTE = "M 118.00,10.00 C 107.13,11.70 117.18,16.80 
 export const POPLITEA_RIBBON = "M 158.00,300.00 C 160.50,303.33 157.30,312.50 157.00,320.00 C 156.80,327.50 156.50,335.00 156.50,345.00 C 156.50,355.00 158.90,374.17 157.00,380.00 C 155.10,385.83 147.30,385.83 145.00,380.00 C 142.80,374.17 143.80,355.00 143.50,345.00 C 143.20,335.00 143.30,327.50 143.00,320.00 C 142.80,312.50 139.50,303.33 142.00,300.00 C 144.50,296.67 155.50,296.67 158.00,300.00 Z";
 export const TIBIAIS_RIBBON = "M 157.00,380.00 C 159.40,388.33 159.80,413.33 159.50,430.00 C 159.20,446.67 156.70,465.00 155.00,480.00 C 153.30,495.00 150.00,508.33 149.50,520.00 C 149.00,531.67 152.90,545.00 152.00,550.00 C 151.10,555.00 145.90,555.00 144.00,550.00 C 142.10,545.00 140.30,531.67 140.50,520.00 C 140.70,508.33 143.70,495.00 145.00,480.00 C 146.30,465.00 148.50,446.67 148.50,430.00 C 148.50,413.33 143.60,388.33 145.00,380.00 C 146.40,371.67 154.60,371.67 157.00,380.00 Z";
 
-export const VSM_SPINE = [[125, 48], [134.9, 90], [143, 150], [149, 210], [152.1, 260], [152.7, 300], [156.3, 330], [159.3, 365], [159.1, 400], [155.1, 440], [153.2, 475], [149, 505], [143.2, 530], [139.5, 552]];
+export const VSM_SPINE = [[125, 48], [140, 90], [152, 150], [158, 210], [159.5, 260], [158, 300], [157.5, 330], [159.3, 365], [159.1, 400], [155.1, 440], [153.2, 475], [149, 505], [145.5, 530], [143, 552]];
 export const VSM_HALF = [5.5, 5.2, 5.0, 4.8, 4.6, 4.4, 4.3, 4.2, 4.0, 3.8, 3.6, 3.4, 3.2, 3.0];
 export const VSP_SPINE = [[150, 314], [147, 340], [142, 370], [140, 400], [142, 430], [146, 460], [148, 490], [146, 515], [143, 535]];
 export const VSP_HALF = [5.2, 5.0, 4.8, 4.6, 4.4, 4.2, 4.0, 3.6, 3.2];
@@ -330,16 +330,15 @@ const PERF_SEGMENTO_FIELD = {
 // Posiciona o marcador da veia perfurante na vista medial, usando a mesma
 // escala anatomica da Safena Magna (o campo "segmento" do formulario ja usa
 // os mesmos textos: "cm acima do joelho" etc). O marcador fica um pouco ao
-// lado da Safena Magna, do lado da borda mais próxima da perna. Perto do joelho (y~320) a silhueta da
-// perna afunila e sobra so ~10px entre a Safena Magna e o contorno — um
-// deslocamento maior (usado antes) fazia o marcador (raio 5.5) sair do
-// desenho da perna ali. 3px cabe com folga em qualquer altura da perna.
+// lado da Safena Magna, para dentro da perna (a magna corre perto da borda
+// medial da coxa e do joelho; deslocar para fora fazia o marcador sair do
+// desenho ali). 3px para dentro cabe com folga em qualquer altura da perna.
 export function posicaoPerfurante(segmentoLabel, valor) {
   const field = PERF_SEGMENTO_FIELD[segmentoLabel];
   if (!field) return null;
   const y = yFromField(field, valor || 0, LANDMARK_MAGNA);
   const [x] = interpAt(VSM_SPINE, VSM_HALF, y);
-  return { x: x + 3, y };
+  return { x: x - 3, y };
 }
 
 // Raio do triângulo do marcador de perfurante insuficiente — verificado
