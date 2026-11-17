@@ -132,29 +132,22 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   const limA = limites(G.MEDIAL_SILHOUETTE), limP = limites(G.POSTERIOR_SILHOUETTE);
   // Correspondência das faces entre o mapa 2D e a perna 3D (ângulo: 0° lateral, 90° anterior, 180° medial, 270° posterior).
-  // Desenho "anterior": linha da safena magna = face medial; à direita dela a frente e, perto da borda direita, o lateral
-  // (até 30° atrás do lateral); à esquerda dela o medial até o posteromedial (200°).
-  // Desenho "posterior": do posteromedial (200°, borda direita) ao posterolateral (330°, borda esquerda).
-  // As bordas ficam com uma margem para dentro, para o traço nunca sair da perna.
-  const A_MED = 200, A_LAT = -30, MARGEM = 0.14;
-  const angSafena = (y3) => Math.min(tab(T_GSV, y3)[0], 180);
-  const angFrente = (ang) => (ang > A_MED + (360 + A_LAT - A_MED) ? ang - 360 : ang); // 330..360 -> -30..0
-  const naFrente = (ang) => { const a = angFrente(ang); return a >= A_LAT && a <= A_MED; };
-  function faixaA(y) {
-    const l = limA(y), m = l[1] * MARGEM, xl = l[0] - l[1] + m, xr = l[0] + l[1] - m;
-    const xv = clamp(G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0], xl + 4, xr - 4);
-    return { xl, xr, xv };
-  }
-  const P_C = (A_MED + 360 + A_LAT) / 2, P_H = (360 + A_LAT - A_MED) / 2; // centro e meia-largura do desenho posterior, em graus
+  // Os dois desenhos do 2D são vistas anatômicas da perna esquerda:
+  //   anterior  -> centro = face anterior (90°), borda esquerda = medial (180°), borda direita = lateral (0°);
+  //   posterior -> centro = face posterior (270°), borda direita = medial (180°), borda esquerda = lateral (360°).
+  // As bordas têm uma margem para dentro, para o traço nunca sair da perna.
+  const MARGEM = 0.12;
+  const kAnt = (ang) => { let d = ang - 90; if (d > 180) d -= 360; if (d < -180) d += 360; return -d / 90; };   // +1 lateral, -1 medial
+  const kPost = (ang) => { let d = ang - 270; if (d > 180) d -= 360; if (d < -180) d += 360; return -d / 90; }; // +1 medial, -1 lateral
+  const naFrente = (ang) => ang >= 345 || ang <= 195; // medial e lateral puros ficam nas bordas do desenho anterior
   // um ponto desenhado no mapa vira um ponto rente à pele
   function sobe(x, y, vista) {
     if (vista === 'anterior') {
-      const y3 = clamp(Y3M(y), -3.8, 4.2), f = faixaA(y), av = angSafena(y3), xx = clamp(x, f.xl, f.xr);
-      const ang = xx >= f.xv ? av - (av - A_LAT) * (xx - f.xv) / (f.xr - f.xv) : av + (A_MED - av) * (f.xv - xx) / (f.xv - f.xl);
-      return ponto(y3, ang, .955);
+      const y3 = clamp(Y3M(y), -3.8, 4.2), l = limA(y), k = clamp((x - l[0]) / (l[1] * (1 - MARGEM)), -1, 1);
+      return ponto(y3, 90 - k * 90, .955);
     }
     const y3 = clamp(Y3P(y), -3.8, 4.2), l = limP(y), k = clamp((x - l[0]) / (l[1] * (1 - MARGEM)), -1, 1);
-    return ponto(y3, P_C - k * P_H, .955);
+    return ponto(y3, 270 - k * 90, .955);
   }
   // inverso de sobe(): ponto da pele -> { x, y } no mapa 2D da perna esquerda
   const inverte = (tab2) => { const t = tab2.map(([a, b]) => [b, a]).sort((p, q) => p[0] - q[0]); return (y3) => porTrechos(y3, t); };
@@ -168,17 +161,10 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const r1 = (v) => Math.round(v * 10) / 10;
   function desce(P, vista) {
     const y3 = clamp(P.y, -3.8, 4.2), ang = anguloNaPele(P);
-    if (vista === 'anterior') {
-      const y = Y2M(y3), f = faixaA(y), av = angSafena(y3);
-      const a = naFrente(ang) ? angFrente(ang) : (ang < P_C ? A_MED : A_LAT);
-      const x = a <= av ? f.xv + (av - a) / (av - A_LAT) * (f.xr - f.xv) : f.xv - (a - av) / (A_MED - av) * (f.xv - f.xl);
-      return [r1(clamp(x, f.xl, f.xr)), r1(y)];
-    }
-    const y = Y2P(y3), l = limP(y), a = naFrente(ang) ? (angFrente(ang) > 85 ? A_MED : 360 + A_LAT) : ang;
-    const k = (P_C - a) / P_H;
-    return [r1(l[0] + clamp(k, -1, 1) * l[1] * (1 - MARGEM)), r1(y)];
+    if (vista === 'anterior') { const y = Y2M(y3), l = limA(y); return [r1(l[0] + clamp(kAnt(ang), -1, 1) * l[1] * (1 - MARGEM)), r1(y)]; }
+    const y = Y2P(y3), l = limP(y); return [r1(l[0] + clamp(kPost(ang), -1, 1) * l[1] * (1 - MARGEM)), r1(y)];
   }
-  // a vista do traço: anterior se a maior parte dele está na frente/lateral (-30° a 200°), senão posterior
+  // a vista do traço: anterior se a maior parte dele está na metade da frente da perna, senão posterior
   function vistaDoTraco(pts3) {
     let a = 0;
     for (const P of pts3) if (naFrente(anguloNaPele(P))) a++;
