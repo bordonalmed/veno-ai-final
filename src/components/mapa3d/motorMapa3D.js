@@ -131,35 +131,53 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     return (y) => { let k = Math.round(y / 4), d2 = 0; while (mn[k + d2] === undefined && mn[k - d2] === undefined && d2 < 40) d2++; const kk = mn[k + d2] !== undefined ? k + d2 : k - d2; if (mn[kk] === undefined) return [150, 30]; return [(mn[kk] + mx[kk]) / 2, Math.max(8, (mx[kk] - mn[kk]) / 2)]; };
   }
   const limA = limites(G.MEDIAL_SILHOUETTE), limP = limites(G.POSTERIOR_SILHOUETTE);
-  // um ponto desenhado no mapa vira um ponto rente à pele: a referência é a safena daquela vista
-  function sobe(x, y, vista) {
-    if (vista === 'anterior') { const y3 = clamp(Y3M(y), -3.8, 4.2), ref = tab(T_GSV, y3)[0], hw = limA(y)[1], dx = x - G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0]; return ponto(y3, ref - clamp(dx / hw, -1.2, 1.2) * 90, .955); }
-    const y3 = clamp(Y3P(y), -3.8, 4.2), l = limP(y); return ponto(y3, 270 - clamp((x - l[0]) / l[1], -1, 1) * 90, .955);
+  // Correspondência das faces entre o mapa 2D e a perna 3D (ângulo: 0° lateral, 90° anterior, 180° medial, 270° posterior).
+  // Desenho "anterior": borda direita = lateral (0°), linha da safena magna = face medial (ângulo da safena, até 180°),
+  // borda esquerda = medial-posterior (200°). Assim a frente da perna fica entre a safena e a borda direita.
+  // Desenho "posterior": borda direita = medial (200°), centro = posterior (280°), borda esquerda = lateral (360°).
+  const A_LIM = 200;
+  const angSafena = (y3) => Math.min(tab(T_GSV, y3)[0], 180);
+  function faixaA(y) {
+    const l = limA(y), xl = l[0] - l[1], xr = l[0] + l[1];
+    const xv = clamp(G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0], xl + 4, xr - 4);
+    return { xl, xr, xv };
   }
-  // inverso de sobe(): ponto da pele -> { vista, x, y } no mapa 2D da perna esquerda
+  // um ponto desenhado no mapa vira um ponto rente à pele
+  function sobe(x, y, vista) {
+    if (vista === 'anterior') {
+      const y3 = clamp(Y3M(y), -3.8, 4.2), f = faixaA(y), av = angSafena(y3), xx = clamp(x, f.xl, f.xr);
+      const ang = xx >= f.xv ? av * (f.xr - xx) / (f.xr - f.xv) : av + (A_LIM - av) * (f.xv - xx) / (f.xv - f.xl);
+      return ponto(y3, ang, .955);
+    }
+    const y3 = clamp(Y3P(y), -3.8, 4.2), l = limP(y), k = clamp((x - l[0]) / l[1], -1, 1);
+    return ponto(y3, (A_LIM + 360) / 2 - k * (360 - A_LIM) / 2, .955);
+  }
+  // inverso de sobe(): ponto da pele -> { x, y } no mapa 2D da perna esquerda
   const inverte = (tab2) => { const t = tab2.map(([a, b]) => [b, a]).sort((p, q) => p[0] - q[0]); return (y3) => porTrechos(y3, t); };
   const Y2M = inverte([[10, 4.3], [48, 3.75], [320, .1], [552, -3.55], [612, -4.3]]);
   const Y2P = inverte([[10, 4.3], [314, .1], [535, -3.5], [622, -4.3]]);
-  const difAng = (a, b) => { let d = (a - b) % 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; };
   function anguloNaPele(P) {
     const s2 = secao(clamp(P.y, -3.85, 4.3));
     const lx = (P.x - s2[2]) / (SX * s2[0]), lz = (P.z - s2[3]) / s2[1];
     return (Math.atan2(lz, lx) * 180 / Math.PI + 360) % 360;
   }
+  const r1 = (v) => Math.round(v * 10) / 10;
   function desce(P, vista) {
     const y3 = clamp(P.y, -3.8, 4.2), ang = anguloNaPele(P);
     if (vista === 'anterior') {
-      const y = Y2M(y3), ref = tab(T_GSV, y3)[0], hw = limA(y)[1], cx = G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0];
-      return [Math.round((cx + clamp(difAng(ref, ang) / 90, -1.2, 1.2) * hw) * 10) / 10, Math.round(y * 10) / 10];
+      const y = Y2M(y3), f = faixaA(y), av = angSafena(y3), a = ang > A_LIM ? (ang > (A_LIM + 360) / 2 ? 0 : A_LIM) : ang;
+      const x = a <= av ? f.xr - (a / av) * (f.xr - f.xv) : f.xv - ((a - av) / (A_LIM - av)) * (f.xv - f.xl);
+      return [r1(clamp(x, f.xl + 2, f.xr - 2)), r1(y)];
     }
-    const y = Y2P(y3), l = limP(y);
-    return [Math.round((l[0] + clamp(difAng(270, ang) / 90, -1, 1) * l[1]) * 10) / 10, Math.round(y * 10) / 10];
+    const y = Y2P(y3), l = limP(y), a = ang < A_LIM ? (ang < A_LIM / 2 ? 360 : A_LIM) : ang;
+    const k = ((A_LIM + 360) / 2 - a) / ((360 - A_LIM) / 2);
+    return [r1(l[0] + clamp(k, -1, 1) * (l[1] - 2)), r1(y)];
   }
-  // a vista do traço: a que deixa os pontos mais perto do centro dela
+  // a vista do traço: anterior se a maior parte dele está na frente (0° a 200°), senão posterior
   function vistaDoTraco(pts3) {
-    let a = 0, p = 0;
-    for (const P of pts3) { const ang = anguloNaPele(P); a += Math.abs(difAng(tab(T_GSV, clamp(P.y, -3.8, 4.2))[0], ang)) / 108; p += Math.abs(difAng(270, ang)) / 90; }
-    return a <= p ? 'anterior' : 'posterior';
+    let a = 0;
+    for (const P of pts3) if (anguloNaPele(P) < A_LIM) a++;
+    return a * 2 >= pts3.length ? 'anterior' : 'posterior';
   }
   function texturaFluxo() {
     const c = document.createElement('canvas'); c.width = 64; c.height = 4; const g = c.getContext('2d');
