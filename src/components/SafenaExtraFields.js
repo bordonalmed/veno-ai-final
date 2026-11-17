@@ -1,11 +1,11 @@
 import React from "react";
-import { RESTANTE_OPCOES } from "../utils/vascularMapping";
+import { RESTANTE_OPCOES, opcoesRestante, statusComTrecho, TROMBOSE_SUP } from "../utils/vascularMapping";
 
 // Componentes extras das safenas (diâmetros + início/término do refluxo).
 // Extraídos para módulo compartilhado para que tanto o formulário
 // (MMIIVenoso.js) quanto o Mapa Interativo usem exatamente os mesmos campos.
 export function SafenaMagnaExtra({ status, valores, onChange }) {
-  if (status !== "pérvia e incompetente" && status !== "ausente") return null;
+  if (!statusComTrecho(status)) return null;
   return (
     <div style={{
       width: '100%',
@@ -172,15 +172,18 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
           )}
         </label>
       </div>
-      {status === "ausente" && (
+      {status === TROMBOSE_SUP && (
+        <div style={{ fontSize: 'clamp(10px, 2vw, 11px)', color: '#5c6b78', marginTop: 2 }}>Início e término do trecho não compressível (tromboflebite). Sem trecho marcado, vale a safena toda.</div>
+      )}
+      {(status === "ausente" || status === TROMBOSE_SUP) && (
         <label style={{
           display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
           marginTop: 'clamp(3px, 1vw, 5px)',
           fontWeight: 500,
           fontSize: 'clamp(10px, 2vw, 12px)'
-        }}>Segmento presente:
+        }}>{status === TROMBOSE_SUP ? "Segmento restante:" : "Segmento presente:"}
           <select
-            value={valores.restante || RESTANTE_OPCOES[0]}
+            value={opcoesRestante(status).includes(valores.restante) ? valores.restante : RESTANTE_OPCOES[0]}
             onChange={e => onChange({ ...valores, restante: e.target.value })}
             style={{
               marginLeft: 'clamp(2px, 1vw, 3px)',
@@ -189,7 +192,7 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
               maxWidth: '100%'
             }}
           >
-            {RESTANTE_OPCOES.map((o) => <option key={o} value={o}>{o}</option>)}
+            {opcoesRestante(status).map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </label>
       )}
@@ -197,7 +200,7 @@ export function SafenaMagnaExtra({ status, valores, onChange }) {
   );
 }
 export function SafenaParvaExtra({ status, valores, onChange }) {
-  if (status !== "pérvia e incompetente" && status !== "ausente") return null;
+  if (!statusComTrecho(status)) return null;
   return (
     <div style={{
       width: '100%',
@@ -339,15 +342,18 @@ export function SafenaParvaExtra({ status, valores, onChange }) {
           )}
         </label>
       </div>
-      {status === "ausente" && (
+      {status === TROMBOSE_SUP && (
+        <div style={{ fontSize: 'clamp(10px, 2vw, 11px)', color: '#5c6b78', marginTop: 2 }}>Início e término do trecho não compressível (tromboflebite). Sem trecho marcado, vale a safena toda.</div>
+      )}
+      {(status === "ausente" || status === TROMBOSE_SUP) && (
         <label style={{
           display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
           marginTop: 'clamp(3px, 1vw, 5px)',
           fontWeight: 500,
           fontSize: 'clamp(10px, 2vw, 12px)'
-        }}>Segmento presente:
+        }}>{status === TROMBOSE_SUP ? "Segmento restante:" : "Segmento presente:"}
           <select
-            value={valores.restante || RESTANTE_OPCOES[0]}
+            value={opcoesRestante(status).includes(valores.restante) ? valores.restante : RESTANTE_OPCOES[0]}
             onChange={e => onChange({ ...valores, restante: e.target.value })}
             style={{
               marginLeft: 'clamp(2px, 1vw, 3px)',
@@ -356,7 +362,7 @@ export function SafenaParvaExtra({ status, valores, onChange }) {
               maxWidth: '100%'
             }}
           >
-            {RESTANTE_OPCOES.map((o) => <option key={o} value={o}>{o}</option>)}
+            {opcoesRestante(status).map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </label>
       )}
