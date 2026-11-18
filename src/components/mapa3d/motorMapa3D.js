@@ -115,8 +115,10 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const Y3M = (y) => porTrechos(y, [[10, 4.3], [48, 3.75], [320, .1], [552, -3.55], [612, -4.3]]);
   const Y3P = (y) => porTrechos(y, [[10, 4.3], [314, .1], [535, -3.5], [622, -4.3]]);
   // trajeto anatômico: [altura, ângulo, fração]
-  const T_GSV = [[-3.55, 150, .9], [-2.8, 165, .9], [-2.0, 178, .9], [-1.2, 188, .9], [-.5, 205, .9], [.1, 215, .9], [.8, 208, .9], [1.6, 192, .9], [2.4, 172, .9], [3.1, 152, .88], [3.5, 140, .8], [3.75, 130, .5]];
-  const T_SSV = [[-3.5, 300, .9], [-2.7, 282, .9], [-1.9, 272, .9], [-1.1, 270, .92], [-.4, 270, .9], [-.05, 270, .75], [.1, 268, .48]];
+  // magna: anteromedial na perna (à frente do maléolo medial), posteromedial no joelho, medial na coxa
+  const T_GSV = [[-3.55, 135, .9], [-2.8, 142, .9], [-2.0, 148, .9], [-1.2, 156, .9], [-.5, 172, .9], [.1, 190, .9], [.8, 190, .9], [1.6, 184, .9], [2.4, 176, .9], [3.1, 160, .88], [3.5, 145, .8], [3.75, 130, .5]];
+  // parva: lateroposterior (atrás do maléolo lateral), subindo para a linha média posterior até a JSP
+  const T_SSV = [[-3.5, 318, .9], [-2.7, 305, .9], [-1.9, 295, .9], [-1.1, 286, .92], [-.4, 278, .9], [-.05, 272, .75], [.1, 268, .48]];
   const T_FEM = [[.6, 255, .42], [1.3, 215, .4], [2.2, 175, .42], [3.1, 145, .46], [3.75, 130, .5], [4.25, 125, .5]];
   const T_POP = [[-.9, 270, .42], [-.4, 270, .45], [.1, 268, .48], [.6, 255, .42]];
   function tab(Tb, y) { y = clamp(y, Tb[0][0], Tb[Tb.length - 1][0]); for (let i = 0; i < Tb.length - 1; i++) if (y <= Tb[i + 1][0]) { const k = (y - Tb[i][0]) / (Tb[i + 1][0] - Tb[i][0]); return [lerp(Tb[i][1], Tb[i + 1][1], k), lerp(Tb[i][2], Tb[i + 1][2], k)]; } const u = Tb[Tb.length - 1]; return [u[1], u[2]]; }
@@ -131,35 +133,45 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     return (y) => { let k = Math.round(y / 4), d2 = 0; while (mn[k + d2] === undefined && mn[k - d2] === undefined && d2 < 40) d2++; const kk = mn[k + d2] !== undefined ? k + d2 : k - d2; if (mn[kk] === undefined) return [150, 30]; return [(mn[kk] + mx[kk]) / 2, Math.max(8, (mx[kk] - mn[kk]) / 2)]; };
   }
   const limA = limites(G.MEDIAL_SILHOUETTE), limP = limites(G.POSTERIOR_SILHOUETTE);
-  // um ponto desenhado no mapa vira um ponto rente à pele: a referência é a safena daquela vista
+  // Correspondência das faces entre o mapa 2D e a perna 3D (ângulo: 0° lateral, 90° anterior, 180° medial, 270° posterior).
+  // Os dois desenhos do 2D (perna esquerda) têm o lado MEDIAL à direita — no anterior a femoral fica à esquerda
+  // da safena magna, e a magna desce pelo lado direito:
+  //   anterior  -> centro = face anterior (90°), borda direita = medial (180°), borda esquerda = lateral (0°);
+  //   posterior -> centro = face posterior (270°), borda direita = medial (180°), borda esquerda = lateral (360°).
+  // As bordas têm uma margem para dentro, para o traço nunca sair da perna.
+  const MARGEM = 0.12;
+  const kAnt = (ang) => { let d = ang - 90; if (d > 180) d -= 360; if (d < -180) d += 360; return d / 90; };    // +1 medial, -1 lateral
+  const kPost = (ang) => { let d = ang - 270; if (d > 180) d -= 360; if (d < -180) d += 360; return -d / 90; }; // +1 medial, -1 lateral
+  const naFrente = (ang) => ang >= 345 || ang <= 195; // medial e lateral puros ficam nas bordas do desenho anterior
+  // um ponto desenhado no mapa vira um ponto rente à pele
   function sobe(x, y, vista) {
-    if (vista === 'anterior') { const y3 = clamp(Y3M(y), -3.8, 4.2), ref = tab(T_GSV, y3)[0], hw = limA(y)[1], dx = x - G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0]; return ponto(y3, ref - clamp(dx / hw, -1.2, 1.2) * 90, .955); }
-    const y3 = clamp(Y3P(y), -3.8, 4.2), l = limP(y); return ponto(y3, 270 - clamp((x - l[0]) / l[1], -1, 1) * 90, .955);
+    if (vista === 'anterior') {
+      const y3 = clamp(Y3M(y), -3.8, 4.2), l = limA(y), k = clamp((x - l[0]) / (l[1] * (1 - MARGEM)), -1, 1);
+      return ponto(y3, 90 + k * 90, .955);
+    }
+    const y3 = clamp(Y3P(y), -3.8, 4.2), l = limP(y), k = clamp((x - l[0]) / (l[1] * (1 - MARGEM)), -1, 1);
+    return ponto(y3, 270 - k * 90, .955);
   }
-  // inverso de sobe(): ponto da pele -> { vista, x, y } no mapa 2D da perna esquerda
+  // inverso de sobe(): ponto da pele -> { x, y } no mapa 2D da perna esquerda
   const inverte = (tab2) => { const t = tab2.map(([a, b]) => [b, a]).sort((p, q) => p[0] - q[0]); return (y3) => porTrechos(y3, t); };
   const Y2M = inverte([[10, 4.3], [48, 3.75], [320, .1], [552, -3.55], [612, -4.3]]);
   const Y2P = inverte([[10, 4.3], [314, .1], [535, -3.5], [622, -4.3]]);
-  const difAng = (a, b) => { let d = (a - b) % 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; };
   function anguloNaPele(P) {
     const s2 = secao(clamp(P.y, -3.85, 4.3));
     const lx = (P.x - s2[2]) / (SX * s2[0]), lz = (P.z - s2[3]) / s2[1];
     return (Math.atan2(lz, lx) * 180 / Math.PI + 360) % 360;
   }
+  const r1 = (v) => Math.round(v * 10) / 10;
   function desce(P, vista) {
     const y3 = clamp(P.y, -3.8, 4.2), ang = anguloNaPele(P);
-    if (vista === 'anterior') {
-      const y = Y2M(y3), ref = tab(T_GSV, y3)[0], hw = limA(y)[1], cx = G.interpAt(G.VSM_SPINE, G.VSM_HALF, clamp(y, 48, 552))[0];
-      return [Math.round((cx + clamp(difAng(ref, ang) / 90, -1.2, 1.2) * hw) * 10) / 10, Math.round(y * 10) / 10];
-    }
-    const y = Y2P(y3), l = limP(y);
-    return [Math.round((l[0] + clamp(difAng(270, ang) / 90, -1, 1) * l[1]) * 10) / 10, Math.round(y * 10) / 10];
+    if (vista === 'anterior') { const y = Y2M(y3), l = limA(y); return [r1(l[0] + clamp(kAnt(ang), -1, 1) * l[1] * (1 - MARGEM)), r1(y)]; }
+    const y = Y2P(y3), l = limP(y); return [r1(l[0] + clamp(kPost(ang), -1, 1) * l[1] * (1 - MARGEM)), r1(y)];
   }
-  // a vista do traço: a que deixa os pontos mais perto do centro dela
+  // a vista do traço: anterior se a maior parte dele está na metade da frente da perna, senão posterior
   function vistaDoTraco(pts3) {
-    let a = 0, p = 0;
-    for (const P of pts3) { const ang = anguloNaPele(P); a += Math.abs(difAng(tab(T_GSV, clamp(P.y, -3.8, 4.2))[0], ang)) / 108; p += Math.abs(difAng(270, ang)) / 90; }
-    return a <= p ? 'anterior' : 'posterior';
+    let a = 0;
+    for (const P of pts3) if (naFrente(anguloNaPele(P))) a++;
+    return a * 2 >= pts3.length ? 'anterior' : 'posterior';
   }
   function texturaFluxo() {
     const c = document.createElement('canvas'); c.width = 64; c.height = 4; const g = c.getContext('2d');
