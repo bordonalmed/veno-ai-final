@@ -53,7 +53,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   renderer.outputEncoding = T.sRGBEncoding;
 
   const SISTOLE = 1.5, CICLO = 4.3, DUR_REFLUXO = 2.3, VMAX = 5.2;
-  const st = { nivel: 'perna', dil: 0, o: 0, t: 0, tc: 0, v: 0, pausado: false, doppler: false, sel: 0, trocando: false, pronto: false, semZoomAte: 0 };
+  const peleR = $('peleR');
+  const st = { pele: peleR ? clamp(Number(peleR.value) / 100, 0, 1) : 0.5, nivel: 'perna', dil: 0, o: 0, t: 0, tc: 0, v: 0, pausado: false, doppler: false, sel: 0, trocando: false, pronto: false, semZoomAte: 0 };
   function velocidade(tc, dil) {
     if (tc < SISTOLE) return Math.pow(Math.sin(Math.PI * tc / SISTOLE), 0.8);
     const tau = tc - SISTOLE, vN = tau < 0.22 ? -0.35 * Math.sin(Math.PI * tau / 0.22) : 0; let vR = 0;
@@ -76,31 +77,67 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     return o;
   }
   // ponto na perna: altura y, ângulo (0° lateral, 90° anterior, 180° medial, 270° posterior), fração do raio até a pele
-  function ponto(y, graus, frac) { const s = secao(y), a = graus * Math.PI / 180; return new T.Vector3(s[2] + SX * frac * s[0] * Math.cos(a), y, s[3] + frac * s[1] * Math.sin(a)); }
+  // relevo anatômico sobre a seção: [ângulo (0° lateral, 90° anterior, 180° medial, 270° posterior), altura, dy, dθ, amplitude]
+  const RELEVO = [
+    [90, 2.3, 1.3, 38, .055], [25, 1.9, 1.35, 32, .085], [148, .8, .42, 28, .14], [192, 3.05, .95, 36, .05], [268, 2.4, 1.25, 48, .05], // coxa: reto femoral, vasto lateral, vasto medial, adutores, posteriores
+    [90, .3, .19, 22, .1], [62, .08, .14, 14, -.035], [118, .08, .14, 14, -.035], [172, .28, .22, 26, .04], [8, .28, .22, 24, .03], [270, .18, .26, 36, -.045], // joelho: patela, tendão patelar, côndilos, fossa poplítea
+    [236, -1.0, .55, 32, .17], [305, -.82, .45, 28, .12], [270, -1.95, .5, 50, .035], [96, -1.6, 1.15, 9, .035], [138, -1.7, 1.0, 22, -.03], [60, -1.2, .9, 22, .045], // perna: gastrocnêmios, sóleo, crista e face medial da tíbia, tibial anterior
+    [270, -3.2, .55, 14, .06], [234, -3.42, .36, 14, -.06], [306, -3.42, .36, 14, -.06], [176, -3.6, .13, 20, .12], [4, -3.76, .13, 20, .12], // tornozelo: Aquiles e sulcos, maléolos medial (mais alto) e lateral
+  ];
+  const difG = (a, b) => { let d = (a - b) % 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; };
+  function relevo(y, graus) { let f = 1; for (const [a0, y0, sy, sa, A] of RELEVO) { const dy = (y - y0) / sy, da = difG(graus, a0) / sa; f += A * Math.exp(-dy * dy - da * da); } return f; }
+  function ponto(y, graus, frac) { const s = secao(y), a = graus * Math.PI / 180, k = frac * relevo(y, graus); return new T.Vector3(s[2] + SX * k * s[0] * Math.cos(a), y, s[3] + k * s[1] * Math.sin(a)); }
   function casca(aneis) {
     const M = aneis[0].length, pos = [], idx = [];
     for (const a of aneis) for (const p of a) pos.push(p.x, p.y, p.z);
     for (let i = 0; i < aneis.length - 1; i++) for (let j = 0; j < M; j++) { const a = i * M + j, b = i * M + (j + 1) % M, c = (i + 1) * M + j, d = (i + 1) * M + (j + 1) % M; idx.push(a, b, c, b, d, c); }
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
   }
-  const MP = 44, aneisPerna = [], aneisPe = [];
+  const MP = 96, aneisPerna = [], aneisPe = [];
   const anel = (f) => { const a = []; for (let j = 0; j < MP; j++) a.push(f(j / MP * Math.PI * 2)); return a; };
   aneisPerna.push(anel(() => new T.Vector3(0, 4.3, 0)));
-  for (let i = 0; i <= 66; i++) { const y = lerp(4.3, -3.85, i / 66), s = secao(y); aneisPerna.push(anel((a) => new T.Vector3(s[2] + SX * s[0] * Math.cos(a), y, s[3] + s[1] * Math.sin(a)))); }
+  for (let i = 0; i <= 170; i++) { const y = lerp(4.3, -3.85, i / 170); aneisPerna.push(anel((a) => ponto(y, a * 180 / Math.PI, 1))); }
   aneisPerna.push(anel(() => new T.Vector3(0, -3.85, 0)));
-  const PE = [[-.62, .03, .25], [-.5, .2, .62], [-.3, .29, .78], [0, .33, .8], [.3, .36, .66], [.7, .4, .46], [1.1, .43, .34], [1.5, .42, .27], [1.75, .33, .22], [1.86, .05, .1]];
-  for (let i = 0; i <= 36; i++) {
-    const z = lerp(PE[0][0], PE[PE.length - 1][0], i / 36); let k = 0; while (k < PE.length - 2 && z > PE[k + 1][0]) k++;
+  // pé: ao longo de z (calcanhar -> dedos): [z, meia-largura, altura, arco plantar (lado medial)]
+  const PE = [[-.66, .02, .12, 0], [-.6, .17, .36, 0], [-.45, .25, .55, 0], [-.25, .27, .66, .02], [0, .27, .62, .05], [.3, .29, .5, .07], [.65, .33, .4, .06], [1.0, .37, .32, .03], [1.35, .38, .25, .01], [1.62, .36, .2, 0], [1.8, .3, .15, 0], [1.9, .18, .1, 0], [1.94, .04, .05, 0]];
+  for (let i = 0; i <= 70; i++) {
+    const z = lerp(PE[0][0], PE[PE.length - 1][0], i / 70); let k = 0; while (k < PE.length - 2 && z > PE[k + 1][0]) k++;
     const a0 = PE[Math.max(0, k - 1)], b0 = PE[k], c0 = PE[k + 1], d0 = PE[Math.min(PE.length - 1, k + 2)], t = clamp((z - b0[0]) / (c0[0] - b0[0]), 0, 1);
-    const wx = Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h = Math.max(.06, cr(a0[2], b0[2], c0[2], d0[2], t));
-    aneisPe.push(anel((a) => new T.Vector3(SX * wx * Math.cos(a), -4.3 + h / 2 + (h / 2) * Math.sin(a) * (Math.sin(a) < 0 ? 0.8 : 1), z)));
+    const wx = Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h = Math.max(.05, cr(a0[2], b0[2], c0[2], d0[2], t)), arco = cr(a0[3], b0[3], c0[3], d0[3], t);
+    // c > 0 é o lado medial do pé (vai para -x na perna esquerda, +x na direita)
+    aneisPe.push(anel((a) => { const sn = Math.sin(a), c = Math.cos(a); let y = -4.3 + h / 2 + (h / 2) * sn * (sn < 0 ? 0.8 : 1); if (sn < 0 && c > 0) y += arco * Math.pow(c, 1.5) * -sn * 3.2; return new T.Vector3(-SX * wx * c, y, z); }));
   }
   const PELES = []; // malhas da pele (para desenhar direto nela)
+  // pele: quase opaca, com textura (poros e manchas suaves), relevo fino, tom avermelhado no joelho/tornozelo/pé,
+  // luz que atravessa a pele (sombras quentes e borda) e brilho suave. As veias são desenhadas depois, "sob a pele".
   const mPele = new T.ShaderMaterial({
-    transparent: true, depthWrite: false, side: T.FrontSide,
-    uniforms: { cor: { value: new T.Vector3(0.98, 0.74, 0.6) } },
-    vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
-    fragmentShader: 'uniform vec3 cor; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.0); gl_FragColor = vec4(cor * (0.72 + 0.28 * f), mix(0.10, 0.74, f)); }',
+    transparent: true, depthWrite: false, side: T.FrontSide, extensions: { derivatives: true },
+    uniforms: { cor: { value: new T.Vector3(0.87, 0.68, 0.57) }, sombra: { value: new T.Vector3(0.62, 0.27, 0.21) }, rubor: { value: new T.Vector3(0.84, 0.5, 0.43) }, opac: { value: 0.9 } },
+    vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; varying vec3 vVP; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vP = position; vVP = mv.xyz; gl_Position = projectionMatrix * mv; }',
+    fragmentShader: [
+      'uniform vec3 cor; uniform vec3 sombra; uniform vec3 rubor; uniform float opac; varying vec3 vN; varying vec3 vV; varying vec3 vP; varying vec3 vVP;',
+      'float hs(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }',
+      'float rd(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);',
+      '  return mix(mix(mix(hs(i), hs(i + vec3(1,0,0)), f.x), mix(hs(i + vec3(0,1,0)), hs(i + vec3(1,1,0)), f.x), f.y),',
+      '             mix(mix(hs(i + vec3(0,0,1)), hs(i + vec3(1,0,1)), f.x), mix(hs(i + vec3(0,1,1)), hs(i + vec3(1,1,1)), f.x), f.y), f.z); }',
+      'void main(){',
+      '  vec3 N = normalize(vN), V = normalize(vV);',
+      '  float alt = rd(vP * 34.0) * 0.6 + rd(vP * 90.0) * 0.4;',
+      '  vec3 sx = dFdx(vVP), sy = dFdy(vVP); vec2 dh = vec2(dFdx(alt), dFdy(alt)) * 0.0022;',
+      '  vec3 r1 = cross(sy, N), r2 = cross(N, sx); float det = dot(sx, r1);',
+      '  if (abs(det) > 1e-9) N = normalize(abs(det) * N - sign(det) * (dh.x * r1 + dh.y * r2));',
+      '  vec3 L = normalize(vec3(-0.45, 0.6, 1.0)), L2 = normalize(vec3(0.7, 0.2, -0.6));',
+      '  float nl = dot(N, L), w = 0.5, d1 = max(0.0, (nl + w) / (1.0 + w)), d2 = max(0.0, (dot(N, L2) + w) / (1.0 + w));',
+      '  float rim = pow(1.0 - abs(dot(N, V)), 2.4);',
+      '  float mancha = rd(vP * 2.3) * 0.6 + rd(vP * 6.5) * 0.4;',
+      '  float verm = exp(-pow((vP.y - 0.25) / 0.45, 2.0)) * 0.55 + exp(-pow((vP.y + 3.65) / 0.4, 2.0)) * 0.6 + smoothstep(-3.9, -4.25, vP.y) * 0.5;',
+      '  vec3 base = mix(cor, rubor, clamp(verm * 0.7 + (mancha - 0.5) * 0.35, 0.0, 1.0)) * (0.96 + 0.08 * mancha);',
+      '  vec3 c = mix(sombra, base, smoothstep(0.0, 0.9, d1)) * (0.46 + 0.6 * d1) + vec3(0.42, 0.58, 0.85) * 0.12 * d2;',
+      '  vec3 H = normalize(L + V); float fr = 0.04 + 0.96 * pow(1.0 - max(dot(V, H), 0.0), 5.0);',
+      '  c += pow(max(dot(N, H), 0.0), 42.0) * 0.22 * (0.5 + fr) + vec3(1.0, 0.8, 0.7) * rim * 0.16 + vec3(0.9, 0.35, 0.25) * rim * (1.0 - d1) * 0.25;',
+      '  c *= 0.975 + 0.05 * rd(vP * 140.0);',
+      '  gl_FragColor = vec4(c, mix(0.2 + 0.6 * rim, 1.0, opac));',
+      '}'].join('\n'),
   });
   for (const g of [casca(aneisPerna), casca(aneisPe)]) {
     const p = g.attributes.position, n = g.attributes.normal, i0 = Math.floor(p.count / 2), sY = secao(clamp(p.getY(i0), -3.85, 4.3));
@@ -185,6 +222,28 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const ROTULO = { ok: 'competente', ruim: 'com refluxo', trombo: 'trombose', recan: 'recanalização parcial', ausente: 'ausente' };
   const estadoDe = (s) => !s ? 'ok' : s === RUIM ? 'ruim' : s === 'ausente' ? 'ausente' : s.indexOf('não compressível') === 0 ? 'trombo' : s.indexOf('semi compressível') === 0 ? 'recan' : 'ok';
   const gVeias = new T.Group(); cenaP.add(gVeias);
+  // veias "sob a pele": desenhadas depois da pele, levemente translúcidas; as do lado de lá da perna ficam apagadas
+  // controle "Pele": 0 = pele opaca (só as varizes), 0,5 = aparecem as safenas, 1 = transparente (veias profundas)
+  const suave = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  function camadas() {
+    const t = st.pele; mPele.uniforms.opac.value = 1 - 0.8 * t;
+    const fator = { variz: 1, safena: 0.15 + 0.85 * suave(0, 0.5, t), profunda: suave(0.35, 0.9, t) };
+    for (const m of gVeias.children) {
+      if (!m.material || m.material.userData.op0 === undefined) continue;
+      const f = fator[m.userData.camada || 'safena']; m.material.opacity = m.material.userData.op0 * f; m.visible = f > 0.02;
+    }
+  }
+  function sobPele() {
+    for (const m of gVeias.children) {
+      if (!m.material || m.material.userData.sob) continue;
+      const mt = m.material; mt.userData.sob = true; mt.userData.op0 = mt.opacity; mt.transparent = true; m.renderOrder = 3;
+      mt.onBeforeCompile = (sh) => {
+        sh.vertexShader = 'varying vec3 vMundoSP;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vMundoSP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = 'varying vec3 vMundoSP;\n' + sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  { vec2 d = normalize(vMundoSP.xz + vec2(1e-4)), cc = normalize(cameraPosition.xz + vec2(1e-4)); gl_FragColor.a *= mix(0.2, 0.9, smoothstep(-0.35, 0.45, dot(d, cc))); }');
+      };
+      mt.needsUpdate = true;
+    }
+  }
   let TUBOS = [], AMOSTRAS = [], ROT_P = [];
   function tubo(o) {
     const curva = new T.CatmullRomCurve3(o.pts), comp = curva.getLength(); let tex = null;
@@ -192,14 +251,15 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const mat = new T.MeshStandardMaterial({ color: COR3[o.estado].clone(), map: tex, roughness: 0.45, emissive: COR3[o.estado].clone().multiplyScalar(0.3) });
     const leve = o.estado === 'ausente' || (o.discreto && o.estado === 'ok');
     if (leve) { mat.transparent = true; mat.opacity = o.estado === 'ausente' ? 0.5 : 0.4; }
-    gVeias.add(new T.Mesh(new T.TubeGeometry(curva, Math.max(8, Math.round(comp * 16)), leve && o.estado === 'ok' ? o.r * 0.7 : o.r, 10, false), mat));
+    const malhaT = new T.Mesh(new T.TubeGeometry(curva, Math.max(8, Math.round(comp * 16)), leve && o.estado === 'ok' ? o.r * 0.7 : o.r, 10, false), mat);
+    malhaT.userData.camada = /^Veias? (femoral|poplítea|tibiais|gastrocnêmicas|soleares)/i.test(o.nome || '') ? 'profunda' : 'safena'; gVeias.add(malhaT);
     const t = { nome: o.nome, chave: o.chave || null, estado: o.estado, curva, tex, mat }; TUBOS.push(t);
     if (o.estado !== 'ausente' && !o.semToque) for (let k = 0; k < 30; k++) AMOSTRAS.push({ p: curva.getPointAt(k / 29), v: TUBOS.length - 1 });
     return TUBOS.length - 1;
   }
   function bola(p, r, estado, nome, chave) {
     const c = COR3[estado], mat = new T.MeshStandardMaterial({ color: c.clone(), roughness: 0.35, emissive: c.clone().multiplyScalar(0.35) });
-    const m = new T.Mesh(new T.SphereGeometry(r, 20, 14), mat); m.position.copy(p); gVeias.add(m);
+    const m = new T.Mesh(new T.SphereGeometry(r, 20, 14), mat); m.position.copy(p); m.userData.camada = 'safena'; gVeias.add(m);
     if (!nome) return;
     // junção: entra como "tubo" curtinho para o toque, o rótulo e a cor
     TUBOS.push({ nome, chave, estado, curva: new T.CatmullRomCurve3([p.clone(), p.clone().add(new T.Vector3(0, 0.001, 0))]), tex: null, mat, junc: true });
@@ -257,7 +317,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       if (pts.length < 2) pts.push(pts[0].clone().add(new T.Vector3(0, 0.01, 0)));
       const cor = t.tipo === 'Tromboflebite Superficial' ? 0x6b7280 : 0xe23b3b;
       const mt = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), pts.length * 6, RV[t.tipo] || .02, 7, false), new T.MeshStandardMaterial({ color: new T.Color(cor).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(cor).convertSRGBToLinear().multiplyScalar(0.3) }));
-      mt.userData.traco = iTraco; gVeias.add(mt);
+      mt.userData.traco = iTraco; mt.userData.camada = 'variz'; gVeias.add(mt);
     });
     const qm = tab(T_GSV, 1.6);
     ROT_P = [
@@ -381,7 +441,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const DICAS = { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -460,7 +520,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     if (!risco || risco.pts.length < 2) return;
     if (risco.malha) { gVeias.remove(risco.malha); risco.malha.geometry.dispose(); }
     else risco.mat = new T.MeshStandardMaterial({ color: new T.Color(CORES_CANETA[caneta] || 0xe23b3b).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(CORES_CANETA[caneta] || 0xe23b3b).convertSRGBToLinear().multiplyScalar(0.35) });
-    risco.malha = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(risco.pts), risco.pts.length * 4, RAIO_CANETA[caneta] || .02, 6, false), risco.mat);
+    risco.malha = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(risco.pts), risco.pts.length * 4, RAIO_CANETA[caneta] || .02, 6, false), risco.mat); risco.malha.userData.camada = 'variz';
     gVeias.add(risco.malha);
   }
   function fimRisco(salvar) {
@@ -535,6 +595,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     bPausa.setAttribute('aria-label', st.pausado ? 'Continuar animação' : 'Pausar animação'); bPausa.setAttribute('aria-pressed', String(st.pausado));
   }
   ouvir(bPausa, 'click', () => { st.pausado = !st.pausado; mostraPausa(); }); mostraPausa();
+  if (peleR) ouvir(peleR, 'input', () => { st.pele = clamp(Number(peleR.value) / 100, 0, 1); });
   // tela cheia: API do navegador quando existe; senão (iPhone) o 3D cobre a página
   const bTela = $('bTela'); let cheia = false;
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
@@ -646,7 +707,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       }
       posiciona(true);
       if (alvoMarca.visible) { alvoMarca.position.copy(camP.alvo); alvoMarca.quaternion.copy(camP3.quaternion); alvoMarca.scale.setScalar((1 + 0.12 * Math.sin(agora * 0.006)) * clamp(camP.dist / 6, 0.35, 1.4)); }
-      renderer.setClearColor(0x0d141f); renderer.render(cenaP, camP3);
+      renderer.setClearColor(0x0d141f); sobPele(); camadas(); renderer.render(cenaP, camP3);
     } else {
       const alvoDil = alvoDilVeia(), e = estSel();
       if (Math.abs(alvoDil - st.dil) > 0.0005) { st.dil += (alvoDil - st.dil) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(alvoDil - st.dil) < 0.002) st.dil = alvoDil; atualizaParede(); }

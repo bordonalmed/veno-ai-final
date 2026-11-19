@@ -44,6 +44,9 @@ button.m3d-rot { pointer-events: auto; cursor: pointer; border-color: var(--m3d-
 
 .m3d-leg { position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 12px; font: 600 11px/1.2 var(--m3d-dado); color: var(--m3d-suave); pointer-events: none; max-width: calc(100% - 60px); }
 .m3d-leg span { display: inline-flex; align-items: center; gap: 6px; }
+/* controle da pele: opaca (perna real, só varizes) -> safenas -> transparente (veias profundas) */
+.m3d-pele { position: absolute; left: 12px; bottom: 38px; width: min(300px, calc(100% - 60px)); display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(13,20,31,.8); border: 1px solid var(--m3d-linha); border-radius: 10px; font: 600 11px/1 var(--m3d-dado); color: var(--m3d-suave); }
+.m3d-pele input { flex: 1; min-width: 0; margin: 0; accent-color: var(--m3d-ciano); }
 .m3d-leg i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
 .m3d-doppler { position: absolute; left: 12px; right: 44px; bottom: 12px; max-width: 400px; background: rgba(13,20,31,.86); border: 1px solid var(--m3d-linha); border-radius: 12px; padding: 7px 10px 5px; pointer-events: none; }

@@ -83,6 +83,11 @@ export default function Mapa3D(props) {
           <button type="button" className="m3d-nomes" data-m3d="bNomes" aria-pressed="false">Nomes</button>
         </div>
         <div className="m3d-leg" data-m3d="leg" />
+        <label className="m3d-pele" data-m3d="pele">
+          <span>Superficial</span>
+          <input type="range" min="0" max="100" defaultValue="50" data-m3d="peleR" aria-label="Do superficial (pele e varizes) ao profundo (veias profundas)" />
+          <span>Profundo</span>
+        </label>
         <div className="m3d-rolagem" data-m3d="rolagem" role="scrollbar" aria-controls="m3d-palco" aria-orientation="vertical" aria-label="Mover a vista para cima e para baixo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} tabIndex={0}>
           <div className="m3d-polegar" data-m3d="polegar" />
         </div>
