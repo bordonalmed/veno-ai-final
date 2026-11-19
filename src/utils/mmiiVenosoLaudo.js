@@ -82,8 +82,6 @@ export function normalizarTracos(tracos) {
     .map((t) => ({
       tipo: t.tipo,
       vista: t.vista,
-      // variz que se comunica com o sistema venoso profundo (o fim do traço "mergulha" até a veia profunda)
-      ...(t.liga === "profundo" ? { liga: "profundo" } : {}),
       pts: t.pts
         .filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
         .map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]),

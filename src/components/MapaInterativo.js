@@ -311,12 +311,6 @@ export function DesenhoMMIIVenoso({
         {tracos.map((t, i) => (t.vista === vista ? (
           <g key={`traco-${i}`}>
             <path d={caminhoTraco(t.pts)} fill="none" stroke={VARIZ_CORES[t.tipo]} strokeWidth={TRACO_LARGURA[t.tipo]} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-            {t.liga === "profundo" && t.pts.length > 0 && (
-              <g pointerEvents="none">
-                <circle cx={t.pts[t.pts.length - 1][0]} cy={t.pts[t.pts.length - 1][1]} r={4.2} fill="#1a2530" stroke="#fff" strokeWidth={1.2} />
-                <circle cx={t.pts[t.pts.length - 1][0]} cy={t.pts[t.pts.length - 1][1]} r={1.5} fill="#fff" />
-              </g>
-            )}
             {apagando && (
               <path
                 d={caminhoTraco(t.pts)} fill="none" stroke="#000" strokeOpacity={0.001} strokeWidth={14} strokeLinecap="round"
@@ -462,18 +456,8 @@ const CANETAS_VARIZ = [
   ["Tromboflebite Superficial", "Tromboflebite"],
 ];
 
-// Ponto onde a variz se comunica com o sistema venoso profundo: círculo escuro com miolo branco.
-function MarcaComunicante({ tamanho = 12 }) {
-  return (
-    <svg width={tamanho} height={tamanho} viewBox="0 0 12 12" aria-hidden="true" style={{ flex: "none" }}>
-      <circle cx={6} cy={6} r={5} fill="#1a2530" stroke="#fff" strokeWidth={1.2} />
-      <circle cx={6} cy={6} r={1.8} fill="#fff" />
-    </svg>
-  );
-}
-
 // Barra do modo desenho: canetas por tipo, borracha, desfazer e limpar.
-function BarraDesenhoVarizes({ ferramenta, onFerramenta, totalTracos, onDesfazer, onLimpar, ligaProfundo, onLigaProfundo }) {
+function BarraDesenhoVarizes({ ferramenta, onFerramenta, totalTracos, onDesfazer, onLimpar }) {
   const base = { display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: "pointer", border: "1.5px solid #cfd9e2", background: "#fff", color: "#1a2530" };
   if (!ferramenta) {
     return (
@@ -496,15 +480,6 @@ function BarraDesenhoVarizes({ ferramenta, onFerramenta, totalTracos, onDesfazer
             {rotulo}
           </button>
         ))}
-        {typeof onLigaProfundo === "function" && (
-          <button
-            type="button" onClick={() => onLigaProfundo(!ligaProfundo)} aria-pressed={!!ligaProfundo}
-            title="O fim do próximo traço se comunica com o sistema venoso profundo"
-            style={{ ...base, borderColor: ligaProfundo ? "#1a2530" : "#cfd9e2", background: ligaProfundo ? "#1a2530" : "#fff", color: ligaProfundo ? "#fff" : "#1a2530" }}
-          >
-            <MarcaComunicante tamanho={14} /> Liga ao profundo
-          </button>
-        )}
         <button type="button" onClick={() => onFerramenta("borracha")} aria-pressed={ativo("borracha")} style={{ ...base, borderColor: ativo("borracha") ? "#1a2530" : "#cfd9e2", background: ativo("borracha") ? "#eef2f5" : "#fff" }}>
           <FaEraser /> Borracha
         </button>
@@ -521,7 +496,7 @@ function BarraDesenhoVarizes({ ferramenta, onFerramenta, totalTracos, onDesfazer
         </button>
       </div>
       <div style={{ fontSize: 11.5, color: "#5c6b78", textAlign: "center" }}>
-        {ferramenta === "borracha" ? "Toque num traço para apagar." : ligaProfundo ? "O fim do traço vai se comunicar com o sistema profundo. Começar ou terminar sobre a safena liga a variz a ela." : "Desenhe sobre a perna com o dedo, a caneta ou o mouse. Começar ou terminar sobre a safena liga a variz a ela."}
+        {ferramenta === "borracha" ? "Toque num traço para apagar." : "Desenhe sobre a perna com o dedo, a caneta ou o mouse."}
       </div>
     </div>
   );
@@ -542,12 +517,6 @@ export default function MapaInterativo({
 }) {
   const [selecionado, setSelecionado] = useState(null);
   const [ferramenta, setFerramenta] = useState(null);
-  const [ligaProfundo, setLigaProfundo] = useState(false);
-  // traço novo desenhado com "Liga ao profundo" ligado: o fim dele se comunica com o sistema profundo
-  const marcaNovo = (novos) => {
-    if (!ligaProfundo || novos.length <= (vz.tracos || []).length) return novos;
-    return [...novos.slice(0, -1), { ...novos[novos.length - 1], liga: "profundo" }];
-  };
   const [vista3d, setVista3d] = useState(false);
 
   if (!aberto) return null;
@@ -650,9 +619,6 @@ export default function MapaInterativo({
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Varizes Reticulares" /> reticulares</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_COR }}><VarizLinhaLegenda tipo="Microvarizes" /> microvarizes</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: VARIZ_CORES["Tromboflebite Superficial"] }}><VarizLinhaLegenda tipo="Tromboflebite Superficial" /> tromboflebite superficial</span>
-        {(vz.tracos || []).some((t) => t.liga === "profundo") && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#1a2530" }}><MarcaComunicante /> comunica com o profundo</span>
-        )}
       </div>
     </>
   );
@@ -757,8 +723,6 @@ export default function MapaInterativo({
             ferramenta={ferramenta}
             onFerramenta={(f) => { setFerramenta(f); if (f) setSelecionado(null); }}
             totalTracos={(vz.tracos || []).length}
-            ligaProfundo={ligaProfundo}
-            onLigaProfundo={setLigaProfundo}
             onDesfazer={() => onVarizes(l, { ...vz, tracos: (vz.tracos || []).slice(0, -1) })}
             onLimpar={() => {
               if (window.confirm(`Apagar todos os traços desenhados no membro ${l.toLowerCase()}?`)) onVarizes(l, { ...vz, tracos: [] });
@@ -771,7 +735,7 @@ export default function MapaInterativo({
                 key={l} lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
                 ferramenta={ferramenta}
                 onSelecionar={selecionar}
-                onTracosChange={(novos) => onVarizes(l, { ...vz, tracos: marcaNovo(novos) })}
+                onTracosChange={(novos) => onVarizes(l, { ...vz, tracos: novos })}
               />
             </Suspense>
           ) : (<>
@@ -779,7 +743,7 @@ export default function MapaInterativo({
             lado={l} profundas={p} superficiais={s} magna={m} parva={pv} perfurantes={perfs} varizes={vz}
             onSelecionar={selecionar} chaveAtiva={chaveAtiva}
             ferramenta={ferramenta}
-            onTracosChange={(novos) => onVarizes(l, { ...vz, tracos: marcaNovo(novos) })}
+            onTracosChange={(novos) => onVarizes(l, { ...vz, tracos: novos })}
             style={{ width: "100%", maxWidth: 560, maxHeight: "74vh", display: "block" }}
           />
           </>)}

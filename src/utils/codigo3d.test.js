@@ -44,19 +44,3 @@ it("link curto o bastante para um QR Code impresso", () => {
 it("código estragado dá erro (a página mostra aviso)", () => {
   expect(() => decodificarExame3D("xyz")).toThrow();
 });
-
-describe("traço que se comunica com o sistema profundo", () => {
-  it("o QR Code guarda o liga ao profundo e traços antigos continuam sem ele", () => {
-    const ex = {
-      lado: "Esquerdo", profundas: {}, superficiais: {}, magna: {}, parva: {}, perfurantes: [],
-      varizes: { tracos: [
-        { tipo: "Varizes Superficiais", vista: "anterior", liga: "profundo", pts: [[150, 400], [160, 430]] },
-        { tipo: "Varizes Reticulares", vista: "posterior", pts: [[140, 420], [145, 440]] },
-      ] },
-    };
-    const volta = decodificarExame3D(codificarExame3D(ex));
-    expect(volta.varizes.tracos[0].liga).toBe("profundo");
-    expect(volta.varizes.tracos[1].liga).toBeUndefined();
-    expect(volta.varizes.tracos[1].tipo).toBe("Varizes Reticulares");
-  });
-});
