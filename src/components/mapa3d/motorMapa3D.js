@@ -76,31 +76,54 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     return o;
   }
   // ponto na perna: altura y, ângulo (0° lateral, 90° anterior, 180° medial, 270° posterior), fração do raio até a pele
-  function ponto(y, graus, frac) { const s = secao(y), a = graus * Math.PI / 180; return new T.Vector3(s[2] + SX * frac * s[0] * Math.cos(a), y, s[3] + frac * s[1] * Math.sin(a)); }
+  // relevo anatômico sobre a seção: [ângulo (0° lateral, 90° anterior, 180° medial, 270° posterior), altura, dy, dθ, amplitude]
+  const RELEVO = [
+    [90, 2.3, 1.3, 38, .055], [25, 1.9, 1.35, 32, .085], [148, .8, .42, 28, .14], [192, 3.05, .95, 36, .05], [268, 2.4, 1.25, 48, .05], // coxa: reto femoral, vasto lateral, vasto medial, adutores, posteriores
+    [90, .3, .19, 22, .1], [62, .08, .14, 14, -.035], [118, .08, .14, 14, -.035], [172, .28, .22, 26, .04], [8, .28, .22, 24, .03], [270, .18, .26, 36, -.045], // joelho: patela, tendão patelar, côndilos, fossa poplítea
+    [236, -1.0, .55, 32, .17], [305, -.82, .45, 28, .12], [270, -1.95, .5, 50, .035], [96, -1.6, 1.15, 9, .035], [138, -1.7, 1.0, 22, -.03], [60, -1.2, .9, 22, .045], // perna: gastrocnêmios, sóleo, crista e face medial da tíbia, tibial anterior
+    [270, -3.2, .55, 14, .06], [234, -3.42, .36, 14, -.06], [306, -3.42, .36, 14, -.06], [176, -3.6, .13, 20, .12], [4, -3.76, .13, 20, .12], // tornozelo: Aquiles e sulcos, maléolos medial (mais alto) e lateral
+  ];
+  const difG = (a, b) => { let d = (a - b) % 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; };
+  function relevo(y, graus) { let f = 1; for (const [a0, y0, sy, sa, A] of RELEVO) { const dy = (y - y0) / sy, da = difG(graus, a0) / sa; f += A * Math.exp(-dy * dy - da * da); } return f; }
+  function ponto(y, graus, frac) { const s = secao(y), a = graus * Math.PI / 180, k = frac * relevo(y, graus); return new T.Vector3(s[2] + SX * k * s[0] * Math.cos(a), y, s[3] + k * s[1] * Math.sin(a)); }
   function casca(aneis) {
     const M = aneis[0].length, pos = [], idx = [];
     for (const a of aneis) for (const p of a) pos.push(p.x, p.y, p.z);
     for (let i = 0; i < aneis.length - 1; i++) for (let j = 0; j < M; j++) { const a = i * M + j, b = i * M + (j + 1) % M, c = (i + 1) * M + j, d = (i + 1) * M + (j + 1) % M; idx.push(a, b, c, b, d, c); }
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
   }
-  const MP = 44, aneisPerna = [], aneisPe = [];
+  const MP = 96, aneisPerna = [], aneisPe = [];
   const anel = (f) => { const a = []; for (let j = 0; j < MP; j++) a.push(f(j / MP * Math.PI * 2)); return a; };
   aneisPerna.push(anel(() => new T.Vector3(0, 4.3, 0)));
-  for (let i = 0; i <= 66; i++) { const y = lerp(4.3, -3.85, i / 66), s = secao(y); aneisPerna.push(anel((a) => new T.Vector3(s[2] + SX * s[0] * Math.cos(a), y, s[3] + s[1] * Math.sin(a)))); }
+  for (let i = 0; i <= 170; i++) { const y = lerp(4.3, -3.85, i / 170); aneisPerna.push(anel((a) => ponto(y, a * 180 / Math.PI, 1))); }
   aneisPerna.push(anel(() => new T.Vector3(0, -3.85, 0)));
-  const PE = [[-.62, .03, .25], [-.5, .2, .62], [-.3, .29, .78], [0, .33, .8], [.3, .36, .66], [.7, .4, .46], [1.1, .43, .34], [1.5, .42, .27], [1.75, .33, .22], [1.86, .05, .1]];
-  for (let i = 0; i <= 36; i++) {
-    const z = lerp(PE[0][0], PE[PE.length - 1][0], i / 36); let k = 0; while (k < PE.length - 2 && z > PE[k + 1][0]) k++;
+  // pé: ao longo de z (calcanhar -> dedos): [z, meia-largura, altura, arco plantar (lado medial)]
+  const PE = [[-.66, .02, .12, 0], [-.6, .17, .36, 0], [-.45, .25, .55, 0], [-.25, .27, .66, .02], [0, .27, .62, .05], [.3, .29, .5, .07], [.65, .33, .4, .06], [1.0, .37, .32, .03], [1.35, .38, .25, .01], [1.62, .36, .2, 0], [1.8, .3, .15, 0], [1.9, .18, .1, 0], [1.94, .04, .05, 0]];
+  for (let i = 0; i <= 70; i++) {
+    const z = lerp(PE[0][0], PE[PE.length - 1][0], i / 70); let k = 0; while (k < PE.length - 2 && z > PE[k + 1][0]) k++;
     const a0 = PE[Math.max(0, k - 1)], b0 = PE[k], c0 = PE[k + 1], d0 = PE[Math.min(PE.length - 1, k + 2)], t = clamp((z - b0[0]) / (c0[0] - b0[0]), 0, 1);
-    const wx = Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h = Math.max(.06, cr(a0[2], b0[2], c0[2], d0[2], t));
-    aneisPe.push(anel((a) => new T.Vector3(SX * wx * Math.cos(a), -4.3 + h / 2 + (h / 2) * Math.sin(a) * (Math.sin(a) < 0 ? 0.8 : 1), z)));
+    const wx = Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h = Math.max(.05, cr(a0[2], b0[2], c0[2], d0[2], t)), arco = cr(a0[3], b0[3], c0[3], d0[3], t);
+    // c > 0 é o lado medial do pé (vai para -x na perna esquerda, +x na direita)
+    aneisPe.push(anel((a) => { const sn = Math.sin(a), c = Math.cos(a); let y = -4.3 + h / 2 + (h / 2) * sn * (sn < 0 ? 0.8 : 1); if (sn < 0 && c > 0) y += arco * Math.pow(c, 1.5) * -sn * 3.2; return new T.Vector3(-SX * wx * c, y, z); }));
   }
   const PELES = []; // malhas da pele (para desenhar direto nela)
   const mPele = new T.ShaderMaterial({
     transparent: true, depthWrite: false, side: T.FrontSide,
-    uniforms: { cor: { value: new T.Vector3(0.98, 0.74, 0.6) } },
-    vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
-    fragmentShader: 'uniform vec3 cor; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.0); gl_FragColor = vec4(cor * (0.72 + 0.28 * f), mix(0.10, 0.74, f)); }',
+    uniforms: { cor: { value: new T.Vector3(0.906, 0.706, 0.604) }, sombra: { value: new T.Vector3(0.604, 0.247, 0.18) }, opac: { value: 0.35 } },
+    vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vP = position; gl_Position = projectionMatrix * mv; }',
+    // pele: luz envolvente (vinda de cima e da frente da câmera), tom quente nas sombras, brilho suave e borda; semitransparente para ver as veias
+    fragmentShader: [
+      'uniform vec3 cor; uniform vec3 sombra; uniform float opac; varying vec3 vN; varying vec3 vV; varying vec3 vP;',
+      'float h(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }',
+      'void main(){',
+      '  vec3 N = normalize(vN), V = normalize(vV), L = normalize(vec3(-0.45, 0.6, 1.0)), L2 = normalize(vec3(0.7, 0.2, -0.6));',
+      '  float rim = pow(1.0 - abs(dot(N, V)), 2.2), w = 0.45;',
+      '  float d1 = max(0.0, (dot(N, L) + w) / (1.0 + w)), d2 = max(0.0, (dot(N, L2) + w) / (1.0 + w));',
+      '  vec3 c = mix(sombra, cor, smoothstep(0.0, 1.0, d1)) * (0.42 + 0.62 * d1) + vec3(0.45, 0.62, 0.9) * 0.16 * d2;',
+      '  c += pow(max(dot(N, normalize(L + V)), 0.0), 36.0) * 0.16 + vec3(1.0, 0.82, 0.72) * rim * 0.22;',
+      '  c *= 0.97 + 0.06 * h(floor(vP * 90.0));',
+      '  gl_FragColor = vec4(c, mix(0.16 + 0.62 * rim, 1.0, opac));',
+      '}'].join('\n'),
   });
   for (const g of [casca(aneisPerna), casca(aneisPe)]) {
     const p = g.attributes.position, n = g.attributes.normal, i0 = Math.floor(p.count / 2), sY = secao(clamp(p.getY(i0), -3.85, 4.3));
