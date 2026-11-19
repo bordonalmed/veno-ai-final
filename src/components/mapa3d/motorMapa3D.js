@@ -107,22 +107,35 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     aneisPe.push(anel((a) => { const sn = Math.sin(a), c = Math.cos(a); let y = -4.3 + h / 2 + (h / 2) * sn * (sn < 0 ? 0.8 : 1); if (sn < 0 && c > 0) y += arco * Math.pow(c, 1.5) * -sn * 3.2; return new T.Vector3(-SX * wx * c, y, z); }));
   }
   const PELES = []; // malhas da pele (para desenhar direto nela)
+  // pele: quase opaca, com textura (poros e manchas suaves), relevo fino, tom avermelhado no joelho/tornozelo/pé,
+  // luz que atravessa a pele (sombras quentes e borda) e brilho suave. As veias são desenhadas depois, "sob a pele".
   const mPele = new T.ShaderMaterial({
-    transparent: true, depthWrite: false, side: T.FrontSide,
-    uniforms: { cor: { value: new T.Vector3(0.906, 0.706, 0.604) }, sombra: { value: new T.Vector3(0.604, 0.247, 0.18) }, opac: { value: 0.35 } },
-    vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vP = position; gl_Position = projectionMatrix * mv; }',
-    // pele: luz envolvente (vinda de cima e da frente da câmera), tom quente nas sombras, brilho suave e borda; semitransparente para ver as veias
+    transparent: true, depthWrite: false, side: T.FrontSide, extensions: { derivatives: true },
+    uniforms: { cor: { value: new T.Vector3(0.87, 0.68, 0.57) }, sombra: { value: new T.Vector3(0.62, 0.27, 0.21) }, rubor: { value: new T.Vector3(0.84, 0.5, 0.43) }, opac: { value: 0.9 } },
+    vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; varying vec3 vVP; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vP = position; vVP = mv.xyz; gl_Position = projectionMatrix * mv; }',
     fragmentShader: [
-      'uniform vec3 cor; uniform vec3 sombra; uniform float opac; varying vec3 vN; varying vec3 vV; varying vec3 vP;',
-      'float h(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }',
+      'uniform vec3 cor; uniform vec3 sombra; uniform vec3 rubor; uniform float opac; varying vec3 vN; varying vec3 vV; varying vec3 vP; varying vec3 vVP;',
+      'float hs(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }',
+      'float rd(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);',
+      '  return mix(mix(mix(hs(i), hs(i + vec3(1,0,0)), f.x), mix(hs(i + vec3(0,1,0)), hs(i + vec3(1,1,0)), f.x), f.y),',
+      '             mix(mix(hs(i + vec3(0,0,1)), hs(i + vec3(1,0,1)), f.x), mix(hs(i + vec3(0,1,1)), hs(i + vec3(1,1,1)), f.x), f.y), f.z); }',
       'void main(){',
-      '  vec3 N = normalize(vN), V = normalize(vV), L = normalize(vec3(-0.45, 0.6, 1.0)), L2 = normalize(vec3(0.7, 0.2, -0.6));',
-      '  float rim = pow(1.0 - abs(dot(N, V)), 2.2), w = 0.45;',
-      '  float d1 = max(0.0, (dot(N, L) + w) / (1.0 + w)), d2 = max(0.0, (dot(N, L2) + w) / (1.0 + w));',
-      '  vec3 c = mix(sombra, cor, smoothstep(0.0, 1.0, d1)) * (0.42 + 0.62 * d1) + vec3(0.45, 0.62, 0.9) * 0.16 * d2;',
-      '  c += pow(max(dot(N, normalize(L + V)), 0.0), 36.0) * 0.16 + vec3(1.0, 0.82, 0.72) * rim * 0.22;',
-      '  c *= 0.97 + 0.06 * h(floor(vP * 90.0));',
-      '  gl_FragColor = vec4(c, mix(0.16 + 0.62 * rim, 1.0, opac));',
+      '  vec3 N = normalize(vN), V = normalize(vV);',
+      '  float alt = rd(vP * 34.0) * 0.6 + rd(vP * 90.0) * 0.4;',
+      '  vec3 sx = dFdx(vVP), sy = dFdy(vVP); vec2 dh = vec2(dFdx(alt), dFdy(alt)) * 0.0022;',
+      '  vec3 r1 = cross(sy, N), r2 = cross(N, sx); float det = dot(sx, r1);',
+      '  if (abs(det) > 1e-9) N = normalize(abs(det) * N - sign(det) * (dh.x * r1 + dh.y * r2));',
+      '  vec3 L = normalize(vec3(-0.45, 0.6, 1.0)), L2 = normalize(vec3(0.7, 0.2, -0.6));',
+      '  float nl = dot(N, L), w = 0.5, d1 = max(0.0, (nl + w) / (1.0 + w)), d2 = max(0.0, (dot(N, L2) + w) / (1.0 + w));',
+      '  float rim = pow(1.0 - abs(dot(N, V)), 2.4);',
+      '  float mancha = rd(vP * 2.3) * 0.6 + rd(vP * 6.5) * 0.4;',
+      '  float verm = exp(-pow((vP.y - 0.25) / 0.45, 2.0)) * 0.55 + exp(-pow((vP.y + 3.65) / 0.4, 2.0)) * 0.6 + smoothstep(-3.9, -4.25, vP.y) * 0.5;',
+      '  vec3 base = mix(cor, rubor, clamp(verm * 0.7 + (mancha - 0.5) * 0.35, 0.0, 1.0)) * (0.96 + 0.08 * mancha);',
+      '  vec3 c = mix(sombra, base, smoothstep(0.0, 0.9, d1)) * (0.46 + 0.6 * d1) + vec3(0.42, 0.58, 0.85) * 0.12 * d2;',
+      '  vec3 H = normalize(L + V); float fr = 0.04 + 0.96 * pow(1.0 - max(dot(V, H), 0.0), 5.0);',
+      '  c += pow(max(dot(N, H), 0.0), 42.0) * 0.22 * (0.5 + fr) + vec3(1.0, 0.8, 0.7) * rim * 0.16 + vec3(0.9, 0.35, 0.25) * rim * (1.0 - d1) * 0.25;',
+      '  c *= 0.975 + 0.05 * rd(vP * 140.0);',
+      '  gl_FragColor = vec4(c, mix(0.2 + 0.6 * rim, 1.0, opac));',
       '}'].join('\n'),
   });
   for (const g of [casca(aneisPerna), casca(aneisPe)]) {
@@ -208,6 +221,18 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const ROTULO = { ok: 'competente', ruim: 'com refluxo', trombo: 'trombose', recan: 'recanalização parcial', ausente: 'ausente' };
   const estadoDe = (s) => !s ? 'ok' : s === RUIM ? 'ruim' : s === 'ausente' ? 'ausente' : s.indexOf('não compressível') === 0 ? 'trombo' : s.indexOf('semi compressível') === 0 ? 'recan' : 'ok';
   const gVeias = new T.Group(); cenaP.add(gVeias);
+  // veias "sob a pele": desenhadas depois da pele, levemente translúcidas; as do lado de lá da perna ficam apagadas
+  function sobPele() {
+    for (const m of gVeias.children) {
+      if (!m.material || m.material.userData.sob) continue;
+      const mt = m.material; mt.userData.sob = true; mt.transparent = true; m.renderOrder = 3;
+      mt.onBeforeCompile = (sh) => {
+        sh.vertexShader = 'varying vec3 vMundoSP;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vMundoSP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = 'varying vec3 vMundoSP;\n' + sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  { vec2 d = normalize(vMundoSP.xz + vec2(1e-4)), cc = normalize(cameraPosition.xz + vec2(1e-4)); gl_FragColor.a *= mix(0.2, 0.9, smoothstep(-0.35, 0.45, dot(d, cc))); }');
+      };
+      mt.needsUpdate = true;
+    }
+  }
   let TUBOS = [], AMOSTRAS = [], ROT_P = [];
   function tubo(o) {
     const curva = new T.CatmullRomCurve3(o.pts), comp = curva.getLength(); let tex = null;
@@ -669,7 +694,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       }
       posiciona(true);
       if (alvoMarca.visible) { alvoMarca.position.copy(camP.alvo); alvoMarca.quaternion.copy(camP3.quaternion); alvoMarca.scale.setScalar((1 + 0.12 * Math.sin(agora * 0.006)) * clamp(camP.dist / 6, 0.35, 1.4)); }
-      renderer.setClearColor(0x0d141f); renderer.render(cenaP, camP3);
+      renderer.setClearColor(0x0d141f); sobPele(); renderer.render(cenaP, camP3);
     } else {
       const alvoDil = alvoDilVeia(), e = estSel();
       if (Math.abs(alvoDil - st.dil) > 0.0005) { st.dil += (alvoDil - st.dil) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(alvoDil - st.dil) < 0.002) st.dil = alvoDil; atualizaParede(); }
