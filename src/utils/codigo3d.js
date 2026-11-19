@@ -66,7 +66,7 @@ export function codificarExame3D(ex) {
     .filter(({ pts }) => pts.length).slice(0, MAX_TRACOS);
   b.push(tracos.length);
   tracos.forEach(({ t, pts }) => {
-    b.push(idx(TIPOS, t.tipo) | (t.vista === "posterior" ? 4 : 0), pts.length, pts[0][0], pts[0][1] >> 8, pts[0][1] & 255);
+    b.push(idx(TIPOS, t.tipo) | (t.vista === "posterior" ? 4 : 0) | (t.liga === "profundo" ? 8 : 0), pts.length, pts[0][0], pts[0][1] >> 8, pts[0][1] & 255);
     for (let i = 1; i < pts.length; i++) b.push((pts[i][0] - pts[i - 1][0]) & 255, (pts[i][1] - pts[i - 1][1]) & 255);
   });
   return paraBase64Url(b);
@@ -100,7 +100,7 @@ export function decodificarExame3D(codigo) {
     const c = le(), qt = le();
     const pts = [[le(), (le() << 8) | le()]];
     for (let k = 1; k < qt; k++) { const u = pts[pts.length - 1]; pts.push([u[0] + comSinal(le()), u[1] + comSinal(le())]); }
-    tracos.push({ tipo: TIPOS[c & 3], vista: c & 4 ? "posterior" : "anterior", pts });
+    tracos.push({ tipo: TIPOS[c & 3], vista: c & 4 ? "posterior" : "anterior", ...(c & 8 ? { liga: "profundo" } : {}), pts });
   }
   return { lado, profundas, superficiais, magna, parva, perfurantes, varizes: { tracos } };
 }

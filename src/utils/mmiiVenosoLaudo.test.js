@@ -272,3 +272,14 @@ describe("montarLaudo — diâmetros da safena ausente", () => {
     expect(comMagna({ inicio: "JSF", fim: "joelho", restante: "pérvia e incompetente" })).toContain("> Diâmetro - Perna: 4 mm");
   });
 });
+
+describe("normalizarVarizesLado — liga ao profundo", () => {
+  it("mantém a marca de comunicação com o profundo e ignora valores estranhos", () => {
+    const v = normalizarVarizesLado({ tracos: [
+      { tipo: "Varizes Superficiais", vista: "anterior", liga: "profundo", pts: [[1, 2], [3, 4]] },
+      { tipo: "Varizes Superficiais", vista: "anterior", liga: "qualquer", pts: [[1, 2]] },
+    ] });
+    expect(v.tracos[0].liga).toBe("profundo");
+    expect(v.tracos[1].liga).toBeUndefined();
+  });
+});

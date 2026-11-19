@@ -276,6 +276,22 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const resto = est === 'ausente' ? estadoDe(v.restante) : est === 'trombo' ? (estadoDe(v.restante) === 'ruim' ? 'ruim' : 'ok') : 'ok';
     const out = []; if (a > top + 2) out.push({ a: top, b: a, e: resto }); out.push({ a, b, e: est }); if (b < bot - 2) out.push({ a: b, b: bot, e: resto }); return out;
   }
+  // ponto do desenho 2D sobre a linha da safena (magna no desenho anterior, parva no posterior)? devolve qual e o ponto da safena no 3D
+  function safenaNoDesenho(x, y, vista) {
+    if (vista === 'anterior') {
+      if (y < G.LANDMARK_MAGNA.top || y > G.LANDMARK_MAGNA.tornozelo) return null;
+      const [xv] = G.interpAt(G.VSM_SPINE, G.VSM_HALF, y); if (Math.abs(x - xv) > 9) return null;
+      const y3 = clamp(Y3M(y), -3.55, 3.75), q = tab(T_GSV, y3); return { key: 'Safena Magna', alvo: ponto(y3, q[0], q[1]) };
+    }
+    if (y < G.LANDMARK_PARVA.top || y > G.LANDMARK_PARVA.tornozelo) return null;
+    const [xv] = G.interpAt(G.VSP_SPINE, G.VSP_HALF, y); if (Math.abs(x - xv) > 9) return null;
+    const y3 = clamp(Y3P(y), -3.5, .1), q = tab(T_SSV, y3); return { key: 'Safena Parva', alvo: ponto(y3, q[0], q[1]) };
+  }
+  function pertoDe(lista, P) {
+    let melhor = null, bd = Infinity;
+    for (const tb of lista) for (let k = 0; k <= 48; k++) { const q = tb.curva.getPointAt(k / 48), d = q.distanceToSquared(P); if (d < bd) { bd = d; melhor = q; } }
+    return melhor ? { p: melhor, d: Math.sqrt(bd) } : null;
+  }
   const raioSafena = (e, mm, base) => e === 'ausente' ? .013 : e === 'ruim' ? (parseFloat(mm) > 0 ? clamp(parseFloat(mm) * 0.0085, .03, .1) : base * 1.6) : e === 'trombo' ? base * 1.35 : base;
   function geraPerna() {
     for (const m of gVeias.children) { m.geometry.dispose(); if (m.material.map) m.material.map.dispose(); m.material.dispose(); }
@@ -318,6 +334,20 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       const cor = t.tipo === 'Tromboflebite Superficial' ? 0x6b7280 : 0xe23b3b;
       const mt = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), pts.length * 6, RV[t.tipo] || .02, 7, false), new T.MeshStandardMaterial({ color: new T.Color(cor).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(cor).convertSRGBToLinear().multiplyScalar(0.3) }));
       mt.userData.traco = iTraco; mt.userData.camada = 'variz'; gVeias.add(mt);
+      // ligações: ponta do traço sobre a safena no 2D -> mergulha até a safena; "liga ao profundo" -> o fim mergulha até a veia profunda mais próxima
+      const ligar = (E, V, camada) => {
+        const s0 = secao(clamp(E.y, -3.85, 4.3)), c0 = new T.Vector3(s0[2], E.y, s0[3]), dentro = c0.clone().lerp(E, 0.8);
+        const curva = new T.CatmullRomCurve3(camada === 'profunda' ? [E, dentro, V] : [E, E.clone().lerp(V, 0.5).lerp(dentro, 0.3), V]);
+        const ml = new T.Mesh(new T.TubeGeometry(curva, 24, Math.max(.012, (RV[t.tipo] || .02) * 0.8), 7, false), new T.MeshStandardMaterial({ color: new T.Color(cor).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(cor).convertSRGBToLinear().multiplyScalar(0.3) }));
+        ml.userData.traco = iTraco; ml.userData.camada = camada; gVeias.add(ml);
+      };
+      [[t.pts[0], pts[0]], [t.pts[t.pts.length - 1], pts[pts.length - 1]]].forEach(([q, E], k) => {
+        if (k === 1 && t.pts.length < 2) return;
+        const sp = safenaNoDesenho(q[0], q[1], t.vista); if (!sp) return;
+        const V = pertoDe(TUBOS.filter((tb) => !tb.junc && tb.chave && tb.chave.key === sp.key && tb.estado !== 'ausente'), sp.alvo);
+        if (V && V.d < 0.35) ligar(E, V.p, 'safena');
+      });
+      if (t.liga === 'profundo') { const E = pts[pts.length - 1], V = pertoDe(TUBOS.filter((tb) => tb.chave && tb.chave.tipo === 'profunda'), E); if (V) ligar(E, V.p, 'profunda'); }
     });
     const qm = tab(T_GSV, 1.6);
     ROT_P = [
