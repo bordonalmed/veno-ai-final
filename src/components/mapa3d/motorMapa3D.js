@@ -53,7 +53,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   renderer.outputEncoding = T.sRGBEncoding;
 
   const SISTOLE = 1.5, CICLO = 4.3, DUR_REFLUXO = 2.3, VMAX = 5.2;
-  const st = { nivel: 'perna', dil: 0, o: 0, t: 0, tc: 0, v: 0, pausado: false, doppler: false, sel: 0, trocando: false, pronto: false, semZoomAte: 0 };
+  const peleR = $('peleR');
+  const st = { pele: peleR ? clamp(Number(peleR.value) / 100, 0, 1) : 0.5, nivel: 'perna', dil: 0, o: 0, t: 0, tc: 0, v: 0, pausado: false, doppler: false, sel: 0, trocando: false, pronto: false, semZoomAte: 0 };
   function velocidade(tc, dil) {
     if (tc < SISTOLE) return Math.pow(Math.sin(Math.PI * tc / SISTOLE), 0.8);
     const tau = tc - SISTOLE, vN = tau < 0.22 ? -0.35 * Math.sin(Math.PI * tau / 0.22) : 0; let vR = 0;
@@ -222,10 +223,20 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const estadoDe = (s) => !s ? 'ok' : s === RUIM ? 'ruim' : s === 'ausente' ? 'ausente' : s.indexOf('não compressível') === 0 ? 'trombo' : s.indexOf('semi compressível') === 0 ? 'recan' : 'ok';
   const gVeias = new T.Group(); cenaP.add(gVeias);
   // veias "sob a pele": desenhadas depois da pele, levemente translúcidas; as do lado de lá da perna ficam apagadas
+  // controle "Pele": 0 = pele opaca (só as varizes), 0,5 = aparecem as safenas, 1 = transparente (veias profundas)
+  const suave = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  function camadas() {
+    const t = st.pele; mPele.uniforms.opac.value = 1 - 0.8 * t;
+    const fator = { variz: 1, safena: 0.15 + 0.85 * suave(0, 0.5, t), profunda: suave(0.35, 0.9, t) };
+    for (const m of gVeias.children) {
+      if (!m.material || m.material.userData.op0 === undefined) continue;
+      const f = fator[m.userData.camada || 'safena']; m.material.opacity = m.material.userData.op0 * f; m.visible = f > 0.02;
+    }
+  }
   function sobPele() {
     for (const m of gVeias.children) {
       if (!m.material || m.material.userData.sob) continue;
-      const mt = m.material; mt.userData.sob = true; mt.transparent = true; m.renderOrder = 3;
+      const mt = m.material; mt.userData.sob = true; mt.userData.op0 = mt.opacity; mt.transparent = true; m.renderOrder = 3;
       mt.onBeforeCompile = (sh) => {
         sh.vertexShader = 'varying vec3 vMundoSP;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vMundoSP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
         sh.fragmentShader = 'varying vec3 vMundoSP;\n' + sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  { vec2 d = normalize(vMundoSP.xz + vec2(1e-4)), cc = normalize(cameraPosition.xz + vec2(1e-4)); gl_FragColor.a *= mix(0.2, 0.9, smoothstep(-0.35, 0.45, dot(d, cc))); }');
@@ -240,14 +251,15 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const mat = new T.MeshStandardMaterial({ color: COR3[o.estado].clone(), map: tex, roughness: 0.45, emissive: COR3[o.estado].clone().multiplyScalar(0.3) });
     const leve = o.estado === 'ausente' || (o.discreto && o.estado === 'ok');
     if (leve) { mat.transparent = true; mat.opacity = o.estado === 'ausente' ? 0.5 : 0.4; }
-    gVeias.add(new T.Mesh(new T.TubeGeometry(curva, Math.max(8, Math.round(comp * 16)), leve && o.estado === 'ok' ? o.r * 0.7 : o.r, 10, false), mat));
+    const malhaT = new T.Mesh(new T.TubeGeometry(curva, Math.max(8, Math.round(comp * 16)), leve && o.estado === 'ok' ? o.r * 0.7 : o.r, 10, false), mat);
+    malhaT.userData.camada = /^Veias? (femoral|poplítea|tibiais|gastrocnêmicas|soleares)/i.test(o.nome || '') ? 'profunda' : 'safena'; gVeias.add(malhaT);
     const t = { nome: o.nome, chave: o.chave || null, estado: o.estado, curva, tex, mat }; TUBOS.push(t);
     if (o.estado !== 'ausente' && !o.semToque) for (let k = 0; k < 30; k++) AMOSTRAS.push({ p: curva.getPointAt(k / 29), v: TUBOS.length - 1 });
     return TUBOS.length - 1;
   }
   function bola(p, r, estado, nome, chave) {
     const c = COR3[estado], mat = new T.MeshStandardMaterial({ color: c.clone(), roughness: 0.35, emissive: c.clone().multiplyScalar(0.35) });
-    const m = new T.Mesh(new T.SphereGeometry(r, 20, 14), mat); m.position.copy(p); gVeias.add(m);
+    const m = new T.Mesh(new T.SphereGeometry(r, 20, 14), mat); m.position.copy(p); m.userData.camada = 'safena'; gVeias.add(m);
     if (!nome) return;
     // junção: entra como "tubo" curtinho para o toque, o rótulo e a cor
     TUBOS.push({ nome, chave, estado, curva: new T.CatmullRomCurve3([p.clone(), p.clone().add(new T.Vector3(0, 0.001, 0))]), tex: null, mat, junc: true });
@@ -305,7 +317,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       if (pts.length < 2) pts.push(pts[0].clone().add(new T.Vector3(0, 0.01, 0)));
       const cor = t.tipo === 'Tromboflebite Superficial' ? 0x6b7280 : 0xe23b3b;
       const mt = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), pts.length * 6, RV[t.tipo] || .02, 7, false), new T.MeshStandardMaterial({ color: new T.Color(cor).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(cor).convertSRGBToLinear().multiplyScalar(0.3) }));
-      mt.userData.traco = iTraco; gVeias.add(mt);
+      mt.userData.traco = iTraco; mt.userData.camada = 'variz'; gVeias.add(mt);
     });
     const qm = tab(T_GSV, 1.6);
     ROT_P = [
@@ -429,7 +441,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const DICAS = { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -508,7 +520,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     if (!risco || risco.pts.length < 2) return;
     if (risco.malha) { gVeias.remove(risco.malha); risco.malha.geometry.dispose(); }
     else risco.mat = new T.MeshStandardMaterial({ color: new T.Color(CORES_CANETA[caneta] || 0xe23b3b).convertSRGBToLinear(), roughness: 0.45, emissive: new T.Color(CORES_CANETA[caneta] || 0xe23b3b).convertSRGBToLinear().multiplyScalar(0.35) });
-    risco.malha = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(risco.pts), risco.pts.length * 4, RAIO_CANETA[caneta] || .02, 6, false), risco.mat);
+    risco.malha = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(risco.pts), risco.pts.length * 4, RAIO_CANETA[caneta] || .02, 6, false), risco.mat); risco.malha.userData.camada = 'variz';
     gVeias.add(risco.malha);
   }
   function fimRisco(salvar) {
@@ -583,6 +595,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     bPausa.setAttribute('aria-label', st.pausado ? 'Continuar animação' : 'Pausar animação'); bPausa.setAttribute('aria-pressed', String(st.pausado));
   }
   ouvir(bPausa, 'click', () => { st.pausado = !st.pausado; mostraPausa(); }); mostraPausa();
+  if (peleR) ouvir(peleR, 'input', () => { st.pele = clamp(Number(peleR.value) / 100, 0, 1); });
   // tela cheia: API do navegador quando existe; senão (iPhone) o 3D cobre a página
   const bTela = $('bTela'); let cheia = false;
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
@@ -694,7 +707,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       }
       posiciona(true);
       if (alvoMarca.visible) { alvoMarca.position.copy(camP.alvo); alvoMarca.quaternion.copy(camP3.quaternion); alvoMarca.scale.setScalar((1 + 0.12 * Math.sin(agora * 0.006)) * clamp(camP.dist / 6, 0.35, 1.4)); }
-      renderer.setClearColor(0x0d141f); sobPele(); renderer.render(cenaP, camP3);
+      renderer.setClearColor(0x0d141f); sobPele(); camadas(); renderer.render(cenaP, camP3);
     } else {
       const alvoDil = alvoDilVeia(), e = estSel();
       if (Math.abs(alvoDil - st.dil) > 0.0005) { st.dil += (alvoDil - st.dil) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(alvoDil - st.dil) < 0.002) st.dil = alvoDil; atualizaParede(); }
