@@ -336,7 +336,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const alvoMarca = new T.Mesh(new T.RingGeometry(.145, .16, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, side: T.DoubleSide }));
   alvoMarca.renderOrder = 5; alvoMarca.visible = false; cenaP.add(alvoMarca);
   const CENTRO = new T.Vector3(0, 0.15, 0.2);
-  const camP = { az: -0.6, pol: 1.5, dist: 12.5, alvo: CENTRO.clone(), alvoS: CENTRO.clone() };
+  const camP = { az: -0.6, pol: 1.5, dist: 12.5, alvo: CENTRO.clone(), alvoS: CENTRO.clone(), azAlvo: null };
 
   // ---------- a veia (segmento com válvulas, por fora em corte e por dentro) ----------
   const L = 16, H = 1.9, VALVULAS = [-3.4, 3.2];
@@ -424,6 +424,11 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   function posiciona(suave) {
     const k = suave ? 0.12 : 1;
     if (st.nivel === 'perna') {
+      if (camP.azAlvo !== null) { // botões A/M/P/L: gira até a face escolhida pelo caminho mais curto
+        const d = Math.atan2(Math.sin(camP.azAlvo - camP.az), Math.cos(camP.azAlvo - camP.az)), dp = Math.PI / 2 - camP.pol;
+        camP.az += d * 0.16; camP.pol += dp * 0.16;
+        if (Math.abs(d) < 0.002 && Math.abs(dp) < 0.002) { camP.az = camP.azAlvo; camP.pol = Math.PI / 2; camP.azAlvo = null; }
+      }
       camP.alvoS.lerp(camP.alvo, suave ? 0.14 : 1);
       alvoPos.set(camP.alvoS.x + camP.dist * Math.sin(camP.pol) * Math.sin(camP.az), camP.alvoS.y + camP.dist * Math.cos(camP.pol), camP.alvoS.z + camP.dist * Math.sin(camP.pol) * Math.cos(camP.az));
       guia.position.copy(alvoPos); guia.up.set(0, 1, 0); guia.lookAt(camP.alvoS);
@@ -441,7 +446,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const DICAS = { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -558,13 +563,13 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       if (!u || u.distanceTo(P) > 0.035) { risco.pts.push(P); desenhaRisco(); }
       return;
     }
-    if (caneta && caneta !== 'borracha' && dedos.size === 1 && st.nivel === 'perna' && (e.buttons & 2)) { camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); return; }
+    if (caneta && caneta !== 'borracha' && dedos.size === 1 && st.nivel === 'perna' && (e.buttons & 2)) { soltaFace(); camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); return; }
     if (dedos.size === 1 && (e.shiftKey || (e.buttons & 2))) arrastaVertical(dy);
     else if (dedos.size === 1) {
-      if (st.nivel === 'perna') { camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); }
+      if (st.nivel === 'perna') { soltaFace(); camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); }
       else if (st.nivel === 'veia') { cam.az -= dx * 0.008; cam.pol = clamp(cam.pol - dy * 0.006, 0.3, 2.84); }
       else { cam.tx = clamp(cam.tx + dx * 0.004, -1.5, 1.5); cam.tz = clamp(cam.tz - dy * 0.004, -1.5, 1.5); }
-    } else if (dedos.size === 2) { const [a, b] = Array.from(dedos.values()), dist = Math.hypot(a.x - b.x, a.y - b.y); if (pinca > 0 && dist > 0) { const m = ndc({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }); aproxima(dist / pinca, m[0], m[1]); } pinca = dist; const meio = (a.y + b.y) / 2; if (pincaMeio !== null) arrastaVertical(meio - pincaMeio); pincaMeio = meio; const meioX = (a.x + b.x) / 2; if (caneta && pincaMeioX !== null && st.nivel === 'perna') camP.az -= (meioX - pincaMeioX) * 0.008; pincaMeioX = meioX; }
+    } else if (dedos.size === 2) { const [a, b] = Array.from(dedos.values()), dist = Math.hypot(a.x - b.x, a.y - b.y); if (pinca > 0 && dist > 0) { const m = ndc({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }); aproxima(dist / pinca, m[0], m[1]); } pinca = dist; const meio = (a.y + b.y) / 2; if (pincaMeio !== null) arrastaVertical(meio - pincaMeio); pincaMeio = meio; const meioX = (a.x + b.x) / 2; if (caneta && pincaMeioX !== null && st.nivel === 'perna') { soltaFace(); camP.az -= (meioX - pincaMeioX) * 0.008; } pincaMeioX = meioX; }
   });
   const solta = (e) => {
     if (risco) { fimRisco(e.type === 'pointerup'); dedos.delete(e.pointerId); pinca = 0; pincaMeio = null; pincaMeioX = null; toque = null; return; }
@@ -595,6 +600,15 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     bPausa.setAttribute('aria-label', st.pausado ? 'Continuar animação' : 'Pausar animação'); bPausa.setAttribute('aria-pressed', String(st.pausado));
   }
   ouvir(bPausa, 'click', () => { st.pausado = !st.pausado; mostraPausa(); }); mostraPausa();
+  // botões de vista: A anterior, M medial, P posterior, L lateral (0° lateral, 90° anterior, 180° medial, 270° posterior)
+  const FACES = { A: 0, M: -SX * Math.PI / 2, P: Math.PI, L: SX * Math.PI / 2 };
+  const bFaces = Object.keys(FACES).map((k) => [k, $('f' + k)]).filter(([, el]) => el);
+  function soltaFace() { if (camP.azAlvo === null && !bFaces.some(([, el]) => el.getAttribute('aria-pressed') === 'true')) return; camP.azAlvo = null; bFaces.forEach(([, el]) => el.setAttribute('aria-pressed', 'false')); }
+  bFaces.forEach(([k, el]) => ouvir(el, 'click', () => {
+    if (st.nivel !== 'perna' || st.trocando) return;
+    camP.azAlvo = FACES[k]; camP.alvo.x = CENTRO.x; camP.alvo.z = CENTRO.z; alvoMarca.visible = false;
+    bFaces.forEach(([k2, el2]) => el2.setAttribute('aria-pressed', String(k2 === k)));
+  }));
   if (peleR) ouvir(peleR, 'input', () => { st.pele = clamp(Number(peleR.value) / 100, 0, 1); });
   // tela cheia: API do navegador quando existe; senão (iPhone) o 3D cobre a página
   const bTela = $('bTela'); let cheia = false;

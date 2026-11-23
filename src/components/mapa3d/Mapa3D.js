@@ -82,6 +82,11 @@ export default function Mapa3D(props) {
           <button type="button" className="m3d-ico" data-m3d="bTela" aria-pressed="false" aria-label="Tela cheia" />
           <button type="button" className="m3d-nomes" data-m3d="bNomes" aria-pressed="false">Nomes</button>
         </div>
+        <div className="m3d-faces" data-m3d="faces" role="group" aria-label="Girar a perna para uma vista">
+          {[["A", "anterior"], ["M", "medial"], ["P", "posterior"], ["L", "lateral"]].map(([k, nome]) => (
+            <button key={k} type="button" data-m3d={`f${k}`} aria-pressed="false" aria-label={`Vista ${nome}`} title={`Vista ${nome}`}>{k}</button>
+          ))}
+        </div>
         <div className="m3d-leg" data-m3d="leg" />
         <label className="m3d-pele" data-m3d="pele">
           <span>Superficial</span>
