@@ -100,10 +100,13 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   aneisPerna.push(anel(() => new T.Vector3(0, -3.85, 0)));
   // pé: ao longo de z (calcanhar -> dedos): [z, meia-largura, altura, arco plantar (lado medial)]
   const PE = [[-.66, .02, .12, 0], [-.6, .17, .36, 0], [-.45, .25, .55, 0], [-.25, .27, .66, .02], [0, .27, .62, .05], [.3, .29, .5, .07], [.65, .33, .4, .06], [1.0, .37, .32, .03], [1.35, .38, .25, .01], [1.62, .36, .2, 0], [1.8, .3, .15, 0], [1.9, .18, .1, 0], [1.94, .04, .05, 0]];
-  for (let i = 0; i <= 70; i++) {
-    const z = lerp(PE[0][0], PE[PE.length - 1][0], i / 70); let k = 0; while (k < PE.length - 2 && z > PE[k + 1][0]) k++;
+  function peSecao(z) {
+    z = clamp(z, PE[0][0], PE[PE.length - 1][0]); let k = 0; while (k < PE.length - 2 && z > PE[k + 1][0]) k++;
     const a0 = PE[Math.max(0, k - 1)], b0 = PE[k], c0 = PE[k + 1], d0 = PE[Math.min(PE.length - 1, k + 2)], t = clamp((z - b0[0]) / (c0[0] - b0[0]), 0, 1);
-    const wx = Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h = Math.max(.05, cr(a0[2], b0[2], c0[2], d0[2], t)), arco = cr(a0[3], b0[3], c0[3], d0[3], t);
+    return { w: Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h: Math.max(.05, cr(a0[2], b0[2], c0[2], d0[2], t)), arco: cr(a0[3], b0[3], c0[3], d0[3], t) };
+  }
+  for (let i = 0; i <= 70; i++) {
+    const z = lerp(PE[0][0], PE[PE.length - 1][0], i / 70), { w: wx, h, arco } = peSecao(z);
     // c > 0 é o lado medial do pé (vai para -x na perna esquerda, +x na direita)
     aneisPe.push(anel((a) => { const sn = Math.sin(a), c = Math.cos(a); let y = -4.3 + h / 2 + (h / 2) * sn * (sn < 0 ? 0.8 : 1); if (sn < 0 && c > 0) y += arco * Math.pow(c, 1.5) * -sn * 3.2; return new T.Vector3(-SX * wx * c, y, z); }));
   }
@@ -180,9 +183,23 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const kAnt = (ang) => { let d = ang - 90; if (d > 180) d -= 360; if (d < -180) d += 360; return d / 90; };    // +1 medial, -1 lateral
   const kPost = (ang) => { let d = ang - 270; if (d > 180) d -= 360; if (d < -180) d += 360; return -d / 90; }; // +1 medial, -1 lateral
   const naFrente = (ang) => ang >= 345 || ang <= 195; // medial e lateral puros ficam nas bordas do desenho anterior
+  // Pé (dorso): no desenho anterior do 2D, abaixo do tornozelo (y 556 a 610) fica o pé — de cima para baixo vai do
+  // tornozelo aos dedos; da borda esquerda (lateral) à direita (medial) atravessa o dorso de um lado ao outro.
+  const Y_PE0 = 556, Y_PE1 = 610, Z_PE0 = 0.05, Z_PE1 = 1.88;
+  function pontoPe(y, x) {
+    const z = lerp(Z_PE0, Z_PE1, clamp((y - Y_PE0) / (Y_PE1 - Y_PE0), 0, 1)), sp = peSecao(z), l = limA(y);
+    const c = clamp((x - l[0]) / (l[1] * (1 - MARGEM)), -0.95, 0.95), sn = Math.sqrt(1 - c * c); // c > 0: medial
+    return new T.Vector3(-SX * sp.w * c * 1.01, -4.3 + sp.h / 2 + (sp.h / 2) * sn * 1.01, z);
+  }
+  function descePe(P) {
+    const y = clamp(Y_PE0 + (P.z - Z_PE0) / (Z_PE1 - Z_PE0) * (Y_PE1 - Y_PE0), Y_PE0, Y_PE1), sp = peSecao(P.z), l = limA(y);
+    const c = clamp((-SX * P.x) / sp.w, -1, 1);
+    return [r1(l[0] + c * l[1] * (1 - MARGEM)), r1(y)];
+  }
   // um ponto desenhado no mapa vira um ponto rente à pele
   function sobe(x, y, vista) {
     if (vista === 'anterior') {
+      if (y > Y_PE0) return pontoPe(y, x);
       const y3 = clamp(Y3M(y), -3.8, 4.2), l = limA(y), k = clamp((x - l[0]) / (l[1] * (1 - MARGEM)), -1, 1);
       return ponto(y3, 90 + k * 90, .955);
     }
@@ -200,6 +217,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   const r1 = (v) => Math.round(v * 10) / 10;
   function desce(P, vista) {
+    if (P.pe) return descePe(P);
     const y3 = clamp(P.y, -3.8, 4.2), ang = anguloNaPele(P);
     if (vista === 'anterior') { const y = Y2M(y3), l = limA(y); return [r1(l[0] + clamp(kAnt(ang), -1, 1) * l[1] * (1 - MARGEM)), r1(y)]; }
     const y = Y2P(y3), l = limP(y); return [r1(l[0] + clamp(kPost(ang), -1, 1) * l[1] * (1 - MARGEM)), r1(y)];
@@ -207,7 +225,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   // a vista do traço: anterior se a maior parte dele está na metade da frente da perna, senão posterior
   function vistaDoTraco(pts3) {
     let a = 0;
-    for (const P of pts3) if (naFrente(anguloNaPele(P))) a++;
+    for (const P of pts3) if (P.pe || naFrente(anguloNaPele(P))) a++;
     return a * 2 >= pts3.length ? 'anterior' : 'posterior';
   }
   function texturaFluxo() {
@@ -336,7 +354,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const alvoMarca = new T.Mesh(new T.RingGeometry(.145, .16, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, side: T.DoubleSide }));
   alvoMarca.renderOrder = 5; alvoMarca.visible = false; cenaP.add(alvoMarca);
   const CENTRO = new T.Vector3(0, 0.15, 0.2);
-  const camP = { az: -0.6, pol: 1.5, dist: 12.5, alvo: CENTRO.clone(), alvoS: CENTRO.clone() };
+  const camP = { az: -0.6, pol: 1.5, dist: 12.5, alvo: CENTRO.clone(), alvoS: CENTRO.clone(), azAlvo: null, polAlvo: Math.PI / 2 };
 
   // ---------- a veia (segmento com válvulas, por fora em corte e por dentro) ----------
   const L = 16, H = 1.9, VALVULAS = [-3.4, 3.2];
@@ -424,6 +442,11 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   function posiciona(suave) {
     const k = suave ? 0.12 : 1;
     if (st.nivel === 'perna') {
+      if (camP.azAlvo !== null) { // botões A/M/P/L: gira até a face escolhida pelo caminho mais curto
+        const d = Math.atan2(Math.sin(camP.azAlvo - camP.az), Math.cos(camP.azAlvo - camP.az)), dp = camP.polAlvo - camP.pol;
+        camP.az += d * 0.16; camP.pol += dp * 0.16;
+        if (Math.abs(d) < 0.002 && Math.abs(dp) < 0.002) { camP.az = camP.azAlvo; camP.pol = camP.polAlvo; camP.azAlvo = null; }
+      }
       camP.alvoS.lerp(camP.alvo, suave ? 0.14 : 1);
       alvoPos.set(camP.alvoS.x + camP.dist * Math.sin(camP.pol) * Math.sin(camP.az), camP.alvoS.y + camP.dist * Math.cos(camP.pol), camP.alvoS.z + camP.dist * Math.sin(camP.pol) * Math.cos(camP.az));
       guia.position.copy(alvoPos); guia.up.set(0, 1, 0); guia.lookAt(camP.alvoS);
@@ -441,7 +464,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const DICAS = { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -512,6 +535,10 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   function naPele(e) {
     const m = ndc(e); vRaio.set(m[0], m[1]); raio3.setFromCamera(vRaio, camP3);
     const h = raio3.intersectObjects(PELES, false)[0];
+    if (h && h.object === PELES[1]) { // pé: vale o dorso, do tornozelo aos dedos
+      if (h.point.z < Z_PE0 - 0.1 || h.point.y < -4.3 + 0.04) return null;
+      const P = h.point.clone(); P.pe = true; return P;
+    }
     if (!h || h.point.y < -3.8 || h.point.y > 4.25) return null;
     const s2 = secao(h.point.y), c = new T.Vector3(s2[2], h.point.y, s2[3]);
     return h.point.clone().sub(c).multiplyScalar(0.99).add(c); // um pouco para dentro: fica rente à pele
@@ -558,13 +585,13 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       if (!u || u.distanceTo(P) > 0.035) { risco.pts.push(P); desenhaRisco(); }
       return;
     }
-    if (caneta && caneta !== 'borracha' && dedos.size === 1 && st.nivel === 'perna' && (e.buttons & 2)) { camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); return; }
+    if (caneta && caneta !== 'borracha' && dedos.size === 1 && st.nivel === 'perna' && (e.buttons & 2)) { soltaFace(); camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); return; }
     if (dedos.size === 1 && (e.shiftKey || (e.buttons & 2))) arrastaVertical(dy);
     else if (dedos.size === 1) {
-      if (st.nivel === 'perna') { camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); }
+      if (st.nivel === 'perna') { soltaFace(); camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); }
       else if (st.nivel === 'veia') { cam.az -= dx * 0.008; cam.pol = clamp(cam.pol - dy * 0.006, 0.3, 2.84); }
       else { cam.tx = clamp(cam.tx + dx * 0.004, -1.5, 1.5); cam.tz = clamp(cam.tz - dy * 0.004, -1.5, 1.5); }
-    } else if (dedos.size === 2) { const [a, b] = Array.from(dedos.values()), dist = Math.hypot(a.x - b.x, a.y - b.y); if (pinca > 0 && dist > 0) { const m = ndc({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }); aproxima(dist / pinca, m[0], m[1]); } pinca = dist; const meio = (a.y + b.y) / 2; if (pincaMeio !== null) arrastaVertical(meio - pincaMeio); pincaMeio = meio; const meioX = (a.x + b.x) / 2; if (caneta && pincaMeioX !== null && st.nivel === 'perna') camP.az -= (meioX - pincaMeioX) * 0.008; pincaMeioX = meioX; }
+    } else if (dedos.size === 2) { const [a, b] = Array.from(dedos.values()), dist = Math.hypot(a.x - b.x, a.y - b.y); if (pinca > 0 && dist > 0) { const m = ndc({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }); aproxima(dist / pinca, m[0], m[1]); } pinca = dist; const meio = (a.y + b.y) / 2; if (pincaMeio !== null) arrastaVertical(meio - pincaMeio); pincaMeio = meio; const meioX = (a.x + b.x) / 2; if (caneta && pincaMeioX !== null && st.nivel === 'perna') { soltaFace(); camP.az -= (meioX - pincaMeioX) * 0.008; } pincaMeioX = meioX; }
   });
   const solta = (e) => {
     if (risco) { fimRisco(e.type === 'pointerup'); dedos.delete(e.pointerId); pinca = 0; pincaMeio = null; pincaMeioX = null; toque = null; return; }
@@ -595,6 +622,15 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     bPausa.setAttribute('aria-label', st.pausado ? 'Continuar animação' : 'Pausar animação'); bPausa.setAttribute('aria-pressed', String(st.pausado));
   }
   ouvir(bPausa, 'click', () => { st.pausado = !st.pausado; mostraPausa(); }); mostraPausa();
+  // botões de vista: A anterior, M medial, P posterior, L lateral (0° lateral, 90° anterior, 180° medial, 270° posterior); Pé: de cima e da frente, o dorso à vista
+  const FACES = { A: 0, M: -SX * Math.PI / 2, P: Math.PI, L: SX * Math.PI / 2, Pe: 0 };
+  const bFaces = Object.keys(FACES).map((k) => [k, $('f' + k)]).filter(([, el]) => el);
+  function soltaFace() { if (camP.azAlvo === null && !bFaces.some(([, el]) => el.getAttribute('aria-pressed') === 'true')) return; camP.azAlvo = null; bFaces.forEach(([, el]) => el.setAttribute('aria-pressed', 'false')); }
+  bFaces.forEach(([k, el]) => ouvir(el, 'click', () => {
+    if (st.nivel !== 'perna' || st.trocando) return;
+    camP.azAlvo = FACES[k]; camP.polAlvo = k === 'Pe' ? 0.72 : Math.PI / 2; camP.alvo.x = CENTRO.x; camP.alvo.z = CENTRO.z; if (k === 'Pe') camP.alvo.y = CENTRO.y; alvoMarca.visible = false;
+    bFaces.forEach(([k2, el2]) => el2.setAttribute('aria-pressed', String(k2 === k)));
+  }));
   if (peleR) ouvir(peleR, 'input', () => { st.pele = clamp(Number(peleR.value) / 100, 0, 1); });
   // tela cheia: API do navegador quando existe; senão (iPhone) o 3D cobre a página
   const bTela = $('bTela'); let cheia = false;
@@ -740,6 +776,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   function poeCaneta(tipo) {
     caneta = tipo || null; fimRisco(false);
+    if ($('pele')) $('pele').style.visibility = caneta ? 'hidden' : ''; // desenhando: o controle não cobre o pé
     canvas.style.cursor = caneta === 'borracha' ? 'pointer' : caneta ? 'crosshair' : '';
     if (caneta && st.nivel !== 'perna') irPara('perna');
     dica.textContent = caneta ? (caneta === 'borracha' ? 'Toque num traço para apagar. Dois dedos (ou botão direito) giram a perna.' : 'Desenhe direto na pele da perna. Dois dedos (ou botão direito) giram; a roda ou a pinça dão zoom.') : DICAS[st.nivel];
