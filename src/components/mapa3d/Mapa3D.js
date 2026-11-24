@@ -83,7 +83,7 @@ export default function Mapa3D(props) {
           <button type="button" className="m3d-nomes" data-m3d="bNomes" aria-pressed="false">Nomes</button>
         </div>
         <div className="m3d-faces" data-m3d="faces" role="group" aria-label="Girar a perna para uma vista">
-          {[["A", "A", "Vista anterior"], ["M", "M", "Vista medial"], ["P", "P", "Vista posterior"], ["L", "L", "Vista lateral"], ["Pe", "Pé", "Pé visto de cima"]].map(([k, rot, nome]) => (
+          {[["A", "A", "Vista anterior"], ["M", "M", "Vista medial"], ["P", "P", "Vista posterior"], ["L", "L", "Vista lateral"]].map(([k, rot, nome]) => (
             <button key={k} type="button" data-m3d={`f${k}`} aria-pressed="false" aria-label={nome} title={nome}>{rot}</button>
           ))}
         </div>
