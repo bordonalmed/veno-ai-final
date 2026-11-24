@@ -622,13 +622,13 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     bPausa.setAttribute('aria-label', st.pausado ? 'Continuar animação' : 'Pausar animação'); bPausa.setAttribute('aria-pressed', String(st.pausado));
   }
   ouvir(bPausa, 'click', () => { st.pausado = !st.pausado; mostraPausa(); }); mostraPausa();
-  // botões de vista: A anterior, M medial, P posterior, L lateral (0° lateral, 90° anterior, 180° medial, 270° posterior); Pé: de cima e da frente, o dorso à vista
-  const FACES = { A: 0, M: -SX * Math.PI / 2, P: Math.PI, L: SX * Math.PI / 2, Pe: 0 };
+  // botões de vista: A anterior, M medial, P posterior, L lateral (0° lateral, 90° anterior, 180° medial, 270° posterior)
+  const FACES = { A: 0, M: -SX * Math.PI / 2, P: Math.PI, L: SX * Math.PI / 2 };
   const bFaces = Object.keys(FACES).map((k) => [k, $('f' + k)]).filter(([, el]) => el);
   function soltaFace() { if (camP.azAlvo === null && !bFaces.some(([, el]) => el.getAttribute('aria-pressed') === 'true')) return; camP.azAlvo = null; bFaces.forEach(([, el]) => el.setAttribute('aria-pressed', 'false')); }
   bFaces.forEach(([k, el]) => ouvir(el, 'click', () => {
     if (st.nivel !== 'perna' || st.trocando) return;
-    camP.azAlvo = FACES[k]; camP.polAlvo = k === 'Pe' ? 0.72 : Math.PI / 2; camP.alvo.x = CENTRO.x; camP.alvo.z = CENTRO.z; if (k === 'Pe') camP.alvo.y = CENTRO.y; alvoMarca.visible = false;
+    camP.azAlvo = FACES[k]; camP.polAlvo = Math.PI / 2; camP.alvo.x = CENTRO.x; camP.alvo.z = CENTRO.z; alvoMarca.visible = false;
     bFaces.forEach(([k2, el2]) => el2.setAttribute('aria-pressed', String(k2 === k)));
   }));
   if (peleR) ouvir(peleR, 'input', () => { st.pele = clamp(Number(peleR.value) / 100, 0, 1); });
