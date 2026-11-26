@@ -644,7 +644,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   // ---------- a veia (segmento com válvulas, por fora em corte e por dentro) ----------
   const L = 16, H = 1.9, VALVULAS = [-3.4, 3.2];
   const cam = { az: 0.38, pol: 1.47, dist: 13, inY: -6.4, tx: 0, tz: 0 };
-  function raio(y) { let b = 0; for (const z of VALVULAS) { const d = (y - (z + 0.8 * H)) / 1.0; b += Math.exp(-d * d); } return (1 + 0.32 * st.dil) * (1 + 0.2 * b); }
+  const VALV_ON = VALVULAS.map(() => true);
+  function raio(y) { let b = 0; for (const [iz, z] of VALVULAS.entries()) { if (!VALV_ON[iz]) continue; const d = (y - (z + 0.8 * H)) / 1.0; b += Math.exp(-d * d); } return (1 + 0.32 * st.dil) * (1 + 0.2 * b); }
   const cenaV = new T.Scene();
   const corFora = new T.Color(0x0d141f), corDentro = new T.Color(0x3a0c14), corFundo = new T.Color();
   cenaV.fog = new T.FogExp2(0x0d141f, 0.012);
@@ -672,7 +673,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const NU = 26, NV = 12;
   const mFolheto = new T.MeshStandardMaterial({ color: 0xf6dcd5, roughness: 0.5, side: T.DoubleSide, transparent: true, opacity: 0.94 });
   const folhetos = [];
-  for (const z0 of VALVULAS) for (const s of [1, -1]) { const g = new T.PlaneGeometry(1, 1, NU, NV); const m = new T.Mesh(g, mFolheto); m.frustumCulled = false; m.visible = !ARTERIAL; cenaV.add(m); folhetos.push({ g, z0, s }); }
+  for (const z0 of VALVULAS) for (const s of [1, -1]) { const g = new T.PlaneGeometry(1, 1, NU, NV); const m = new T.Mesh(g, mFolheto); m.frustumCulled = false; m.visible = !ARTERIAL; cenaV.add(m); folhetos.push({ g, z0, s, m }); }
   function bordaLivreX(u, rt, o) { const k = 1 - u * u, gap = lerp(0.012, 0.34, st.dil); return lerp(rt * gap * Math.pow(k, 0.8), rt * (1 - 0.17 * Math.pow(k, 0.7)) * Math.cos(u * 1.5462), o); }
   function atualizaFolheto(f) {
     const p = f.g.attributes.position, yt = f.z0 + H, rt = raio(yt), o = st.o, c = 1 - o;
@@ -698,7 +699,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   let dentroF = 0;
   function meiaLargura(y, zU, r) {
     const corda = r * Math.sqrt(Math.max(0, 1 - zU * zU)); let x = corda;
-    for (const z0 of VALVULAS) {
+    for (const [iz, z0] of VALVULAS.entries()) {
+      if (!VALV_ON[iz]) continue;
       const yt = z0 + H; if (y < z0 || y > yt + 0.4 * H) continue;
       const u = Math.asin(clamp(zU, -1, 1)) / 1.5708, borda = Math.min(corda, bordaLivreX(u, raio(yt), st.o));
       if (y <= yt) { const ya = z0 + H * u * u; if (y > ya) x = Math.min(x, lerp(corda, borda, (y - ya) / (yt - ya))); }
@@ -983,6 +985,15 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     cel.instanceMatrix.needsUpdate = true;
   }
 
+  // válvulas da veia escolhida: a subclávia só tem válvula no segmento junto à jugular (a de cima, lado do coração)
+  function ajustaValvulas() {
+    if (ARTERIAL) return;
+    const tb = TUBOS[st.sel], semBaixo = BRACO && tb && tb.chave && tb.chave.key === 'Veia Subclávia';
+    VALV_ON[0] = !semBaixo; VALV_ON[1] = true;
+    for (const f of folhetos) f.m.visible = VALV_ON[VALVULAS.indexOf(f.z0)];
+    ROT_V[2][1] = VALV_ON[0] ? VALVULAS[0] + H * 0.55 : 999;
+    atualizaParede();
+  }
   // coágulo (MMSS): trombo parcial de um lado da luz, ou trombose oclusiva preenchendo a veia
   const gCoag = new T.SphereGeometry(1, 40, 28); { const p = gCoag.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + 0.09 * Math.sin(x * 7 + y * 3) * Math.cos(z * 6 - y * 2); p.setXYZ(i, x * k, y, z * k); } gCoag.computeVertexNormals(); }
   const coagulo = new T.Mesh(gCoag, new T.MeshStandardMaterial({ color: new T.Color(0x5a1018).convertSRGBToLinear(), roughness: 0.85 })); coagulo.visible = false; cenaV.add(coagulo);
@@ -1025,7 +1036,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const aplica = () => { st.nivel = n; st.semZoomAte = performance.now() + 650; if (n === 'veia') { cam.dist = 13; cam.alvoY = 0; } if (n === 'dentro') { cam.inY = -6.4; cam.tx = 0; cam.tz = 0; } if (n === 'perna') camP.dist = clamp(camP.dist, 3.4, 18); pinta(); };
     if (!mudaCena) { aplica(); return; }
     st.trocando = true; veu.textContent = ''; veu.style.opacity = '1';
-    setTimeout(() => { aplica(); st.dil = alvoDilVeia(); atualizaParede(); montaArteria(); if (ARTERIAL && st.nivel === 'veia') { cam.dist = Math.max(...artRO) > 1.5 ? 12 : 9; cam.alvoY = artInfo.foco || 0; limitaAlvo(); } posiciona(false); veu.style.opacity = '0'; st.trocando = false; }, 240);
+    setTimeout(() => { aplica(); st.dil = alvoDilVeia(); ajustaValvulas(); atualizaParede(); montaArteria(); if (ARTERIAL && st.nivel === 'veia') { cam.dist = Math.max(...artRO) > 1.5 ? 12 : 9; cam.alvoY = artInfo.foco || 0; limitaAlvo(); } posiciona(false); veu.style.opacity = '0'; st.trocando = false; }, 240);
   }
   const prj = new T.Vector3(); let W = 1, Hh = 1;
   function amostraPerto(nx, ny, limite) { let melhor = null, bd = limite * limite; const asp = W / Hh; for (const s of AMOSTRAS) { prj.copy(s.p).project(camP3); if (prj.z > 1 || prj.z < -1) continue; const dx = (prj.x - nx) * asp, dy = prj.y - ny, d = dx * dx + dy * dy; if (d < bd) { bd = d; melhor = s; } } return melhor; }
@@ -1242,7 +1253,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       else if (e === 'parcial') { tom = 'refluxo'; t = 'Trombo parcial · o sangue passa ao redor'; }
       else if (e === 'recan') t = 'Recanalização parcial · fluxo reduzido';
       else if (e === 'ausente') t = 'Veia ausente';
-      else t = sist ? 'Sangue segue para o coração' : 'Fluxo venoso normal';
+      else t = tb && tb.chave && tb.chave.key === 'Veia Subclávia' ? 'Sangue segue para o coração · válvula só junto à jugular' : sist ? 'Sangue segue para o coração' : 'Fluxo venoso normal';
     } else {
       const e = estSel(); k = (TUBOS[st.sel] ? TUBOS[st.sel].nome : 'Veia') + ' · ' + ROTULO[e];
       if (e === 'trombo') { tom = 'refluxo'; t = 'Não compressível · sem fluxo'; }
@@ -1330,7 +1341,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       if (Math.abs(alvoDil - st.dil) > 0.0005) { st.dil += (alvoDil - st.dil) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(alvoDil - st.dil) < 0.002) st.dil = alvoDil; atualizaParede(); }
       st.v = velocidade(st.tc, e === 'ruim' ? st.dil : 0) * fatorFluxo();
       const alvoO = e === 'trombo' ? 0.25 : (st.tc < SISTOLE - 0.05 ? 1 : 0); st.o += (alvoO - st.o) * (1 - Math.exp(-dtA * (alvoO ? 14 : 11)));
-      for (const f of folhetos) atualizaFolheto(f);
+      for (const f of folhetos) if (f.m.visible) atualizaFolheto(f);
       atualizaCelulas(dtA);
       if (e === 'trombo') corAlvo.setHex(0x4a0d14); else if (st.doppler) corAlvo.copy(st.v < -0.02 ? corVolta : corSobe); else corAlvo.copy(corSangue);
       mCel.color.lerp(corAlvo, 0.2);
@@ -1354,7 +1365,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     geraPerna();
     if (sel) { const i = TUBOS.findIndex((t) => t.chave && JSON.stringify(t.chave) === sel && (t.estado !== 'ok' || !TUBOS.some((q) => q !== t && q.chave && JSON.stringify(q.chave) === sel && q.estado !== 'ok'))); if (i >= 0) st.sel = i; }
     alvoMarca.visible = marcaVis;
-    if (st.nivel !== 'perna') { st.dil = alvoDilVeia(); atualizaParede(); montaArteria(); }
+    if (st.nivel !== 'perna') { st.dil = alvoDilVeia(); ajustaValvulas(); atualizaParede(); montaArteria(); }
   }
   function poeCaneta(tipo) {
     caneta = tipo || null; fimRisco(false);
