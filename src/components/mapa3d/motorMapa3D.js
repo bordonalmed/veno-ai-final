@@ -307,6 +307,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     ['Artéria Tibial Posterior', 'A. tibial posterior', .036, [[-.88, 263, .36], [-1.5, 240, .42], [-2.3, 220, .45], [-3.1, 200, .55], [-3.55, 190, .68], [-3.78, 180, .72]]],
   ];
   const TERCOS = ['Terço proximal', 'Terço médio', 'Terço distal'];
+  // velocidade da animação do sangue nas artérias: normocinético bem mais rápido que o venoso; hipo mais lento, hiper mais rápido
+  const RAPIDEZ_ART = 2.4, VEL_ART = { 'Normocinético': 1, 'Hipercinético': 1.7, 'Hipocinético': 0.4 };
   // trechos de uma artéria conforme os achados (u = 0 proximal .. 1 distal): oclusão (terço ou total),
   // estenose da placa no terço, stent (trecho central, como no 2D) com reestenose ou ocluído, velocidade
   const CENTRAL = [0.3, 0.7]; // stent, aneurisma e dissecção: trecho central do vaso (igual ao 2D)
@@ -737,7 +739,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     });
     // leitura: nome, achados e rótulos presos às lesões
     const nome = tb ? tb.nome : 'Artéria', pri = LES.find((q) => q.principal), oc = LES.find((q) => q.oc && !q.stent), rest = LES.find((q) => q.rest);
-    const vel = v && v.velocidade === 'Hipercinético' ? 1.4 : v && v.velocidade === 'Hipocinético' ? 0.5 : 1;
+    const vel = (v && VEL_ART[v.velocidade]) || 1;
     const partes = [], rots = []; let tom = 'normal';
     const total = !!(oc && oc.a <= 0.08 && oc.b >= 0.92);
     if (total) { partes.push('<b>Oclusão total</b> · sem fluxo'); tom = 'refluxo'; rots.push(['oclusão', 0.5]); }
@@ -842,7 +844,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
         let v = vp;
         if (A !== null) { if (y > A) v = 0.55 * Math.sin(fc * 6.283) * artInfo.fator; else if (y < B) v = 0.22 * artInfo.fator; }
         const rl = perfilArt(y).rl, zU = pZ[i], a = pA[i], rho2 = a * a * (1 - zU * zU) + zU * zU, jato = clamp(1 / (rl * rl), 0.3, 4);
-        y -= v * VMAX * (1 - 0.6 * rho2) * jato * dt;
+        y -= v * VMAX * RAPIDEZ_ART * (1 - 0.6 * rho2) * jato * dt;
         if (A !== null && y > B && y <= A + 0.12) y = A + 0.12;
         if (y < -L / 2) y = A !== null ? B - 0.05 - rnd() * 0.6 : y + L; else if (y > L / 2) y -= L;
         pY[i] = y;
@@ -1168,7 +1170,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       const vOk = Math.max(0, velocidade(st.tc, 0)), vRuim = velocidade(st.tc, 1);
       const fc = (st.t % 0.9) / 0.9, vArt = 0.25 + 1.6 * Math.exp(-Math.pow((fc - 0.12) / 0.08, 2)); // pulso arterial (sístole rápida)
       for (const tb of TUBOS) {
-        const v = ARTERIAL ? (tb.estado === 'ocl' ? 0 : vArt * (tb.estado === 'hipo' ? 0.4 : tb.estado === 'hiper' ? 1.5 : tb.estado === 'esten' ? 1.9 : 1)) : tb.estado === 'ruim' ? vRuim : tb.estado === 'trombo' || tb.estado === 'ausente' ? 0 : tb.estado === 'recan' ? vOk * 0.45 : vOk;
+        const v = ARTERIAL ? (tb.estado === 'ocl' ? 0 : vArt * RAPIDEZ_ART * (tb.estado === 'hipo' ? VEL_ART['Hipocinético'] : tb.estado === 'hiper' ? VEL_ART['Hipercinético'] : tb.estado === 'esten' ? 2 : 1)) : tb.estado === 'ruim' ? vRuim : tb.estado === 'trombo' || tb.estado === 'ausente' ? 0 : tb.estado === 'recan' ? vOk * 0.45 : vOk;
         if (tb.tex) tb.tex.offset.x -= v * (tb.sentido || 1) * dtA * 4.2;
         if (!ARTERIAL && st.doppler && tb.estado !== 'trombo' && tb.estado !== 'ausente') { corTmp.copy(v < -0.02 ? COR3.ruim : COR3.ok); tb.mat.color.lerp(corTmp, 0.18); }
         else tb.mat.color.lerp(tb.corFixa || COR3[tb.estado], 0.18);
