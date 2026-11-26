@@ -307,6 +307,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     ['Artéria Tibial Posterior', 'A. tibial posterior', .036, [[-.88, 263, .36], [-1.5, 240, .42], [-2.3, 220, .45], [-3.1, 200, .55], [-3.55, 190, .68], [-3.78, 180, .72]]],
   ];
   const TERCOS = ['Terço proximal', 'Terço médio', 'Terço distal'];
+  // velocidade da animação do sangue nas artérias: normocinético bem mais rápido que o venoso; hipo mais lento, hiper mais rápido
+  const RAPIDEZ_ART = 2.4, VEL_ART = { 'Normocinético': 1, 'Hipercinético': 1.7, 'Hipocinético': 0.4 };
   // trechos de uma artéria conforme os achados (u = 0 proximal .. 1 distal): oclusão (terço ou total),
   // estenose da placa no terço, stent (trecho central, como no 2D) com reestenose ou ocluído, velocidade
   const CENTRAL = [0.3, 0.7]; // stent, aneurisma e dissecção: trecho central do vaso (igual ao 2D)
@@ -398,7 +400,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
         const curva = new T.CatmullRomCurve3(pts), comp = curva.getLength();
         const k = tr.e === 'esten' ? clamp(tr.pct / 100, 0, .95) * 0.8 : 0;
         const rFn = (u) => { const ug = lerp(tr.a, tr.b, u); return r0 * (tr.e === 'ocl' ? 0.92 : 1) * (1 - k * Math.pow(Math.sin(Math.PI * u), 2)) * (aneur ? 1 + (aneur - 1) * bojo(ug) : 1); };
-        let tex = null; if (tr.e !== 'ocl') { tex = texBase.clone(); tex.needsUpdate = true; tex.repeat.set(Math.max(2, comp * 2.6), 1); }
+        const tex = null; // na perna as artérias ficam paradas (o fluxo aparece na Artéria e Por dentro)
         const cor = ehEnx && tr.e !== 'esten' ? new T.Color(tr.e === 'ocl' ? 0x7d8790 : 0x2f6fd6).convertSRGBToLinear() : COR3[tr.e].clone();
         const mat = new T.MeshStandardMaterial({ color: cor.clone(), map: tex, roughness: 0.42, emissive: cor.clone().multiplyScalar(0.3) });
         const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; gVeias.add(malha);
@@ -737,7 +739,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     });
     // leitura: nome, achados e rótulos presos às lesões
     const nome = tb ? tb.nome : 'Artéria', pri = LES.find((q) => q.principal), oc = LES.find((q) => q.oc && !q.stent), rest = LES.find((q) => q.rest);
-    const vel = v && v.velocidade === 'Hipercinético' ? 1.4 : v && v.velocidade === 'Hipocinético' ? 0.5 : 1;
+    const vel = (v && VEL_ART[v.velocidade]) || 1;
     const partes = [], rots = []; let tom = 'normal';
     const total = !!(oc && oc.a <= 0.08 && oc.b >= 0.92);
     if (total) { partes.push('<b>Oclusão total</b> · sem fluxo'); tom = 'refluxo'; rots.push(['oclusão', 0.5]); }
@@ -752,7 +754,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     if (v && v.reabitada) { partes.push('reabitada por colaterais'); rots.push(['colaterais', 0.34]); }
     if (!pri && !oc && !temStent && !F && !(v && v.disseccao) && !rest && !(v && v.reabitada)) partes.push(LES.length ? 'ateromatose ' + String(v.ateromatose || '').toLowerCase() : 'sem placas');
     if (ehEnx && ex.enxerto) partes.unshift(ex.enxerto.status === 'Ocluído' ? '<b>enxerto ocluído</b>' : ex.enxerto.status === 'Com estenose' ? '<b>enxerto com estenose</b>' : 'enxerto pérvio');
-    artInfo = { foco: rots.length ? yDeS(rots[0][1]) : 0, nome, t: partes.join(' · '), tom, onda: (v && v.tipoOnda) || 'Trifásico', fator: vel, total, oclA: oc && !total ? yDeS(oc.a) : null, oclB: oc && !total ? yDeS(oc.b) : null, sentido: v && v.sentido === 'Retrógrado' ? -1 : 1, enxerto: ehEnx };
+    artInfo = { key, v, F, foco: rots.length ? yDeS(rots[0][1]) : 0, nome, t: partes.join(' · '), tom, onda: (v && v.tipoOnda) || 'Trifásico', fator: vel, total, oclA: oc && !total ? yDeS(oc.a) : null, oclB: oc && !total ? yDeS(oc.b) : null, sentido: v && v.sentido === 'Retrógrado' ? -1 : 1, enxerto: ehEnx };
     const rv1 = $('rV1'), rv2 = $('rV2'), r1 = rots[0], r2 = rots.find((r) => r !== r1 && Math.abs(r[1] - r1[1]) > 0.12);
     if (rv1) rv1.textContent = r1 ? r1[0] : ''; if (rv2) rv2.textContent = r2 ? r2[0] : '';
     if (ROT_V) { ROT_V[2][1] = r1 ? yDeS(r1[1]) : 999; ROT_V[3][1] = r2 ? yDeS(r2[1]) : 999; ROT_V[2][2] = ROT_V[3][2] = -1; ROT_V[2][3] = r1 ? artRO[amostraArt(yDeS(r1[1]))] : 1; ROT_V[3][3] = r2 ? artRO[amostraArt(yDeS(r2[1]))] : 1; }
@@ -765,6 +767,75 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const v = o === 'Bifásico' ? gs(fc, 0.1, 0.05) - 0.3 * gs(fc, 0.25, 0.06) : o === 'Monofásico' ? 0.55 * gs(fc, 0.17, 0.12) + 0.12 : /Amortecido/.test(o) ? 0.3 * gs(fc, 0.28, 0.2) + 0.12 : gs(fc, 0.1, 0.05) - 0.35 * gs(fc, 0.24, 0.05) + 0.15 * gs(fc, 0.38, 0.06);
     return artInfo.total ? 0 : v * artInfo.fator * artInfo.sentido;
   }
+  // ---------- Doppler arterial (espectral, esquemático) no ponto da amostra ----------
+  const VPS0 = { 'Artéria Femoral Comum': 110, 'Artéria Femoral Profunda': 80, 'Artéria Femoral Superficial': 90, 'Artéria Poplítea': 70, 'Artéria Tibial Anterior': 55, 'Artéria Fibular': 45, 'Artéria Tibial Posterior': 55, enxerto: 70 };
+  const razaoVPS = (p) => p < 50 ? 1 + p / 50 * 0.9 : p <= 75 ? 2 + (p - 50) / 25 * 2 : Math.min(7, 4 + (p - 75) / 25 * 2.5);
+  const FORMAS = {
+    'Trifásico': (f) => gs(f, 0.13, 0.07) - 0.32 * gs(f, 0.3, 0.07) + 0.14 * gs(f, 0.46, 0.08),
+    'Bifásico': (f) => gs(f, 0.13, 0.075) - 0.27 * gs(f, 0.32, 0.08),
+    'Monofásico': (f) => 0.85 * gs(f, 0.16, 0.12) + 0.15,
+    'Amortecido (tardus-parvus)': (f) => 0.75 * gs(f, 0.34, 0.22) + 0.25,
+    batida: (f) => gs(f, 0.1, 0.045) - 0.7 * gs(f, 0.21, 0.055),
+    turbilhao: (f) => 0.55 * gs(f, 0.16, 0.12) + 0.2 * Math.sin(f * 40) * gs(f, 0.3, 0.25),
+  };
+  function dopplerNoPonto(sv) {
+    const v = artInfo.v; if (!v) return { forma: () => 0, k: 0, vps: 0, nota: '' };
+    const vel = v.velocidade === 'Hipercinético' ? 1.4 : v.velocidade === 'Hipocinético' ? 0.55 : 1, base = (VPS0[artInfo.key] || 70) * vel;
+    let forma = FORMAS[v.tipoOnda] || FORMAS['Trifásico'], k = 1, largo = 0, nota = 'fluxo ' + String(v.tipoOnda || 'Trifásico').toLowerCase().replace(' (tardus-parvus)', ''), razao = 0;
+    const oc = LES.find((q) => q.oc);
+    if (artInfo.total || (oc && sv >= oc.a && sv <= oc.b)) return { forma: () => 0, k: 0, vps: 0, nota: oc && oc.stent ? 'dentro do stent ocluído' : 'na oclusão', largo: 0 };
+    if (oc && sv < oc.a) { forma = FORMAS.batida; k = 0.55; nota = 'antes da oclusão: alta resistência'; }
+    else if (oc && sv > oc.b) { forma = FORMAS['Amortecido (tardus-parvus)']; k = 0.32; largo = 0.4; nota = 'depois da oclusão: tardus-parvus'; }
+    for (const q of LES) {
+      if (!(q.principal && q.pct > 0) && !q.rest) continue;
+      const p = q.rest ? 55 : q.pct, d = sv - q.s0;
+      if (Math.abs(d) < q.w * 0.55) { razao = razaoVPS(p); k *= razao; largo = Math.max(largo, p >= 50 ? 0.9 : 0.5); nota = q.rest ? 'na reestenose do stent' : 'na estenose ' + Math.round(p) + '%'; }
+      else if (d > 0 && d < q.w + 0.08 && p >= 50) { largo = Math.max(largo, 1); k *= 1.15; nota = 'pós-estenose: turbulência'; }
+    }
+    if (artInfo.F) { const b = bojo(sv); if (b > 0.3) { forma = FORMAS.turbilhao; k *= 1 / Math.pow(1 + (artInfo.F - 1) * b, 1.4); largo = 1; nota = 'no aneurisma: fluxo lento e turbulento'; } }
+    if (v.disseccao && sv > CENTRAL[0] && sv < CENTRAL[1] && largo < 0.6) { largo = 0.6; nota = 'na dissecção: fluxo nas duas luzes'; }
+    const sent = v.sentido === 'Retrógrado' ? -1 : 1; if (sent < 0) nota = 'fluxo retrógrado · ' + nota;
+    let pico = 0; for (let i = 0; i < 60; i++) pico = Math.max(pico, Math.abs(forma(i / 60)));
+    return { forma: (f) => forma(f) * sent, k, vps: Math.round(base * k * pico / 5) * 5, nota, largo, sent, razao };
+  }
+  // gate amarelo da amostra (nível Artéria)
+  const gate = new T.Group(), mGate = new T.MeshBasicMaterial({ color: 0xffd23f, depthTest: false, transparent: true });
+  for (const sgn of [1, -1]) { const b = new T.Mesh(new T.BoxGeometry(0.55, 0.06, 0.06), mGate); b.position.y = sgn * 0.16; b.renderOrder = 9; gate.add(b); }
+  gate.visible = false; cenaV.add(gate);
+  let dopAtual = null, sAmostra = 0.5;
+  function atualizaAmostra() {
+    if (!ARTERIAL || st.nivel === 'perna') { gate.visible = false; return; }
+    const y = st.nivel === 'dentro' ? -cam.inY - 1.2 : cam.alvoY; sAmostra = sDeY(y);
+    const pf = perfilArt(y); gate.position.set(pf.cx, y, pf.cz); gate.quaternion.copy(camV3.quaternion); gate.visible = st.nivel === 'veia' && !st.externa;
+    dopAtual = dopplerNoPonto(sAmostra);
+    const n = 'Amostra: ' + dopAtual.nota, r = dopAtual.vps ? 'VPS ≈ ' + dopAtual.vps + ' cm/s' + (dopAtual.razao ? ' · razão ' + dopAtual.razao.toFixed(1).replace('.', ',') : '') : 'sem fluxo';
+    if (dopN.textContent !== n) dopN.textContent = n; if (dopR.textContent !== r) { dopR.textContent = r; dopR.style.color = !dopAtual.vps || dopAtual.k >= 2 ? 'var(--refluxo)' : ''; }
+  }
+  function desenhaDopplerArt() {
+    const w = dop.width, h = dop.height; dctx.fillStyle = '#05080c'; dctx.fillRect(0, 0, w, h);
+    if (!dopAtual) return;
+    const d = dopAtual, esc = Math.max(100, Math.ceil(Math.max(d.vps, 60) * 1.3 / 50) * 50), y0 = d.sent < 0 ? h * 0.3 : h * 0.74, amp = (d.sent < 0 ? h * 0.66 : h * 0.68) * (d.vps / esc), DUR = 2.25;
+    const pico = Math.max(1e-6, ...Array.from({ length: 40 }, (_, i) => Math.abs(d.forma(i / 40)))), px = Math.max(1, w / 400);
+    const tAgora = st.t % DUR, xc = tAgora / DUR * w;
+    for (let x = 0; x < w; x += 2 * px) {
+      if (x > xc && x < xc + w * 0.04) continue; // apagador da varredura
+      const t = x / w * DUR, f = (t % 0.9) / 0.9, val = d.forma(f) / pico, e = val * amp, alt = Math.abs(e);
+      if (alt < 0.5) continue;
+      const sist = Math.abs(val) > 0.45, janela = sist && d.largo < 0.5 ? 0.55 * (1 - d.largo) : 0.06, dir = e > 0 ? -1 : 1;
+      dctx.fillStyle = 'rgba(190,198,206,' + (0.22 + 0.25 * d.largo).toFixed(2) + ')'; // faixa do espectro (com a janela espectral livre)
+      dctx.fillRect(x, dir < 0 ? y0 - alt : y0 + alt * janela, 2 * px, alt * (1 - janela));
+      for (let k = 0; k < 10; k++) { // pontinhos do espectro
+        const r = Math.random(), a = janela + (1 - janela) * Math.pow(r, 0.6), yy = y0 + dir * alt * a, br = 150 + 105 * (1 - Math.abs(a - 0.85) * 1.3) * (0.6 + 0.4 * Math.random());
+        dctx.fillStyle = 'rgb(' + br + ',' + br + ',' + br + ')'; dctx.fillRect(x, yy, 2 * px, 2 * px);
+      }
+      const ruido = d.largo > 0.6 ? (Math.random() - 0.5) * alt * 0.12 : 0;
+      dctx.fillStyle = '#ffffff'; dctx.fillRect(x, y0 + dir * (alt + ruido), 2 * px, 1.5 * px);
+    }
+    dctx.fillStyle = 'rgba(14,184,208,.9)'; dctx.fillRect(0, y0 - px / 2, w, px); // linha de base
+    dctx.fillStyle = 'rgba(255,255,255,.85)'; dctx.fillRect(xc - px, 0, 2 * px, h);
+    dctx.font = (9 * px * 1.1).toFixed(0) + 'px monospace'; dctx.fillStyle = 'rgba(159,178,198,.95)'; dctx.textBaseline = 'middle';
+    const topo = d.sent < 0 ? y0 + h * 0.66 : y0 - h * 0.68; dctx.fillText((d.sent < 0 ? '-' : '') + esc, 3 * px, Math.min(h - 6 * px, Math.max(6 * px, topo))); dctx.fillText('0', 3 * px, y0 + (d.sent < 0 ? -7 : 7) * px); dctx.textAlign = 'right'; dctx.fillText('cm/s', w - 3 * px, d.sent < 0 ? h - 6 * px : 6 * px); dctx.textAlign = 'left';
+  }
   function atualizaCelulasArt(dt) {
     const fc = (st.t % 0.9) / 0.9, vp = pulsoArt(fc), A = artInfo.oclA, B = artInfo.oclB;
     for (let i = 0; i < N; i++) {
@@ -773,7 +844,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
         let v = vp;
         if (A !== null) { if (y > A) v = 0.55 * Math.sin(fc * 6.283) * artInfo.fator; else if (y < B) v = 0.22 * artInfo.fator; }
         const rl = perfilArt(y).rl, zU = pZ[i], a = pA[i], rho2 = a * a * (1 - zU * zU) + zU * zU, jato = clamp(1 / (rl * rl), 0.3, 4);
-        y -= v * VMAX * (1 - 0.6 * rho2) * jato * dt;
+        y -= v * VMAX * RAPIDEZ_ART * (1 - 0.6 * rho2) * jato * dt;
         if (A !== null && y > B && y <= A + 0.12) y = A + 0.12;
         if (y < -L / 2) y = A !== null ? B - 0.05 - rnd() * 0.6 : y + L; else if (y > L / 2) y -= L;
         pY[i] = y;
@@ -818,7 +889,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const DICAS = ARTERIAL ? { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para ver o nome e o achado.', veia: 'Arraste para girar. Em corte: placa lipídica amarela, calcificada branca. “Por fora” mostra a artéria por fora. Aproxime para entrar, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar com o sangue, afaste para sair.' } : { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (ARTERIAL && $('bCor')) $('bCor').hidden = st.nivel !== 'veia'; if (st.pronto) ajusta();
+    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = !(ARTERIAL && !naP); fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (ARTERIAL && $('bCor')) $('bCor').hidden = st.nivel !== 'veia'; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -1044,12 +1115,15 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       else if (e !== 'ruim') t = 'Válvulas fecham · sem refluxo'; else { tom = 'refluxo'; t = 'Válvulas não fecham · <b>sangue volta</b>'; }
     }
     const chave = k + t; if (chave !== ultimaFase) { ultimaFase = chave; faseK.textContent = k; faseT.innerHTML = t; fase.dataset.tom = tom; fase.dataset.compacto = st.nivel === 'perna' ? '1' : '0'; }
+    if (ARTERIAL) { atualizaAmostra(); return; }
     const naPerna = st.nivel === 'perna', n = naPerna ? resumo : 'Doppler (esquemático)', e = estSel(), rr = naPerna ? '' : e === 'ruim' ? 'refluxo' : e === 'trombo' ? 'sem fluxo' : 'sem refluxo';
     if (dopN.textContent !== n) dopN.textContent = n; if (dopR.textContent !== rr) { dopR.textContent = rr; dopR.style.color = (e === 'ruim' || e === 'trombo') ? 'var(--refluxo)' : ''; }
   }
   const dop = $('dop'), dctx = dop.getContext('2d');
+  if (ARTERIAL) { dop.style.height = '78px'; $('dopBox').dataset.arterial = '1'; }
   function desenhaDoppler() {
     if (st.nivel === 'perna' || $('dopBox').hidden) return;
+    if (ARTERIAL) { desenhaDopplerArt(); return; }
     const w = dop.width, h = dop.height, y0 = h * 0.52, ampC = h * 0.46, ampB = h * 0.44, px = Math.max(1, w / 420 * 1.2), f = fatorFluxo();
     dctx.clearRect(0, 0, w, h);
     for (const sinal of [1, -1]) { dctx.beginPath(); dctx.moveTo(0, y0); for (let x = 0; x <= w; x += 2) { const v = velocidade(x / w * CICLO, st.dil >= 0.99 ? 1 : 0) * f, vv = sinal > 0 ? Math.max(0, v) : Math.min(0, v); dctx.lineTo(x, y0 - vv * (sinal > 0 ? ampC : ampB)); } dctx.lineTo(w, y0); dctx.closePath(); dctx.fillStyle = sinal > 0 ? 'rgba(14,184,208,.75)' : 'rgba(255,93,93,.85)'; dctx.fill(); }
@@ -1096,7 +1170,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       const vOk = Math.max(0, velocidade(st.tc, 0)), vRuim = velocidade(st.tc, 1);
       const fc = (st.t % 0.9) / 0.9, vArt = 0.25 + 1.6 * Math.exp(-Math.pow((fc - 0.12) / 0.08, 2)); // pulso arterial (sístole rápida)
       for (const tb of TUBOS) {
-        const v = ARTERIAL ? (tb.estado === 'ocl' ? 0 : vArt * (tb.estado === 'hipo' ? 0.4 : tb.estado === 'hiper' ? 1.5 : tb.estado === 'esten' ? 1.9 : 1)) : tb.estado === 'ruim' ? vRuim : tb.estado === 'trombo' || tb.estado === 'ausente' ? 0 : tb.estado === 'recan' ? vOk * 0.45 : vOk;
+        const v = ARTERIAL ? (tb.estado === 'ocl' ? 0 : vArt * RAPIDEZ_ART * (tb.estado === 'hipo' ? VEL_ART['Hipocinético'] : tb.estado === 'hiper' ? VEL_ART['Hipercinético'] : tb.estado === 'esten' ? 2 : 1)) : tb.estado === 'ruim' ? vRuim : tb.estado === 'trombo' || tb.estado === 'ausente' ? 0 : tb.estado === 'recan' ? vOk * 0.45 : vOk;
         if (tb.tex) tb.tex.offset.x -= v * (tb.sentido || 1) * dtA * 4.2;
         if (!ARTERIAL && st.doppler && tb.estado !== 'trombo' && tb.estado !== 'ausente') { corTmp.copy(v < -0.02 ? COR3.ruim : COR3.ok); tb.mat.color.lerp(corTmp, 0.18); }
         else tb.mat.color.lerp(tb.corFixa || COR3[tb.estado], 0.18);

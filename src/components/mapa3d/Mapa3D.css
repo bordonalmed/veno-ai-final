@@ -52,6 +52,10 @@ button.m3d-rot { pointer-events: auto; cursor: pointer; border-color: var(--m3d-
 .m3d-doppler { position: absolute; left: 12px; right: 44px; bottom: 12px; max-width: 400px; background: rgba(13,20,31,.86); border: 1px solid var(--m3d-linha); border-radius: 12px; padding: 7px 10px 5px; pointer-events: none; }
 .m3d-doppler .k { display: flex; justify-content: space-between; gap: 8px; font: 600 10px/1.3 var(--m3d-dado); letter-spacing: .05em; color: var(--m3d-suave); text-transform: uppercase; }
 .m3d-dop { display: block; width: 100%; height: 52px; margin-top: 4px; }
+.m3d-doppler .k span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3d-doppler .k span:last-child { flex: none; }
+.m3d-doppler[data-arterial="1"] { background: rgba(5,8,12,.92); }
+.m3d-doppler[data-arterial="1"] .m3d-dop { border-radius: 6px; }
 
 .m3d-controles { display: flex; gap: 7px; align-items: stretch; }
 
@@ -78,3 +82,5 @@ button.m3d-rot { pointer-events: auto; cursor: pointer; border-color: var(--m3d-
 .m3d-faces button { width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 1px solid var(--m3d-linha); background: rgba(13,20,31,.8); color: var(--m3d-texto); font: 800 14px/1 var(--m3d-dado); cursor: pointer; }
 .m3d-faces button[aria-pressed="true"] { border-color: var(--m3d-ciano); background: var(--m3d-ciano); color: #04222a; }
 .m3d-faces button:focus-visible { outline: 3px solid var(--m3d-ciano); outline-offset: 2px; }
+.m3d-doppler[data-arterial="1"] .k { flex-wrap: wrap; row-gap: 2px; }
+.m3d-doppler[data-arterial="1"] .k span:first-child { white-space: normal; }
