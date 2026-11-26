@@ -106,13 +106,13 @@ export default function Mapa3D(props) {
         </div>
         <div className="m3d-veu" data-m3d="veu">Gerando 3D</div>
       </div>
-      <div className="m3d-controles" hidden={arterial}>
+      <div className="m3d-controles">
         <div className="m3d-seg" role="group" aria-label="Nível de zoom">
           <button type="button" data-m3d="nPerna" aria-pressed="true">Perna</button>
-          <button type="button" data-m3d="nVeia" aria-pressed="false">Veia</button>
+          <button type="button" data-m3d="nVeia" aria-pressed="false">{arterial ? "Artéria" : "Veia"}</button>
           <button type="button" data-m3d="nDentro" aria-pressed="false">Dentro</button>
         </div>
-        <button type="button" className="m3d-mini" data-m3d="bCor" aria-pressed="false">Doppler</button>
+        <button type="button" className="m3d-mini" data-m3d="bCor" aria-pressed="false" hidden={arterial}>Doppler</button>
       </div>
       <p className="m3d-nota">
         <b data-m3d="dica" />{" "}

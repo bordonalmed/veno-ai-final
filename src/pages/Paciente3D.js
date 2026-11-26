@@ -42,7 +42,7 @@ export default function Paciente3D() {
             <ul>
               <li><b>Gire</b> a perna arrastando com o dedo, ou use os botões <b>A</b>, <b>M</b>, <b>P</b> e <b>L</b>.</li>
               <li><b className="ruim">Vermelho</b>: artéria com sangue passando normalmente. <b>Laranja</b>: estreitamento (estenose). <b>Cinza escuro</b>: artéria fechada (oclusão), sem passagem de sangue.</li>
-              <li>Toque numa artéria para ver o nome e o achado.</li>
+              <li>Toque numa artéria para ver o nome e o achado. Depois toque em <b>Artéria</b> e em <b>Dentro</b> para ver as placas e o estreitamento por dentro.</li>
               <li>A barra <b>Superficial / Profundo</b> deixa a pele mais transparente.</li>
             </ul>
             ) : (

@@ -446,12 +446,13 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   for (let i = 0; i < pw.count; i++) { const x = pw.getX(i), z = pw.getZ(i), n = Math.hypot(x, z) || 1; baseP[2 * i] = x / n; baseP[2 * i + 1] = z / n; }
   function atualizaParede() { for (let i = 0; i < pw.count; i++) { const y = pw.getY(i), r = raio(y); pw.setXYZ(i, baseP[2 * i] * r, y, baseP[2 * i + 1] * r); } pw.needsUpdate = true; gParede.computeVertexNormals(); }
   atualizaParede();
-  cenaV.add(new T.Mesh(gParede, new T.MeshStandardMaterial({ map: texturaParede(), roughness: 0.62, side: T.BackSide })));
+  const paredeV = new T.Mesh(gParede, new T.MeshStandardMaterial({ map: texturaParede(), roughness: 0.62, side: T.BackSide })); cenaV.add(paredeV);
   const vidro = new T.Mesh(gParede, new T.MeshBasicMaterial({ color: 0x7fe3f1, transparent: true, opacity: 0.07, side: T.FrontSide, depthWrite: false })); cenaV.add(vidro);
+  if (ARTERIAL) { paredeV.visible = false; vidro.visible = false; }
   const NU = 26, NV = 12;
   const mFolheto = new T.MeshStandardMaterial({ color: 0xf6dcd5, roughness: 0.5, side: T.DoubleSide, transparent: true, opacity: 0.94 });
   const folhetos = [];
-  for (const z0 of VALVULAS) for (const s of [1, -1]) { const g = new T.PlaneGeometry(1, 1, NU, NV); const m = new T.Mesh(g, mFolheto); m.frustumCulled = false; cenaV.add(m); folhetos.push({ g, z0, s }); }
+  for (const z0 of VALVULAS) for (const s of [1, -1]) { const g = new T.PlaneGeometry(1, 1, NU, NV); const m = new T.Mesh(g, mFolheto); m.frustumCulled = false; m.visible = !ARTERIAL; cenaV.add(m); folhetos.push({ g, z0, s }); }
   function bordaLivreX(u, rt, o) { const k = 1 - u * u, gap = lerp(0.012, 0.34, st.dil); return lerp(rt * gap * Math.pow(k, 0.8), rt * (1 - 0.17 * Math.pow(k, 0.7)) * Math.cos(u * 1.5462), o); }
   function atualizaFolheto(f) {
     const p = f.g.attributes.position, yt = f.z0 + H, rt = raio(yt), o = st.o, c = 1 - o;
@@ -501,6 +502,118 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
 
 
+  // ---------- a artéria (trecho tocado, por fora e por dentro): placas, estenose, oclusão ----------
+  // eixo: proximal em cima (y = L/2), distal embaixo; o sangue desce. s = 0 (proximal) .. 1 (distal)
+  const NSA = 480, artR = new Float32Array(NSA), artCX = new Float32Array(NSA), artCZ = new Float32Array(NSA), artL = new Int16Array(NSA);
+  let LES = [], artInfo = { k: '', t: '', tom: 'normal', onda: 'Trifásico', fator: 1, total: false, oclA: null, oclB: null };
+  const sDeY = (y) => clamp((L / 2 - y) / L, 0, 1), yDeS = (s) => L / 2 - s * L;
+  const amostraArt = (y) => Math.round(sDeY(y) * (NSA - 1));
+  function perfilArt(y) { const k = amostraArt(y); return { rl: artR[k], cx: artCX[k], cz: artCZ[k] }; }
+  const COR_PLACA = { 'Lipídica': [0.86, 0.6, 0.14], 'Calcificada': [0.66, 0.64, 0.58], ocl: [0.24, 0.04, 0.05] };
+  function lesoesDe(v) {
+    const out = []; if (!v) return out;
+    const centro = { 'Terço proximal': 1 / 6, 'Terço médio': 0.5, 'Terço distal': 5 / 6 }, tipo = v.caracteristicaPlaca || 'Mista';
+    if (v.status === 'Ocluída') { const lo = v.localizacaoOclusao || 'Total', i = TERCOS.indexOf(lo); const [a, b] = i < 0 ? [0.07, 0.93] : [i / 3 + 0.05, (i + 1) / 3 - 0.05]; out.push({ oc: true, a, b, p: 0.94, ang: 0, tipo: 'ocl' }); }
+    const pct = parseFloat(String(v.estenosePercentual || '').replace(',', '.')) || 0;
+    if (v.placa === 'Presente') out.push({ s0: centro[v.localizacaoPlaca] !== undefined ? centro[v.localizacaoPlaca] : 0.5, w: 0.075, p: pct > 0 ? clamp(pct / 100, 0.08, 0.9) : 0.25, ang: 2.3, tipo, principal: true, pct });
+    const nAt = { Discreta: 3, Moderada: 6, Severa: 10 }[v.ateromatose] || 0, pAt = { Discreta: 0.1, Moderada: 0.16, Severa: 0.24 }[v.ateromatose] || 0;
+    let sem2 = 31; const rn = () => { sem2 = (sem2 * 16807) % 2147483647; return sem2 / 2147483647; };
+    for (let i = 0; i < nAt; i++) out.push({ s0: 0.06 + 0.88 * rn(), w: 0.022 + 0.02 * rn(), p: pAt * (0.7 + 0.6 * rn()), ang: rn() * 6.283, tipo });
+    return out;
+  }
+  const pesoLes = (q, sv) => q.oc ? ss(q.a - 0.03, q.a + 0.03, sv) * (1 - ss(q.b - 0.03, q.b + 0.03, sv)) : 1 - ss(q.w * 0.45, q.w, Math.abs(sv - q.s0));
+  const gArt = new T.CylinderGeometry(1, 1, L, 72, 300, true);
+  const pa = gArt.attributes.position, baseA = new Float32Array(pa.count * 2);
+  for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), n = Math.hypot(x, z) || 1; baseA[2 * i] = x / n; baseA[2 * i + 1] = z / n; }
+  gArt.setAttribute('color', new T.Float32BufferAttribute(new Float32Array(pa.count * 3), 3));
+  const paredeA = new T.Mesh(gArt, new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: T.BackSide }));
+  // por fora: o contorno da artéria (calibre constante), a placa como massa (opaca só onde há placa) e o tampão da oclusão
+  const vidroA = new T.Mesh(new T.CylinderGeometry(1.04, 1.04, L, 56, 1, true), new T.MeshBasicMaterial({ color: 0xff9aa6, transparent: true, opacity: 0.1, side: T.FrontSide, depthWrite: false }));
+  gArt.setAttribute('placa', new T.Float32BufferAttribute(new Float32Array(pa.count), 1));
+  const mPlacaFora = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, transparent: true, side: T.FrontSide, depthWrite: false });
+  mPlacaFora.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'attribute float placa;\nvarying float vPlaca;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vPlaca = placa;');
+    sh.fragmentShader = 'varying float vPlaca;\n' + sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  gl_FragColor.a *= vPlaca;');
+  };
+  const placaFora = new T.Mesh(gArt, mPlacaFora); placaFora.renderOrder = 2;
+  const tampao = new T.Mesh(new T.CylinderGeometry(0.97, 0.97, 1, 40, 1, true), new T.MeshStandardMaterial({ color: 0x4a0d14, roughness: 0.8, transparent: true }));
+  tampao.visible = false; let temTampao = false;
+  paredeA.visible = vidroA.visible = placaFora.visible = ARTERIAL; cenaV.add(paredeA); cenaV.add(vidroA); cenaV.add(placaFora); cenaV.add(tampao);
+  const ruido = (i) => { const x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); };
+  function montaArteria() {
+    if (!ARTERIAL) return;
+    const tb = TUBOS[st.sel], key = tb && tb.chave ? tb.chave.key : null, v = key && ex.arterias ? ex.arterias[key] : null;
+    LES = lesoesDe(v);
+    for (let k = 0; k < NSA; k++) {
+      const sv = k / (NSA - 1); let p = 0, cx = 0, cz = 0, dom = -1, mx = 0.02;
+      let oc = 0; LES.forEach((q) => { if (q.oc) oc = Math.max(oc, pesoLes(q, sv)); });
+      LES.forEach((q, j) => { const g = pesoLes(q, sv) * q.p * (q.oc ? 1 : 1 - oc); if (g <= 0) return; p += g; if (!q.oc) { cx -= g * Math.cos(q.ang); cz -= g * Math.sin(q.ang); } if (g > mx) { mx = g; dom = j; } });
+      artR[k] = Math.max(0.07, 1 - Math.min(p, 0.93)); artCX[k] = cx; artCZ[k] = cz; artL[k] = dom;
+    }
+    const cor = gArt.attributes.color, alfa = gArt.attributes.placa, COLS = 73;
+    for (let i = 0; i < pa.count; i++) {
+      const y = pa.getY(i), k = amostraArt(y), rl = artR[k], dx = baseA[2 * i], dz = baseA[2 * i + 1];
+      const iv = Math.floor(i / COLS) * 72 + (i % COLS) % 72; // a costura do cilindro (coluna 0 = 72) recebe o mesmo ruído
+      const q = artL[k] >= 0 ? LES[artL[k]] : null, rug = q && q.tipo === 'Calcificada' ? 1 - 0.05 * ruido(iv) : 1;
+      const px = artCX[k] + dx * rl * rug, pz = artCZ[k] + dz * rl * rug; pa.setXYZ(i, px, y, pz);
+      const I = ss(0.05, 0.28, 1 - Math.hypot(px, pz)), n = ruido(iv * 7 + 3);
+      alfa.setX(i, q && !q.oc ? 0.92 * I : 0);
+      let c = [0.78 + 0.1 * n, 0.3 + 0.06 * n, 0.34 + 0.05 * n];
+      if (q && I > 0) { const tp = q.tipo === 'Mista' ? (n > 0.55 ? 'Calcificada' : 'Lipídica') : q.tipo, pc = COR_PLACA[tp] || COR_PLACA['Lipídica'], m = I * (0.85 + 0.15 * n); c = c.map((x, j) => lerp(x, pc[j] * (0.88 + 0.12 * n), m)); }
+      cor.setXYZ(i, c[0], c[1], c[2]);
+    }
+    pa.needsUpdate = true; cor.needsUpdate = true; alfa.needsUpdate = true; gArt.computeVertexNormals();
+    const ocq = LES.find((q) => q.oc);
+    temTampao = !!ocq; tampao.visible = temTampao; if (ocq) { const ya = yDeS(ocq.a), yb = yDeS(ocq.b); tampao.scale.set(1, ya - yb, 1); tampao.position.set(0, (ya + yb) / 2, 0); }
+    // leitura: nome, achado e rótulos presos às lesões
+    const nome = tb ? tb.nome : 'Artéria', pri = LES.find((q) => q.principal), oc = LES.find((q) => q.oc);
+    const vel = v && v.velocidade === 'Hipercinético' ? 1.4 : v && v.velocidade === 'Hipocinético' ? 0.5 : 1;
+    const partes = []; let tom = 'normal';
+    if (oc && oc.a <= 0.08 && oc.b >= 0.92) { partes.push('Oclusão total · sem fluxo'); tom = 'refluxo'; }
+    else {
+      partes.push('Fluxo ' + String((v && v.tipoOnda) || 'Trifásico').toLowerCase().replace(' (tardus-parvus)', ''));
+      if (pri) { partes.push('placa ' + (pri.tipo === 'Mista' ? 'mista' : pri.tipo.toLowerCase()) + (pri.pct > 0 ? ' · <b>estenose ' + Math.round(pri.pct) + '%</b>' : '')); if (pri.pct >= 50) tom = 'refluxo'; }
+      if (oc) { partes.push('<b>oclusão</b> no ' + TERCOS[Math.min(2, Math.floor((oc.a + oc.b) / 2 * 3))].toLowerCase()); tom = 'refluxo'; }
+      if (!pri && !oc) partes.push(LES.length ? 'ateromatose ' + String(v.ateromatose || '').toLowerCase() : 'sem placas');
+    }
+    artInfo = { k: nome + ' · por dentro', t: partes.join(' · '), tom, onda: (v && v.tipoOnda) || 'Trifásico', fator: vel, total: !!(oc && oc.a <= 0.08 && oc.b >= 0.92), oclA: oc ? yDeS(oc.a) : null, oclB: oc ? yDeS(oc.b) : null };
+    const rv1 = $('rV1'), rv2 = $('rV2');
+    if (rv1) rv1.textContent = pri ? (pri.pct > 0 ? 'estenose ' + Math.round(pri.pct) + '%' : 'placa ' + (pri.tipo === 'Mista' ? 'mista' : pri.tipo.toLowerCase())) : '';
+    if (rv2) rv2.textContent = oc ? 'oclusão' : '';
+    if (ROT_V) { ROT_V[2][1] = pri ? yDeS(pri.s0) : 999; ROT_V[3][1] = oc ? yDeS((oc.a + oc.b) / 2) : 999; ROT_V[2][2] = ROT_V[3][2] = -1; }
+    for (let i = 0; i < N; i++) { if (artInfo.oclA !== null && pY[i] <= artInfo.oclA && pY[i] >= artInfo.oclB) pY[i] = artInfo.oclA + 0.2 + rnd() * 1.5; }
+  }
+  // velocidade do pulso arterial (positiva = desce, sentido do fluxo)
+  const gs = (x, m, d) => Math.exp(-Math.pow((x - m) / d, 2));
+  function pulsoArt(fc) {
+    const o = artInfo.onda;
+    const v = o === 'Bifásico' ? gs(fc, 0.1, 0.05) - 0.3 * gs(fc, 0.25, 0.06) : o === 'Monofásico' ? 0.55 * gs(fc, 0.17, 0.12) + 0.12 : /Amortecido/.test(o) ? 0.3 * gs(fc, 0.28, 0.2) + 0.12 : gs(fc, 0.1, 0.05) - 0.35 * gs(fc, 0.24, 0.05) + 0.15 * gs(fc, 0.38, 0.06);
+    return artInfo.total ? 0 : v * artInfo.fator;
+  }
+  function atualizaCelulasArt(dt) {
+    const fc = (st.t % 0.9) / 0.9, vp = pulsoArt(fc), A = artInfo.oclA, B = artInfo.oclB;
+    for (let i = 0; i < N; i++) {
+      let y = pY[i];
+      if (dt > 0) {
+        let v = vp;
+        if (A !== null) { if (y > A) v = 0.55 * Math.sin(fc * 6.283) * artInfo.fator; else if (y < B) v = 0.22 * artInfo.fator; }
+        const rl = perfilArt(y).rl, zU = pZ[i], a = pA[i], rho2 = a * a * (1 - zU * zU) + zU * zU, jato = Math.min(4, 1 / (rl * rl));
+        y -= v * VMAX * (1 - 0.6 * rho2) * jato * dt;
+        if (A !== null && y > B && y <= A + 0.12) y = A + 0.12;
+        if (y < -L / 2) y = A !== null ? B - 0.05 - rnd() * 0.6 : y + L; else if (y > L / 2) y -= L;
+        pY[i] = y;
+      }
+      const pf = perfilArt(y), zU = pZ[i], livre = pf.rl * Math.sqrt(1 - zU * zU);
+      peca.position.set(pf.cx + pA[i] * livre * 0.9, y, pf.cz + zU * pf.rl * 0.92);
+      const giro = st.t * (0.4 + pR[i * 6 + 3] * 1.3);
+      peca.rotation.set(pR[i * 6] * 6.28 + giro, pR[i * 6 + 1] * 6.28 + giro * 0.7, pR[i * 6 + 2] * 6.28);
+      const perto = lerp(1, 0.72 * ss(0.6, 2.6, peca.position.distanceTo(camV3.position)), dentroF), some = pf.rl < 0.2 ? 0 : 1;
+      peca.scale.setScalar(((0.085 + pR[i * 6 + 4] * 0.035) * perto * Math.min(1, pf.rl * 1.6)) * some + 0.0001);
+      peca.updateMatrix(); cel.setMatrixAt(i, peca.matrix);
+    }
+    cel.instanceMatrix.needsUpdate = true;
+  }
+
   // ---------- câmeras e navegação: perna -> veia -> por dentro ----------
   cam.alvoY = 0;
   const guia = new T.PerspectiveCamera(), alvoPos = new T.Vector3(), alvoOlhar = new T.Vector3(), cima = new T.Vector3();
@@ -518,15 +631,16 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       camP3.position.lerp(alvoPos, k); camP3.quaternion.slerp(guia.quaternion, k); return;
     }
     if (st.nivel === 'veia') { alvoPos.set(cam.dist * Math.sin(cam.pol) * Math.sin(cam.az), cam.alvoY + cam.dist * Math.cos(cam.pol), cam.dist * Math.sin(cam.pol) * Math.cos(cam.az)); alvoOlhar.set(0, cam.alvoY, 0); cima.set(0, 1, 0); }
+    else if (ARTERIAL) { const bal = st.pausado ? 0 : 0.03, yw = -cam.inY, a = perfilArt(yw), b = perfilArt(yw - 1); alvoPos.set(a.cx + bal * Math.sin(st.t * 0.7), yw, a.cz + bal * Math.cos(st.t * 0.9)); alvoOlhar.set(b.cx + cam.tx, yw - 1, b.cz + cam.tz); cima.set(0, 0, -1); }
     else { const bal = st.pausado ? 0 : 0.1; alvoPos.set(bal * Math.sin(st.t * 0.7), cam.inY, bal * Math.cos(st.t * 0.9)); alvoOlhar.set(alvoPos.x + cam.tx, cam.inY + 1, alvoPos.z + cam.tz); cima.set(0, 0, -1); }
     guia.position.copy(alvoPos); guia.up.copy(cima); guia.lookAt(alvoOlhar);
     camV3.position.lerp(alvoPos, k); camV3.quaternion.slerp(guia.quaternion, k);
   }
   const estSel = () => (TUBOS[st.sel] ? TUBOS[st.sel].estado : 'ok');
-  const alvoDilVeia = () => { const e = estSel(); return e === 'ruim' ? 1 : e === 'trombo' ? 0.5 : 0; };
+  const alvoDilVeia = () => { if (ARTERIAL) return 0; const e = estSel(); return e === 'ruim' ? 1 : e === 'trombo' ? 0.5 : 0; };
   const fatorFluxo = () => { const e = estSel(); return e === 'trombo' ? 0 : e === 'recan' ? 0.45 : 1; };
   const nPerna = $('nPerna'), nVeia = $('nVeia'), nDentro = $('nDentro'), dica = $('dica');
-  const DICAS = ARTERIAL ? { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para ver o nome e o achado.', veia: '', dentro: '' } : { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
+  const DICAS = ARTERIAL ? { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para ver o nome e o achado.', veia: 'Arraste para girar. Placas em amarelo (lipídica) e branco (calcificada). Aproxime para entrar na artéria, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar com o sangue, afaste para sair.' } : { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
     dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = true; fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (st.pronto) ajusta();
@@ -537,7 +651,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const aplica = () => { st.nivel = n; st.semZoomAte = performance.now() + 650; if (n === 'veia') { cam.dist = 13; cam.alvoY = 0; } if (n === 'dentro') { cam.inY = -6.4; cam.tx = 0; cam.tz = 0; } if (n === 'perna') camP.dist = clamp(camP.dist, 3.4, 18); pinta(); };
     if (!mudaCena) { aplica(); return; }
     st.trocando = true; veu.textContent = ''; veu.style.opacity = '1';
-    setTimeout(() => { aplica(); st.dil = alvoDilVeia(); atualizaParede(); posiciona(false); veu.style.opacity = '0'; st.trocando = false; }, 240);
+    setTimeout(() => { aplica(); st.dil = alvoDilVeia(); atualizaParede(); montaArteria(); posiciona(false); veu.style.opacity = '0'; st.trocando = false; }, 240);
   }
   const prj = new T.Vector3(); let W = 1, Hh = 1;
   function amostraPerto(nx, ny, limite) { let melhor = null, bd = limite * limite; const asp = W / Hh; for (const s of AMOSTRAS) { prj.copy(s.p).project(camP3); if (prj.z > 1 || prj.z < -1) continue; const dx = (prj.x - nx) * asp, dy = prj.y - ny, d = dx * dx + dy * dy; if (d < bd) { bd = d; melhor = s; } } return melhor; }
@@ -548,7 +662,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       if (fator > 1) { const s = amostraPerto(nx, ny, 0.45); if (s) { st.sel = s.v; alvoMarca.visible = true; camP.alvo.lerp(s.p, clamp((fator - 1) * 2.2, 0.06, 0.6)); } }
       else { const k = clamp((1 / fator - 1) * 1.2, 0, 0.5); camP.alvo.x = lerp(camP.alvo.x, CENTRO.x, k); camP.alvo.z = lerp(camP.alvo.z, CENTRO.z, k); if (camP.dist > 9) alvoMarca.visible = false; }
       limitaAlvo();
-      if (!ARTERIAL && camP.dist <= 1.75 && AMOSTRAS.length) { let m = null, bd = 1e9; for (const s of AMOSTRAS) { const d = s.p.distanceToSquared(camP.alvo); if (d < bd) { bd = d; m = s; } } st.sel = m.v; camP.alvo.copy(m.p); irPara('veia'); }
+      if (camP.dist <= 1.75 && AMOSTRAS.length) { let m = null, bd = 1e9; for (const s of AMOSTRAS) { const d = s.p.distanceToSquared(camP.alvo); if (d < bd) { bd = d; m = s; } } st.sel = m.v; camP.alvo.copy(m.p); irPara('veia'); }
     } else if (st.nivel === 'veia') { cam.dist = clamp(cam.dist / fator, 2.2, 22); limitaAlvo(); if (cam.dist <= 2.4) irPara('dentro'); else if (cam.dist >= 21.5) irPara('perna'); }
     else { cam.inY += Math.log(fator) * 4.5; if (cam.inY < -7.3) irPara('veia'); cam.inY = clamp(cam.inY, -7.3, 6.2); }
   }
@@ -666,7 +780,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       const m = ndc(e), s = amostraPerto(m[0], m[1], 70 / Hh);
       if (s) {
         const editavel = typeof opcoes.aoSelecionar === 'function';
-        if (!ARTERIAL && !editavel && st.sel === s.v && alvoMarca.visible && camP.dist < 5) { camP.alvo.copy(s.p); irPara('veia'); }
+        if (!editavel && st.sel === s.v && alvoMarca.visible && camP.dist < 5) { camP.alvo.copy(s.p); irPara('veia'); }
         else {
           st.sel = s.v; camP.alvo.copy(s.p); alvoMarca.visible = true; if (!editavel) camP.dist = Math.min(camP.dist, 4.2);
           if (editavel && TUBOS[s.v] && TUBOS[s.v].chave) opcoes.aoSelecionar({ ...TUBOS[s.v].chave });
@@ -713,7 +827,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const aoMudarFs = () => { if (cheia && fsEl() !== raiz) poeCheia(false); };
   ouvir(document, 'fullscreenchange', aoMudarFs); ouvir(document, 'webkitfullscreenchange', aoMudarFs);
   ouvir(document, 'keydown', (e) => { if (e.key === 'Escape' && cheia) poeCheia(false); });
-  [0, 1, 2, 3, 4].forEach((i) => ouvir($('l' + i), 'click', () => { const r = ROT_P[i]; if (!r || r.v < 0 || st.nivel !== 'perna' || st.trocando) return; st.sel = r.v; camP.alvo.copy(r.p); alvoMarca.visible = true; if (ARTERIAL) { camP.dist = Math.min(camP.dist, 3.4); if (typeof opcoes.aoSelecionar === 'function' && TUBOS[r.v]) opcoes.aoSelecionar({ ...TUBOS[r.v].chave }); return; } camP.dist = 2.6; setTimeout(() => { if (vivo) irPara('veia'); }, 620); }));
+  [0, 1, 2, 3, 4].forEach((i) => ouvir($('l' + i), 'click', () => { const r = ROT_P[i]; if (!r || r.v < 0 || st.nivel !== 'perna' || st.trocando) return; st.sel = r.v; camP.alvo.copy(r.p); alvoMarca.visible = true; if (ARTERIAL && typeof opcoes.aoSelecionar === 'function') { camP.dist = Math.min(camP.dist, 3.4); if (TUBOS[r.v]) opcoes.aoSelecionar({ ...TUBOS[r.v].chave }); return; } camP.dist = 2.6; setTimeout(() => { if (vivo) irPara('veia'); }, 620); }));
 
   // rótulos presos ao 3D
   const ROT_V = [[$('rCor'), 4.1, 1], [$('rPe'), -3.3, 1], [$('rV1'), VALVULAS[0] + H * 0.55, -1], [$('rV2'), VALVULAS[1] + H * 0.55, -1]];
@@ -747,6 +861,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     if (st.nivel === 'perna') {
       const r = TUBOS.find((q) => q.estado === 'ruim' && q.nome !== 'Veia perfurante'); k = 'Membro inferior ' + (ladoMembro === 'Direito' ? 'direito' : 'esquerdo');
       if (sist) t = '↑ Sangue sobe'; else if (!r) t = 'Válvulas seguram o sangue'; else { tom = 'refluxo'; t = '↓ Refluxo ' + r.nome.toLowerCase() + ' <b>' + num(tau) + ' s</b>'; }
+    } else if (ARTERIAL) { k = artInfo.k; t = artInfo.t; tom = artInfo.tom;
     } else {
       const e = estSel(); k = (TUBOS[st.sel] ? TUBOS[st.sel].nome : 'Veia') + ' · ' + ROTULO[e];
       if (e === 'trombo') { tom = 'refluxo'; t = 'Não compressível · sem fluxo'; }
@@ -815,6 +930,16 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       posiciona(true);
       if (alvoMarca.visible) { alvoMarca.position.copy(camP.alvo); alvoMarca.quaternion.copy(camP3.quaternion); alvoMarca.scale.setScalar((1 + 0.12 * Math.sin(agora * 0.006)) * clamp(camP.dist / 6, 0.35, 1.4)); }
       renderer.setClearColor(0x0d141f); sobPele(); camadas(); renderer.render(cenaP, camP3);
+    } else if (ARTERIAL) {
+      atualizaCelulasArt(dtA);
+      corAlvo.setHex(0xc8101c); mCel.color.lerp(corAlvo, 0.2);
+      posiciona(true);
+      const pc = perfilArt(camV3.position.y);
+      dentroF = 1 - ss(1.1, 3.2, Math.hypot(camV3.position.x - pc.cx, camV3.position.z - pc.cz));
+      corFundo.copy(corFora).lerp(corDentro, dentroF);
+      renderer.setClearColor(corFundo); cenaV.fog.color.copy(corFundo); cenaV.fog.density = lerp(0.012, 0.085, dentroF);
+      vidroA.material.opacity = 0.1 * (1 - dentroF); mPlacaFora.opacity = 1 - dentroF; tampao.material.opacity = 0.92 * (1 - dentroF); tampao.visible = temTampao && dentroF < 0.98;
+      renderer.render(cenaV, camV3);
     } else {
       const alvoDil = alvoDilVeia(), e = estSel();
       if (Math.abs(alvoDil - st.dil) > 0.0005) { st.dil += (alvoDil - st.dil) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(alvoDil - st.dil) < 0.002) st.dil = alvoDil; atualizaParede(); }
@@ -843,7 +968,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     geraPerna();
     if (sel) { const i = TUBOS.findIndex((t) => t.chave && JSON.stringify(t.chave) === sel && (t.estado !== 'ok' || !TUBOS.some((q) => q !== t && q.chave && JSON.stringify(q.chave) === sel && q.estado !== 'ok'))); if (i >= 0) st.sel = i; }
     alvoMarca.visible = marcaVis;
-    if (st.nivel !== 'perna') { st.dil = alvoDilVeia(); atualizaParede(); }
+    if (st.nivel !== 'perna') { st.dil = alvoDilVeia(); atualizaParede(); montaArteria(); }
   }
   function poeCaneta(tipo) {
     caneta = tipo || null; fimRisco(false);
