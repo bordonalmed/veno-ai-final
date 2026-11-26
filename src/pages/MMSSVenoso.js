@@ -27,6 +27,7 @@ import {
   ladosDoExame,
 } from "../utils/mmssVenosoLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
+import { qrsDoExameMMSS3D, desenharQr3dRodape } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMSSVenoso";
@@ -404,6 +405,8 @@ function MMSSVenoso() {
       }
     }
 
+    // QR Code do exame em 3D (um por membro), no rodapé da última página do laudo do membro
+    const qrs = await qrsDoExameMMSS3D({ lado, veias, extras });
     let pagina = 0;
     lados.forEach((ladoAtual, idx) => {
       if (pagina > 0) doc.addPage();
@@ -536,6 +539,7 @@ function MMSSVenoso() {
         }
       }
       addRodape();
+      desenharQr3dRodape(doc, qrs[ladoAtual]);
       pagina++;
     });
     

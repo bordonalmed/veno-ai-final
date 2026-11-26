@@ -1,4 +1,4 @@
-import { codificarExame3D, codificarExameArterial3D, decodificarExame3D, linkExame3D } from "./codigo3d";
+import { codificarExame3D, codificarExameArterial3D, codificarExameMMSS3D, decodificarExame3D, linkExame3D } from "./codigo3d";
 import { veiasProfundas, profOptions } from "./mmiiVenosoLaudo";
 
 const prof = Object.fromEntries(veiasProfundas.map((v) => [v, profOptions[0]]));
@@ -84,5 +84,23 @@ describe("código 3D arterial: stent, aneurisma, dissecção, colaterais, sentid
     const d = decodificarExame3D(codificarExameArterial3D({ lado: "Esquerdo", arterias: { "Artéria Poplítea": v }, enxerto }));
     expect(d.arterias["Artéria Poplítea"]).toEqual(v);
     expect(d.enxerto).toEqual(enxerto);
+  });
+});
+
+describe("código 3D do Doppler venoso de MMSS", () => {
+  it("leva o estado de cada veia, o fluxo contínuo, a fase do trombo e o cateter", () => {
+    const veias = {
+      "Veia Jugular Interna": { status: "Pérvia", fluxo: "Contínuo (não fásico)", fase: "", observacao: "" },
+      "Veia Subclávia": { status: "Trombose oclusiva", fluxo: "Fásico", fase: "Aguda", observacao: "" },
+      "Veia Basílica (braço)": { status: "Trombose parcial (não oclusiva)", fluxo: "Fásico", fase: "Crônica", observacao: "" },
+      "Veia Cefálica (antebraço)": { status: "Ausente", fluxo: "Fásico", fase: "", observacao: "" },
+    };
+    const extra = { cateter: { presente: true, tipo: "PICC", veia: "Veia Basílica (braço)" } };
+    const d = decodificarExame3D(codificarExameMMSS3D({ lado: "Direito", veias, extra }));
+    expect(d.modo).toBe("mmssVenoso");
+    expect(d.lado).toBe("Direito");
+    expect(d.veias).toEqual(veias);
+    expect(d.extra.cateter).toEqual(extra.cateter);
+    expect(linkExame3D({ modo: "mmssVenoso", lado: "Direito", veias, extra }, "https://venoai.xyz").length).toBeLessThan(60);
   });
 });

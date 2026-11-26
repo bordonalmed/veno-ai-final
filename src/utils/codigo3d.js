@@ -9,9 +9,11 @@ import {
   tipoOndaOptions, caracteristicaPlacaOptions, ateromatoseOptions, stentOptions, aneurismaFormaOptions,
   enxertoTipoOptions, enxertoOrigemOptions, enxertoDestinoOptions, enxertoStatusOptions, enxertoLocalOptions,
 } from "./mmiiArterialLaudo";
+import { VEIAS as VEIAS_MMSS, statusSuperficialOptions as STATUS_MMSS, faseTromboOptions, cateterTipoOptions } from "./mmssVenosoLaudo";
 
 const VERSAO = 1; // venoso
 const VERSAO_ARTERIAL = 3;
+const VERSAO_MMSS = 4; // venoso de membro superior
 const CAMPOS = ["", "JSF", "joelho", "cm_acima_joelho", "cm_abaixo_joelho", "cm_acima_tornozelo", "tornozelo", "JSP"];
 const SUPERF = ["JSF", "Safena Magna", "JSP", "Safena Parva"];
 const TIPOS = ["Varizes Superficiais", "Varizes Reticulares", "Microvarizes", "Tromboflebite Superficial"];
@@ -133,6 +135,35 @@ function decodificarArterial(le) {
   return { modo: "arterial", lado, arterias, enxerto };
 }
 
+// Doppler venoso de MMSS (um membro): { lado, veias: { "Veia ...": { status, fluxo, fase } }, extra: { cateter } }
+// 1 byte por veia (na ordem de VEIAS): bits 0-2 = status + 1 (0 = sem a veia), bit 3 = fluxo contínuo, bits 4-5 = fase.
+// Depois, 2 bytes do cateter: tipo + 1 e veia + 1.
+export function codificarExameMMSS3D(ex) {
+  const b = [VERSAO_MMSS, ex.lado === "Direito" ? 1 : 0];
+  const vs = ex.veias || {};
+  VEIAS_MMSS.forEach((nome) => {
+    const v = vs[nome];
+    if (!v) { b.push(0); return; }
+    b.push((idx(STATUS_MMSS, v.status) + 1) | (v.fluxo === "Contínuo (não fásico)" ? 8 : 0) | (mais1(faseTromboOptions, v.fase) << 4));
+  });
+  const c = (ex.extra && ex.extra.cateter) || {};
+  b.push(c.presente ? mais1(cateterTipoOptions, c.tipo) | 8 : 0, c.presente ? mais1(VEIAS_MMSS, c.veia) : 0);
+  return paraBase64Url(b);
+}
+
+function decodificarMMSS(le) {
+  const lado = le() === 1 ? "Direito" : "Esquerdo";
+  const veias = {};
+  VEIAS_MMSS.forEach((nome) => {
+    const a = le();
+    if (!(a & 7)) return;
+    veias[nome] = { status: STATUS_MMSS[(a & 7) - 1] || STATUS_MMSS[0], fluxo: a & 8 ? "Contínuo (não fásico)" : "Fásico", fase: deMais1(faseTromboOptions, (a >> 4) & 3), observacao: "" };
+  });
+  const c1 = le(), c2 = le();
+  const cateter = c1 & 8 ? { presente: true, tipo: deMais1(cateterTipoOptions, c1 & 7), veia: deMais1(VEIAS_MMSS, c2) } : { presente: false, tipo: "", veia: "" };
+  return { modo: "mmssVenoso", lado, veias, extra: { cateter } };
+}
+
 export function decodificarExame3D(codigo) {
   const b = deBase64Url(codigo);
   let i = 0;
@@ -140,6 +171,7 @@ export function decodificarExame3D(codigo) {
   const comSinal = (v) => (v > 127 ? v - 256 : v);
   const versao = le();
   if (versao === VERSAO_ARTERIAL) return decodificarArterial(le);
+  if (versao === VERSAO_MMSS) return decodificarMMSS(le);
   if (versao !== VERSAO) throw new Error("versão desconhecida");
   const lado = le() === 1 ? "Direito" : "Esquerdo";
   const profundas = {};
@@ -171,7 +203,8 @@ export function decodificarExame3D(codigo) {
 // Link que vai no QR Code (endereço do site em uso + código depois do #).
 export function linkExame3D(ex, origem) {
   const base = origem || (typeof window !== "undefined" ? window.location.origin : "https://venoai.xyz");
-  return `${base}/3d#${ex && ex.modo === "arterial" ? codificarExameArterial3D(ex) : codificarExame3D(ex)}`;
+  const cod = ex && ex.modo === "arterial" ? codificarExameArterial3D(ex) : ex && ex.modo === "mmssVenoso" ? codificarExameMMSS3D(ex) : codificarExame3D(ex);
+  return `${base}/3d#${cod}`;
 }
 
 // QR Code do exame em 3D no PDF (Configurações > liga/desliga; padrão: ligado)

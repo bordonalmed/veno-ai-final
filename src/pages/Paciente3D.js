@@ -12,7 +12,7 @@ export default function Paciente3D() {
   const exame = useMemo(() => {
     try { return decodificarExame3D(decodeURIComponent((window.location.hash || "").slice(1))); } catch (_) { return null; }
   }, []);
-  const arterial = !!exame && exame.modo === "arterial";
+  const arterial = !!exame && exame.modo === "arterial", mmss = !!exame && exame.modo === "mmssVenoso";
   const nota = "Ilustração educativa gerada a partir dos achados do seu exame. Não substitui o laudo nem a consulta com o seu médico.";
   return (
     <div className="p3d">
@@ -20,13 +20,15 @@ export default function Paciente3D() {
         <img src={`${PUB}/venoai-logo-vitrine.webp`} alt="VENO.AI" />
         <div>
           <h1>Seu exame em 3D</h1>
-          {exame && <p>Membro inferior {exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler {arterial ? "arterial" : "venoso"}</p>}
+          {exame && <p>Membro {mmss ? "superior" : "inferior"} {exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler {arterial ? "arterial" : "venoso"}</p>}
         </div>
       </header>
       {exame ? (
         <>
           <main className="p3d-3d">
-            {arterial ? (
+            {mmss ? (
+              <Mapa3D modo="mmssVenoso" lado={exame.lado} veias={exame.veias} extra={exame.extra} nota={nota} />
+            ) : arterial ? (
               <Mapa3D modo="arterial" lado={exame.lado} arterias={exame.arterias} enxerto={exame.enxerto} nota={nota} />
             ) : (
               <Mapa3D
@@ -38,7 +40,15 @@ export default function Paciente3D() {
           </main>
           <section className="p3d-guia">
             <h2>Como ver</h2>
-            {arterial ? (
+            {mmss ? (
+            <ul>
+              <li><b>Gire</b> o braço arrastando com o dedo, ou use os botões <b>A</b>, <b>M</b>, <b>P</b> e <b>L</b>.</li>
+              <li><b>Azul</b>: veia pérvia, o sangue volta normalmente para o coração. <b>Cinza</b>: trombose (coágulo) fechando a veia. <b>Azul acinzentado</b>: trombo parcial. <b>Laranja</b>: recanalização parcial.</li>
+              <li>Linha <b>amarela</b>: cateter ou cabo dentro da veia.</li>
+              <li>Toque numa veia e depois em <b>Veia</b> e <b>Dentro</b> para ver por dentro.</li>
+              <li>A barra <b>Superficial / Profundo</b> deixa a pele mais transparente e mostra as veias profundas.</li>
+            </ul>
+            ) : arterial ? (
             <ul>
               <li><b>Gire</b> a perna arrastando com o dedo, ou use os botões <b>A</b>, <b>M</b>, <b>P</b> e <b>L</b>.</li>
               <li><b className="ruim">Vermelho</b>: artéria com sangue passando normalmente. <b>Laranja</b>: estreitamento (estenose). <b>Cinza escuro</b>: artéria fechada (oclusão), sem passagem de sangue.</li>
