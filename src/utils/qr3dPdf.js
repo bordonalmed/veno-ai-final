@@ -57,6 +57,21 @@ export async function qrsDoExameMMSS3D({ lado, veias, extras }, { forcar = false
   return out;
 }
 
+// Doppler arterial de MMSS: { Direito: png, Esquerdo: png }
+export async function qrsDoExameMMSSArterial3D({ lado, arterias }, { forcar = false } = {}) {
+  if (!forcar && !qr3dLigado()) return {};
+  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : lado ? [lado] : [];
+  const out = {};
+  for (const l of lados) {
+    try {
+      const link = linkExame3D({ modo: "mmssArterial", lado: l, arterias: arterias?.[l] || {} });
+      out[l] = await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 });
+    } catch (_) { /* sem QR: o laudo sai normal */ }
+  }
+  return out;
+}
+export const ehMMSSArterial = (exame) => /arterial de membros superiores|^mmss arterial$/i.test(String(exame?.tipoNome || "")) && !!(exame?.arteriasDireito || exame?.arteriasEsquerdo);
+
 export const ehMMSSVenoso = (exame) => /venoso de membros superiores|^mmss venoso$/i.test(String(exame?.tipoNome || "")) && !!exame?.veias;
 
 export const ehMMIIArterial = (exame) => /arterial de membros inferiores|^mmii arterial$/i.test(String(exame?.tipoNome || ""))

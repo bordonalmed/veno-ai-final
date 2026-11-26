@@ -29,8 +29,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const $ = (id) => raiz.querySelector('[data-m3d="' + id + '"]');
   let ex = exame;
   const SX = ladoMembro === "Direito" ? -1 : 1; // a perna direita é a esquerda espelhada
-  const ARTERIAL = opcoes.modo === 'arterial'; // Doppler arterial: a mesma perna, com a árvore arterial no lugar das veias
-  const BRACO = opcoes.modo === 'mmssVenoso'; // Doppler venoso de membro superior: braço, ombro e pescoço no lugar da perna
+  const ARTERIAL = opcoes.modo === 'arterial' || opcoes.modo === 'mmssArterial'; // Doppler arterial: a árvore arterial no lugar das veias
+  const BRACO = opcoes.modo === 'mmssVenoso' || opcoes.modo === 'mmssArterial'; // Doppler venoso de membro superior: braço, ombro e pescoço no lugar da perna
   let vivo = true, rafId = 0, tGerar2 = 0;
   // todo ouvinte passa por aqui para sair junto quando o 3D fecha
   const ouvintes = [];
@@ -122,6 +122,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     // c > 0 é o lado medial do pé (vai para -x na perna esquerda, +x na direita)
     aneisPe.push(anel((a) => { const sn = Math.sin(a), c = Math.cos(a); let y = -4.3 + h / 2 + (h / 2) * sn * (sn < 0 ? 0.8 : 1); if (sn < 0 && c > 0) y += arco * Math.pow(c, 1.5) * -sn * 3.2; return new T.Vector3(-SX * wx * c, y, z); }));
   }
+  const W3 = (x, y, z) => new T.Vector3(SX * x, y, z); // ponto do braço esquerdo (x < 0 = medial), espelhado no direito
   const PELES = []; // malhas da pele (para desenhar direto nela)
   // pele: quase opaca, com textura (poros e manchas suaves), relevo fino, tom avermelhado no joelho/tornozelo/pé,
   // luz que atravessa a pele (sombras quentes e borda) e brilho suave. As veias são desenhadas depois, "sob a pele".
@@ -155,7 +156,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       '}'].join('\n'),
   });
   // braço: pescoço (cilindro na linha média) e polegar (lado lateral, palma para a frente)
-  const W3 = (x, y, z) => new T.Vector3(SX * x, y, z);
+  
   if (BRACO) {
     const malhaPele = (g, centro) => { // casca com as normais para fora
       const pp = g.attributes.position, nn = g.attributes.normal, i0 = Math.floor(pp.count / 2), c = centro(pp.getY(i0));
@@ -350,6 +351,18 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     ['Artéria Fibular', 'A. fibular', .033, [[-.88, 263, .36], [-1.5, 284, .42], [-2.2, 298, .44], [-2.9, 302, .44], [-3.4, 300, .45]]],
     ['Artéria Tibial Posterior', 'A. tibial posterior', .036, [[-.88, 263, .36], [-1.5, 240, .42], [-2.3, 220, .45], [-3.1, 200, .55], [-3.55, 190, .68], [-3.78, 180, .72]]],
   ];
+  // membro superior: tronco braquiocefálico (só à direita), subclávia, axilar, braquial, radial e ulnar
+  const T_ART_BRACO = () => {
+    const dir = ladoMembro === 'Direito';
+    return [
+      ...(dir ? [['Tronco Braquiocefálico', 'Tronco braquiocefálico', .075, [W3(-2.42, 2.95, .16), W3(-2.4, 3.2, .16), W3(-2.3, 3.5, .15)]]] : []),
+      ['Artéria Subclávia', 'A. subclávia', .06, dir ? [W3(-2.3, 3.5, .15), W3(-1.8, 3.72, .12), W3(-1.15, 3.6, .1), W3(-.62, 3.35, .08)] : [W3(-2.42, 2.95, .1), W3(-2.3, 3.4, .12), W3(-1.8, 3.7, .12), W3(-1.15, 3.6, .1), W3(-.62, 3.35, .08)]],
+      ['Artéria Axilar', 'A. axilar', .055, [W3(-.62, 3.35, .08), W3(-.3, 3.1, .0), ponto(2.85, 172, .42), ponto(2.55, 165, .4)]],
+      ['Artéria Braquial', 'A. braquial', .045, [[2.55, 165, .4], [1.8, 155, .38], [1.0, 140, .36], [.4, 120, .34], [.05, 105, .32]]],
+      ['Artéria Radial', 'A. radial', .032, [[.05, 105, .32], [-.5, 80, .45], [-1.4, 60, .6], [-2.2, 50, .75], [-2.45, 45, .8]]],
+      ['Artéria Ulnar', 'A. ulnar', .032, [[.05, 105, .32], [-.5, 130, .45], [-1.4, 140, .58], [-2.2, 145, .72], [-2.45, 148, .78]]],
+    ];
+  };
   const TERCOS = ['Terço proximal', 'Terço médio', 'Terço distal'];
   // velocidade da animação do sangue nas artérias: normocinético bem mais rápido que o venoso; hipo mais lento, hiper mais rápido
   const RAPIDEZ_ART = 2.4, VEL_ART = { 'Normocinético': 1, 'Hipercinético': 1.7, 'Hipocinético': 0.4 };
@@ -388,7 +401,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new T.Float32BufferAttribute(nor, 3)); g.setIndex(idx); return g;
   }
   // calibre normal (mm) de cada artéria, para o tamanho do aneurisma
-  const CALIBRE = { 'Artéria Femoral Comum': 9, 'Artéria Femoral Profunda': 6, 'Artéria Femoral Superficial': 7, 'Artéria Poplítea': 6, 'Artéria Tibial Anterior': 3, 'Artéria Fibular': 3, 'Artéria Tibial Posterior': 3 };
+  const CALIBRE = { 'Tronco Braquiocefálico': 12, 'Artéria Subclávia': 8, 'Artéria Axilar': 7, 'Artéria Braquial': 5, 'Artéria Radial': 2.5, 'Artéria Ulnar': 2.5, 'Artéria Femoral Comum': 9, 'Artéria Femoral Profunda': 6, 'Artéria Femoral Superficial': 7, 'Artéria Poplítea': 6, 'Artéria Tibial Anterior': 3, 'Artéria Fibular': 3, 'Artéria Tibial Posterior': 3 };
   const fatorAneurisma = (key, v) => { const d = numA(v.aneurismaDiametro); return d > 0 ? clamp(d / (CALIBRE[key] || 6), 1.5, 2.8) : 2.2; };
   const bojo = (u) => Math.exp(-Math.pow((u - 0.5) / 0.11, 2));
   // malha do stent (losangos metálicos)
@@ -425,6 +438,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     return { status: enx.status === 'Ocluído' ? 'Ocluída' : 'Pérvia', localizacaoOclusao: 'Total', velocidade: 'Normocinético', tipoOnda: enx.status === 'Ocluído' ? 'Monofásico' : 'Bifásico', placa: enx.status === 'Com estenose' ? 'Presente' : 'Ausente', estenosePercentual: enx.status === 'Com estenose' ? '60' : '', localizacaoPlaca: loc, caracteristicaPlaca: 'Mista', ateromatose: 'Ausente', enxerto: true };
   }
   const curvaDaRota = (rota) => {
+    if (rota[0] instanceof T.Vector3) return new T.CatmullRomCurve3(rota);
     const pts0 = [];
     for (let i = 0; i < rota.length - 1; i++) { const [ya, ga, fa] = rota[i], [yb, gb, fb] = rota[i + 1], n = Math.max(2, Math.ceil(Math.abs(yb - ya) / 0.12)); for (let j = i ? 1 : 0; j <= n; j++) { const k = j / n; pts0.push(ponto(lerp(ya, yb, k), lerp(ga, gb, k), lerp(fa, fb, k))); } }
     return new T.CatmullRomCurve3(pts0);
@@ -433,7 +447,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const mAtero = new T.MeshStandardMaterial({ color: 0xfff1c2, roughness: 0.5 });
   function geraArterias() {
     const A = ex.arterias || {}, inicio = {}, extras = { stent: false, aneur: false, dissec: false, reab: false, enx: null };
-    const lista = T_ART.map(([key, nome, r0, rota]) => [key, nome, r0, curvaDaRota(rota), A[key]]);
+    const lista = (BRACO ? T_ART_BRACO() : T_ART).map(([key, nome, r0, rota]) => [key, nome, r0, curvaDaRota(rota), A[key]]);
     const enx = ex.enxerto && ex.enxerto.tipo ? ex.enxerto : null, rotaE = rotaEnxerto(enx);
     if (rotaE) { lista.push(['enxerto', 'Enxerto ' + enx.tipo.toLowerCase(), .05, curvaDaRota(rotaE), enxertoComoArteria(enx)]); extras.enx = enx.status === 'Ocluído' ? 'ocl' : 'ok'; }
     for (const [key, nome, r0, toda, v] of lista) {
@@ -447,14 +461,14 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
         const tex = null; // na perna as artérias ficam paradas (o fluxo aparece na Artéria e Por dentro)
         const cor = ehEnx && tr.e !== 'esten' ? new T.Color(tr.e === 'ocl' ? 0x7d8790 : 0x2f6fd6).convertSRGBToLinear() : COR3[tr.e].clone();
         const mat = new T.MeshStandardMaterial({ color: cor.clone(), map: tex, roughness: 0.42, emissive: cor.clone().multiplyScalar(0.3) });
-        const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; gVeias.add(malha);
+        const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; malha.userData.semFade = BRACO && /Tronco|Subclávia|Axilar/.test(key); gVeias.add(malha);
         const rot = tr.e === 'esten' ? (tr.rest ? 'reestenose do stent' : 'estenose ' + Math.round(tr.pct) + '%') : tr.e === 'ocl' && v.stent === 'Ocluído' && tr.a >= CENTRAL[0] - 1e-6 && tr.b <= CENTRAL[1] + 1e-6 ? 'stent ocluído' : null;
         TUBOS.push({ nome, chave: { tipo: ehEnx ? 'enxerto' : 'arteria', key }, estado: tr.e, rotulo: rot, curva, tex, mat, sentido, corFixa: ehEnx && tr.e !== 'esten' ? cor : null });
         for (let q = 0; q < 24; q++) AMOSTRAS.push({ p: curva.getPointAt(q / 23), v: TUBOS.length - 1 });
         if (inicio[key] === undefined) inicio[key] = TUBOS.length - 1;
       }
       if (ehEnx) continue;
-      const ajusta = (o) => { o.userData.camada = 'safena'; gVeias.add(o); return o; };
+      const ajusta = (o) => { o.userData.camada = 'safena'; o.userData.semFade = BRACO && /Tronco|Subclávia|Axilar/.test(key); gVeias.add(o); return o; };
       // stent: malha metálica em volta do trecho central
       if (v.stent && v.stent !== 'Ausente') {
         extras.stent = true;
@@ -491,13 +505,13 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       }
     }
     const rot = (i, key, txt, t) => { const k = inicio[key]; if (k === undefined) return null; const lst = TUBOS.filter((q) => q.chave.key === key); return { el: $('l' + i), txt, p: TUBOS[k].curva.getPointAt(t), v: k, ruim: lst.some((q) => q.estado === 'esten' || q.estado === 'ocl') }; };
-    ROT_P = [rot(0, 'Artéria Femoral Comum', 'A. femoral comum', .5), rot(1, 'Artéria Femoral Superficial', 'A. femoral sup.', .4), rot(2, 'Artéria Poplítea', 'A. poplítea', .5), rot(3, 'Artéria Tibial Anterior', 'A. tibial ant.', .6), rot(4, 'Artéria Tibial Posterior', 'A. tibial post.', .6)].filter(Boolean);
+    ROT_P = BRACO ? [rot(0, 'Artéria Subclávia', 'A. subclávia', .45), rot(1, 'Artéria Axilar', 'A. axilar', .5), rot(2, 'Artéria Braquial', 'A. braquial', .45), rot(3, 'Artéria Radial', 'A. radial', .55), rot(4, 'Artéria Ulnar', 'A. ulnar', .55)].filter(Boolean) : [rot(0, 'Artéria Femoral Comum', 'A. femoral comum', .5), rot(1, 'Artéria Femoral Superficial', 'A. femoral sup.', .4), rot(2, 'Artéria Poplítea', 'A. poplítea', .5), rot(3, 'Artéria Tibial Anterior', 'A. tibial ant.', .6), rot(4, 'Artéria Tibial Posterior', 'A. tibial post.', .6)].filter(Boolean);
     for (const r of ROT_P) { r.el.textContent = r.txt; r.el.dataset.ruim = r.ruim ? '1' : '0'; }
     const tem = (e) => TUBOS.some((t) => t.estado === e && !t.corFixa), ponto2 = (c, t) => '<span><i style="background:' + c + '"></i>' + t + '</span>';
     $('leg').innerHTML = ponto2('#d8343a', 'fluxo normal') + (tem('esten') ? ponto2('#f5a623', 'estenose') : '') + (tem('ocl') ? ponto2('#3b4048', 'oclusão') : '') + (tem('hiper') ? ponto2('#9c1f24', 'hipercinético') : '') + (tem('hipo') ? ponto2('#ef8080', 'hipocinético') : '')
       + (extras.stent ? ponto2('#c9d1d9', 'stent') : '') + (extras.aneur ? ponto2('#b3262e', 'aneurisma') : '') + (extras.dissec ? ponto2('#ffffff', 'dissecção') : '') + (extras.reab ? ponto2('#ef8080', 'colaterais') : '') + (extras.enx ? ponto2(extras.enx === 'ocl' ? '#7d8790' : '#2f6fd6', 'enxerto') : '');
     const alterada = TUBOS.findIndex((t) => t.estado === 'esten' || t.estado === 'ocl');
-    st.sel = alterada >= 0 ? alterada : (inicio['Artéria Femoral Superficial'] || 0);
+    st.sel = alterada >= 0 ? alterada : (inicio[BRACO ? 'Artéria Braquial' : 'Artéria Femoral Superficial'] || 0);
   }
   const raioSafena = (e, mm, base) => e === 'ausente' ? .013 : e === 'ruim' ? (parseFloat(mm) > 0 ? clamp(parseFloat(mm) * 0.0085, .03, .1) : base * 1.6) : e === 'trombo' ? base * 1.35 : base;
   // ---------- Doppler venoso de membro superior (MMSS) ----------
@@ -893,7 +907,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     return artInfo.total ? 0 : v * artInfo.fator * artInfo.sentido;
   }
   // ---------- Doppler arterial (espectral, esquemático) no ponto da amostra ----------
-  const VPS0 = { 'Artéria Femoral Comum': 110, 'Artéria Femoral Profunda': 80, 'Artéria Femoral Superficial': 90, 'Artéria Poplítea': 70, 'Artéria Tibial Anterior': 55, 'Artéria Fibular': 45, 'Artéria Tibial Posterior': 55, enxerto: 70 };
+  const VPS0 = { 'Tronco Braquiocefálico': 100, 'Artéria Subclávia': 100, 'Artéria Axilar': 90, 'Artéria Braquial': 70, 'Artéria Radial': 55, 'Artéria Ulnar': 55, 'Artéria Femoral Comum': 110, 'Artéria Femoral Profunda': 80, 'Artéria Femoral Superficial': 90, 'Artéria Poplítea': 70, 'Artéria Tibial Anterior': 55, 'Artéria Fibular': 45, 'Artéria Tibial Posterior': 55, enxerto: 70 };
   const razaoVPS = (p) => p < 50 ? 1 + p / 50 * 0.9 : p <= 75 ? 2 + (p - 50) / 25 * 2 : Math.min(7, 4 + (p - 75) / 25 * 2.5);
   const FORMAS = {
     'Trifásico': (f) => gs(f, 0.13, 0.07) - 0.32 * gs(f, 0.3, 0.07) + 0.14 * gs(f, 0.46, 0.08),

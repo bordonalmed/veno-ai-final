@@ -9,11 +9,13 @@ import {
   tipoOndaOptions, caracteristicaPlacaOptions, ateromatoseOptions, stentOptions, aneurismaFormaOptions,
   enxertoTipoOptions, enxertoOrigemOptions, enxertoDestinoOptions, enxertoStatusOptions, enxertoLocalOptions,
 } from "./mmiiArterialLaudo";
+import { ARTERIAS as ARTERIAS_MMSS } from "./mmssArterialLaudo";
 import { VEIAS as VEIAS_MMSS, statusSuperficialOptions as STATUS_MMSS, faseTromboOptions, cateterTipoOptions } from "./mmssVenosoLaudo";
 
 const VERSAO = 1; // venoso
 const VERSAO_ARTERIAL = 3;
 const VERSAO_MMSS = 4; // venoso de membro superior
+const VERSAO_MMSS_ARTERIAL = 5; // arterial de membro superior (mesmos 6 bytes por artéria)
 const CAMPOS = ["", "JSF", "joelho", "cm_acima_joelho", "cm_abaixo_joelho", "cm_acima_tornozelo", "tornozelo", "JSP"];
 const SUPERF = ["JSF", "Safena Magna", "JSP", "Safena Parva"];
 const TIPOS = ["Varizes Superficiais", "Varizes Reticulares", "Microvarizes", "Tromboflebite Superficial"];
@@ -85,9 +87,10 @@ export function codificarExame3D(ex) {
 const mais1 = (lista, v) => { const k = lista.indexOf(v); return k < 0 ? 0 : k + 1; };
 const deMais1 = (lista, n) => (n ? lista[n - 1] || "" : "");
 export function codificarExameArterial3D(ex) {
-  const b = [VERSAO_ARTERIAL, ex.lado === "Direito" ? 1 : 0];
+  const mmss = ex.modo === "mmssArterial";
+  const b = [mmss ? VERSAO_MMSS_ARTERIAL : VERSAO_ARTERIAL, ex.lado === "Direito" ? 1 : 0];
   const art = ex.arterias || {};
-  ARTERIAS.forEach((nome) => {
+  (mmss ? ARTERIAS_MMSS : ARTERIAS).forEach((nome) => {
     const v = art[nome];
     if (!v) { b.push(0, 0, 0, 0, 0, 0); return; }
     b.push(128 | (v.status === "Ocluída" ? 1 : 0) | (mais1(localizacaoOclusaoOptions, v.localizacaoOclusao) << 1) | (idx(velocidadeOptions, v.velocidade) << 4) | (v.placa === "Presente" ? 64 : 0));
@@ -103,10 +106,10 @@ export function codificarExameArterial3D(ex) {
   return paraBase64Url(b);
 }
 
-function decodificarArterial(le) {
+function decodificarArterial(le, mmss = false) {
   const lado = le() === 1 ? "Direito" : "Esquerdo";
   const arterias = {};
-  ARTERIAS.forEach((nome) => {
+  (mmss ? ARTERIAS_MMSS : ARTERIAS).forEach((nome) => {
     const a = le(), pct = le(), c = le(), d = le(), diam = le(), e = le();
     if (!(a & 128)) return;
     const n = (a >> 1) & 7, lp = c & 3, cp = (c >> 4) & 3;
@@ -132,7 +135,7 @@ function decodificarArterial(le) {
   });
   const e1 = le(), e2 = le();
   const enxerto = { tipo: deMais1(enxertoTipoOptions, e1 & 7), origem: deMais1(enxertoOrigemOptions, (e1 >> 3) & 3), destino: deMais1(enxertoDestinoOptions, (e1 >> 5) & 3), status: deMais1(enxertoStatusOptions, e2 & 3), local: deMais1(enxertoLocalOptions, (e2 >> 2) & 3) };
-  return { modo: "arterial", lado, arterias, enxerto };
+  return mmss ? { modo: "mmssArterial", lado, arterias } : { modo: "arterial", lado, arterias, enxerto };
 }
 
 // Doppler venoso de MMSS (um membro): { lado, veias: { "Veia ...": { status, fluxo, fase } }, extra: { cateter } }
@@ -172,6 +175,7 @@ export function decodificarExame3D(codigo) {
   const versao = le();
   if (versao === VERSAO_ARTERIAL) return decodificarArterial(le);
   if (versao === VERSAO_MMSS) return decodificarMMSS(le);
+  if (versao === VERSAO_MMSS_ARTERIAL) return decodificarArterial(le, true);
   if (versao !== VERSAO) throw new Error("versão desconhecida");
   const lado = le() === 1 ? "Direito" : "Esquerdo";
   const profundas = {};
@@ -203,7 +207,7 @@ export function decodificarExame3D(codigo) {
 // Link que vai no QR Code (endereço do site em uso + código depois do #).
 export function linkExame3D(ex, origem) {
   const base = origem || (typeof window !== "undefined" ? window.location.origin : "https://venoai.xyz");
-  const cod = ex && ex.modo === "arterial" ? codificarExameArterial3D(ex) : ex && ex.modo === "mmssVenoso" ? codificarExameMMSS3D(ex) : codificarExame3D(ex);
+  const cod = ex && (ex.modo === "arterial" || ex.modo === "mmssArterial") ? codificarExameArterial3D(ex) : ex && ex.modo === "mmssVenoso" ? codificarExameMMSS3D(ex) : codificarExame3D(ex);
   return `${base}/3d#${cod}`;
 }
 

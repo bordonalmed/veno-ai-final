@@ -104,3 +104,15 @@ describe("código 3D do Doppler venoso de MMSS", () => {
     expect(linkExame3D({ modo: "mmssVenoso", lado: "Direito", veias, extra }, "https://venoai.xyz").length).toBeLessThan(60);
   });
 });
+
+describe("código 3D do Doppler arterial de MMSS", () => {
+  it("leva as artérias do membro superior (com o tronco braquiocefálico)", () => {
+    const v = { status: "Pérvia", localizacaoOclusao: "", ateromatose: "Discreta", velocidade: "Normocinético", tipoOnda: "Bifásico", placa: "Presente", estenosePercentual: "65", caracteristicaPlaca: "Calcificada", localizacaoPlaca: "Terço proximal", stent: "Pérvio", aneurisma: false, aneurismaDiametro: "", aneurismaForma: "", tromboMural: false, disseccao: false, reabitada: false, sentido: "Anterógrado" };
+    const arterias = { "Tronco Braquiocefálico": { ...v, placa: "Ausente", estenosePercentual: "", caracteristicaPlaca: "", localizacaoPlaca: "", stent: "Ausente" }, "Artéria Subclávia": v, "Artéria Radial": { ...v, status: "Ocluída", localizacaoOclusao: "Terço distal", placa: "Ausente", estenosePercentual: "", caracteristicaPlaca: "", localizacaoPlaca: "", stent: "Ausente" } };
+    const d = decodificarExame3D(linkExame3D({ modo: "mmssArterial", lado: "Direito", arterias }, "x").split("#")[1]);
+    expect(d.modo).toBe("mmssArterial");
+    expect(d.arterias["Artéria Subclávia"]).toEqual(v);
+    expect(d.arterias["Tronco Braquiocefálico"].status).toBe("Pérvia");
+    expect(d.arterias["Artéria Radial"].localizacaoOclusao).toBe("Terço distal");
+  });
+});
