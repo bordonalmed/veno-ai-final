@@ -400,7 +400,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
         const curva = new T.CatmullRomCurve3(pts), comp = curva.getLength();
         const k = tr.e === 'esten' ? clamp(tr.pct / 100, 0, .95) * 0.8 : 0;
         const rFn = (u) => { const ug = lerp(tr.a, tr.b, u); return r0 * (tr.e === 'ocl' ? 0.92 : 1) * (1 - k * Math.pow(Math.sin(Math.PI * u), 2)) * (aneur ? 1 + (aneur - 1) * bojo(ug) : 1); };
-        let tex = null; if (tr.e !== 'ocl') { tex = texBase.clone(); tex.needsUpdate = true; tex.repeat.set(Math.max(2, comp * 2.6), 1); }
+        const tex = null; // na perna as artérias ficam paradas (o fluxo aparece na Artéria e Por dentro)
         const cor = ehEnx && tr.e !== 'esten' ? new T.Color(tr.e === 'ocl' ? 0x7d8790 : 0x2f6fd6).convertSRGBToLinear() : COR3[tr.e].clone();
         const mat = new T.MeshStandardMaterial({ color: cor.clone(), map: tex, roughness: 0.42, emissive: cor.clone().multiplyScalar(0.3) });
         const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; gVeias.add(malha);
