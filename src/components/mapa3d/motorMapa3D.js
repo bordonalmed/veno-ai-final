@@ -947,7 +947,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const y = st.nivel === 'dentro' ? -cam.inY - 1.2 : cam.alvoY; sAmostra = sDeY(y);
     const pf = perfilArt(y); gate.position.set(pf.cx, y, pf.cz); gate.quaternion.copy(camV3.quaternion); gate.visible = st.nivel === 'veia' && !st.externa;
     dopAtual = dopplerNoPonto(sAmostra);
-    const n = 'Amostra: ' + dopAtual.nota, r = dopAtual.vps ? 'VPS ≈ ' + dopAtual.vps + ' cm/s' + (dopAtual.razao ? ' · razão ' + dopAtual.razao.toFixed(1).replace('.', ',') : '') : 'sem fluxo';
+    const n = '◉ ' + dopAtual.nota, r = dopAtual.vps ? 'VPS ' + dopAtual.vps + ' cm/s' + (dopAtual.razao ? ' · R ' + dopAtual.razao.toFixed(1).replace('.', ',') : '') : 'sem fluxo';
     if (dopN.textContent !== n) dopN.textContent = n; if (dopR.textContent !== r) { dopR.textContent = r; dopR.style.color = !dopAtual.vps || dopAtual.k >= 2 ? 'var(--refluxo)' : ''; }
   }
   function desenhaDopplerArt() {
@@ -1044,7 +1044,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const DICAS = ARTERIAL ? { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para ver o nome e o achado.', veia: 'Arraste para girar. Em corte: placa lipídica amarela, calcificada branca. “Por fora” mostra a artéria por fora. Aproxime para entrar, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar com o sangue, afaste para sair.' } : { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
-    dica.textContent = DICAS[st.nivel]; const naP = st.nivel === 'perna'; $('dopBox').dataset.min = '0'; $('dopBox').hidden = !(ARTERIAL && !naP); fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (ARTERIAL && $('bCor')) $('bCor').hidden = st.nivel !== 'veia'; if (st.pronto) ajusta();
+    const naP = st.nivel === 'perna'; dica.textContent = DICAS[st.nivel] + (naP ? '' : ' Toque nas caixas para recolher.'); $('dopBox').dataset.min = '0'; $('dopBox').hidden = !(ARTERIAL && !naP); fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (ARTERIAL && $('bCor')) $('bCor').hidden = st.nivel !== 'veia'; if (st.pronto) ajusta();
   }
   function irPara(n) {
     if (n === st.nivel || st.trocando) return;
@@ -1282,7 +1282,9 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     if (dopN.textContent !== n) dopN.textContent = n; if (dopR.textContent !== rr) { dopR.textContent = rr; dopR.style.color = (e === 'ruim' || e === 'trombo') ? 'var(--refluxo)' : ''; }
   }
   const dop = $('dop'), dctx = dop.getContext('2d');
-  if (ARTERIAL) { dop.style.height = '78px'; $('dopBox').dataset.arterial = '1'; }
+  if (ARTERIAL) $('dopBox').dataset.arterial = '1';
+  // toque na caixa do topo ou na do Doppler: recolhe / abre (para ver melhor o vaso)
+  for (const id of ['fase', 'dopBox']) { const el = $(id); if (el) ouvir(el, 'click', () => { el.dataset.recolhida = el.dataset.recolhida === '1' ? '0' : '1'; if (id === 'dopBox') ajusta(); }); }
   function desenhaDoppler() {
     if (st.nivel === 'perna' || $('dopBox').hidden) return;
     if (ARTERIAL) { desenhaDopplerArt(); return; }
