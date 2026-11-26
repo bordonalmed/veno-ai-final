@@ -985,13 +985,15 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     cel.instanceMatrix.needsUpdate = true;
   }
 
-  // válvulas da veia escolhida: a subclávia só tem válvula no segmento junto à jugular (a de cima, lado do coração)
+  // válvulas da veia escolhida [de baixo (lado da mão), de cima (lado do coração)]:
+  // subclávia só tem válvula no segmento junto à jugular; axilar é considerada sem válvula
+  const VALVULAS_MMSS = { 'Veia Subclávia': [false, true], 'Veia Axilar': [false, false] };
   function ajustaValvulas() {
     if (ARTERIAL) return;
-    const tb = TUBOS[st.sel], semBaixo = BRACO && tb && tb.chave && tb.chave.key === 'Veia Subclávia';
-    VALV_ON[0] = !semBaixo; VALV_ON[1] = true;
+    const tb = TUBOS[st.sel], cfg = (BRACO && tb && tb.chave && VALVULAS_MMSS[tb.chave.key]) || [true, true];
+    VALV_ON[0] = cfg[0]; VALV_ON[1] = cfg[1];
     for (const f of folhetos) f.m.visible = VALV_ON[VALVULAS.indexOf(f.z0)];
-    ROT_V[2][1] = VALV_ON[0] ? VALVULAS[0] + H * 0.55 : 999;
+    ROT_V[2][1] = VALV_ON[0] ? VALVULAS[0] + H * 0.55 : 999; ROT_V[3][1] = VALV_ON[1] ? VALVULAS[1] + H * 0.55 : 999;
     atualizaParede();
   }
   // coágulo (MMSS): trombo parcial de um lado da luz, ou trombose oclusiva preenchendo a veia
@@ -1253,7 +1255,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       else if (e === 'parcial') { tom = 'refluxo'; t = 'Trombo parcial · o sangue passa ao redor'; }
       else if (e === 'recan') t = 'Recanalização parcial · fluxo reduzido';
       else if (e === 'ausente') t = 'Veia ausente';
-      else t = tb && tb.chave && tb.chave.key === 'Veia Subclávia' ? 'Sangue segue para o coração · válvula só junto à jugular' : sist ? 'Sangue segue para o coração' : 'Fluxo venoso normal';
+      else t = tb && tb.chave && tb.chave.key === 'Veia Subclávia' ? 'Sangue segue para o coração · válvula só junto à jugular' : tb && tb.chave && tb.chave.key === 'Veia Axilar' ? 'Sangue segue para o coração · sem válvulas' : sist ? 'Sangue segue para o coração' : 'Fluxo venoso normal';
     } else {
       const e = estSel(); k = (TUBOS[st.sel] ? TUBOS[st.sel].nome : 'Veia') + ' · ' + ROTULO[e];
       if (e === 'trombo') { tom = 'refluxo'; t = 'Não compressível · sem fluxo'; }
