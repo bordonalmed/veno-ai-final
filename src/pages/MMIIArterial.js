@@ -376,7 +376,7 @@ function MMIIArterial() {
     }
 
     // QR Code do exame em 3D (um por membro), no rodapé da última página do laudo do membro
-    const qrs = await qrsDoExameArterial3D({ lado, arterias: { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo } });
+    const qrs = await qrsDoExameArterial3D({ lado, arterias: { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }, enxertos });
     let pagina = 0;
     lados.forEach((ladoAtual, idx) => {
       if (pagina > 0) doc.addPage();

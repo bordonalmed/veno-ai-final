@@ -143,7 +143,7 @@ export async function montarPDFExame(exame, perfil) {
   const blocos = linhasDoLaudo(exame.laudo);
   // Doppler venoso / arterial de MMII: QR Code do exame em 3D no rodapé da última página de cada membro
   const qrs = ehMMIIVenoso(exame) ? await qrsDoExame3D(exame)
-    : ehMMIIArterial(exame) ? await qrsDoExameArterial3D({ lado: exame.lado, arterias: { Direito: exame.arteriasDireito, Esquerdo: exame.arteriasEsquerdo } })
+    : ehMMIIArterial(exame) ? await qrsDoExameArterial3D({ lado: exame.lado, arterias: { Direito: exame.arteriasDireito, Esquerdo: exame.arteriasEsquerdo }, enxertos: exame.enxertos })
     : {};
   const ladosQr = exame.lado === "Ambos" ? ["Direito", "Esquerdo"] : [exame.lado];
   const ultimas = [];

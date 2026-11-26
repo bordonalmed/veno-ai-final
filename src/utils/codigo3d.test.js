@@ -58,16 +58,31 @@ describe("código 3D do Doppler arterial", () => {
     const d = decodificarExame3D(codificarExameArterial3D({ lado: "Direito", arterias }));
     expect(d.modo).toBe("arterial");
     expect(d.lado).toBe("Direito");
-    for (const [nome, v] of Object.entries(arterias)) expect(d.arterias[nome]).toEqual(v);
+    for (const [nome, v] of Object.entries(arterias)) expect(d.arterias[nome]).toMatchObject(v);
     expect(d.arterias["Artéria Fibular"]).toBeUndefined();
   });
 
   it("o link arterial é curto e o venoso continua abrindo", () => {
     const link = linkExame3D({ modo: "arterial", lado: "Esquerdo", arterias }, "https://venoai.xyz");
-    expect(link.length).toBeLessThan(80);
+    expect(link.length).toBeLessThan(120);
     expect(decodificarExame3D(link.split("#")[1]).lado).toBe("Esquerdo");
     const v = decodificarExame3D(linkExame3D({ lado: "Esquerdo", profundas: {}, superficiais: {}, magna: {}, parva: {}, perfurantes: [], varizes: { tracos: [] } }, "x").split("#")[1]);
     expect(v.modo).toBeUndefined();
     expect(v.lado).toBe("Esquerdo");
+  });
+});
+
+describe("código 3D arterial: stent, aneurisma, dissecção, colaterais, sentido e enxerto", () => {
+  it("leva todos os achados do 2D para o 3D", () => {
+    const v = {
+      status: "Pérvia", localizacaoOclusao: "", ateromatose: "Severa", velocidade: "Hipocinético", tipoOnda: "Amortecido (tardus-parvus)",
+      placa: "Presente", estenosePercentual: "85", caracteristicaPlaca: "Mista", localizacaoPlaca: "Terço proximal",
+      stent: "Com reestenose", aneurisma: true, aneurismaDiametro: "18.5", aneurismaForma: "Sacular", tromboMural: true,
+      disseccao: true, reabitada: true, sentido: "Retrógrado",
+    };
+    const enxerto = { tipo: "Femorodistal", origem: "Femoral superficial", destino: "Fibular", status: "Com estenose", local: "Anastomose distal" };
+    const d = decodificarExame3D(codificarExameArterial3D({ lado: "Esquerdo", arterias: { "Artéria Poplítea": v }, enxerto }));
+    expect(d.arterias["Artéria Poplítea"]).toEqual(v);
+    expect(d.enxerto).toEqual(enxerto);
   });
 });

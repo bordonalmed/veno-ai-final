@@ -398,7 +398,7 @@ export default function MapaInterativoArterial({
             {vista3d ? (
               <Suspense fallback={<div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>}>
                 {/* no 3D: tocar numa artéria abre o mesmo painel do 2D */}
-                <Mapa3D key={l} modo="arterial" lado={l} arterias={valores} enxerto={enxertos?.[l]} onSelecionar={(_, key) => setSelecionada(key)} />
+                <Mapa3D key={l} modo="arterial" lado={l} arterias={valores} enxerto={enxertos?.[l]} onSelecionar={(tipo, key) => setSelecionada(tipo === "arteria" ? key : null)} />
               </Suspense>
             ) : (
               <DesenhoMMIIArterial

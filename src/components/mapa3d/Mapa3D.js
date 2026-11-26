@@ -112,7 +112,7 @@ export default function Mapa3D(props) {
           <button type="button" data-m3d="nVeia" aria-pressed="false">{arterial ? "Artéria" : "Veia"}</button>
           <button type="button" data-m3d="nDentro" aria-pressed="false">Dentro</button>
         </div>
-        <button type="button" className="m3d-mini" data-m3d="bCor" aria-pressed="false" hidden={arterial}>Doppler</button>
+        <button type="button" className="m3d-mini" data-m3d="bCor" aria-pressed="false">{arterial ? "Por fora" : "Doppler"}</button>
       </div>
       <p className="m3d-nota">
         <b data-m3d="dica" />{" "}

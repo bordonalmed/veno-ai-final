@@ -30,13 +30,13 @@ export async function qrsDoExame3D({ lado, profundas, superficiais, magna, parva
 }
 
 // Doppler arterial: { Direito: png, Esquerdo: png } a partir de arterias = { Direito: {...}, Esquerdo: {...} }
-export async function qrsDoExameArterial3D({ lado, arterias }, { forcar = false } = {}) {
+export async function qrsDoExameArterial3D({ lado, arterias, enxertos }, { forcar = false } = {}) {
   if (!forcar && !qr3dLigado()) return {};
   const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : lado ? [lado] : [];
   const out = {};
   for (const l of lados) {
     try {
-      const link = linkExame3D({ modo: "arterial", lado: l, arterias: arterias?.[l] || {} });
+      const link = linkExame3D({ modo: "arterial", lado: l, arterias: arterias?.[l] || {}, enxerto: enxertos?.[l] || null });
       out[l] = await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 });
     } catch (_) { /* sem QR: o laudo sai normal */ }
   }
