@@ -986,8 +986,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
 
   // válvulas da veia escolhida [de baixo (lado da mão), de cima (lado do coração)]:
-  // axilar: 1 válvula (raramente 2), próxima ao tórax; subclávia: sem válvulas
-  const VALVULAS_MMSS = { 'Veia Axilar': [false, true], 'Veia Subclávia': [false, false] };
+  // subclávia: considerada sem válvulas (tem no máximo 1, perto da jugular); axilar e as demais têm válvulas
+  const VALVULAS_MMSS = { 'Veia Subclávia': [false, false] };
   function ajustaValvulas() {
     if (ARTERIAL) return;
     const tb = TUBOS[st.sel], cfg = (BRACO && tb && tb.chave && VALVULAS_MMSS[tb.chave.key]) || [true, true];
@@ -1255,7 +1255,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       else if (e === 'parcial') { tom = 'refluxo'; t = 'Trombo parcial · o sangue passa ao redor'; }
       else if (e === 'recan') t = 'Recanalização parcial · fluxo reduzido';
       else if (e === 'ausente') t = 'Veia ausente';
-      else t = tb && tb.chave && tb.chave.key === 'Veia Subclávia' ? 'Sangue segue para o coração · sem válvulas' : tb && tb.chave && tb.chave.key === 'Veia Axilar' ? 'Sangue segue para o coração · válvula próxima ao tórax' : sist ? 'Sangue segue para o coração' : 'Fluxo venoso normal';
+      else t = tb && tb.chave && tb.chave.key === 'Veia Subclávia' ? 'Sangue segue para o coração · sem válvulas' : sist ? 'Sangue segue para o coração' : 'Fluxo venoso normal';
     } else {
       const e = estSel(); k = (TUBOS[st.sel] ? TUBOS[st.sel].nome : 'Veia') + ' · ' + ROTULO[e];
       if (e === 'trombo') { tom = 'refluxo'; t = 'Não compressível · sem fluxo'; }
