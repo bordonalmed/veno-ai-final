@@ -9,8 +9,10 @@ import { normalizarVarizesLado } from "../../utils/mmiiVenosoLaudo";
 // pele (ferramenta = caneta da barra de desenho); a perna se refaz na hora,
 // sem mexer na câmera. Sem eles (página do paciente), o 3D só mostra.
 // modo="arterial" (Doppler arterial): a mesma perna com a árvore arterial (arterias / enxerto do lado).
-function montarExame({ modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes }) {
+// modo="mmssVenoso" (Doppler venoso de membro superior): o braço, com veias (veias / extra do lado).
+function montarExame({ modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes }) {
   if (modo === "arterial") return { arterias: arterias || {}, enxerto: enxerto || null };
+  if (modo === "mmssVenoso") return { veias: veias || {}, extra: extra || null };
   return {
     profundas: profundas || {},
     superficiais: superficiais || {},
@@ -22,7 +24,7 @@ function montarExame({ modo, arterias, enxerto, profundas, superficiais, magna, 
 }
 
 export default function Mapa3D(props) {
-  const { lado, nota, modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes, ferramenta } = props;
+  const { lado, nota, modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes, ferramenta } = props;
   const arterial = modo === "arterial";
   const raiz = useRef(null);
   const motor = useRef(null);
@@ -43,7 +45,7 @@ export default function Mapa3D(props) {
         if (typeof ultimas.current.onTracosChange === "function") ultimas.current.onTracosChange(atual.filter((_, j) => j !== i));
       },
     } : {};
-    opcoes.modo = p.modo === "arterial" ? "arterial" : "venoso";
+    opcoes.modo = p.modo === "arterial" || p.modo === "mmssVenoso" ? p.modo : "venoso";
     const parar = iniciarMapa3D(raiz.current, montarExame(p), p.lado, opcoes);
     motor.current = parar;
     return () => { motor.current = null; parar(); };
@@ -52,13 +54,13 @@ export default function Mapa3D(props) {
   // achado ou traço mudou: refaz a perna sem recriar o 3D
   const ultimoExame = useRef(null);
   useEffect(() => {
-    const ex = montarExame({ modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes });
+    const ex = montarExame({ modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes });
     const chave = JSON.stringify(ex);
     if (ultimoExame.current === null) { ultimoExame.current = chave; return; }
     if (chave === ultimoExame.current) return;
     ultimoExame.current = chave;
     if (motor.current && motor.current.atualizar) motor.current.atualizar(ex);
-  }, [modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes]);
+  }, [modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes]);
 
   useEffect(() => {
     if (motor.current && motor.current.caneta) motor.current.caneta(ferramenta || null);
@@ -67,7 +69,7 @@ export default function Mapa3D(props) {
   return (
     <div className="m3d" ref={raiz} data-m3d="raiz">
       <div className="m3d-palco" id="m3d-palco" data-m3d="v3d">
-        <canvas className="m3d-gl" data-m3d="gl" aria-label={`Membro inferior ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa${arterial ? " arterial" : ""}`} />
+        <canvas className="m3d-gl" data-m3d="gl" aria-label={`Membro ${modo === "mmssVenoso" ? "superior" : "inferior"} ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa${arterial ? " arterial" : ""}`} />
         <div className="m3d-semgl" data-m3d="semgl" hidden>Este navegador não conseguiu abrir o 3D (WebGL). Tente no Chrome ou no Safari atualizados.</div>
         <div className="m3d-fase" data-m3d="fase" data-tom="normal" hidden>
           <div className="k" data-m3d="faseK" />
@@ -108,7 +110,7 @@ export default function Mapa3D(props) {
       </div>
       <div className="m3d-controles">
         <div className="m3d-seg" role="group" aria-label="Nível de zoom">
-          <button type="button" data-m3d="nPerna" aria-pressed="true">Perna</button>
+          <button type="button" data-m3d="nPerna" aria-pressed="true">{modo === "mmssVenoso" ? "Braço" : "Perna"}</button>
           <button type="button" data-m3d="nVeia" aria-pressed="false">{arterial ? "Artéria" : "Veia"}</button>
           <button type="button" data-m3d="nDentro" aria-pressed="false">Dentro</button>
         </div>
