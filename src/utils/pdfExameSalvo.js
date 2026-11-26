@@ -7,7 +7,7 @@ import { saveAs } from "file-saver";
 import { carimbarMarcaVenoAIPdfLib } from "./pdfMarca";
 import { carregarDadosPerfil, perfilAtivo, perfilCombinado } from "./perfilLaudo";
 import { tamanhoProporcional } from "./pdfCabecalho";
-import { qrsDoExame3D, desenharQr3dRodapePdfLib, ehMMIIVenoso } from "./qr3dPdf";
+import { qrsDoExame3D, qrsDoExameArterial3D, desenharQr3dRodapePdfLib, ehMMIIVenoso, ehMMIIArterial } from "./qr3dPdf";
 
 const MM = 72 / 25.4; // pontos por mm
 const LARGURA = 595;
@@ -141,8 +141,10 @@ export async function montarPDFExame(exame, perfil) {
   const alturaLinha = 14;
   const largura = DIR - ESQ;
   const blocos = linhasDoLaudo(exame.laudo);
-  // Doppler venoso de MMII: QR Code do exame em 3D no rodapé da última página de cada membro
-  const qrs = ehMMIIVenoso(exame) ? await qrsDoExame3D(exame) : {};
+  // Doppler venoso / arterial de MMII: QR Code do exame em 3D no rodapé da última página de cada membro
+  const qrs = ehMMIIVenoso(exame) ? await qrsDoExame3D(exame)
+    : ehMMIIArterial(exame) ? await qrsDoExameArterial3D({ lado: exame.lado, arterias: { Direito: exame.arteriasDireito, Esquerdo: exame.arteriasEsquerdo } })
+    : {};
   const ladosQr = exame.lado === "Ambos" ? ["Direito", "Esquerdo"] : [exame.lado];
   const ultimas = [];
   blocos.forEach((bloco) => {

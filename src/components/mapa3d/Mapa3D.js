@@ -8,7 +8,9 @@ import { normalizarVarizesLado } from "../../utils/mmiiVenosoLaudo";
 // veia e alterar o achado no mesmo painel do 2D, e desenhar varizes direto na
 // pele (ferramenta = caneta da barra de desenho); a perna se refaz na hora,
 // sem mexer na câmera. Sem eles (página do paciente), o 3D só mostra.
-function montarExame({ profundas, superficiais, magna, parva, perfurantes, varizes }) {
+// modo="arterial" (Doppler arterial): a mesma perna com a árvore arterial (arterias / enxerto do lado).
+function montarExame({ modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes }) {
+  if (modo === "arterial") return { arterias: arterias || {}, enxerto: enxerto || null };
   return {
     profundas: profundas || {},
     superficiais: superficiais || {},
@@ -20,7 +22,8 @@ function montarExame({ profundas, superficiais, magna, parva, perfurantes, variz
 }
 
 export default function Mapa3D(props) {
-  const { lado, nota, profundas, superficiais, magna, parva, perfurantes, varizes, ferramenta } = props;
+  const { lado, nota, modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes, ferramenta } = props;
+  const arterial = modo === "arterial";
   const raiz = useRef(null);
   const motor = useRef(null);
   const ultimas = useRef(props);
@@ -40,6 +43,7 @@ export default function Mapa3D(props) {
         if (typeof ultimas.current.onTracosChange === "function") ultimas.current.onTracosChange(atual.filter((_, j) => j !== i));
       },
     } : {};
+    opcoes.modo = p.modo === "arterial" ? "arterial" : "venoso";
     const parar = iniciarMapa3D(raiz.current, montarExame(p), p.lado, opcoes);
     motor.current = parar;
     return () => { motor.current = null; parar(); };
@@ -48,13 +52,13 @@ export default function Mapa3D(props) {
   // achado ou traço mudou: refaz a perna sem recriar o 3D
   const ultimoExame = useRef(null);
   useEffect(() => {
-    const ex = montarExame({ profundas, superficiais, magna, parva, perfurantes, varizes });
+    const ex = montarExame({ modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes });
     const chave = JSON.stringify(ex);
     if (ultimoExame.current === null) { ultimoExame.current = chave; return; }
     if (chave === ultimoExame.current) return;
     ultimoExame.current = chave;
     if (motor.current && motor.current.atualizar) motor.current.atualizar(ex);
-  }, [profundas, superficiais, magna, parva, perfurantes, varizes]);
+  }, [modo, arterias, enxerto, profundas, superficiais, magna, parva, perfurantes, varizes]);
 
   useEffect(() => {
     if (motor.current && motor.current.caneta) motor.current.caneta(ferramenta || null);
@@ -63,7 +67,7 @@ export default function Mapa3D(props) {
   return (
     <div className="m3d" ref={raiz} data-m3d="raiz">
       <div className="m3d-palco" id="m3d-palco" data-m3d="v3d">
-        <canvas className="m3d-gl" data-m3d="gl" aria-label={`Membro inferior ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa`} />
+        <canvas className="m3d-gl" data-m3d="gl" aria-label={`Membro inferior ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa${arterial ? " arterial" : ""}`} />
         <div className="m3d-semgl" data-m3d="semgl" hidden>Este navegador não conseguiu abrir o 3D (WebGL). Tente no Chrome ou no Safari atualizados.</div>
         <div className="m3d-fase" data-m3d="fase" data-tom="normal" hidden>
           <div className="k" data-m3d="faseK" />
@@ -90,7 +94,7 @@ export default function Mapa3D(props) {
         <div className="m3d-leg" data-m3d="leg" />
         <label className="m3d-pele" data-m3d="pele">
           <span>Superficial</span>
-          <input type="range" min="0" max="100" defaultValue="50" data-m3d="peleR" aria-label="Do superficial (pele e varizes) ao profundo (veias profundas)" />
+          <input type="range" min="0" max="100" defaultValue={arterial ? 65 : 50} data-m3d="peleR" aria-label={arterial ? "Da pele (superficial) às artérias (profundo)" : "Do superficial (pele e varizes) ao profundo (veias profundas)"} />
           <span>Profundo</span>
         </label>
         <div className="m3d-rolagem" data-m3d="rolagem" role="scrollbar" aria-controls="m3d-palco" aria-orientation="vertical" aria-label="Mover a vista para cima e para baixo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} tabIndex={0}>
@@ -102,7 +106,7 @@ export default function Mapa3D(props) {
         </div>
         <div className="m3d-veu" data-m3d="veu">Gerando 3D</div>
       </div>
-      <div className="m3d-controles">
+      <div className="m3d-controles" hidden={arterial}>
         <div className="m3d-seg" role="group" aria-label="Nível de zoom">
           <button type="button" data-m3d="nPerna" aria-pressed="true">Perna</button>
           <button type="button" data-m3d="nVeia" aria-pressed="false">Veia</button>

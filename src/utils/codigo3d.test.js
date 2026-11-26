@@ -1,4 +1,4 @@
-import { codificarExame3D, decodificarExame3D, linkExame3D } from "./codigo3d";
+import { codificarExame3D, codificarExameArterial3D, decodificarExame3D, linkExame3D } from "./codigo3d";
 import { veiasProfundas, profOptions } from "./mmiiVenosoLaudo";
 
 const prof = Object.fromEntries(veiasProfundas.map((v) => [v, profOptions[0]]));
@@ -43,4 +43,31 @@ it("link curto o bastante para um QR Code impresso", () => {
 
 it("código estragado dá erro (a página mostra aviso)", () => {
   expect(() => decodificarExame3D("xyz")).toThrow();
+});
+
+describe("código 3D do Doppler arterial", () => {
+  const base = { status: "Pérvia", localizacaoOclusao: "", ateromatose: "Ausente", velocidade: "Normocinético", tipoOnda: "Trifásico", placa: "Ausente", estenosePercentual: "", caracteristicaPlaca: "", localizacaoPlaca: "" };
+  const arterias = {
+    "Artéria Femoral Comum": { ...base },
+    "Artéria Femoral Superficial": { ...base, placa: "Presente", estenosePercentual: "70", localizacaoPlaca: "Terço distal", caracteristicaPlaca: "Calcificada", ateromatose: "Moderada", tipoOnda: "Bifásico", velocidade: "Hipercinético" },
+    "Artéria Poplítea": { ...base, status: "Ocluída", localizacaoOclusao: "Terço médio" },
+    "Artéria Tibial Anterior": { ...base, status: "Ocluída", localizacaoOclusao: "Total", velocidade: "Hipocinético", tipoOnda: "Monofásico" },
+  };
+
+  it("ida e volta mantém os achados de cada artéria", () => {
+    const d = decodificarExame3D(codificarExameArterial3D({ lado: "Direito", arterias }));
+    expect(d.modo).toBe("arterial");
+    expect(d.lado).toBe("Direito");
+    for (const [nome, v] of Object.entries(arterias)) expect(d.arterias[nome]).toEqual(v);
+    expect(d.arterias["Artéria Fibular"]).toBeUndefined();
+  });
+
+  it("o link arterial é curto e o venoso continua abrindo", () => {
+    const link = linkExame3D({ modo: "arterial", lado: "Esquerdo", arterias }, "https://venoai.xyz");
+    expect(link.length).toBeLessThan(80);
+    expect(decodificarExame3D(link.split("#")[1]).lado).toBe("Esquerdo");
+    const v = decodificarExame3D(linkExame3D({ lado: "Esquerdo", profundas: {}, superficiais: {}, magna: {}, parva: {}, perfurantes: [], varizes: { tracos: [] } }, "x").split("#")[1]);
+    expect(v.modo).toBeUndefined();
+    expect(v.lado).toBe("Esquerdo");
+  });
 });

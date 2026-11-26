@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import {
@@ -14,6 +14,8 @@ import { CamposArteria, CamposEnxerto } from "./CamposArteria";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 import { COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
 import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
+
+const Mapa3D = lazy(() => import("./mapa3d/Mapa3D"));
 
 // Árvore arterial de UMA perna, vista anterior. Desenhada nativamente para a
 // perna ESQUERDA (mesma convenção do Mapa Interativo venoso): medial = x menor,
@@ -364,6 +366,7 @@ export default function MapaInterativoArterial({
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [vista3d, setVista3d] = useState(false);
   if (!aberto) return null;
   const l = ladoAtivo;
   const valores = arterias?.[l] || {};
@@ -380,10 +383,30 @@ export default function MapaInterativoArterial({
         ladoAtivo={l}
         onTrocarLado={(op) => { onTrocarLado(op); setSelecionada(null); }}
         desenho={
-          <DesenhoMMIIArterial
-            lado={l} arterias={valores} enxerto={enxertos?.[l]} onSelecionar={setSelecionada} selecionada={selecionada}
-            style={{ display: "block", width: "100%", maxWidth: 380, maxHeight: "72vh" }}
-          />
+          <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <div role="group" aria-label="Visualização do mapa" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", maxWidth: 260, padding: 3, borderRadius: 10, border: "1.5px solid #0eb8d0", background: "#f7fbff" }}>
+              {[["2D", false], ["3D", true]].map(([rot, v]) => (
+                <button
+                  key={rot}
+                  type="button"
+                  aria-pressed={vista3d === v}
+                  onClick={() => setVista3d(v)}
+                  style={{ minHeight: 36, border: 0, borderRadius: 7, fontWeight: 800, fontSize: 14, cursor: "pointer", background: vista3d === v ? "#0eb8d0" : "transparent", color: vista3d === v ? "#04222a" : "#0a7f91" }}
+                >{rot}</button>
+              ))}
+            </div>
+            {vista3d ? (
+              <Suspense fallback={<div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>}>
+                {/* no 3D: tocar numa artéria abre o mesmo painel do 2D */}
+                <Mapa3D key={l} modo="arterial" lado={l} arterias={valores} enxerto={enxertos?.[l]} onSelecionar={(_, key) => setSelecionada(key)} />
+              </Suspense>
+            ) : (
+              <DesenhoMMIIArterial
+                lado={l} arterias={valores} enxerto={enxertos?.[l]} onSelecionar={setSelecionada} selecionada={selecionada}
+                style={{ display: "block", width: "100%", maxWidth: 380, maxHeight: "72vh" }}
+              />
+            )}
+          </div>
         }
         legenda={<LegendaArterial />}
         painel={selecionada && valores[selecionada] ? (

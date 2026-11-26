@@ -4,8 +4,13 @@
 // (a parte depois do # não é enviada ao servidor). Nada fica guardado na nuvem.
 import { veiasProfundas, profOptions, supOptions, perfurantesSegmentoOptions } from "./mmiiVenosoLaudo";
 import { RESTANTE_OPCOES, estadoRestante } from "./vascularMapping";
+import {
+  ARTERIAS, localizacaoOclusaoOptions, velocidadeOptions, localizacaoPlacaOptions,
+  tipoOndaOptions, caracteristicaPlacaOptions, ateromatoseOptions,
+} from "./mmiiArterialLaudo";
 
-const VERSAO = 1;
+const VERSAO = 1; // venoso
+const VERSAO_ARTERIAL = 2;
 const CAMPOS = ["", "JSF", "joelho", "cm_acima_joelho", "cm_abaixo_joelho", "cm_acima_tornozelo", "tornozelo", "JSP"];
 const SUPERF = ["JSF", "Safena Magna", "JSP", "Safena Parva"];
 const TIPOS = ["Varizes Superficiais", "Varizes Reticulares", "Microvarizes", "Tromboflebite Superficial"];
@@ -72,12 +77,52 @@ export function codificarExame3D(ex) {
   return paraBase64Url(b);
 }
 
+// Doppler arterial de UM membro: { lado, arterias: { "Artéria ...": {...} } }
+// 3 bytes por artéria (na ordem de ARTERIAS); bit 7 do 1º byte = artéria presente.
+const mais1 = (lista, v) => { const k = lista.indexOf(v); return k < 0 ? 0 : k + 1; };
+export function codificarExameArterial3D(ex) {
+  const b = [VERSAO_ARTERIAL, ex.lado === "Direito" ? 1 : 0];
+  const art = ex.arterias || {};
+  ARTERIAS.forEach((nome) => {
+    const v = art[nome];
+    if (!v) { b.push(0, 0, 0); return; }
+    b.push(128 | (v.status === "Ocluída" ? 1 : 0) | (mais1(localizacaoOclusaoOptions, v.localizacaoOclusao) << 1) | (idx(velocidadeOptions, v.velocidade) << 4) | (v.placa === "Presente" ? 64 : 0));
+    b.push(byte(num(v.estenosePercentual)));
+    b.push(mais1(localizacaoPlacaOptions, v.localizacaoPlaca) | (idx(tipoOndaOptions, v.tipoOnda) << 2) | (mais1(caracteristicaPlacaOptions, v.caracteristicaPlaca) << 4) | (idx(ateromatoseOptions, v.ateromatose) << 6));
+  });
+  return paraBase64Url(b);
+}
+
+function decodificarArterial(le) {
+  const lado = le() === 1 ? "Direito" : "Esquerdo";
+  const arterias = {};
+  ARTERIAS.forEach((nome) => {
+    const a = le(), pct = le(), c = le();
+    if (!(a & 128)) return;
+    const n = (a >> 1) & 7, lp = c & 3, cp = (c >> 4) & 3;
+    arterias[nome] = {
+      status: a & 1 ? "Ocluída" : "Pérvia",
+      localizacaoOclusao: n ? localizacaoOclusaoOptions[n - 1] || "" : "",
+      velocidade: velocidadeOptions[(a >> 4) & 3] || velocidadeOptions[0],
+      placa: a & 64 ? "Presente" : "Ausente",
+      estenosePercentual: pct ? String(pct) : "",
+      localizacaoPlaca: lp ? localizacaoPlacaOptions[lp - 1] || "" : "",
+      tipoOnda: tipoOndaOptions[(c >> 2) & 3] || tipoOndaOptions[0],
+      caracteristicaPlaca: cp ? caracteristicaPlacaOptions[cp - 1] || "" : "",
+      ateromatose: ateromatoseOptions[(c >> 6) & 3] || ateromatoseOptions[0],
+    };
+  });
+  return { modo: "arterial", lado, arterias };
+}
+
 export function decodificarExame3D(codigo) {
   const b = deBase64Url(codigo);
   let i = 0;
   const le = () => { if (i >= b.length) throw new Error("código incompleto"); return b[i++]; };
   const comSinal = (v) => (v > 127 ? v - 256 : v);
-  if (le() !== VERSAO) throw new Error("versão desconhecida");
+  const versao = le();
+  if (versao === VERSAO_ARTERIAL) return decodificarArterial(le);
+  if (versao !== VERSAO) throw new Error("versão desconhecida");
   const lado = le() === 1 ? "Direito" : "Esquerdo";
   const profundas = {};
   let a = 0;
@@ -108,7 +153,7 @@ export function decodificarExame3D(codigo) {
 // Link que vai no QR Code (endereço do site em uso + código depois do #).
 export function linkExame3D(ex, origem) {
   const base = origem || (typeof window !== "undefined" ? window.location.origin : "https://venoai.xyz");
-  return `${base}/3d#${codificarExame3D(ex)}`;
+  return `${base}/3d#${ex && ex.modo === "arterial" ? codificarExameArterial3D(ex) : codificarExame3D(ex)}`;
 }
 
 // QR Code do exame em 3D no PDF (Configurações > liga/desliga; padrão: ligado)
