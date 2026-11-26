@@ -12,32 +12,49 @@ export default function Paciente3D() {
   const exame = useMemo(() => {
     try { return decodificarExame3D(decodeURIComponent((window.location.hash || "").slice(1))); } catch (_) { return null; }
   }, []);
+  const arterial = !!exame && exame.modo === "arterial";
+  const nota = "Ilustração educativa gerada a partir dos achados do seu exame. Não substitui o laudo nem a consulta com o seu médico.";
   return (
     <div className="p3d">
       <header className="p3d-topo">
         <img src={`${PUB}/venoai-logo-vitrine.webp`} alt="VENO.AI" />
         <div>
           <h1>Seu exame em 3D</h1>
-          {exame && <p>Membro inferior {exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler venoso</p>}
+          {exame && <p>Membro inferior {exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler {arterial ? "arterial" : "venoso"}</p>}
         </div>
       </header>
       {exame ? (
         <>
           <main className="p3d-3d">
-            <Mapa3D
-              lado={exame.lado} profundas={exame.profundas} superficiais={exame.superficiais}
-              magna={exame.magna} parva={exame.parva} perfurantes={exame.perfurantes} varizes={exame.varizes}
-              nota="Ilustração educativa gerada a partir dos achados do seu exame. Não substitui o laudo nem a consulta com o seu médico."
-            />
+            {arterial ? (
+              <Mapa3D modo="arterial" lado={exame.lado} arterias={exame.arterias} enxerto={exame.enxerto} nota={nota} />
+            ) : (
+              <Mapa3D
+                lado={exame.lado} profundas={exame.profundas} superficiais={exame.superficiais}
+                magna={exame.magna} parva={exame.parva} perfurantes={exame.perfurantes} varizes={exame.varizes}
+                nota={nota}
+              />
+            )}
           </main>
           <section className="p3d-guia">
             <h2>Como ver</h2>
+            {arterial ? (
+            <ul>
+              <li><b>Gire</b> a perna arrastando com o dedo, ou use os botões <b>A</b>, <b>M</b>, <b>P</b> e <b>L</b>.</li>
+              <li><b className="ruim">Vermelho</b>: artéria com sangue passando normalmente. <b>Laranja</b>: estreitamento (estenose). <b>Cinza escuro</b>: artéria fechada (oclusão), sem passagem de sangue.</li>
+              <li>Toque numa artéria para ver o nome e o achado. Depois toque em <b>Artéria</b> e em <b>Dentro</b> para ver as placas e o estreitamento por dentro.</li>
+              <li>Prata: <b>stent</b>. Azul: <b>enxerto (ponte)</b>. Artéria dilatada: <b>aneurisma</b>. Linha branca: <b>dissecção</b>.</li>
+              <li>Em <b>Artéria</b>, o botão <b>Por fora</b> mostra a artéria por fora; sem ele, ela aparece em corte, com as placas por dentro.</li>
+              <li>A barra <b>Superficial / Profundo</b> deixa a pele mais transparente.</li>
+            </ul>
+            ) : (
             <ul>
               <li><b>Gire</b> a perna arrastando com o dedo.</li>
               <li><b>Azul</b>: veia funcionando bem. <b className="ruim">Vermelho</b>: refluxo, o sangue volta para baixo.</li>
               <li>Toque em <b>Veia</b> e depois em <b>Dentro</b> para ver as válvulas e o sangue por dentro.</li>
               <li>O ícone de <b>tela cheia</b> no canto deixa a imagem maior.</li>
             </ul>
+            )}
             <p>Dúvidas sobre o seu exame? Converse com o seu médico.</p>
           </section>
         </>

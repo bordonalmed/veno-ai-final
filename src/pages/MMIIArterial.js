@@ -25,6 +25,7 @@ import {
   ladosDoExame,
 } from "../utils/mmiiArterialLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
+import { qrsDoExameArterial3D, desenharQr3dRodape } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIArterial";
@@ -374,6 +375,8 @@ function MMIIArterial() {
       }
     }
 
+    // QR Code do exame em 3D (um por membro), no rodapé da última página do laudo do membro
+    const qrs = await qrsDoExameArterial3D({ lado, arterias: { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }, enxertos });
     let pagina = 0;
     lados.forEach((ladoAtual, idx) => {
       if (pagina > 0) doc.addPage();
@@ -506,6 +509,7 @@ function MMIIArterial() {
         }
       }
       addRodape();
+      desenharQr3dRodape(doc, qrs[ladoAtual]);
       pagina++;
     });
     
