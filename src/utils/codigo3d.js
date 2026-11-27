@@ -10,11 +10,16 @@ import {
   enxertoTipoOptions, enxertoOrigemOptions, enxertoDestinoOptions, enxertoStatusOptions, enxertoLocalOptions,
 } from "./mmiiArterialLaudo";
 import { ARTERIAS as ARTERIAS_MMSS } from "./mmssArterialLaudo";
+import {
+  SITIOS_ARTERIAIS, SITIOS_VENOSOS, paredeArterialOptions, ondaOptions, situacaoVeiaOptions, fluxoAxilarOptions,
+  arcoPalmarOptions as arcoPalmarFavOptions, tipoFavOptions, stentFavStatusOptions, normalizarExtra as normalizarExtraFav,
+} from "./favLaudo";
 import { VEIAS as VEIAS_MMSS, statusSuperficialOptions as STATUS_MMSS, faseTromboOptions, cateterTipoOptions } from "./mmssVenosoLaudo";
 
 const VERSAO = 1; // venoso
 const VERSAO_ARTERIAL = 3;
 const VERSAO_MMSS = 4; // venoso de membro superior
+const VERSAO_FAV = 6; // fístula arteriovenosa
 const VERSAO_MMSS_ARTERIAL = 5; // arterial de membro superior (mesmos 6 bytes por artéria)
 const CAMPOS = ["", "JSF", "joelho", "cm_acima_joelho", "cm_abaixo_joelho", "cm_acima_tornozelo", "tornozelo", "JSP"];
 const SUPERF = ["JSF", "Safena Magna", "JSP", "Safena Parva"];
@@ -177,6 +182,7 @@ export function decodificarExame3D(codigo) {
   if (versao === VERSAO_ARTERIAL) return decodificarArterial(le);
   if (versao === VERSAO_MMSS) return decodificarMMSS(le);
   if (versao === VERSAO_MMSS_ARTERIAL) return decodificarArterial(le, true);
+  if (versao === VERSAO_FAV) return decodificarFAV(le);
   if (versao !== VERSAO) throw new Error("versão desconhecida");
   const lado = le() === 1 ? "Direito" : "Esquerdo";
   const profundas = {};
@@ -205,10 +211,58 @@ export function decodificarExame3D(codigo) {
   return { lado, profundas, superficiais, magna, parva, perfurantes, varizes: { tracos } };
 }
 
+// Fístula arteriovenosa (um membro): { lado, extra: { modo, confeccao, avaliacao } }
+const LOCAIS_FAV = ["Justa-anastomótica", "Segmento de punção", "Arco da cefálica", "Veia de saída", "Anastomose arterial", "Corpo da prótese", "Anastomose venosa", "Veia axilar", "Veia subclávia", "Veia braquiocefálica", "Anastomose"];
+const FLAGS_FAV = ["estenose", "aneurisma", "pseudoaneurisma", "tromboParcial", "colaterais", "roubo", "hematoma", "stent"];
+export function codificarExameFAV3D(ex) {
+  const e = normalizarExtraFav(ex.extra), aval = e.modo === "Avaliação";
+  const b = [VERSAO_FAV, ex.lado === "Direito" ? 1 : 0, aval ? 1 : 0];
+  if (!aval) {
+    const c = e.confeccao;
+    b.push((c.garrote ? 1 : 0) | (mais1(arcoPalmarFavOptions, c.arcoPalmar) << 1));
+    SITIOS_ARTERIAIS.forEach(([k]) => { const s = c.sitios[k]; b.push(byte(num(s.diametro) * 10), idx(paredeArterialOptions, s.parede) | (idx(ondaOptions, s.onda) << 2)); });
+    SITIOS_VENOSOS.forEach(([k]) => {
+      const s = c.sitios[k];
+      if (k === "axilar") { b.push(idx(situacaoVeiaOptions, s.situacao) | (idx(fluxoAxilarOptions, s.fluxo) << 2)); return; }
+      b.push(idx(situacaoVeiaOptions, s.situacao), byte(num(s.diametro) * 10), byte(num(s.profundidade) * 10));
+    });
+  } else {
+    const a = e.avaliacao, fv = Math.max(0, Math.min(65535, Math.round(num(a.fluxoVolume))));
+    b.push(mais1(tipoFavOptions, a.tipo) | (a.status && a.status !== "Pérvia" ? 16 : 0), fv >> 8, fv & 255);
+    b.push(byte(num(a.arteriaDiametro) * 10), byte(num(a.anastomoseDiametro) * 10), byte(num(a.anastomosePsv) / 2), byte(num(a.veiaDiametro) * 10), byte(num(a.veiaProfundidade) * 10));
+    b.push(FLAGS_FAV.reduce((acc, f, i) => acc | (a[f] ? 1 << i : 0), 0));
+    b.push(mais1(LOCAIS_FAV, a.estenoseLocal), byte(num(a.estenosePercentual)), byte(num(a.estenosePsv) / 2), mais1(LOCAIS_FAV, a.aneurismaLocal), byte(num(a.aneurismaDiametro) * 2), mais1(LOCAIS_FAV, a.stentLocal), mais1(stentFavStatusOptions, a.stentStatus));
+  }
+  return paraBase64Url(b);
+}
+
+function decodificarFAV(le) {
+  const lado = le() === 1 ? "Direito" : "Esquerdo", aval = le() === 1, e = normalizarExtraFav(null);
+  const tx = (n, k) => texto(n, k);
+  if (!aval) {
+    const g = le(); e.confeccao.garrote = !!(g & 1); e.confeccao.arcoPalmar = deMais1(arcoPalmarFavOptions, (g >> 1) & 3);
+    SITIOS_ARTERIAIS.forEach(([k]) => { const d = le(), w = le(); e.confeccao.sitios[k] = { diametro: tx(d, 10), parede: paredeArterialOptions[w & 3] || paredeArterialOptions[0], onda: ondaOptions[(w >> 2) & 3] || ondaOptions[0] }; });
+    SITIOS_VENOSOS.forEach(([k]) => {
+      if (k === "axilar") { const w = le(); e.confeccao.sitios[k] = { situacao: situacaoVeiaOptions[w & 3] || situacaoVeiaOptions[0], fluxo: fluxoAxilarOptions[(w >> 2) & 1] || fluxoAxilarOptions[0] }; return; }
+      const si = le(), d = le(), p = le(); e.confeccao.sitios[k] = { situacao: situacaoVeiaOptions[si & 3] || situacaoVeiaOptions[0], diametro: tx(d, 10), profundidade: tx(p, 10) };
+    });
+  } else {
+    e.modo = "Avaliação";
+    const a = e.avaliacao, t = le(), f1 = le(), f2 = le();
+    a.tipo = deMais1(tipoFavOptions, t & 15); a.status = t & 16 ? "Ocluída (trombosada)" : "Pérvia";
+    const fv = (f1 << 8) | f2; a.fluxoVolume = fv ? String(fv) : "";
+    a.arteriaDiametro = tx(le(), 10); a.anastomoseDiametro = tx(le(), 10); const psv = le(); a.anastomosePsv = psv ? String(psv * 2) : ""; a.veiaDiametro = tx(le(), 10); a.veiaProfundidade = tx(le(), 10);
+    const fl = le(); FLAGS_FAV.forEach((f, i) => { a[f] = !!(fl & (1 << i)); });
+    a.estenoseLocal = deMais1(LOCAIS_FAV, le()); const pct = le(); a.estenosePercentual = pct ? String(pct) : ""; const ep = le(); a.estenosePsv = ep ? String(ep * 2) : "";
+    a.aneurismaLocal = deMais1(LOCAIS_FAV, le()); a.aneurismaDiametro = tx(le(), 2); a.stentLocal = deMais1(LOCAIS_FAV, le()); a.stentStatus = deMais1(stentFavStatusOptions, le());
+  }
+  return { modo: "fav", lado, extra: e };
+}
+
 // Link que vai no QR Code (endereço do site em uso + código depois do #).
 export function linkExame3D(ex, origem) {
   const base = origem || (typeof window !== "undefined" ? window.location.origin : "https://venoai.xyz");
-  const cod = ex && (ex.modo === "arterial" || ex.modo === "mmssArterial") ? codificarExameArterial3D(ex) : ex && ex.modo === "mmssVenoso" ? codificarExameMMSS3D(ex) : codificarExame3D(ex);
+  const cod = ex && ex.modo === "fav" ? codificarExameFAV3D(ex) : ex && (ex.modo === "arterial" || ex.modo === "mmssArterial") ? codificarExameArterial3D(ex) : ex && ex.modo === "mmssVenoso" ? codificarExameMMSS3D(ex) : codificarExame3D(ex);
   return `${base}/3d#${cod}`;
 }
 

@@ -79,29 +79,51 @@ export async function qrsDoExameMMSSArterial3D({ lado, arterias }, { forcar = fa
 }
 export const ehMMSSArterial = (exame) => /arterial de membros superiores|^mmss arterial$/i.test(String(exame?.tipoNome || "")) && !!(exame?.arteriasDireito || exame?.arteriasEsquerdo);
 
+// Fístula arteriovenosa: { Direito: qr, Esquerdo: qr }
+export async function qrsDoExameFAV3D({ lado, extras }, { forcar = false } = {}) {
+  if (!forcar && !qr3dLigado()) return {};
+  const lados = lado === "Ambos" ? ["Direito", "Esquerdo"] : lado ? [lado] : [];
+  const out = {};
+  for (const l of lados) {
+    try {
+      const link = linkExame3D({ modo: "fav", lado: l, extra: extras?.[l] || null });
+      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link, vasos: "veias" };
+    } catch (_) { /* sem QR: o laudo sai normal */ }
+  }
+  return out;
+}
+export const ehFAV = (exame) => /f[ií]stula arteriovenosa/i.test(String(exame?.tipoNome || "")) && !!exame?.extras;
+// laudo com os dois braços numa página: dois QR lado a lado
+export function desenharQrsFAVNoLaudo(doc, lado, qrs) {
+  if (lado === "Ambos") { desenharQr3dRodape(doc, qrs.Direito, { x: 15, titulo: "Braço direito em 3D" }); desenharQr3dRodape(doc, qrs.Esquerdo, { x: 72, titulo: "Braço esquerdo em 3D" }); }
+  else desenharQr3dRodape(doc, qrs[lado]);
+}
+
 export const ehMMSSVenoso = (exame) => /venoso de membros superiores|^mmss venoso$/i.test(String(exame?.tipoNome || "")) && !!exame?.veias;
 
 export const ehMMIIArterial = (exame) => /arterial de membros inferiores|^mmii arterial$/i.test(String(exame?.tipoNome || ""))
   && !!(exame?.arteriasDireito || exame?.arteriasEsquerdo || exame?.arterias);
 
 // jsPDF (mm): QR + "Aponte a câmera do celular" + botão clicável "Abrir meu exame em 3D"
-export function desenharQr3dRodape(doc, qr) {
+// opcoes: { x (mm, canto esquerdo do QR), titulo } — dois QR lado a lado quando o laudo traz os dois braços
+export function desenharQr3dRodape(doc, qr, opcoes = {}) {
   const q = qrDe(qr);
   if (!q || !q.png) return;
-  doc.addImage(q.png, "PNG", 15, QR_TOPO_MM, QR_LADO_MM, QR_LADO_MM);
-  doc.setFontSize(10);
+  const x0 = opcoes.x ?? 15, dx = x0 - 15, titulo = opcoes.titulo || TITULO;
+  doc.addImage(q.png, "PNG", x0, QR_TOPO_MM, QR_LADO_MM, QR_LADO_MM);
+  doc.setFontSize(opcoes.titulo ? 9 : 10);
   doc.setFont(undefined, "bold");
   doc.setTextColor(10, 127, 145);
-  doc.text(TITULO, BOTAO_X, QR_TOPO_MM + 4.4);
+  doc.text(titulo, BOTAO_X + dx, QR_TOPO_MM + 4.4);
   if (q.link) {
     doc.setFillColor(14, 184, 208);
-    doc.roundedRect(BOTAO_X, BOTAO_Y, BOTAO_W, BOTAO_H, 1.6, 1.6, "F");
+    doc.roundedRect(BOTAO_X + dx, BOTAO_Y, BOTAO_W, BOTAO_H, 1.6, 1.6, "F");
     doc.setFontSize(8.6);
     doc.setFont(undefined, "bold");
     doc.setTextColor(255, 255, 255);
-    doc.text(BOTAO, BOTAO_X + BOTAO_W / 2, BOTAO_Y + 4.2, { align: "center" });
-    doc.link(BOTAO_X, BOTAO_Y, BOTAO_W, BOTAO_H, { url: q.link });
-    doc.link(15, QR_TOPO_MM, QR_LADO_MM, QR_LADO_MM, { url: q.link });
+    doc.text(BOTAO, BOTAO_X + dx + BOTAO_W / 2, BOTAO_Y + 4.2, { align: "center" });
+    doc.link(BOTAO_X + dx, BOTAO_Y, BOTAO_W, BOTAO_H, { url: q.link });
+    doc.link(x0, QR_TOPO_MM, QR_LADO_MM, QR_LADO_MM, { url: q.link });
   }
   doc.setFont(undefined, "normal");
   doc.setTextColor(0, 0, 0);
@@ -119,17 +141,17 @@ export function desenharQr3dNasPaginasDoMapa(doc, lados, qrs) {
 }
 
 // pdf-lib (pontos; y a partir de baixo)
-export async function desenharQr3dRodapePdfLib(pdf, pagina, qr, fonte, rgb) {
+export async function desenharQr3dRodapePdfLib(pdf, pagina, qr, fonte, rgb, opcoes = {}) {
   const q = qrDe(qr);
   if (!q || !q.png) return;
-  const MM = 72 / 25.4, altura = pagina.getHeight();
+  const MM = 72 / 25.4, altura = pagina.getHeight(), dx = (opcoes.x ?? 15) - 15;
   const bytes = Uint8Array.from(atob(q.png.split(",")[1] || ""), (c) => c.charCodeAt(0));
   const img = await pdf.embedPng(bytes);
-  const lado = QR_LADO_MM * MM, x = 15 * MM, yBase = altura - (QR_TOPO_MM + QR_LADO_MM) * MM;
+  const lado = QR_LADO_MM * MM, x = (15 + dx) * MM, yBase = altura - (QR_TOPO_MM + QR_LADO_MM) * MM;
   pagina.drawImage(img, { x, y: yBase, width: lado, height: lado });
-  pagina.drawText(TITULO, { x: BOTAO_X * MM, y: altura - (QR_TOPO_MM + 4.4) * MM, size: 10, font: fonte, color: rgb(10 / 255, 127 / 255, 145 / 255) });
+  pagina.drawText(opcoes.titulo || TITULO, { x: (BOTAO_X + dx) * MM, y: altura - (QR_TOPO_MM + 4.4) * MM, size: opcoes.titulo ? 9 : 10, font: fonte, color: rgb(10 / 255, 127 / 255, 145 / 255) });
   if (!q.link) return;
-  const bx = BOTAO_X * MM, by = altura - (BOTAO_Y + BOTAO_H) * MM, bw = BOTAO_W * MM, bh = BOTAO_H * MM;
+  const bx = (BOTAO_X + dx) * MM, by = altura - (BOTAO_Y + BOTAO_H) * MM, bw = BOTAO_W * MM, bh = BOTAO_H * MM;
   pagina.drawRectangle({ x: bx, y: by, width: bw, height: bh, color: rgb(14 / 255, 184 / 255, 208 / 255) });
   const tw = fonte.widthOfTextAtSize(BOTAO, 8.6);
   pagina.drawText(BOTAO, { x: bx + (bw - tw) / 2, y: by + 2 * MM, size: 8.6, font: fonte, color: rgb(1, 1, 1) });

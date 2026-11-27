@@ -54,13 +54,13 @@ export const statusFavOptions = ["Pérvia", "Ocluída (trombosada)"];
 export const VEIAS_CENTRAIS_FAV = ["Veia axilar", "Veia subclávia", "Veia braquiocefálica"];
 export function localLesaoFavOptions(tipo) {
   if (ehProtese(tipo)) return ["Anastomose arterial", "Corpo da prótese", "Anastomose venosa", "Veia de saída", ...VEIAS_CENTRAIS_FAV];
-  const base = ["Justa-anastomótica", "Segmento de punção", "Veia de saída"];
-  const locais = /cefálica/i.test(tipo || "") ? [...base.slice(0, 2), "Arco da cefálica", base[2]] : base;
+  const base = ["Anastomose", "Justa-anastomótica", "Segmento de punção", "Veia de saída"];
+  const locais = /cefálica/i.test(tipo || "") ? [...base.slice(0, 3), "Arco da cefálica", base[3]] : base;
   return [...locais, ...VEIAS_CENTRAIS_FAV];
 }
 export const stentFavStatusOptions = ["Pérvio", "Com reestenose", "Ocluído"];
 export function localStentFavOptions(tipo) {
-  return ["Veia subclávia", "Veia braquiocefálica", "Veia axilar", ...localLesaoFavOptions(tipo).filter((l) => !VEIAS_CENTRAIS_FAV.includes(l) && l !== "Veia de saída")];
+  return ["Veia subclávia", "Veia braquiocefálica", "Veia axilar", ...localLesaoFavOptions(tipo).filter((l) => !VEIAS_CENTRAIS_FAV.includes(l) && l !== "Veia de saída" && l !== "Anastomose")];
 }
 
 function sitioPadrao(sitio) {

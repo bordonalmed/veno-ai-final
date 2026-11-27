@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import { criarCurva, pontoEm, fita, linha, fitaFusiforme } from "../utils/curvas";
@@ -16,6 +16,8 @@ import {
   normalizarExtra,
 } from "../utils/favLaudo";
 import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
+
+const Mapa3D = lazy(() => import("./mapa3d/Mapa3D"));
 
 // Membro superior para FAV: artérias (vermelho) e veias superficiais (azul)
 // do braço e antebraço, sobre o mesmo desenho do braço do MMSS (braço direito
@@ -88,7 +90,7 @@ function trechoDoLocal(local, cFav) {
 }
 
 const T_LOCAL = {
-  "Justa-anastomótica": 0.06, "Segmento de punção": 0.4, "Arco da cefálica": 0.92, "Veia de saída": 0.99,
+  "Anastomose": 0.02, "Justa-anastomótica": 0.06, "Segmento de punção": 0.4, "Arco da cefálica": 0.92, "Veia de saída": 0.99,
   "Anastomose arterial": 0.03, "Corpo da prótese": 0.5, "Anastomose venosa": 0.97,
 };
 
@@ -340,6 +342,7 @@ export function MapaInterativoFAV({
 }) {
   const [selecionado, setSelecionado] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [vista3d, setVista3d] = useState(false);
   if (!aberto) return null;
   const e = normalizarExtra(extra);
   const confeccao = e.modo !== "Avaliação";
@@ -383,7 +386,24 @@ export function MapaInterativoFAV({
         lado={ladoExame || lado}
         ladoAtivo={lado}
         onTrocarLado={onTrocarLado ? (op) => { setSelecionado(null); onTrocarLado(op); } : undefined}
-        desenho={<DesenhoFAV lado={lado} extra={e} onSelecionar={setSelecionado} selecionado={selecionado} style={{ display: "block", width: "100%", maxWidth: 360, maxHeight: "74vh" }} />}
+        desenho={
+          <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <div role="group" aria-label="Visualização do mapa" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", maxWidth: 260, padding: 3, borderRadius: 10, border: "1.5px solid #0eb8d0", background: "#f7fbff" }}>
+              {[["2D", false], ["3D", true]].map(([rot, v3]) => (
+                <button key={rot} type="button" aria-pressed={vista3d === v3} onClick={() => setVista3d(v3)}
+                  style={{ minHeight: 36, border: 0, borderRadius: 7, fontWeight: 800, fontSize: 14, cursor: "pointer", background: vista3d === v3 ? "#0eb8d0" : "transparent", color: vista3d === v3 ? "#04222a" : "#0a7f91" }}>{rot}</button>
+              ))}
+            </div>
+            {vista3d ? (
+              <Suspense fallback={<div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>}>
+                {/* no 3D: tocar num ponto de medida (confecção) ou na FAV (avaliação) abre o mesmo painel do 2D */}
+                <Mapa3D key={lado + e.modo} modo="fav" lado={lado} extra={e} onSelecionar={(tipo, key) => setSelecionado(tipo === "sitio" || tipo === "fav" ? key : null)} />
+              </Suspense>
+            ) : (
+              <DesenhoFAV lado={lado} extra={e} onSelecionar={setSelecionado} selecionado={selecionado} style={{ display: "block", width: "100%", maxWidth: 360, maxHeight: "74vh" }} />
+            )}
+          </div>
+        }
         legenda={legenda}
         painel={painel}
         tituloPainel={tituloPainel}
