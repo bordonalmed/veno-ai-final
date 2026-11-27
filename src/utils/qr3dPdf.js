@@ -6,6 +6,7 @@ import { PDFString } from "pdf-lib";
 import { linkExame3D, qr3dLigado } from "./codigo3d";
 import { normalizarVarizesLado } from "./mmiiVenosoLaudo";
 import { carotidasPara3D } from "./carotidasLaudo";
+import { normalizarArterias as normalizarArteriasAorta, normalizarExtra as normalizarExtraAorta } from "./aortaIliacasLaudo";
 
 export const QR_LADO_MM = 15;
 export const QR_TOPO_MM = 272; // abaixo do texto (que vai até 265-270) e acima da marca (292)
@@ -109,6 +110,16 @@ export async function qrDoExameCarotidas3D(vessels, { forcar = false } = {}) {
   } catch (_) { return null; }
 }
 export const ehCarotidas = (exame) => /car[óo]tidas/i.test(String(exame?.tipoNome || "")) && !!(exame?.carotidasDireitas || exame?.carotidasEsquerdas);
+
+// Aorta abdominal e ilíacas: um QR (o abdome inteiro)
+export async function qrDoExameAorta3D(arterias, extra, { forcar = false } = {}) {
+  if (!forcar && !qr3dLigado()) return null;
+  try {
+    const link = linkExame3D({ modo: "aorta", arterias: normalizarArteriasAorta(arterias), extra: normalizarExtraAorta(extra) });
+    return { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link, vasos: "artérias" };
+  } catch (_) { return null; }
+}
+export const ehAorta = (exame) => /aorta/i.test(String(exame?.tipoNome || "")) && !!exame?.arterias;
 
 export const ehMMSSVenoso = (exame) => /venoso de membros superiores|^mmss venoso$/i.test(String(exame?.tipoNome || "")) && !!exame?.veias;
 

@@ -28,6 +28,7 @@ import {
   gerarBlocoExame,
 } from "../utils/aortaIliacasLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
+import { qrDoExameAorta3D, desenharQr3dRodape, desenharQr3dNasPaginasDoMapa } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesAorta";
@@ -242,6 +243,8 @@ function AortaIliacas() {
   async function adicionarMapaNoPdf(doc) {
     try {
       await adicionarMapaAortaAoPdf(doc, arterias, extra);
+      // QR Code + botão "Abrir em 3D" também na página do desenho 2D
+      desenharQr3dNasPaginasDoMapa(doc, ["abdome"], { abdome: await qrDoExameAorta3D(arterias, extra) });
     } catch (e) {
       console.error("Erro ao adicionar o mapa ao PDF:", e);
     }
@@ -498,6 +501,9 @@ function AortaIliacas() {
       pagina++;
     });
     
+    // QR Code do exame em 3D (abdome com a aorta e as ilíacas) no rodapé do laudo
+    desenharQr3dRodape(doc, await qrDoExameAorta3D(arterias, extra));
+
     // Adicionar anexos como páginas no final do PDF
     await adicionarMapaNoPdf(doc);
 

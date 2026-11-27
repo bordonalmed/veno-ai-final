@@ -156,3 +156,6 @@ export function gerarBlocoExame(arterias, extra, observacoes) {
 export function gerarLaudoCompleto({ nome, idade, data, arterias, extra, observacoes }) {
   return gerarCabecalhoLaudo({ nome, idade, data }) + "\n" + gerarBlocoExame(arterias, extra, observacoes);
 }
+
+// Para o QR Code do exame em 3D: todos os locais possíveis da lesão do enxerto (um índice para cada).
+export const LOCAIS_ENXERTO_AORTA = ["Corpo principal", "Ramo ilíaco direito", "Ramo ilíaco esquerdo", "Ilíaca direita", "Ilíaca esquerda", ...LOCAIS_ENXERTO_BIFURCADO];
