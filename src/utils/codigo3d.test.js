@@ -117,6 +117,26 @@ describe("código 3D do Doppler arterial de MMSS", () => {
   });
 });
 
+describe("código 3D da aorta abdominal e ilíacas", () => {
+  const { arteriasPadrao, extraPadrao } = require("./aortaIliacasLaudo");
+  it("artérias, endoprótese com vazamento e saco, e fêmoro-femoral", () => {
+    const arterias = arteriasPadrao();
+    Object.assign(arterias["Aorta Infrarrenal"], { aneurisma: true, aneurismaDiametro: "52", aneurismaForma: "Fusiforme", tromboMural: true, ateromatose: "Moderada" });
+    Object.assign(arterias["Artéria Ilíaca Externa Esquerda"], { placa: "Presente", estenosePercentual: "70", localizacaoPlaca: "Terço médio", caracteristicaPlaca: "Mista" });
+    Object.assign(arterias["Artéria Ilíaca Comum Direita"], { status: "Ocluída", localizacaoOclusao: "Total" });
+    const extra = extraPadrao();
+    Object.assign(extra.enxerto, { tipo: "Endoprótese aórtica (EVAR)", status: "Com estenose", local: "Ramo ilíaco esquerdo", endoleak: "Tipo II", sacoDiametro: "61" });
+    Object.assign(extra.femoroFemoral, { presente: true, doadora: "Direita", status: "Pérvio", local: "" });
+    const d = decodificarExame3D(linkExame3D({ modo: "aorta", arterias, extra }, "x").split("#")[1]);
+    expect(d.modo).toBe("aorta");
+    expect(Object.keys(d.arterias)).toHaveLength(9);
+    expect(d.arterias["Aorta Infrarrenal"]).toMatchObject({ aneurisma: true, aneurismaDiametro: "52", tromboMural: true, ateromatose: "Moderada" });
+    expect(d.arterias["Artéria Ilíaca Externa Esquerda"]).toMatchObject({ placa: "Presente", estenosePercentual: "70", localizacaoPlaca: "Terço médio", caracteristicaPlaca: "Mista" });
+    expect(d.arterias["Artéria Ilíaca Comum Direita"].status).toBe("Ocluída");
+    expect(d.extra).toEqual(extra);
+  });
+});
+
 describe("código 3D das carótidas e vertebrais", () => {
   const { carotidasPara3D, vasoPadrao } = require("./carotidasLaudo");
   it("os 8 vasos, com estenose, oclusão, stent, dissecção e aneurisma", () => {

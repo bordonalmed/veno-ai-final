@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import { catmullRom } from "../utils/vascularMapping";
@@ -9,6 +9,9 @@ import { CamposEnxertoAorta, CamposFemoroFemoral } from "./CamposAorta";
 import { ArteriaCurva, PadroesStent, COR_ART, COR_ENXERTO, COR_LESAO_ENXERTO } from "./ArteriaCurva";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
+import { Vista2D3D, Carregando3D } from "./MapaMMSS";
+
+const Mapa3D = lazy(() => import("./mapa3d/Mapa3D"));
 
 // Abdome em vista anterior (do esterno à raiz das coxas). Lado direito do
 // paciente à esquerda da tela. A aorta fica um pouco à esquerda da linha média
@@ -352,6 +355,7 @@ export function MapaInterativoAorta({
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [vista3d, setVista3d] = useState(false);
   if (!aberto) return null;
   const valores = arterias || {};
   return (
@@ -361,7 +365,18 @@ export function MapaInterativoAorta({
         anexosProps={anexosProps}
         titulo="Aorta e Ilíacas"
         onFechar={onFechar}
-        desenho={<DesenhoAortaIliacas arterias={valores} extra={extra} onSelecionar={setSelecionada} selecionada={selecionada} style={{ display: "block", width: "100%", maxWidth: 520, maxHeight: "72vh" }} />}
+        desenho={
+          <Vista2D3D vista3d={vista3d} setVista3d={setVista3d}>
+            {vista3d ? (
+              <Suspense fallback={<Carregando3D />}>
+                {/* no 3D: tocar numa artéria abre o mesmo painel do 2D */}
+                <Mapa3D modo="aorta" arterias={valores} extra={extra} onSelecionar={(tipo, key) => setSelecionada(tipo === "arteria" && valores[key] ? key : null)} />
+              </Suspense>
+            ) : (
+              <DesenhoAortaIliacas arterias={valores} extra={extra} onSelecionar={setSelecionada} selecionada={selecionada} style={{ display: "block", width: "100%", maxWidth: 520, maxHeight: "72vh" }} />
+            )}
+          </Vista2D3D>
+        }
         legenda={<LegendaAorta />}
         painel={selecionada && valores[selecionada] ? (
           <CamposArteria arteria={selecionada} lado="" valores={valores[selecionada]} onChange={(v) => onArteriaChange(selecionada, v)} semMoldura comCalibre />

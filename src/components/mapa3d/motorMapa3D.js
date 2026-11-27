@@ -29,9 +29,11 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const $ = (id) => raiz.querySelector('[data-m3d="' + id + '"]');
   let ex = exame;
   const CAROT = opcoes.modo === 'carotidas'; // carótidas e vertebrais: cabeça, pescoço e tórax alto (os dois lados)
-  const SX = CAROT ? 1 : ladoMembro === "Direito" ? -1 : 1; // a perna direita é a esquerda espelhada
+  const AORTA = opcoes.modo === 'aorta'; // aorta abdominal e ilíacas: tronco do tórax baixo às coxas
+  const TRONCO = CAROT || AORTA; // corpo na linha média (sem lado), vistas A / P / LD / LE
+  const SX = TRONCO ? 1 : ladoMembro === "Direito" ? -1 : 1; // a perna direita é a esquerda espelhada
   const FAV = opcoes.modo === 'fav'; // fístula arteriovenosa (membro superior)
-  const ARTERIAL = opcoes.modo === 'arterial' || opcoes.modo === 'mmssArterial' || FAV || CAROT; // Doppler arterial: a árvore arterial no lugar das veias
+  const ARTERIAL = opcoes.modo === 'arterial' || opcoes.modo === 'mmssArterial' || FAV || TRONCO; // Doppler arterial: a árvore arterial no lugar das veias
   const BRACO = opcoes.modo === 'mmssVenoso' || opcoes.modo === 'mmssArterial' || FAV;
   const PACIENTE = !!opcoes.paciente; // página do paciente (QR Code): sem Doppler, só ver, girar e navegar // Doppler venoso de membro superior: braço, ombro e pescoço no lugar da perna
   let vivo = true, rafId = 0, tGerar2 = 0;
@@ -79,7 +81,9 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const SEC_TRONCO = [[4.05, .7, .45, -2.0, 0], [3.95, 1.0, .58, -1.75, .02], [3.78, 1.25, .68, -1.4, .05], [3.5, 1.35, .74, -1.25, .08], [3.0, 1.28, .76, -1.3, .08], [2.4, 1.18, .74, -1.4, .06], [1.7, 1.1, .7, -1.45, .04], [1.25, .98, .62, -1.5, .03], [.95, .7, .44, -1.6, .02], [.8, .3, .2, -1.7, 0]];
   // cabeça e pescoço (y = 0 perto da bifurcação carotídea, C4): [altura, meia-largura, meia-profundidade, centro x, centro z]
   const SEC_CAROT = [[3.02, .04, .04, 0, .15], [2.95, .38, .5, 0, .15], [2.8, .6, .78, 0, .17], [2.5, .74, .93, 0, .2], [2.15, .76, .96, 0, .2], [1.8, .73, .95, 0, .2], [1.45, .68, .9, 0, .2], [1.15, .6, .82, 0, .2], [.92, .52, .78, 0, .14], [.74, .5, .6, 0, 0], [.55, .5, .55, 0, -.08], [.2, .5, .55, 0, -.1], [-.2, .54, .56, 0, -.1], [-.55, .62, .6, 0, -.1], [-.8, .95, .65, 0, -.1], [-1.0, 1.55, .7, 0, -.08], [-1.18, 1.9, .75, 0, -.06], [-1.5, 2.0, .8, 0, -.04], [-2.0, 1.85, .85, 0, 0], [-2.45, 1.75, .85, 0, 0]];
-  const SEC = CAROT ? SEC_CAROT : BRACO ? SEC_BRACO : [[4.3, .92, .98, 0, 0], [3.6, .9, .96, 0, 0], [2.6, .8, .88, -.02, .02], [1.6, .68, .74, -.04, .03], [.8, .58, .62, -.05, .03], [.2, .54, .58, -.05, .05], [-.4, .5, .55, -.04, 0], [-1.2, .56, .66, -.03, -.1], [-2.0, .46, .52, -.02, -.08], [-2.8, .34, .38, 0, -.04], [-3.4, .28, .33, 0, -.02], [-3.85, .28, .34, 0, 0]];
+  // abdome (y = 0 no umbigo, L3-L4): do tórax baixo à raiz das coxas
+  const SEC_AORTA = [[2.35, 1.4, .95, 0, 0], [2.0, 1.5, 1.0, 0, 0], [1.5, 1.5, 1.02, 0, .02], [1.0, 1.45, 1.02, 0, .04], [.5, 1.38, 1.04, 0, .06], [0, 1.42, 1.08, 0, .08], [-.4, 1.55, 1.08, 0, .06], [-.8, 1.68, 1.05, 0, .02], [-1.2, 1.72, 1.0, 0, 0], [-1.5, 1.7, .95, 0, 0], [-1.75, 1.62, .9, 0, 0]];
+  const SEC = AORTA ? SEC_AORTA : CAROT ? SEC_CAROT : BRACO ? SEC_BRACO : [[4.3, .92, .98, 0, 0], [3.6, .9, .96, 0, 0], [2.6, .8, .88, -.02, .02], [1.6, .68, .74, -.04, .03], [.8, .58, .62, -.05, .03], [.2, .54, .58, -.05, .05], [-.4, .5, .55, -.04, 0], [-1.2, .56, .66, -.03, -.1], [-2.0, .46, .52, -.02, -.08], [-2.8, .34, .38, 0, -.04], [-3.4, .28, .33, 0, -.02], [-3.85, .28, .34, 0, 0]];
   const cr = (p0, p1, p2, p3, t) => 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
   function secao(y, TAB = SEC) {
     let i = 0; while (i < TAB.length - 2 && y < TAB[i + 1][0]) i++;
@@ -105,6 +109,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     ...ECM.map(([y, a]) => [a, y, .22, 13, .055]), ...ECM.map(([y, a]) => [180 - a, y, .22, 13, .055])];
   if (BRACO) RELEVO.splice(0, RELEVO.length, ...RELEVO_BRACO);
   if (CAROT) RELEVO.splice(0, RELEVO.length, ...RELEVO_CAROT);
+  // abdome: umbigo, retos abdominais e cristas ilíacas
+  if (AORTA) RELEVO.splice(0, RELEVO.length, [90, 0, .05, 5, -.05], [76, .8, .9, 12, .025], [104, .8, .9, 12, .025], [25, -.5, .12, 20, .03], [155, -.5, .12, 20, .03]);
   const difG = (a, b) => { let d = (a - b) % 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; };
   function relevo(y, graus) { let f = 1; for (const [a0, y0, sy, sa, A] of RELEVO) { const dy = (y - y0) / sy, da = difG(graus, a0) / sa; f += A * Math.exp(-dy * dy - da * da); } return f; }
   function ponto(y, graus, frac) { const s = secao(y), a = graus * Math.PI / 180, k = frac * relevo(y, graus); return new T.Vector3(s[2] + SX * k * s[0] * Math.cos(a), y, s[3] + k * s[1] * Math.sin(a)); }
@@ -116,7 +122,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   const MP = 96, aneisPerna = [], aneisPe = [];
   const anel = (f) => { const a = []; for (let j = 0; j < MP; j++) a.push(f(j / MP * Math.PI * 2)); return a; };
-  const Y_ALTO = CAROT ? 3.02 : BRACO ? 3.82 : 4.3, Y_BAIXO = CAROT ? -2.45 : BRACO ? -3.65 : -3.85;
+  const Y_ALTO = AORTA ? 2.35 : CAROT ? 3.02 : BRACO ? 3.82 : 4.3, Y_BAIXO = AORTA ? -1.75 : CAROT ? -2.45 : BRACO ? -3.65 : -3.85;
   { const s0 = secao(Y_ALTO); aneisPerna.push(anel(() => new T.Vector3(s0[2], Y_ALTO, s0[3]))); }
   for (let i = 0; i <= 170; i++) { const y = lerp(Y_ALTO, Y_BAIXO, i / 170); aneisPerna.push(anel((a) => ponto(y, a * 180 / Math.PI, 1))); }
   { const s1 = secao(Y_BAIXO); aneisPerna.push(anel(() => new T.Vector3(s1[2], Y_BAIXO, s1[3]))); }
@@ -127,7 +133,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const a0 = PE[Math.max(0, k - 1)], b0 = PE[k], c0 = PE[k + 1], d0 = PE[Math.min(PE.length - 1, k + 2)], t = clamp((z - b0[0]) / (c0[0] - b0[0]), 0, 1);
     return { w: Math.max(.02, cr(a0[1], b0[1], c0[1], d0[1], t)), h: Math.max(.05, cr(a0[2], b0[2], c0[2], d0[2], t)), arco: cr(a0[3], b0[3], c0[3], d0[3], t) };
   }
-  for (let i = 0; i <= (BRACO || CAROT ? -1 : 70); i++) {
+  for (let i = 0; i <= (BRACO || TRONCO ? -1 : 70); i++) {
     const z = lerp(PE[0][0], PE[PE.length - 1][0], i / 70), { w: wx, h, arco } = peSecao(z);
     // c > 0 é o lado medial do pé (vai para -x na perna esquerda, +x na direita)
     aneisPe.push(anel((a) => { const sn = Math.sin(a), c = Math.cos(a); let y = -4.3 + h / 2 + (h / 2) * sn * (sn < 0 ? 0.8 : 1); if (sn < 0 && c > 0) y += arco * Math.pow(c, 1.5) * -sn * 3.2; return new T.Vector3(-SX * wx * c, y, z); }));
@@ -138,7 +144,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   // luz que atravessa a pele (sombras quentes e borda) e brilho suave. As veias são desenhadas depois, "sob a pele".
   const mPele = new T.ShaderMaterial({
     transparent: true, depthWrite: false, side: T.FrontSide, extensions: { derivatives: true },
-    uniforms: { cor: { value: new T.Vector3(0.87, 0.68, 0.57) }, sombra: { value: new T.Vector3(0.62, 0.27, 0.21) }, rubor: { value: new T.Vector3(0.84, 0.5, 0.43) }, opac: { value: 0.9 }, semRubor: { value: CAROT ? 1 : 0 } },
+    uniforms: { cor: { value: new T.Vector3(0.87, 0.68, 0.57) }, sombra: { value: new T.Vector3(0.62, 0.27, 0.21) }, rubor: { value: new T.Vector3(0.84, 0.5, 0.43) }, opac: { value: 0.9 }, semRubor: { value: TRONCO ? 1 : 0 } },
     vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; varying vec3 vVP; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vP = position; vVP = mv.xyz; gl_Position = projectionMatrix * mv; }',
     fragmentShader: [
       'uniform vec3 cor; uniform vec3 sombra; uniform vec3 rubor; uniform float opac; uniform float semRubor; varying vec3 vN; varying vec3 vV; varying vec3 vP; varying vec3 vVP;',
@@ -190,13 +196,22 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     dedo([W3(.56, -2.62, .04), W3(.7, -2.95, .08), W3(.77, -3.28, .12), W3(.78, -3.55, .14)], .085);
     [[.26, .55, .07], [.09, .63, .072], [-.08, .59, .068], [-.24, .47, .06]].forEach(([dx, comp, r]) => dedo([W3(.3 + dx, -3.46, 0), W3(.3 + dx, -3.46 - comp * 0.5, .015), W3(.3 + dx * 1.04, -3.46 - comp, .035)], r));
   }
-  for (const g of BRACO || CAROT ? [casca(aneisPerna)] : [casca(aneisPerna), casca(aneisPe)]) {
+  for (const g of BRACO || TRONCO ? [casca(aneisPerna)] : [casca(aneisPerna), casca(aneisPe)]) {
     const p = g.attributes.position, n = g.attributes.normal, i0 = Math.floor(p.count / 2), sY = secao(clamp(p.getY(i0), -3.85, 4.3));
     if ((p.getX(i0) - sY[2]) * n.getX(i0) + (p.getZ(i0) - sY[3]) * n.getZ(i0) < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i]; ix[i] = ix[i + 1]; ix[i + 1] = t; } g.index.needsUpdate = true; g.computeVertexNormals(); }
     const m = new T.Mesh(g, mPele); m.renderOrder = 2; cenaP.add(m); PELES.push(m);
   }
   const plat = new T.Mesh(new T.CylinderGeometry(1.5, 1.5, 0.06, 56), new T.MeshBasicMaterial({ color: new T.Color(0x17232f).convertSRGBToLinear() }));
-  plat.position.set(0, -4.36, 0.55); if (!BRACO && !CAROT) cenaP.add(plat);
+  plat.position.set(0, -4.36, 0.55); if (!BRACO && !TRONCO) cenaP.add(plat);
+  // abdome: as coxas saem do tronco
+  if (AORTA) for (const sx of [-1, 1]) {
+    const an = [], cx = sx * .82, rr = (y) => lerp(.76, .6, (-1.6 - y) / 1.0); // em cima fica aberta, por dentro do tronco
+    for (let i = 0; i <= 30; i++) { const y = lerp(-1.6, -2.6, i / 30), r = rr(y); an.push(anel((a) => new T.Vector3(cx + r * Math.cos(a), y, r * 0.95 * Math.sin(a)))); }
+    an.push(anel(() => new T.Vector3(cx, -2.6, 0)));
+    const g = casca(an), pp = g.attributes.position, nn = g.attributes.normal, i0 = Math.floor(pp.count / 2);
+    if ((pp.getX(i0) - cx) * nn.getX(i0) + pp.getZ(i0) * nn.getZ(i0) < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i]; ix[i] = ix[i + 1]; ix[i + 1] = t; } g.index.needsUpdate = true; g.computeVertexNormals(); }
+    const m = new T.Mesh(g, mPele); m.renderOrder = 2; cenaP.add(m); PELES.push(m);
+  }
 
   // ---------- do 2D para o 3D ----------
   // alturas: os marcos do mapa (JSF, joelho, tornozelo) viram alturas na perna
@@ -389,6 +404,41 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     ['AVE', 'A. vertebral esquerda', .032, ESP(ROTA_AVD)],
   ];
   const ehBulbo = (key) => key === 'ACID' || key === 'ACIE';
+  // aorta abdominal (um pouco à esquerda da linha média, à frente da coluna) e ilíacas
+  const CIA_D = [V3(.03, -.2, -.3), V3(-.15, -.4, -.32), V3(-.32, -.6, -.36), V3(-.42, -.75, -.38)];
+  const CIE_D = [V3(-.42, -.75, -.38), V3(-.58, -.95, -.3), V3(-.72, -1.15, -.15), V3(-.8, -1.35, -.02)];
+  const CII_D = [V3(-.43, -.77, -.4), V3(-.48, -.92, -.5), V3(-.5, -1.05, -.58), V3(-.48, -1.2, -.62)];
+  const T_ART_AORTA = [
+    ['Aorta Suprarrenal', 'Aorta suprarrenal', .105, [V3(.05, 1.65, -.4), V3(.06, 1.3, -.33), V3(.08, .97, -.3)]],
+    ['Aorta Justarrenal', 'Aorta justarrenal', .1, [V3(.08, .97, -.3), V3(.08, .88, -.3), V3(.08, .78, -.3)]],
+    ['Aorta Infrarrenal', 'Aorta infrarrenal', .1, [V3(.08, .78, -.3), V3(.08, .4, -.28), V3(.07, .05, -.28), V3(.06, -.2, -.3)]],
+    ['Artéria Ilíaca Comum Direita', 'A. ilíaca comum direita', .058, CIA_D],
+    ['Artéria Ilíaca Externa Direita', 'A. ilíaca externa direita', .048, CIE_D],
+    ['Artéria Ilíaca Interna Direita', 'A. ilíaca interna direita', .035, CII_D],
+    ['Artéria Ilíaca Comum Esquerda', 'A. ilíaca comum esquerda', .058, [V3(.09, -.2, -.3), ...ESP(CIA_D).slice(1)]],
+    ['Artéria Ilíaca Externa Esquerda', 'A. ilíaca externa esquerda', .048, ESP(CIE_D)],
+    ['Artéria Ilíaca Interna Esquerda', 'A. ilíaca interna esquerda', .035, ESP(CII_D)],
+  ];
+  // endoprótese / enxerto da aorta (mesma cobertura e locais do mapa 2D)
+  const COBERTURA_ENDO = {
+    'Endoprótese aórtica (EVAR)': [['Aorta Justarrenal', 0.75, 1, 'corpo'], ['Aorta Infrarrenal', 0, 1, 'corpo'], ['Artéria Ilíaca Comum Direita', 0, 1, 'ramoD'], ['Artéria Ilíaca Comum Esquerda', 0, 1, 'ramoE']],
+    'Endoprótese aorto-uni-ilíaca direita': [['Aorta Justarrenal', 0.75, 1, 'corpo'], ['Aorta Infrarrenal', 0, 1, 'corpo'], ['Artéria Ilíaca Comum Direita', 0, 1, 'ramoD'], ['Artéria Ilíaca Externa Direita', 0, 0.6, 'ramoD']],
+    'Endoprótese aorto-uni-ilíaca esquerda': [['Aorta Justarrenal', 0.75, 1, 'corpo'], ['Aorta Infrarrenal', 0, 1, 'corpo'], ['Artéria Ilíaca Comum Esquerda', 0, 1, 'ramoE'], ['Artéria Ilíaca Externa Esquerda', 0, 0.6, 'ramoE']],
+    'Endoprótese ilíaca': [['Artéria Ilíaca Comum Direita', 0.1, 1, 'ramoD'], ['Artéria Ilíaca Comum Esquerda', 0.1, 1, 'ramoE']],
+  };
+  const LOCAL_ENDO = { 'Corpo principal': ['todas', 'corpo', 0.5], 'Ramo ilíaco direito': ['ramoD', 'ramoD', 0.5], 'Ramo ilíaco esquerdo': ['ramoE', 'ramoE', 0.5], 'Ilíaca direita': ['ramoD', 'ramoD', 0.5], 'Ilíaca esquerda': ['ramoE', 'ramoE', 0.5] };
+  const LOCAL_ENX_AO = { 'Anastomose proximal': ['todas', 'corpo', 0.04], 'Corpo do enxerto': ['todas', 'corpo', 0.5], 'Ramo direito': ['ramoD', 'ramoD', 0.5], 'Ramo esquerdo': ['ramoE', 'ramoE', 0.5], 'Anastomose distal direita': ['ramoD', 'ramoD', 0.96], 'Anastomose distal esquerda': ['ramoE', 'ramoE', 0.96] };
+  const situacaoParte = (enx, parte, locais) => { if (enx.status !== 'Com estenose' && enx.status !== 'Ocluído') return 'Pérvio'; const l = locais[enx.local]; return !l || l[0] === 'todas' || l[0] === parte ? enx.status : 'Pérvio'; };
+  // nível Artéria: a parte da endoprótese que cobre o vaso entra como stent (e o saco tratado como aneurisma com trombo)
+  function aortaComoArteria(key, v) {
+    const enx = (ex.extra && ex.extra.enxerto) || {}, cob = COBERTURA_ENDO[enx.tipo];
+    if (!v || !cob) return v;
+    const c = cob.find((q) => q[0] === key); if (!c) return v;
+    const sit = situacaoParte(enx, c[3], LOCAL_ENDO), out = { ...v, stent: sit === 'Ocluído' ? 'Ocluído' : sit === 'Com estenose' ? 'Com reestenose' : 'Pérvio', localizacaoStent: c[1] > 0.5 ? 'Terço distal' : c[2] < 0.7 ? 'Terço proximal' : 'Toda a extensão' };
+    const saco = numA(enx.sacoDiametro);
+    if (key === 'Aorta Infrarrenal' && /^Endoprótese a/.test(enx.tipo) && saco > 0 && !v.aneurisma) Object.assign(out, { aneurisma: true, aneurismaDiametro: String(saco), aneurismaForma: 'Fusiforme', tromboMural: true });
+    return out;
+  }
   const TERCOS = ['Terço proximal', 'Terço médio', 'Terço distal'];
   // velocidade da animação do sangue nas artérias: normocinético bem mais rápido que o venoso; hipo mais lento, hiper mais rápido
   const RAPIDEZ_ART = 2.4, VEL_ART = { 'Normocinético': 1, 'Hipercinético': 1.7, 'Hipocinético': 0.4 };
@@ -430,7 +480,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new T.Float32BufferAttribute(nor, 3)); g.setIndex(idx); return g;
   }
   // calibre normal (mm) de cada artéria, para o tamanho do aneurisma
-  const CALIBRE = { ACCD: 7, ACCE: 7, ACID: 5, ACIE: 5, ACED: 4, ACEE: 4, AVD: 3.5, AVE: 3.5, 'Tronco Braquiocefálico': 12, 'Artéria Subclávia': 8, 'Artéria Axilar': 7, 'Artéria Braquial': 5, 'Artéria Radial': 2.5, 'Artéria Ulnar': 2.5, 'Artéria Femoral Comum': 9, 'Artéria Femoral Profunda': 6, 'Artéria Femoral Superficial': 7, 'Artéria Poplítea': 6, 'Artéria Tibial Anterior': 3, 'Artéria Fibular': 3, 'Artéria Tibial Posterior': 3 };
+  const CALIBRE = { 'Aorta Suprarrenal': 20, 'Aorta Justarrenal': 20, 'Aorta Infrarrenal': 19, 'Artéria Ilíaca Comum Direita': 10, 'Artéria Ilíaca Comum Esquerda': 10, 'Artéria Ilíaca Externa Direita': 8, 'Artéria Ilíaca Externa Esquerda': 8, 'Artéria Ilíaca Interna Direita': 6, 'Artéria Ilíaca Interna Esquerda': 6, ACCD: 7, ACCE: 7, ACID: 5, ACIE: 5, ACED: 4, ACEE: 4, AVD: 3.5, AVE: 3.5, 'Tronco Braquiocefálico': 12, 'Artéria Subclávia': 8, 'Artéria Axilar': 7, 'Artéria Braquial': 5, 'Artéria Radial': 2.5, 'Artéria Ulnar': 2.5, 'Artéria Femoral Comum': 9, 'Artéria Femoral Profunda': 6, 'Artéria Femoral Superficial': 7, 'Artéria Poplítea': 6, 'Artéria Tibial Anterior': 3, 'Artéria Fibular': 3, 'Artéria Tibial Posterior': 3 };
   const fatorAneurisma = (key, v) => { const d = numA(v.aneurismaDiametro); return d > 0 ? clamp(d / (CALIBRE[key] || 6), 1.5, 2.8) : 2.2; };
   const bojo = (u) => Math.exp(-Math.pow((u - 0.5) / 0.11, 2));
   // malha do stent (losangos metálicos)
@@ -477,7 +527,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const mAtero = new T.MeshStandardMaterial({ color: 0xfff1c2, roughness: 0.5 });
   function geraArterias() {
     const A = ex.arterias || {}, inicio = {}, todas = {}, extras = { stent: false, aneur: false, dissec: false, reab: false, enx: null };
-    const lista = (CAROT ? T_ART_CAROT : BRACO ? T_ART_BRACO() : T_ART).map(([key, nome, r0, rota]) => [key, nome, r0, curvaDaRota(rota), A[key]]);
+    const lista = (AORTA ? T_ART_AORTA : CAROT ? T_ART_CAROT : BRACO ? T_ART_BRACO() : T_ART).map(([key, nome, r0, rota]) => [key, nome, r0, curvaDaRota(rota), A[key]]);
     const enx = ex.enxerto && ex.enxerto.tipo ? ex.enxerto : null, rotaE = rotaEnxerto(enx);
     if (rotaE) { lista.push(['enxerto', 'Enxerto ' + enx.tipo.toLowerCase(), .05, curvaDaRota(rotaE), enxertoComoArteria(enx)]); extras.enx = enx.status === 'Ocluído' ? 'ocl' : 'ok'; }
     for (const [key, nome, r0, toda, v] of lista) {
@@ -492,14 +542,14 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
         const tex = null; // na perna as artérias ficam paradas (o fluxo aparece na Artéria e Por dentro)
         const cor = ehEnx && tr.e !== 'esten' ? new T.Color(tr.e === 'ocl' ? 0x7d8790 : 0x2f6fd6).convertSRGBToLinear() : COR3[tr.e].clone();
         const mat = new T.MeshStandardMaterial({ color: cor.clone(), map: tex, roughness: 0.42, emissive: cor.clone().multiplyScalar(0.3) });
-        const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; malha.userData.semFade = BRACO && /Tronco|Subclávia|Axilar/.test(key); gVeias.add(malha);
+        const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; malha.userData.semFade = TRONCO || (BRACO && /Tronco|Subclávia|Axilar/.test(key)); gVeias.add(malha); // pescoço / abdome: os vasos ficam atrás do centro do corpo e não podem apagar na vista anterior
         const rot = tr.e === 'esten' ? (tr.rest ? 'reestenose do stent' : 'estenose ' + Math.round(tr.pct) + '%') : tr.e === 'ocl' && v.stent === 'Ocluído' && tr.a >= faixaStent3D(v)[0] - 1e-6 && tr.b <= faixaStent3D(v)[1] + 1e-6 ? 'stent ocluído' : null;
         TUBOS.push({ nome, chave: { tipo: ehEnx ? 'enxerto' : 'arteria', key }, estado: tr.e, rotulo: rot, curva, tex, mat, sentido, corFixa: ehEnx && tr.e !== 'esten' ? cor : null });
         for (let q = 0; q < 24; q++) AMOSTRAS.push({ p: curva.getPointAt(q / 23), v: TUBOS.length - 1 });
         if (inicio[key] === undefined) inicio[key] = TUBOS.length - 1;
       }
       if (ehEnx) continue;
-      const ajusta = (o) => { o.userData.camada = 'safena'; o.userData.semFade = BRACO && /Tronco|Subclávia|Axilar/.test(key); gVeias.add(o); return o; };
+      const ajusta = (o) => { o.userData.camada = 'safena'; o.userData.semFade = TRONCO || (BRACO && /Tronco|Subclávia|Axilar/.test(key)); gVeias.add(o); return o; };
       // stent: malha metálica em volta do trecho central
       if (v.stent && v.stent !== 'Ausente') {
         extras.stent = true;
@@ -538,13 +588,14 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       }
     }
     const rot = (i, key, txt, t) => { const k = inicio[key]; if (k === undefined) return null; const lst = TUBOS.filter((q) => q.chave.key === key); return { el: $('l' + i), txt, p: (todas[key] || TUBOS[k].curva).getPointAt(t), v: k, ruim: lst.some((q) => q.estado === 'esten' || q.estado === 'ocl') }; };
-    ROT_P = CAROT ? [rot(0, 'ACCD', 'C. comum D', .3), rot(1, 'ACID', 'C. interna D', .82), rot(2, 'ACED', 'C. externa D', .45), rot(3, 'AVD', 'Vertebral D', .45), rot(4, 'ACCE', 'C. comum E', .38), rot(5, 'ACIE', 'C. interna E', .82), rot(6, 'ACEE', 'C. externa E', .45), rot(7, 'AVE', 'Vertebral E', .45)].filter(Boolean) : BRACO ? [rot(0, 'Artéria Subclávia', 'A. subclávia', .45), rot(1, 'Artéria Axilar', 'A. axilar', .5), rot(2, 'Artéria Braquial', 'A. braquial', .45), rot(3, 'Artéria Radial', 'A. radial', .55), rot(4, 'Artéria Ulnar', 'A. ulnar', .55)].filter(Boolean) : [rot(0, 'Artéria Femoral Comum', 'A. femoral comum', .5), rot(1, 'Artéria Femoral Superficial', 'A. femoral sup.', .4), rot(2, 'Artéria Poplítea', 'A. poplítea', .5), rot(3, 'Artéria Tibial Anterior', 'A. tibial ant.', .6), rot(4, 'Artéria Tibial Posterior', 'A. tibial post.', .6)].filter(Boolean);
+    if (AORTA) geraEnxertoAorta(todas, extras);
+    ROT_P = AORTA ? [rot(0, 'Aorta Suprarrenal', 'Ao suprarrenal', .4), rot(1, 'Aorta Justarrenal', 'Ao justarrenal', .5), rot(2, 'Aorta Infrarrenal', 'Ao infrarrenal', .45), rot(3, 'Artéria Ilíaca Comum Direita', 'Ilíaca comum D', .6), rot(4, 'Artéria Ilíaca Externa Direita', 'Ilíaca ext. D', .92), rot(5, 'Artéria Ilíaca Interna Direita', 'Ilíaca int. D', .35), rot(6, 'Artéria Ilíaca Comum Esquerda', 'Ilíaca comum E', .6), rot(7, 'Artéria Ilíaca Externa Esquerda', 'Ilíaca ext. E', .92), rot(8, 'Artéria Ilíaca Interna Esquerda', 'Ilíaca int. E', .35)].filter(Boolean) : CAROT ? [rot(0, 'ACCD', 'C. comum D', .3), rot(1, 'ACID', 'C. interna D', .82), rot(2, 'ACED', 'C. externa D', .45), rot(3, 'AVD', 'Vertebral D', .45), rot(4, 'ACCE', 'C. comum E', .38), rot(5, 'ACIE', 'C. interna E', .82), rot(6, 'ACEE', 'C. externa E', .45), rot(7, 'AVE', 'Vertebral E', .45)].filter(Boolean) : BRACO ? [rot(0, 'Artéria Subclávia', 'A. subclávia', .45), rot(1, 'Artéria Axilar', 'A. axilar', .5), rot(2, 'Artéria Braquial', 'A. braquial', .45), rot(3, 'Artéria Radial', 'A. radial', .55), rot(4, 'Artéria Ulnar', 'A. ulnar', .55)].filter(Boolean) : [rot(0, 'Artéria Femoral Comum', 'A. femoral comum', .5), rot(1, 'Artéria Femoral Superficial', 'A. femoral sup.', .4), rot(2, 'Artéria Poplítea', 'A. poplítea', .5), rot(3, 'Artéria Tibial Anterior', 'A. tibial ant.', .6), rot(4, 'Artéria Tibial Posterior', 'A. tibial post.', .6)].filter(Boolean);
     for (const r of ROT_P) { r.el.textContent = r.txt; r.el.dataset.ruim = r.ruim ? '1' : '0'; }
     const tem = (e) => TUBOS.some((t) => t.estado === e && !t.corFixa), ponto2 = (c, t) => '<span><i style="background:' + c + '"></i>' + t + '</span>';
     $('leg').innerHTML = ponto2('#d8343a', 'fluxo normal') + (tem('esten') ? ponto2('#f5a623', 'estenose') : '') + (tem('ocl') ? ponto2('#3b4048', 'oclusão') : '') + (tem('hiper') ? ponto2('#9c1f24', 'hipercinético') : '') + (tem('hipo') ? ponto2('#ef8080', 'hipocinético') : '')
-      + (extras.stent ? ponto2('#c9d1d9', 'stent') : '') + (extras.aneur ? ponto2('#b3262e', 'aneurisma') : '') + (extras.dissec ? ponto2('#ffffff', 'dissecção') : '') + (extras.reab ? ponto2('#ef8080', 'colaterais') : '') + (extras.enx ? ponto2(extras.enx === 'ocl' ? '#7d8790' : '#2f6fd6', 'enxerto') : '');
+      + (extras.stent ? ponto2('#c9d1d9', 'stent') : '') + (extras.aneur ? ponto2('#b3262e', 'aneurisma') : '') + (extras.dissec ? ponto2('#ffffff', 'dissecção') : '') + (extras.reab ? ponto2('#ef8080', 'colaterais') : '') + (extras.enx ? ponto2(extras.enx === 'ocl' ? '#7d8790' : '#2f6fd6', 'enxerto') : '') + (extras.endo ? ponto2('#c9d1d9', 'endoprótese') : '') + (extras.saco ? ponto2('#6b4a4a', 'saco aneurismático') : '') + (extras.leak ? ponto2('#f1c40f', 'vazamento (endoleak)') : '');
     const alterada = TUBOS.findIndex((t) => t.estado === 'esten' || t.estado === 'ocl');
-    st.sel = alterada >= 0 ? alterada : (inicio[CAROT ? 'ACID' : BRACO ? 'Artéria Braquial' : 'Artéria Femoral Superficial'] || 0);
+    st.sel = alterada >= 0 ? alterada : (inicio[AORTA ? 'Aorta Infrarrenal' : CAROT ? 'ACID' : BRACO ? 'Artéria Braquial' : 'Artéria Femoral Superficial'] || 0);
   }
   const raioSafena = (e, mm, base) => e === 'ausente' ? .013 : e === 'ruim' ? (parseFloat(mm) > 0 ? clamp(parseFloat(mm) * 0.0085, .03, .1) : base * 1.6) : e === 'trombo' ? base * 1.35 : base;
   // ---------- Doppler venoso de membro superior (MMSS) ----------
@@ -771,6 +822,80 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     st.sel = iFav >= 0 ? iFav : marcas.length ? marcas[0] : Math.max(0, iArt);
   }
   // arco aórtico, tronco braquiocefálico, subclávias, jugulares, traqueia, coluna cervical, clavículas e mandíbula
+  // tronco celíaco, mesentérica superior, renais, femorais comuns, rins, veia cava, coluna lombar, sacro e bacia
+  function geraReferenciasAbdome() {
+    const cor = (h) => new T.Color(h).convertSRGBToLinear();
+    const tuboRef = (pts, r, hex, camada, op) => { const k = cor(hex), m = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), Math.max(24, pts.length * 12), r, 14, false), new T.MeshStandardMaterial({ color: k, roughness: 0.5, emissive: k.clone().multiplyScalar(0.2), transparent: op !== undefined, opacity: op === undefined ? 1 : op })); m.userData.camada = camada; m.userData.semFade = true; gVeias.add(m); return m; };
+    // coluna e sacro translúcidos: na vista posterior a aorta aparece através deles
+    const mOsso = () => new T.MeshStandardMaterial({ color: cor(0xe9dcc4), roughness: 0.7, transparent: true, opacity: 0.4, depthWrite: false });
+    const poe = (geo, x, y, z, mat, camada = 'profunda') => { const m = new T.Mesh(geo, mat || mOsso()); m.position.set(x, y, z); m.userData.camada = camada; m.userData.semFade = true; gVeias.add(m); return m; };
+    const ref = 0xb0333a;
+    tuboRef([V3(.07, 1.28, -.25), V3(.07, 1.32, -.05)], .035, ref, 'safena');
+    tuboRef([V3(.07, 1.32, -.05), V3(-.25, 1.36, -.02), V3(-.55, 1.4, 0)], .025, ref, 'safena');
+    tuboRef([V3(.07, 1.32, -.05), V3(.35, 1.38, -.1), V3(.7, 1.42, -.2)], .025, ref, 'safena');
+    tuboRef([V3(.08, 1.12, -.22), V3(.07, 1.0, 0), V3(.03, .7, .15), V3(-.05, .2, .25)], .035, ref, 'safena');
+    tuboRef([V3(.04, .88, -.32), V3(-.25, .86, -.36), V3(-.52, .8, -.4)], .03, ref, 'safena');
+    tuboRef([V3(.12, .9, -.32), V3(.35, .9, -.36), V3(.55, .88, -.4)], .03, ref, 'safena');
+    for (const sx of [-1, 1]) tuboRef([V3(sx * .8, -1.35, -.02), V3(sx * .84, -1.6, .08), V3(sx * .86, -1.9, .12)], .045, ref, 'safena');
+    // rins
+    for (const [sx, y] of [[-1, .75], [1, .85]]) { const m = poe(new T.SphereGeometry(1, 24, 16), sx * .72, y, -.45, new T.MeshStandardMaterial({ color: cor(0xa0463f), roughness: 0.6, transparent: true, opacity: 0.85 })); m.scale.set(.22, .5, .17); m.rotation.z = -sx * .2; }
+    // veia cava inferior (à direita da aorta), discreta
+    tuboRef([V3(-.17, 1.65, -.26), V3(-.17, .8, -.26), V3(-.14, -.15, -.32)], .1, 0x3d8fe0, 'profunda', .35);
+    // coluna lombar (T12 a L5), sacro e bacia
+    for (let i = 0; i < 6; i++) { const y = 1.3 - i * .29; poe(new T.CylinderGeometry(.22, .22, .2, 22), 0, y, -.62); poe(new T.BoxGeometry(.72, .05, .08), 0, y, -.66); poe(new T.BoxGeometry(.06, .08, .3), 0, y - .02, -.92); }
+    const sacro = poe(new T.CylinderGeometry(.3, .1, .6, 20), 0, -.65, -.78); sacro.rotation.x = .35;
+    const mBacia = () => new T.MeshStandardMaterial({ color: cor(0xe9dcc4), roughness: 0.7, transparent: true, opacity: 0.55, depthWrite: false });
+    for (const sx of [-1, 1]) {
+      const asa = poe(new T.SphereGeometry(1, 22, 14), sx * .78, -.6, -.55, mBacia()); asa.scale.set(.45, .36, .07); asa.rotation.y = sx * .95; // asas ilíacas
+      poe(new T.SphereGeometry(.18, 18, 12), sx * .82, -1.28, -.28, mBacia()); // cabeça do fêmur
+      const ramo = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3([V3(sx * .66, -1.12, -.3), V3(sx * .36, -1.2, 0), V3(sx * .05, -1.25, .2)]), 20, .045, 10, false), mBacia()); ramo.userData.camada = 'profunda'; ramo.userData.semFade = true; gVeias.add(ramo); // ramo do púbis
+    }
+  }
+  // endoprótese (malha prateada), saco aneurismático tratado, vazamento, enxerto convencional e fêmoro-femoral (azul)
+  function geraEnxertoAorta(todas, extras) {
+    const e = ex.extra || {}, enx = e.enxerto || {}, ff = e.femoroFemoral || {};
+    const cor = (h) => new T.Color(h).convertSRGBToLinear();
+    const add = (m) => { m.userData.camada = 'safena'; m.userData.semFade = true; gVeias.add(m); return m; };
+    const R0 = Object.fromEntries(T_ART_AORTA.map(([k, , r]) => [k, r]));
+    const anelLesao = (P, tg, r, hex) => { const m = add(new T.Mesh(new T.TorusGeometry(r * 1.45, r * 0.32, 10, 28), new T.MeshStandardMaterial({ color: cor(hex), emissive: cor(hex).multiplyScalar(0.4), roughness: 0.4 }))); m.position.copy(P); m.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), tg.clone().normalize()); };
+    const cob = COBERTURA_ENDO[enx.tipo];
+    if (cob) {
+      extras.endo = true;
+      for (const [key, u0, u1, parte] of cob) {
+        const toda = todas[key]; if (!toda) continue;
+        const sit = situacaoParte(enx, parte, LOCAL_ENDO), pts = []; for (let i = 0; i <= 30; i++) pts.push(toda.getPointAt(lerp(u0, u1, i / 30)));
+        const cs = new T.CatmullRomCurve3(pts), comp = cs.getLength(), tx = texStentPerna.clone(); tx.needsUpdate = true; tx.repeat.set(Math.max(2, comp * 7), 3);
+        const k = cor(sit === 'Ocluído' ? 0x6b737c : 0xdfe6ee);
+        add(new T.Mesh(geoTubo(cs, () => R0[key] * 1.12, Math.max(16, Math.round(comp * 30)), 14), new T.MeshStandardMaterial({ color: k, map: tx, metalness: 0.45, roughness: 0.4, emissive: k.clone().multiplyScalar(0.2) })));
+        const loc = LOCAL_ENDO[enx.local];
+        if (sit === 'Com estenose' && loc && loc[1] === parte && (key === 'Aorta Infrarrenal' || parte !== 'corpo')) anelLesao(cs.getPointAt(loc[2]), cs.getTangentAt(loc[2]), R0[key], 0xf5a623);
+      }
+      const saco = numA(enx.sacoDiametro), leak = enx.endoleak && enx.endoleak !== 'Ausente', infra = todas['Aorta Infrarrenal'], A = ex.arterias || {};
+      if (/^Endoprótese a/.test(enx.tipo) && infra && (saco > 0 || leak) && !(A['Aorta Infrarrenal'] && A['Aorta Infrarrenal'].aneurisma)) {
+        extras.saco = true; const f = clamp(1.4 + (saco || 55) / 40, 2, 3.2);
+        add(new T.Mesh(geoTubo(infra, (u) => .1 * (1 + (f - 1) * Math.pow(Math.sin(Math.PI * clamp((u - .15) / .8, 0, 1)), 1.3)), 60, 20), new T.MeshStandardMaterial({ color: cor(0x6b4a4a), roughness: 0.7, transparent: true, opacity: 0.45, depthWrite: false })));
+      }
+      if (leak && infra) { extras.leak = true; for (const [s, u] of [[1, .45], [-1, .6], [1, .7]]) { const P = infra.getPointAt(u); add(new T.Mesh(new T.SphereGeometry(.07, 14, 10), new T.MeshStandardMaterial({ color: cor(0xf1c40f), emissive: cor(0xf1c40f).multiplyScalar(0.5), transparent: true, opacity: 0.85 }))).position.set(P.x + s * .17, P.y, P.z + .08); } }
+    }
+    const tuboEnx = (pts, status, r = .055) => { const c = new T.CatmullRomCurve3(pts), k = cor(status === 'Ocluído' ? 0x7d8790 : 0x2f6fd6); add(new T.Mesh(new T.TubeGeometry(c, 60, r, 14, false), new T.MeshStandardMaterial({ color: k, roughness: 0.5, emissive: k.clone().multiplyScalar(0.25) }))); return c; };
+    if (/^Enxerto/.test(enx.tipo || '')) {
+      extras.enx = enx.status === 'Ocluído' ? 'ocl' : 'ok';
+      const bif = /bifemoral/.test(enx.tipo), z = .12;
+      const corpo = [V3(.08, .7, -.3 + z), V3(.08, .3, -.28 + z), V3(.07, -.15, -.3 + z)];
+      const ramo = (sx) => bif ? [V3(.07, -.15, -.3 + z), V3(sx * .3, -.55, -.33 + z), V3(sx * .6, -.95, -.22 + z), V3(sx * .78, -1.3, -.02 + z), V3(sx * .84, -1.6, .1 + z)] : [V3(.07, -.15, -.3 + z), V3(sx * .25, -.5, -.34 + z), V3(sx * .4, -.73, -.38 + z)];
+      const partes = { corpo, ramoD: ramo(-1), ramoE: ramo(1) };
+      for (const [parte, pts] of Object.entries(partes)) {
+        const sit = situacaoParte(enx, parte, LOCAL_ENX_AO), c = tuboEnx(pts, sit), loc = LOCAL_ENX_AO[enx.local];
+        if (sit === 'Com estenose' && loc && loc[1] === parte) anelLesao(c.getPointAt(loc[2]), c.getTangentAt(loc[2]), .055, 0xf5a623);
+      }
+    }
+    if (ff.presente) {
+      extras.enx = extras.enx || (ff.status === 'Ocluído' ? 'ocl' : 'ok');
+      const c = tuboEnx([V3(-.84, -1.6, .2), V3(-.5, -1.42, .75), V3(0, -1.36, .92), V3(.5, -1.42, .75), V3(.84, -1.6, .2)], ff.status === 'Ocluído' ? 'Ocluído' : 'Pérvio', .045);
+      const u = { 'Anastomose femoral direita': .04, 'Corpo do enxerto': .5, 'Anastomose femoral esquerda': .96 }[ff.local];
+      if (ff.status === 'Com estenose' && u !== undefined) anelLesao(c.getPointAt(u), c.getTangentAt(u), .045, 0xf5a623);
+    }
+  }
   function geraReferenciasCervicais() {
     const cor = (h) => new T.Color(h).convertSRGBToLinear();
     const tuboRef = (pts, r, hex, camada, op) => { const k = cor(hex), m = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), Math.max(24, pts.length * 12), r, 14, false), new T.MeshStandardMaterial({ color: k, roughness: 0.5, emissive: k.clone().multiplyScalar(0.2), transparent: op !== undefined, opacity: op === undefined ? 1 : op })); m.userData.camada = camada; m.userData.semFade = true; gVeias.add(m); return m; };
@@ -796,6 +921,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     gVeias.clear(); TUBOS = []; AMOSTRAS = []; ROT_P = [];
     if (FAV) { geraFAV(); return; }
     if (CAROT) { geraReferenciasCervicais(); geraArterias(); return; }
+    if (AORTA) { geraReferenciasAbdome(); geraArterias(); return; }
     if (ARTERIAL) { geraArterias(); return; }
     if (BRACO) { geraBraco(); return; }
     const p = ex.profundas, s = ex.superficiais, e = (k) => estadoDe(p[k]);
@@ -853,8 +979,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   const alvoMarca = new T.Mesh(new T.RingGeometry(.145, .16, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, side: T.DoubleSide }));
   alvoMarca.renderOrder = 5; alvoMarca.visible = false; cenaP.add(alvoMarca);
-  const CENTRO = CAROT ? new T.Vector3(0, -0.1, 0.15) : BRACO ? new T.Vector3(-0.7 * SX, 0.1, 0.1) : new T.Vector3(0, 0.15, 0.2);
-  const camP = { az: CAROT ? 0.35 : -0.6, pol: 1.5, dist: CAROT ? 6.2 : 12.5, alvo: CENTRO.clone(), alvoS: CENTRO.clone(), azAlvo: null, polAlvo: Math.PI / 2 };
+  const CENTRO = AORTA ? new T.Vector3(0, 0.1, 0) : CAROT ? new T.Vector3(0, -0.1, 0.15) : BRACO ? new T.Vector3(-0.7 * SX, 0.1, 0.1) : new T.Vector3(0, 0.15, 0.2);
+  const camP = { az: TRONCO ? 0.35 : -0.6, pol: 1.5, dist: AORTA ? 8 : CAROT ? 6.2 : 12.5, alvo: CENTRO.clone(), alvoS: CENTRO.clone(), azAlvo: null, polAlvo: Math.PI / 2 };
 
   // ---------- a veia (segmento com válvulas, por fora em corte e por dentro) ----------
   const L = 16, H = 1.9, VALVULAS = [-3.4, 3.2];
@@ -1067,7 +1193,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   function montaArteria() {
     if (!ARTERIAL) return;
     const tb = TUBOS[st.sel], key = tb && tb.chave ? tb.chave.key : null, ehEnx = key === 'enxerto';
-    const v = FAV ? (key === 'fav' && ex.extra ? favComoArteria(ex.extra.avaliacao || {}) : null) : ehEnx ? (ex.enxerto && ex.enxerto.tipo ? enxertoComoArteria(ex.enxerto) : null) : key && ex.arterias ? ex.arterias[key] : null;
+    const v0 = FAV ? (key === 'fav' && ex.extra ? favComoArteria(ex.extra.avaliacao || {}) : null) : ehEnx ? (ex.enxerto && ex.enxerto.tipo ? enxertoComoArteria(ex.enxerto) : null) : key && ex.arterias ? ex.arterias[key] : null;
+    const v = AORTA ? aortaComoArteria(key, v0) : v0;
     LES = lesoesDe(v); anastoA.visible = !!(FAV && key === 'fav');
     const F = v && v.aneurisma && !ehEnx ? fatorAneurisma(key, v) : 0, sac = F && v.aneurismaForma === 'Sacular', trombo = F && v.tromboMural, ANG_S = -0.7;
     for (let k = 0; k < NSA; k++) {
@@ -1167,7 +1294,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     return artInfo.total ? 0 : v * artInfo.fator * artInfo.sentido;
   }
   // ---------- Doppler arterial (espectral, esquemático) no ponto da amostra ----------
-  const VPS0 = { ACCD: 85, ACCE: 85, ACID: 70, ACIE: 70, ACED: 90, ACEE: 90, AVD: 45, AVE: 45, fav: 160, 'Tronco Braquiocefálico': 100, 'Artéria Subclávia': 100, 'Artéria Axilar': 90, 'Artéria Braquial': 70, 'Artéria Radial': 55, 'Artéria Ulnar': 55, 'Artéria Femoral Comum': 110, 'Artéria Femoral Profunda': 80, 'Artéria Femoral Superficial': 90, 'Artéria Poplítea': 70, 'Artéria Tibial Anterior': 55, 'Artéria Fibular': 45, 'Artéria Tibial Posterior': 55, enxerto: 70 };
+  const VPS0 = { 'Aorta Suprarrenal': 95, 'Aorta Justarrenal': 90, 'Aorta Infrarrenal': 85, 'Artéria Ilíaca Comum Direita': 110, 'Artéria Ilíaca Comum Esquerda': 110, 'Artéria Ilíaca Externa Direita': 115, 'Artéria Ilíaca Externa Esquerda': 115, 'Artéria Ilíaca Interna Direita': 80, 'Artéria Ilíaca Interna Esquerda': 80, ACCD: 85, ACCE: 85, ACID: 70, ACIE: 70, ACED: 90, ACEE: 90, AVD: 45, AVE: 45, fav: 160, 'Tronco Braquiocefálico': 100, 'Artéria Subclávia': 100, 'Artéria Axilar': 90, 'Artéria Braquial': 70, 'Artéria Radial': 55, 'Artéria Ulnar': 55, 'Artéria Femoral Comum': 110, 'Artéria Femoral Profunda': 80, 'Artéria Femoral Superficial': 90, 'Artéria Poplítea': 70, 'Artéria Tibial Anterior': 55, 'Artéria Fibular': 45, 'Artéria Tibial Posterior': 55, enxerto: 70 };
   const razaoVPS = (p) => p < 50 ? 1 + p / 50 * 0.9 : p <= 75 ? 2 + (p - 50) / 25 * 2 : Math.min(7, 4 + (p - 75) / 25 * 2.5);
   const FORMAS = {
     'Trifásico': (f) => gs(f, 0.13, 0.07) - 0.32 * gs(f, 0.3, 0.07) + 0.14 * gs(f, 0.46, 0.08),
@@ -1281,6 +1408,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const coagulo = new T.Mesh(gCoag, new T.MeshStandardMaterial({ color: new T.Color(0x5a1018).convertSRGBToLinear(), roughness: 0.85 })); coagulo.visible = false; cenaV.add(coagulo);
   if (BRACO && $('rPe')) $('rPe').textContent = '↓ mão';
   if (CAROT && $('rPe')) $('rPe').textContent = '↓ cabeça';
+  if (AORTA && $('rPe')) $('rPe').textContent = '↓ pernas';
   if (FAV && $('rPe') && $('rCor')) { $('rCor').textContent = '↑ anastomose'; $('rPe').textContent = '↓ coração'; } // na FAV o sangue vai da anastomose para o coração
 
   // ---------- câmeras e navegação: perna -> veia -> por dentro ----------
@@ -1346,7 +1474,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   const topoDentro = () => (junc.on && !ARTERIAL ? J_TOPO_IN : 6.2), fundoDentro = () => (FAV ? -7.8 : -7.3); // a FAV começa na anastomose
   // rolagem vertical: quanto da altura cabe na tela e onde a vista está
-  const Y_TOPO = CAROT ? 3.1 : 4.4, COMP_PERNA = CAROT ? 5.6 : 8.9;
+  const Y_TOPO = AORTA ? 2.45 : CAROT ? 3.1 : 4.4, COMP_PERNA = AORTA ? 5.1 : CAROT ? 5.6 : 8.9;
   function rolagem() {
     if (st.nivel === 'perna') { const vis = 0.828 * camP.dist, livre = COMP_PERNA - vis; return { frac: clamp(vis / COMP_PERNA, 0.1, 1), pos: livre > 0.05 ? clamp((Y_TOPO - vis / 2 - camP.alvo.y) / livre, 0, 1) : 0, livre: livre > 0.05 }; }
     if (st.nivel === 'veia') { const vis = 1.04 * cam.dist, livre = L - vis; return { frac: clamp(vis / L, 0.1, 1), pos: livre > 0.05 ? clamp((L / 2 - vis / 2 - cam.alvoY) / livre, 0, 1) : 0, livre: livre > 0.05 }; }
@@ -1503,7 +1631,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   ouvir(bPausa, 'click', () => { st.pausado = !st.pausado; mostraPausa(); }); mostraPausa();
   // botões de vista: A anterior, M medial, P posterior, L lateral (0° lateral, 90° anterior, 180° medial, 270° posterior)
-  const FACES = CAROT ? { A: 0, M: -Math.PI / 2, P: Math.PI, L: Math.PI / 2 } : { A: 0, M: -SX * Math.PI / 2, P: Math.PI, L: SX * Math.PI / 2 };
+  const FACES = TRONCO ? { A: 0, M: -Math.PI / 2, P: Math.PI, L: Math.PI / 2 } : { A: 0, M: -SX * Math.PI / 2, P: Math.PI, L: SX * Math.PI / 2 };
   const bFaces = Object.keys(FACES).map((k) => [k, $('f' + k)]).filter(([, el]) => el);
   function soltaFace() { if (camP.azAlvo === null && !bFaces.some(([, el]) => el.getAttribute('aria-pressed') === 'true')) return; camP.azAlvo = null; bFaces.forEach(([, el]) => el.setAttribute('aria-pressed', 'false')); }
   bFaces.forEach(([k, el]) => ouvir(el, 'click', () => {
@@ -1528,7 +1656,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const aoMudarFs = () => { if (cheia && fsEl() !== raiz) poeCheia(false); };
   ouvir(document, 'fullscreenchange', aoMudarFs); ouvir(document, 'webkitfullscreenchange', aoMudarFs);
   ouvir(document, 'keydown', (e) => { if (e.key === 'Escape' && cheia) poeCheia(false); });
-  [0, 1, 2, 3, 4, 5, 6, 7].forEach((i) => $('l' + i) && ouvir($('l' + i), 'click', () => { const r = ROT_P[i]; if (!r || r.v < 0 || st.nivel !== 'perna' || st.trocando) return; st.sel = r.v; camP.alvo.copy(r.p); alvoMarca.visible = true; if ((ARTERIAL || BRACO) && typeof opcoes.aoSelecionar === 'function') { camP.dist = Math.min(camP.dist, 3.4); if (TUBOS[r.v]) opcoes.aoSelecionar({ ...chaveParaPainel(TUBOS[r.v].chave) }); return; } camP.dist = 2.6; setTimeout(() => { if (vivo) irPara('veia'); }, 620); }));
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].forEach((i) => $('l' + i) && ouvir($('l' + i), 'click', () => { const r = ROT_P[i]; if (!r || r.v < 0 || st.nivel !== 'perna' || st.trocando) return; st.sel = r.v; camP.alvo.copy(r.p); alvoMarca.visible = true; if ((ARTERIAL || BRACO) && typeof opcoes.aoSelecionar === 'function') { camP.dist = Math.min(camP.dist, 3.4); if (TUBOS[r.v]) opcoes.aoSelecionar({ ...chaveParaPainel(TUBOS[r.v].chave) }); return; } camP.dist = 2.6; setTimeout(() => { if (vivo) irPara('veia'); }, 620); }));
 
   // rótulos presos ao 3D
   const ROT_V = [[$('rCor'), 4.1, 1], [$('rPe'), -3.3, 1], [$('rV1'), VALVULAS[0] + H * 0.55, -1], [$('rV2'), VALVULAS[1] + H * 0.55, -1]];
@@ -1543,8 +1671,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     for (const r of ROT_P) {
       if (!naPerna || !st.nomes || r.v < 0) { poe(r.el, prj.set(9, 9, 9), 0, '0'); continue; }
       const s = secao(clamp(r.p.y, -3.85, 4.3)); eixo.set(s[2], r.p.y, s[3]).project(camP3); const exo = eixo.x;
-      lado.set(r.p.x - s[2], 0, r.p.z - s[3]); prj.copy(camP3.position).sub(CENTRO); const frente = CAROT ? (Math.abs(prj.x) < Math.abs(prj.z) * 0.7 || r.p.x * prj.x > 0) : lado.dot(prj.copy(camP3.position).sub(r.p)) > 0; // pescoço: de frente todos; de lado, só os do lado visto
-      prj.copy(r.p).project(camP3); poe(r.el, prj, camP.dist > (CAROT ? 3 : 4.5) ? (frente ? 1 : CAROT ? 0 : 2) : 0, prj.x < exo ? 'calc(-100% - 12px)' : '12px');
+      lado.set(r.p.x - s[2], 0, r.p.z - s[3]); prj.copy(camP3.position).sub(CENTRO); const frente = TRONCO ? (Math.abs(prj.x) < Math.abs(prj.z) * 0.7 || Math.abs(r.p.x) < .15 || r.p.x * prj.x > 0) : lado.dot(prj.copy(camP3.position).sub(r.p)) > 0; // pescoço: de frente todos; de lado, só os do lado visto
+      prj.copy(r.p).project(camP3); poe(r.el, prj, camP.dist > (TRONCO ? 3 : 4.5) ? (frente ? 1 : TRONCO ? 0 : 2) : 0, prj.x < exo ? 'calc(-100% - 12px)' : '12px');
     }
     const ls = $('lSel'), tb = TUBOS[st.sel];
     if (naPerna && alvoMarca.visible && !st.nomes && tb) { const tx = tb.nome + ' · ' + (tb.rotulo || ROTULO[tb.estado]); if (ls.textContent !== tx) { ls.textContent = tx; ls.dataset.ruim = tb.estado === 'ruim' || tb.estado === 'esten' || tb.estado === 'ocl' || (BRACO && tb.estado !== 'ok') ? '1' : '0'; } prj.copy(camP.alvo).project(camP3); const lw = ls.offsetWidth || 170, lx = clamp((prj.x * 0.5 + 0.5) * W, lw / 2 + 8, W - lw / 2 - 38), ly = Math.max(24, (-prj.y * 0.5 + 0.5) * Hh - 34); ls.style.opacity = '1'; ls.style.transform = 'translate(' + lx.toFixed(1) + 'px,' + ly.toFixed(1) + 'px) translate(-50%,-50%)'; }
@@ -1618,7 +1746,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     tGerar2 = setTimeout(() => {
       if (!vivo) return;
       geraPerna(); st.pronto = true; st.nivel = 'perna'; alvoMarca.visible = false; ajusta();
-      camP.az = CAROT ? 0.3 : BRACO ? 0.25 * SX : -0.6; camP.pol = 1.5; camP.alvo.copy(CENTRO); camP.dist = CAROT ? ((W / Hh < 0.85) ? 7.6 : 6.4) : (W / Hh < 0.85) ? 12.4 : 12.2;
+      camP.az = TRONCO ? 0.3 : BRACO ? 0.25 * SX : -0.6; camP.pol = 1.5; camP.alvo.copy(CENTRO); camP.dist = AORTA ? ((W / Hh < 0.85) ? 9.2 : 7.6) : CAROT ? ((W / Hh < 0.85) ? 7.6 : 6.4) : (W / Hh < 0.85) ? 12.4 : 12.2;
       st.dil = alvoDilVeia(); atualizaParede(); pinta(); posiciona(false); ultimaFase = '';
       veu.style.opacity = '0'; st.trocando = false;
     }, 60);
