@@ -10,7 +10,9 @@ import { normalizarVarizesLado } from "../../utils/mmiiVenosoLaudo";
 // sem mexer na câmera. Sem eles (página do paciente), o 3D só mostra.
 // modo="arterial" (Doppler arterial): a mesma perna com a árvore arterial (arterias / enxerto do lado).
 // modo="mmssVenoso" (Doppler venoso de membro superior): o braço, com veias (veias / extra do lado).
+// modo="carotidas" (Doppler de carótidas e vertebrais): cabeça e pescoço, as 8 artérias (arterias já no formato arterial, ver carotidasPara3D).
 function montarExame({ modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes }) {
+  if (modo === "carotidas") return { arterias: arterias || {} };
   if (modo === "arterial" || modo === "mmssArterial") return { arterias: arterias || {}, enxerto: enxerto || null };
   if (modo === "mmssVenoso") return { veias: veias || {}, extra: extra || null };
   if (modo === "fav") return { extra: extra || null };
@@ -26,7 +28,7 @@ function montarExame({ modo, arterias, enxerto, veias, extra, profundas, superfi
 
 export default function Mapa3D(props) {
   const { lado, nota, modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes, ferramenta } = props;
-  const arterial = modo === "arterial" || modo === "mmssArterial" || modo === "fav", braco = modo === "mmssVenoso" || modo === "mmssArterial" || modo === "fav";
+  const carot = modo === "carotidas", arterial = modo === "arterial" || modo === "mmssArterial" || modo === "fav" || carot, braco = modo === "mmssVenoso" || modo === "mmssArterial" || modo === "fav";
   const raiz = useRef(null);
   const motor = useRef(null);
   const ultimas = useRef(props);
@@ -46,7 +48,7 @@ export default function Mapa3D(props) {
         if (typeof ultimas.current.onTracosChange === "function") ultimas.current.onTracosChange(atual.filter((_, j) => j !== i));
       },
     } : {};
-    opcoes.modo = ["arterial", "mmssVenoso", "mmssArterial", "fav"].includes(p.modo) ? p.modo : "venoso";
+    opcoes.modo = ["arterial", "mmssVenoso", "mmssArterial", "fav", "carotidas"].includes(p.modo) ? p.modo : "venoso";
     opcoes.paciente = !editavel;
     const parar = iniciarMapa3D(raiz.current, montarExame(p), p.lado, opcoes);
     motor.current = parar;
@@ -71,13 +73,13 @@ export default function Mapa3D(props) {
   return (
     <div className="m3d" ref={raiz} data-m3d="raiz">
       <div className="m3d-palco" id="m3d-palco" data-m3d="v3d">
-        <canvas className="m3d-gl" data-m3d="gl" aria-label={`Membro ${braco ? "superior" : "inferior"} ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa${arterial ? " arterial" : ""}`} />
+        <canvas className="m3d-gl" data-m3d="gl" aria-label={carot ? "Pescoço em 3D com as carótidas e vertebrais, gerado a partir do mapa" : `Membro ${braco ? "superior" : "inferior"} ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa${arterial ? " arterial" : ""}`} />
         <div className="m3d-semgl" data-m3d="semgl" hidden>Este navegador não conseguiu abrir o 3D (WebGL). Tente no Chrome ou no Safari atualizados.</div>
         <div className="m3d-fase" data-m3d="fase" data-tom="normal" hidden>
           <div className="k" data-m3d="faseK" />
           <div className="t" data-m3d="faseT" />
         </div>
-        {[0, 1, 2, 3, 4].map((i) => (
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
           <button key={i} type="button" className="m3d-rot" data-m3d={`l${i}`} style={{ opacity: 0 }} />
         ))}
         <span className="m3d-rot" data-m3d="rCor" style={{ opacity: 0 }}>↑ coração</span>
@@ -91,8 +93,8 @@ export default function Mapa3D(props) {
           <button type="button" className="m3d-nomes" data-m3d="bNomes" aria-pressed="false">Nomes</button>
         </div>
         <div className="m3d-faces" data-m3d="faces" role="group" aria-label="Girar a perna para uma vista">
-          {[["A", "A", "Vista anterior"], ["M", "M", "Vista medial"], ["P", "P", "Vista posterior"], ["L", "L", "Vista lateral"]].map(([k, rot, nome]) => (
-            <button key={k} type="button" data-m3d={`f${k}`} aria-pressed="false" aria-label={nome} title={nome}>{rot}</button>
+          {(carot ? [["A", "A", "Vista anterior"], ["P", "P", "Vista posterior"], ["M", "LD", "Lateral direita"], ["L", "LE", "Lateral esquerda"]] : [["A", "A", "Vista anterior"], ["M", "M", "Vista medial"], ["P", "P", "Vista posterior"], ["L", "L", "Vista lateral"]]).map(([k, rot, nome]) => (
+            <button key={k} type="button" data-m3d={`f${k}`} aria-pressed="false" className={rot.length > 1 ? "dupla" : undefined} aria-label={nome} title={nome}>{rot}</button>
           ))}
         </div>
         <div className="m3d-leg" data-m3d="leg" />
@@ -112,7 +114,7 @@ export default function Mapa3D(props) {
       </div>
       <div className="m3d-controles">
         <div className="m3d-seg" role="group" aria-label="Nível de zoom">
-          <button type="button" data-m3d="nPerna" aria-pressed="true">{braco ? "Braço" : "Perna"}</button>
+          <button type="button" data-m3d="nPerna" aria-pressed="true">{carot ? "Pescoço" : braco ? "Braço" : "Perna"}</button>
           <button type="button" data-m3d="nVeia" aria-pressed="false">{modo === "fav" ? "Vaso" : arterial ? "Artéria" : "Veia"}</button>
           <button type="button" data-m3d="nDentro" aria-pressed="false">Dentro</button>
         </div>

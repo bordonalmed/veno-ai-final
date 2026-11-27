@@ -10,6 +10,7 @@ import {
   enxertoTipoOptions, enxertoOrigemOptions, enxertoDestinoOptions, enxertoStatusOptions, enxertoLocalOptions,
 } from "./mmiiArterialLaudo";
 import { ARTERIAS as ARTERIAS_MMSS } from "./mmssArterialLaudo";
+import { VASOS_CAROTIDAS } from "./carotidasLaudo";
 import {
   SITIOS_ARTERIAIS, SITIOS_VENOSOS, paredeArterialOptions, ondaOptions, situacaoVeiaOptions, fluxoAxilarOptions,
   arcoPalmarOptions as arcoPalmarFavOptions, tipoFavOptions, stentFavStatusOptions, normalizarExtra as normalizarExtraFav,
@@ -20,6 +21,7 @@ const VERSAO = 1; // venoso
 const VERSAO_ARTERIAL = 3;
 const VERSAO_MMSS = 4; // venoso de membro superior
 const VERSAO_FAV = 6; // fístula arteriovenosa
+const VERSAO_CAROTIDAS = 7; // carótidas e vertebrais (os 8 vasos, 6 bytes cada; sem lado)
 const VERSAO_MMSS_ARTERIAL = 5; // arterial de membro superior (mesmos 6 bytes por artéria)
 const CAMPOS = ["", "JSF", "joelho", "cm_acima_joelho", "cm_abaixo_joelho", "cm_acima_tornozelo", "tornozelo", "JSP"];
 const SUPERF = ["JSF", "Safena Magna", "JSP", "Safena Parva"];
@@ -92,10 +94,10 @@ export function codificarExame3D(ex) {
 const mais1 = (lista, v) => { const k = lista.indexOf(v); return k < 0 ? 0 : k + 1; };
 const deMais1 = (lista, n) => (n ? lista[n - 1] || "" : "");
 export function codificarExameArterial3D(ex) {
-  const mmss = ex.modo === "mmssArterial";
-  const b = [mmss ? VERSAO_MMSS_ARTERIAL : VERSAO_ARTERIAL, ex.lado === "Direito" ? 1 : 0];
+  const mmss = ex.modo === "mmssArterial", carot = ex.modo === "carotidas";
+  const b = [carot ? VERSAO_CAROTIDAS : mmss ? VERSAO_MMSS_ARTERIAL : VERSAO_ARTERIAL, ex.lado === "Direito" ? 1 : 0];
   const art = ex.arterias || {};
-  (mmss ? ARTERIAS_MMSS : ARTERIAS).forEach((nome) => {
+  (carot ? VASOS_CAROTIDAS : mmss ? ARTERIAS_MMSS : ARTERIAS).forEach((nome) => {
     const v = art[nome];
     if (!v) { b.push(0, 0, 0, 0, 0, 0); return; }
     b.push(128 | (v.status === "Ocluída" ? 1 : 0) | (mais1(localizacaoOclusaoOptions, v.localizacaoOclusao) << 1) | (idx(velocidadeOptions, v.velocidade) << 4) | (v.placa === "Presente" ? 64 : 0));
@@ -111,10 +113,10 @@ export function codificarExameArterial3D(ex) {
   return paraBase64Url(b);
 }
 
-function decodificarArterial(le, mmss = false) {
+function decodificarArterial(le, mmss = false, carot = false) {
   const lado = le() === 1 ? "Direito" : "Esquerdo";
   const arterias = {};
-  (mmss ? ARTERIAS_MMSS : ARTERIAS).forEach((nome) => {
+  (carot ? VASOS_CAROTIDAS : mmss ? ARTERIAS_MMSS : ARTERIAS).forEach((nome) => {
     const a = le(), pct = le(), c = le(), d = le(), diam = le(), e = le();
     if (!(a & 128)) return;
     const n = (a >> 1) & 7, lp = c & 3, cp = (c >> 4) & 3;
@@ -141,6 +143,7 @@ function decodificarArterial(le, mmss = false) {
   });
   const e1 = le(), e2 = le();
   const enxerto = { tipo: deMais1(enxertoTipoOptions, e1 & 7), origem: deMais1(enxertoOrigemOptions, (e1 >> 3) & 3), destino: deMais1(enxertoDestinoOptions, (e1 >> 5) & 3), status: deMais1(enxertoStatusOptions, e2 & 3), local: deMais1(enxertoLocalOptions, (e2 >> 2) & 3) };
+  if (carot) return { modo: "carotidas", lado: "", arterias };
   return mmss ? { modo: "mmssArterial", lado, arterias } : { modo: "arterial", lado, arterias, enxerto };
 }
 
@@ -183,6 +186,7 @@ export function decodificarExame3D(codigo) {
   if (versao === VERSAO_MMSS) return decodificarMMSS(le);
   if (versao === VERSAO_MMSS_ARTERIAL) return decodificarArterial(le, true);
   if (versao === VERSAO_FAV) return decodificarFAV(le);
+  if (versao === VERSAO_CAROTIDAS) return decodificarArterial(le, false, true);
   if (versao !== VERSAO) throw new Error("versão desconhecida");
   const lado = le() === 1 ? "Direito" : "Esquerdo";
   const profundas = {};
@@ -262,7 +266,7 @@ function decodificarFAV(le) {
 // Link que vai no QR Code (endereço do site em uso + código depois do #).
 export function linkExame3D(ex, origem) {
   const base = origem || (typeof window !== "undefined" ? window.location.origin : "https://venoai.xyz");
-  const cod = ex && ex.modo === "fav" ? codificarExameFAV3D(ex) : ex && (ex.modo === "arterial" || ex.modo === "mmssArterial") ? codificarExameArterial3D(ex) : ex && ex.modo === "mmssVenoso" ? codificarExameMMSS3D(ex) : codificarExame3D(ex);
+  const cod = ex && ex.modo === "fav" ? codificarExameFAV3D(ex) : ex && (ex.modo === "arterial" || ex.modo === "mmssArterial" || ex.modo === "carotidas") ? codificarExameArterial3D(ex) : ex && ex.modo === "mmssVenoso" ? codificarExameMMSS3D(ex) : codificarExame3D(ex);
   return `${base}/3d#${cod}`;
 }
 

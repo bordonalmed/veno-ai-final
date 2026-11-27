@@ -12,7 +12,7 @@ export default function Paciente3D() {
   const exame = useMemo(() => {
     try { return decodificarExame3D(decodeURIComponent((window.location.hash || "").slice(1))); } catch (_) { return null; }
   }, []);
-  const mmssArt = !!exame && exame.modo === "mmssArterial", fav = !!exame && exame.modo === "fav";
+  const mmssArt = !!exame && exame.modo === "mmssArterial", fav = !!exame && exame.modo === "fav", carot = !!exame && exame.modo === "carotidas";
   const arterial = !!exame && (exame.modo === "arterial" || mmssArt), mmss = !!exame && exame.modo === "mmssVenoso";
   const nota = "Ilustração educativa gerada a partir dos achados do seu exame. Não substitui o laudo nem a consulta com o seu médico.";
   return (
@@ -21,13 +21,15 @@ export default function Paciente3D() {
         <img src={`${PUB}/venoai-logo-vitrine.webp`} alt="VENO.AI" />
         <div>
           <h1>Seu exame em 3D</h1>
-          {exame && <p>{fav ? `Fístula arteriovenosa · braço ${exame.lado === "Direito" ? "direito" : "esquerdo"}` : `Membro ${mmss || mmssArt ? "superior" : "inferior"} ${exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler ${arterial ? "arterial" : "venoso"}`}</p>}
+          {exame && <p>{carot ? "Doppler de carótidas e vertebrais" : fav ? `Fístula arteriovenosa · braço ${exame.lado === "Direito" ? "direito" : "esquerdo"}` : `Membro ${mmss || mmssArt ? "superior" : "inferior"} ${exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler ${arterial ? "arterial" : "venoso"}`}</p>}
         </div>
       </header>
       {exame ? (
         <>
           <main className="p3d-3d">
-            {fav ? (
+            {carot ? (
+              <Mapa3D modo="carotidas" arterias={exame.arterias} nota={nota} />
+            ) : fav ? (
               <Mapa3D modo="fav" lado={exame.lado} extra={exame.extra} nota={nota} />
             ) : mmss ? (
               <Mapa3D modo="mmssVenoso" lado={exame.lado} veias={exame.veias} extra={exame.extra} nota={nota} />
@@ -45,7 +47,15 @@ export default function Paciente3D() {
           </main>
           <section className="p3d-guia">
             <h2>Como ver</h2>
-            {fav ? (
+            {carot ? (
+            <ul>
+              <li><b>Gire</b> o pescoço arrastando com o dedo, ou use os botões <b>A</b> (anterior), <b>P</b> (posterior), <b>LD</b> (lateral direita) e <b>LE</b> (lateral esquerda).</li>
+              <li>As <b>carótidas</b> sobem pelos lados do pescoço e se dividem em <b>interna</b> (leva sangue ao cérebro) e <b>externa</b> (rosto e couro cabeludo). As <b>vertebrais</b> sobem por dentro da coluna do pescoço.</li>
+              <li><b className="ruim">Vermelho</b>: sangue passando normalmente. <b>Laranja</b>: estreitamento por placa (estenose). <b>Cinza escuro</b>: artéria fechada (oclusão). Pontinhos claros: placas pequenas (ateromatose).</li>
+              <li>Toque numa artéria e depois em <b>Artéria</b> e <b>Dentro</b> para ver a placa e o estreitamento por dentro.</li>
+              <li>A barra <b>Superficial / Profundo</b> deixa a pele transparente e mostra a coluna, a traqueia e as clavículas.</li>
+            </ul>
+            ) : fav ? (
             <ul>
               <li><b>Gire</b> o braço arrastando com o dedo, ou use os botões <b>A</b>, <b>M</b>, <b>P</b> e <b>L</b>.</li>
               <li><b className="ruim">Vermelho</b>: artéria. <b>Roxo</b>: a veia da fístula, que recebe o sangue da artéria. <b>Ponto branco</b>: a ligação entre elas (anastomose).</li>

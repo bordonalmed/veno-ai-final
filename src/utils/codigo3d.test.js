@@ -117,6 +117,26 @@ describe("código 3D do Doppler arterial de MMSS", () => {
   });
 });
 
+describe("código 3D das carótidas e vertebrais", () => {
+  const { carotidasPara3D, vasoPadrao } = require("./carotidasLaudo");
+  it("os 8 vasos, com estenose, oclusão, stent, dissecção e aneurisma", () => {
+    const vasos = {
+      ACID: { ...vasoPadrao(), estenose: ">70%", localizacaoEstenose: "terço proximal", tipoPlaca: "calcificada", ateromatose: "moderada" },
+      ACIE: { ...vasoPadrao(), status: "ocluída", localizacaoOclusao: "total" },
+      ACCD: { ...vasoPadrao(), stent: "com reestenose", disseccao: true },
+      AVE: { ...vasoPadrao(), fluxo: "hipocinético", aneurisma: true, aneurismaDiametro: "6" },
+    };
+    const arterias = carotidasPara3D(vasos);
+    expect(arterias.ACID).toMatchObject({ placa: "Presente", estenosePercentual: "80", localizacaoPlaca: "Terço proximal", caracteristicaPlaca: "Calcificada", ateromatose: "Moderada", velocidade: "Normocinético" });
+    const d = decodificarExame3D(linkExame3D({ modo: "carotidas", arterias }, "x").split("#")[1]);
+    expect(d.modo).toBe("carotidas");
+    expect(Object.keys(d.arterias)).toHaveLength(8);
+    for (const k of Object.keys(arterias)) expect(d.arterias[k]).toMatchObject({ status: arterias[k].status, placa: arterias[k].placa, estenosePercentual: arterias[k].estenosePercentual, stent: arterias[k].stent, disseccao: arterias[k].disseccao, aneurisma: arterias[k].aneurisma, velocidade: arterias[k].velocidade });
+    expect(d.arterias.ACIE.status).toBe("Ocluída");
+    expect(d.arterias.AVE.aneurismaDiametro).toBe("6");
+  });
+});
+
 describe("código 3D da fístula arteriovenosa", () => {
   const { normalizarExtra } = require("./favLaudo");
   it("confecção: calibres, profundidade, parede, onda, situação e fluxo axilar", () => {

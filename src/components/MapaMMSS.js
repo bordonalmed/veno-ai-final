@@ -18,7 +18,7 @@ import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 const Mapa3D = lazy(() => import("./mapa3d/Mapa3D"));
 
 // botão 2D/3D em cima do desenho
-function Vista2D3D({ vista3d, setVista3d, children }) {
+export function Vista2D3D({ vista3d, setVista3d, children }) {
   return (
     <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
       <div role="group" aria-label="Visualização do mapa" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", maxWidth: 260, padding: 3, borderRadius: 10, border: "1.5px solid #0eb8d0", background: "#f7fbff" }}>
@@ -36,7 +36,7 @@ function Vista2D3D({ vista3d, setVista3d, children }) {
     </div>
   );
 }
-const Carregando3D = () => <div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>;
+export const Carregando3D = () => <div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>;
 
 // Membro superior, vista anterior (palma para a frente), com pescoço e
 // parte do tórax para mostrar jugular, subclávia e tronco braquiocefálico.

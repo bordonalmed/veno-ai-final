@@ -193,3 +193,19 @@ export function paraDesenhoArterial(v) {
     tipoOnda: "",
   };
 }
+
+// Para o 3D (e o QR Code do exame em 3D): os 8 vasos no formato arterial
+// canônico dos membros (mesmos campos de mmiiArterialLaudo).
+export function carotidaPara3D(salvo) {
+  const d = paraDesenhoArterial(normalizarVaso(salvo));
+  return {
+    ...d,
+    velocidade: d.velocidade === "Normal" ? "Normocinético" : d.velocidade,
+    ateromatose: d.ateromatose || "Ausente",
+    caracteristicaPlaca: d.placa === "Presente" ? d.caracteristicaPlaca : "",
+    tipoOnda: "Trifásico",
+  };
+}
+export function carotidasPara3D(vessels) {
+  return Object.fromEntries(VASOS_CAROTIDAS.map((k) => [k, carotidaPara3D(vessels?.[k])]));
+}
