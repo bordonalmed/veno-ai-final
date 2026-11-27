@@ -78,7 +78,7 @@ button.m3d-rot { pointer-events: auto; cursor: pointer; border-color: var(--m3d-
   .m3d-fase { padding: 5px 8px; border-radius: 9px; max-width: calc(100% - 112px); }
   .m3d-fase .k { font-size: 8.5px; }
   .m3d-fase .t { font-size: 11.5px; margin-top: 2px; }
-  .m3d-doppler { left: 8px; right: 40px; padding: 3px 6px; }
+  .m3d-doppler { left: 8px; right: auto; width: min(66%, 270px); padding: 3px 6px; }
   .m3d-doppler[data-arterial="1"] .m3d-dop { height: 42px; }
   .m3d-rot { font-size: 9.5px; padding: 4px 7px; }
   button.m3d-rot { padding: 5px 8px; }

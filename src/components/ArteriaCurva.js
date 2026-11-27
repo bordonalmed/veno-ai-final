@@ -1,6 +1,9 @@
 import React from "react";
 import { pontoEm, fita, linha, faixaDoTerco, fitaFusiforme } from "../utils/curvas";
 
+// trecho do stent: o terço escolhido, todo o vaso, ou o trecho central (exames sem a localização)
+const faixaStent = (v) => (v.localizacaoStent ? faixaDoTerco(v.localizacaoStent) : [0.3, 0.7]);
+
 // Desenho de UMA artéria sobre uma curva (utils/curvas.js), com todos os
 // achados do laudo arterial: cor pelo fluxo, oclusão no terço, ateromatose,
 // estenose, stent, aneurisma (fusiforme/sacular, trombo mural), dissecção e
@@ -106,8 +109,8 @@ export function ArteriaCurva({ nome, c, maxHalf, v, ativo, mirrored, prefixo, on
       {ocluida && (() => { const [ta, tb] = faixaDoTerco(v.localizacaoOclusao); return <path d={fita(c, ta, tb)} fill={COR_ART.ocluida} />; })()}
       {v.stent && v.stent !== "Ausente" && (
         <>
-          {v.stent === "Ocluído" && <path d={fita(c, 0.3, 0.7)} fill={COR_ART.ocluida} />}
-          <path d={fita(c, 0.3, 0.7)} fill={`url(#${prefixo}-stent-${v.stent === "Pérvio" ? "pervio" : v.stent === "Ocluído" ? "ocluido" : "reestenose"})`} stroke="#2b2f33" strokeWidth={0.4} />
+          {v.stent === "Ocluído" && <path d={fita(c, ...faixaStent(v))} fill={COR_ART.ocluida} />}
+          <path d={fita(c, ...faixaStent(v))} fill={`url(#${prefixo}-stent-${v.stent === "Pérvio" ? "pervio" : v.stent === "Ocluído" ? "ocluido" : "reestenose"})`} stroke="#2b2f33" strokeWidth={0.4} />
         </>
       )}
       {v.disseccao && <path d={linha(c, 0.3, 0.7, 0.6)} fill="none" stroke="#ffffff" strokeWidth={0.9} />}

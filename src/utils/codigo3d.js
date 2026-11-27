@@ -6,7 +6,7 @@ import { veiasProfundas, profOptions, supOptions, perfurantesSegmentoOptions } f
 import { RESTANTE_OPCOES, estadoRestante } from "./vascularMapping";
 import {
   ARTERIAS, localizacaoOclusaoOptions, velocidadeOptions, localizacaoPlacaOptions,
-  tipoOndaOptions, caracteristicaPlacaOptions, ateromatoseOptions, stentOptions, aneurismaFormaOptions,
+  tipoOndaOptions, caracteristicaPlacaOptions, ateromatoseOptions, stentOptions, aneurismaFormaOptions, localizacaoStentOptions,
   enxertoTipoOptions, enxertoOrigemOptions, enxertoDestinoOptions, enxertoStatusOptions, enxertoLocalOptions,
 } from "./mmiiArterialLaudo";
 import { ARTERIAS as ARTERIAS_MMSS } from "./mmssArterialLaudo";
@@ -98,7 +98,7 @@ export function codificarExameArterial3D(ex) {
     b.push(mais1(localizacaoPlacaOptions, v.localizacaoPlaca) | (idx(tipoOndaOptions, v.tipoOnda) << 2) | (mais1(caracteristicaPlacaOptions, v.caracteristicaPlaca) << 4) | (idx(ateromatoseOptions, v.ateromatose) << 6));
     b.push(idx(stentOptions, v.stent || "Ausente") | (v.aneurisma ? 4 : 0) | (mais1(aneurismaFormaOptions, v.aneurismaForma) << 3) | (v.tromboMural ? 32 : 0) | (v.disseccao ? 64 : 0) | (v.reabitada ? 128 : 0));
     b.push(byte(num(v.aneurismaDiametro) * 2));
-    b.push(v.sentido === "Retrógrado" ? 1 : 0);
+    b.push((v.sentido === "Retrógrado" ? 1 : 0) | (mais1(localizacaoStentOptions, v.localizacaoStent) << 1));
   });
   const e = ex.enxerto || {};
   b.push(mais1(enxertoTipoOptions, e.tipo) | (mais1(enxertoOrigemOptions, e.origem) << 3) | (mais1(enxertoDestinoOptions, e.destino) << 5));
@@ -131,6 +131,7 @@ function decodificarArterial(le, mmss = false) {
       reabitada: !!(d & 128),
       aneurismaDiametro: texto(diam, 2),
       sentido: e & 1 ? "Retrógrado" : "Anterógrado",
+      localizacaoStent: deMais1(localizacaoStentOptions, (e >> 1) & 7),
     };
   });
   const e1 = le(), e2 = le();

@@ -78,7 +78,7 @@ describe("código 3D arterial: stent, aneurisma, dissecção, colaterais, sentid
       status: "Pérvia", localizacaoOclusao: "", ateromatose: "Severa", velocidade: "Hipocinético", tipoOnda: "Amortecido (tardus-parvus)",
       placa: "Presente", estenosePercentual: "85", caracteristicaPlaca: "Mista", localizacaoPlaca: "Terço proximal",
       stent: "Com reestenose", aneurisma: true, aneurismaDiametro: "18.5", aneurismaForma: "Sacular", tromboMural: true,
-      disseccao: true, reabitada: true, sentido: "Retrógrado",
+      disseccao: true, reabitada: true, sentido: "Retrógrado", localizacaoStent: "Terço distal",
     };
     const enxerto = { tipo: "Femorodistal", origem: "Femoral superficial", destino: "Fibular", status: "Com estenose", local: "Anastomose distal" };
     const d = decodificarExame3D(codificarExameArterial3D({ lado: "Esquerdo", arterias: { "Artéria Poplítea": v }, enxerto }));
@@ -107,7 +107,7 @@ describe("código 3D do Doppler venoso de MMSS", () => {
 
 describe("código 3D do Doppler arterial de MMSS", () => {
   it("leva as artérias do membro superior (com o tronco braquiocefálico)", () => {
-    const v = { status: "Pérvia", localizacaoOclusao: "", ateromatose: "Discreta", velocidade: "Normocinético", tipoOnda: "Bifásico", placa: "Presente", estenosePercentual: "65", caracteristicaPlaca: "Calcificada", localizacaoPlaca: "Terço proximal", stent: "Pérvio", aneurisma: false, aneurismaDiametro: "", aneurismaForma: "", tromboMural: false, disseccao: false, reabitada: false, sentido: "Anterógrado" };
+    const v = { status: "Pérvia", localizacaoOclusao: "", ateromatose: "Discreta", velocidade: "Normocinético", tipoOnda: "Bifásico", placa: "Presente", estenosePercentual: "65", caracteristicaPlaca: "Calcificada", localizacaoPlaca: "Terço proximal", stent: "Pérvio", aneurisma: false, aneurismaDiametro: "", aneurismaForma: "", tromboMural: false, disseccao: false, reabitada: false, sentido: "Anterógrado", localizacaoStent: "Toda a extensão" };
     const arterias = { "Tronco Braquiocefálico": { ...v, placa: "Ausente", estenosePercentual: "", caracteristicaPlaca: "", localizacaoPlaca: "", stent: "Ausente" }, "Artéria Subclávia": v, "Artéria Radial": { ...v, status: "Ocluída", localizacaoOclusao: "Terço distal", placa: "Ausente", estenosePercentual: "", caracteristicaPlaca: "", localizacaoPlaca: "", stent: "Ausente" } };
     const d = decodificarExame3D(linkExame3D({ modo: "mmssArterial", lado: "Direito", arterias }, "x").split("#")[1]);
     expect(d.modo).toBe("mmssArterial");

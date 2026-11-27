@@ -111,3 +111,14 @@ describe("laudo completo", () => {
     expect(t).not.toMatch(/(direita|esquerda):/);
   });
 });
+
+describe("localização do stent", () => {
+  it("vai na descrição e na conclusão", () => {
+    const a = membro({ "Artéria Femoral Superficial": { stent: "Com reestenose", localizacaoStent: "Terço distal" }, "Artéria Poplítea": { stent: "Pérvio", localizacaoStent: "Toda a extensão" } });
+    expect(descreverArteria("Artéria Femoral Superficial", a["Artéria Femoral Superficial"])).toContain("stent com reestenose no terço distal");
+    expect(descreverArteria("Artéria Poplítea", a["Artéria Poplítea"])).toContain("stent pérvio em toda a extensão");
+    const c = getConclusaoMembro(a).join("\n");
+    expect(c).toContain("Stent com reestenose em Artéria Femoral Superficial (terço distal)");
+    expect(c).toContain("Stent pérvio em Artéria Poplítea (toda a extensão)");
+  });
+});

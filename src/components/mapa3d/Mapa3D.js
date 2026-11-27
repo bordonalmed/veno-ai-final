@@ -46,6 +46,7 @@ export default function Mapa3D(props) {
       },
     } : {};
     opcoes.modo = ["arterial", "mmssVenoso", "mmssArterial"].includes(p.modo) ? p.modo : "venoso";
+    opcoes.paciente = !editavel;
     const parar = iniciarMapa3D(raiz.current, montarExame(p), p.lado, opcoes);
     motor.current = parar;
     return () => { motor.current = null; parar(); };
