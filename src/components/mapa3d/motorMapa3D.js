@@ -56,7 +56,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
 
   const SISTOLE = 1.5, CICLO = 4.3, DUR_REFLUXO = 2.3, VMAX = 5.2;
   const peleR = $('peleR');
-  const st = { pele: peleR ? clamp(Number(peleR.value) / 100, 0, 1) : 0.5, nivel: 'perna', dil: 0, o: 0, t: 0, tc: 0, v: 0, pausado: false, doppler: false, externa: false, sel: 0, trocando: false, pronto: false, semZoomAte: 0 };
+  const st = { pele: peleR ? clamp(Number(peleR.value) / 100, 0, 1) : 0.5, nivel: 'perna', dil: 0, o: 0, t: 0, tc: 0, v: 0, pausado: false, doppler: false, externa: false, amostraY: null, arrastaGate: false, sel: 0, trocando: false, pronto: false, semZoomAte: 0 };
   function velocidade(tc, dil) {
     if (tc < SISTOLE) return Math.pow(Math.sin(Math.PI * tc / SISTOLE), 0.8);
     const tau = tc - SISTOLE, vN = tau < 0.22 ? -0.35 * Math.sin(Math.PI * tau / 0.22) : 0; let vR = 0;
@@ -944,7 +944,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   let dopAtual = null, sAmostra = 0.5;
   function atualizaAmostra() {
     if (!ARTERIAL || st.nivel === 'perna') { gate.visible = false; return; }
-    const y = st.nivel === 'dentro' ? -cam.inY - 1.2 : cam.alvoY; sAmostra = sDeY(y);
+    const y = st.nivel === 'dentro' ? -cam.inY - 1.2 : (st.amostraY !== null ? st.amostraY : cam.alvoY); sAmostra = sDeY(y);
     const pf = perfilArt(y); gate.position.set(pf.cx, y, pf.cz); gate.quaternion.copy(camV3.quaternion); gate.visible = st.nivel === 'veia' && !st.externa;
     dopAtual = dopplerNoPonto(sAmostra);
     const n = '◉ ' + dopAtual.nota, r = dopAtual.vps ? 'VPS ' + dopAtual.vps + ' cm/s' + (dopAtual.razao ? ' · R ' + dopAtual.razao.toFixed(1).replace('.', ',') : '') : 'sem fluxo';
@@ -1041,7 +1041,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   const alvoDilVeia = () => { if (ARTERIAL) return 0; const e = estSel(); return e === 'ruim' ? 1 : e === 'trombo' ? 0.5 : 0; };
   const fatorFluxo = () => { const e = estSel(); return e === 'trombo' ? 0 : e === 'recan' || e === 'parcial' ? 0.45 : 1; };
   const nPerna = $('nPerna'), nVeia = $('nVeia'), nDentro = $('nDentro'), dica = $('dica');
-  const DICAS = ARTERIAL ? { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para ver o nome e o achado.', veia: 'Arraste para girar. Em corte: placa lipídica amarela, calcificada branca. “Por fora” mostra a artéria por fora. Aproxime para entrar, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar com o sangue, afaste para sair.' } : { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
+  const DICAS = ARTERIAL ? { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa artéria para ver o nome e o achado.', veia: 'Arraste o gate amarelo (ou toque no vaso) para mudar o ponto do Doppler. A barra da direita move a vista. Arraste fora do vaso para girar; aproxime para entrar.', dentro: 'Arraste para olhar. Aproxime para avançar com o sangue, afaste para sair.' } : { perna: typeof opcoes.aoSelecionar === 'function' ? 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para alterar o achado.' : 'Arraste para girar. Use a barra da direita (ou dois dedos) para subir e descer. Toque numa veia para ver o nome.', veia: 'Arraste para girar. Aproxime para entrar na veia, afaste para voltar à perna.', dentro: 'Arraste para olhar. Aproxime para avançar, afaste para sair.' };
   function pinta() {
     nPerna.setAttribute('aria-pressed', String(st.nivel === 'perna')); nVeia.setAttribute('aria-pressed', String(st.nivel === 'veia')); nDentro.setAttribute('aria-pressed', String(st.nivel === 'dentro'));
     const naP = st.nivel === 'perna'; dica.textContent = DICAS[st.nivel] + (naP ? '' : ' Toque nas caixas para recolher.'); $('dopBox').dataset.min = '0'; $('dopBox').hidden = !(ARTERIAL && !naP); fase.hidden = naP; $('leg').hidden = !naP; if ($('pele')) $('pele').hidden = !naP; if ($('faces')) $('faces').hidden = !naP; $('bNomes').hidden = !naP; if (ARTERIAL && $('bCor')) $('bCor').hidden = st.nivel !== 'veia'; if (st.pronto) ajusta();
@@ -1052,7 +1052,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const aplica = () => { st.nivel = n; st.semZoomAte = performance.now() + 650; if (n === 'veia') { cam.dist = 13; cam.alvoY = 0; } if (n === 'dentro') { cam.inY = -6.4; cam.tx = 0; cam.tz = 0; } if (n === 'perna') camP.dist = clamp(camP.dist, 3.4, 18); pinta(); };
     if (!mudaCena) { aplica(); return; }
     st.trocando = true; veu.textContent = ''; veu.style.opacity = '1';
-    setTimeout(() => { aplica(); st.dil = alvoDilVeia(); ajustaValvulas(); atualizaParede(); montaArteria(); if (ARTERIAL && st.nivel === 'veia') { cam.dist = Math.max(...artRO) > 1.5 ? 12 : 9; cam.alvoY = artInfo.foco || 0; limitaAlvo(); } posiciona(false); veu.style.opacity = '0'; st.trocando = false; }, 240);
+    setTimeout(() => { aplica(); st.dil = alvoDilVeia(); ajustaValvulas(); atualizaParede(); montaArteria(); if (ARTERIAL && st.nivel === 'veia') { cam.dist = Math.max(...artRO) > 1.5 ? 12 : 9; cam.alvoY = artInfo.foco || 0; st.amostraY = artInfo.foco || 0; limitaAlvo(); } posiciona(false); veu.style.opacity = '0'; st.trocando = false; }, 240);
   }
   const prj = new T.Vector3(); let W = 1, Hh = 1;
   function amostraPerto(nx, ny, limite) { let melhor = null, bd = limite * limite; const asp = W / Hh; for (const s of AMOSTRAS) { prj.copy(s.p).project(camP3); if (prj.z > 1 || prj.z < -1) continue; const dx = (prj.x - nx) * asp, dy = prj.y - ny, d = dx * dx + dy * dy; if (d < bd) { bd = d; melhor = s; } } return melhor; }
@@ -1151,8 +1151,26 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     if (melhor) opcoes.aoApagar(melhor.userData.traco);
   }
   const ndc = (e) => { const r = canvas.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1)]; };
+  // gate do Doppler (nível Artéria): a altura no vaso que fica sob o dedo
+  const prjG = new T.Vector3();
+  function yNoVaso(e) {
+    const r = canvas.getBoundingClientRect(), py = e.clientY - r.top; let melhor = null, bd = 1e9;
+    for (let y = -L / 2 + 0.05; y <= L / 2 - 0.05; y += 0.05) { const pf = perfilArt(y); prjG.set(pf.cx, y, pf.cz).project(camV3); const d = Math.abs((-prjG.y * 0.5 + 0.5) * Hh - py); if (d < bd) { bd = d; melhor = y; } }
+    return melhor;
+  }
+  function pertoDoGate(e) {
+    if (!(ARTERIAL && st.nivel === 'veia' && gate.visible)) return false;
+    const r = canvas.getBoundingClientRect(); prjG.copy(gate.position).project(camV3);
+    return Math.hypot((prjG.x * 0.5 + 0.5) * W - (e.clientX - r.left), (-prjG.y * 0.5 + 0.5) * Hh - (e.clientY - r.top)) < 44;
+  }
+  function pertoDoEixo(e) { // toque em cima do vaso (perto da linha central na tela)
+    const r = canvas.getBoundingClientRect(), y = yNoVaso(e); if (y === null) return false;
+    const pf = perfilArt(y); prjG.set(pf.cx, y, pf.cz).project(camV3);
+    return Math.abs((prjG.x * 0.5 + 0.5) * W - (e.clientX - r.left)) < Math.max(50, W * 0.18);
+  }
   ouvir(canvas, 'pointerdown', (e) => {
     dedos.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { canvas.setPointerCapture(e.pointerId); } catch (_) {} pinca = 0; pincaMeio = null; pincaMeioX = null; toque = dedos.size === 1 ? { t: performance.now(), mov: 0 } : null;
+    st.arrastaGate = dedos.size === 1 && pertoDoGate(e);
     if (dedos.size > 1) { fimRisco(false); return; } // segundo dedo: era gesto, não desenho
     if (caneta && caneta !== 'borracha' && st.nivel === 'perna' && !(e.buttons & 2)) { const P = naPele(e); risco = { pts: P ? [P] : [] }; }
   });
@@ -1165,6 +1183,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
       if (!u || u.distanceTo(P) > 0.035) { risco.pts.push(P); desenhaRisco(); }
       return;
     }
+    if (st.arrastaGate && dedos.size === 1) { const y = yNoVaso(e); if (y !== null) st.amostraY = y; return; }
     if (caneta && caneta !== 'borracha' && dedos.size === 1 && st.nivel === 'perna' && (e.buttons & 2)) { soltaFace(); camP.az -= dx * 0.008; camP.pol = clamp(camP.pol - dy * 0.006, 0.35, 2.75); return; }
     if (dedos.size === 1 && (e.shiftKey || (e.buttons & 2))) arrastaVertical(dy);
     else if (dedos.size === 1) {
@@ -1175,6 +1194,9 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   });
   const solta = (e) => {
     if (risco) { fimRisco(e.type === 'pointerup'); dedos.delete(e.pointerId); pinca = 0; pincaMeio = null; pincaMeioX = null; toque = null; return; }
+    // nível Artéria: tocar no vaso leva o gate do Doppler até ali
+    if (ARTERIAL && st.nivel === 'veia' && !st.arrastaGate && toque && e.type === 'pointerup' && toque.mov < 8 && performance.now() - toque.t < 450 && pertoDoEixo(e)) { const y = yNoVaso(e); if (y !== null) st.amostraY = y; }
+    st.arrastaGate = false;
     const tocou = toque && e.type === 'pointerup' && toque.mov < 8 && performance.now() - toque.t < 450 && st.nivel === 'perna';
     if (tocou && caneta === 'borracha') apagaNoToque(e);
     else if (tocou && !caneta) {
