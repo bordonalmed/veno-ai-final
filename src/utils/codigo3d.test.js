@@ -1,4 +1,4 @@
-import { codificarExame3D, codificarExameArterial3D, codificarExameMMSS3D, decodificarExame3D, linkExame3D } from "./codigo3d";
+import { codificarExame3D, codificarExameArterial3D, codificarExameMMSS3D, codificarExameFAV3D, decodificarExame3D, linkExame3D } from "./codigo3d";
 import { veiasProfundas, profOptions } from "./mmiiVenosoLaudo";
 
 const prof = Object.fromEntries(veiasProfundas.map((v) => [v, profOptions[0]]));
@@ -114,5 +114,28 @@ describe("código 3D do Doppler arterial de MMSS", () => {
     expect(d.arterias["Artéria Subclávia"]).toEqual(v);
     expect(d.arterias["Tronco Braquiocefálico"].status).toBe("Pérvia");
     expect(d.arterias["Artéria Radial"].localizacaoOclusao).toBe("Terço distal");
+  });
+});
+
+describe("código 3D da fístula arteriovenosa", () => {
+  const { normalizarExtra } = require("./favLaudo");
+  it("confecção: calibres, profundidade, parede, onda, situação e fluxo axilar", () => {
+    const e = normalizarExtra(null);
+    e.confeccao.arcoPalmar = "Incompleto";
+    e.confeccao.sitios.radial = { diametro: "2.3", parede: "Calcificação discreta", onda: "Bifásico" };
+    e.confeccao.sitios.cefalicaPunho = { situacao: "Pérvia", diametro: "1.8", profundidade: "3.5" };
+    e.confeccao.sitios.basilicaBraco = { situacao: "Trombosada", diametro: "", profundidade: "" };
+    e.confeccao.sitios.axilar = { situacao: "Pérvia", fluxo: "Contínuo (não fásico)" };
+    const d = decodificarExame3D(codificarExameFAV3D({ lado: "Esquerdo", extra: e }));
+    expect(d.modo).toBe("fav");
+    expect(d.extra.confeccao).toEqual(e.confeccao);
+  });
+  it("avaliação: tipo, fluxo, medidas e alterações", () => {
+    const e = normalizarExtra(null);
+    e.modo = "Avaliação";
+    Object.assign(e.avaliacao, { tipo: "Braquiocefálica (cotovelo)", status: "Pérvia", fluxoVolume: "1250", arteriaDiametro: "5.2", anastomoseDiametro: "4.1", anastomosePsv: "320", veiaDiametro: "7.5", veiaProfundidade: "4.2", estenose: true, estenoseLocal: "Arco da cefálica", estenosePercentual: "65", estenosePsv: "410", aneurisma: true, aneurismaLocal: "Segmento de punção", aneurismaDiametro: "18", roubo: true, stent: true, stentLocal: "Veia subclávia", stentStatus: "Com reestenose" });
+    const d = decodificarExame3D(linkExame3D({ modo: "fav", lado: "Direito", extra: e }, "x").split("#")[1]);
+    expect(d.extra.modo).toBe("Avaliação");
+    expect(d.extra.avaliacao).toEqual(e.avaliacao);
   });
 });

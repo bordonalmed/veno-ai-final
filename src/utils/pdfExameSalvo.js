@@ -7,7 +7,7 @@ import { saveAs } from "file-saver";
 import { carimbarMarcaVenoAIPdfLib } from "./pdfMarca";
 import { carregarDadosPerfil, perfilAtivo, perfilCombinado } from "./perfilLaudo";
 import { tamanhoProporcional } from "./pdfCabecalho";
-import { qrsDoExame3D, qrsDoExameArterial3D, qrsDoExameMMSS3D, qrsDoExameMMSSArterial3D, desenharQr3dRodapePdfLib, ehMMIIVenoso, ehMMIIArterial, ehMMSSVenoso, ehMMSSArterial } from "./qr3dPdf";
+import { qrsDoExame3D, qrsDoExameArterial3D, qrsDoExameMMSS3D, qrsDoExameMMSSArterial3D, qrsDoExameFAV3D, ehFAV, desenharQr3dRodapePdfLib, ehMMIIVenoso, ehMMIIArterial, ehMMSSVenoso, ehMMSSArterial } from "./qr3dPdf";
 
 const MM = 72 / 25.4; // pontos por mm
 const LARGURA = 595;
@@ -145,6 +145,7 @@ export async function montarPDFExame(exame, perfil) {
   const qrs = ehMMIIVenoso(exame) ? await qrsDoExame3D(exame)
     : ehMMIIArterial(exame) ? await qrsDoExameArterial3D({ lado: exame.lado, arterias: { Direito: exame.arteriasDireito, Esquerdo: exame.arteriasEsquerdo }, enxertos: exame.enxertos })
     : ehMMSSArterial(exame) ? await qrsDoExameMMSSArterial3D({ lado: exame.lado, arterias: { Direito: exame.arteriasDireito, Esquerdo: exame.arteriasEsquerdo } })
+    : ehFAV(exame) ? await qrsDoExameFAV3D({ lado: exame.lado, extras: exame.extras })
     : ehMMSSVenoso(exame) ? await qrsDoExameMMSS3D({ lado: exame.lado, veias: exame.veias, extras: exame.extras })
     : {};
   const ladosQr = exame.lado === "Ambos" ? ["Direito", "Esquerdo"] : [exame.lado];
@@ -174,9 +175,13 @@ export async function montarPDFExame(exame, perfil) {
     rodape(pagina);
     ultimas.push(pagina);
   });
-  for (let k = 0; k < ultimas.length; k++) {
+  if (ehFAV(exame) && exame.lado === "Ambos" && ultimas.length) { // fístula: os dois braços no mesmo laudo
+    const u = ultimas[ultimas.length - 1];
+    await desenharQr3dRodapePdfLib(doc, u, qrs.Direito, negrito, rgb, { x: 15, titulo: "Braço direito em 3D" });
+    await desenharQr3dRodapePdfLib(doc, u, qrs.Esquerdo, negrito, rgb, { x: 72, titulo: "Braço esquerdo em 3D" });
+  } else for (let k = 0; k < ultimas.length; k++) {
     const png = qrs[ladosQr[k]];
-    if (png && blocos.length === ladosQr.length) await desenharQr3dRodapePdfLib(doc, ultimas[k], png, negrito, rgb);
+    if (png && (blocos.length === ladosQr.length || ehFAV(exame))) await desenharQr3dRodapePdfLib(doc, ultimas[k], png, negrito, rgb);
   }
 
   // Mapeamento salvo com o exame (as mesmas páginas do PDF da tela).

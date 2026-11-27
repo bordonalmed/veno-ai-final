@@ -12,7 +12,7 @@ export default function Paciente3D() {
   const exame = useMemo(() => {
     try { return decodificarExame3D(decodeURIComponent((window.location.hash || "").slice(1))); } catch (_) { return null; }
   }, []);
-  const mmssArt = !!exame && exame.modo === "mmssArterial";
+  const mmssArt = !!exame && exame.modo === "mmssArterial", fav = !!exame && exame.modo === "fav";
   const arterial = !!exame && (exame.modo === "arterial" || mmssArt), mmss = !!exame && exame.modo === "mmssVenoso";
   const nota = "Ilustração educativa gerada a partir dos achados do seu exame. Não substitui o laudo nem a consulta com o seu médico.";
   return (
@@ -21,13 +21,15 @@ export default function Paciente3D() {
         <img src={`${PUB}/venoai-logo-vitrine.webp`} alt="VENO.AI" />
         <div>
           <h1>Seu exame em 3D</h1>
-          {exame && <p>Membro {mmss || mmssArt ? "superior" : "inferior"} {exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler {arterial ? "arterial" : "venoso"}</p>}
+          {exame && <p>{fav ? `Fístula arteriovenosa · braço ${exame.lado === "Direito" ? "direito" : "esquerdo"}` : `Membro ${mmss || mmssArt ? "superior" : "inferior"} ${exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler ${arterial ? "arterial" : "venoso"}`}</p>}
         </div>
       </header>
       {exame ? (
         <>
           <main className="p3d-3d">
-            {mmss ? (
+            {fav ? (
+              <Mapa3D modo="fav" lado={exame.lado} extra={exame.extra} nota={nota} />
+            ) : mmss ? (
               <Mapa3D modo="mmssVenoso" lado={exame.lado} veias={exame.veias} extra={exame.extra} nota={nota} />
             ) : mmssArt ? (
               <Mapa3D modo="mmssArterial" lado={exame.lado} arterias={exame.arterias} nota={nota} />
@@ -43,7 +45,14 @@ export default function Paciente3D() {
           </main>
           <section className="p3d-guia">
             <h2>Como ver</h2>
-            {mmss ? (
+            {fav ? (
+            <ul>
+              <li><b>Gire</b> o braço arrastando com o dedo, ou use os botões <b>A</b>, <b>M</b>, <b>P</b> e <b>L</b>.</li>
+              <li><b className="ruim">Vermelho</b>: artéria. <b>Roxo</b>: a veia da fístula, que recebe o sangue da artéria. <b>Ponto branco</b>: a ligação entre elas (anastomose).</li>
+              <li><b>Laranja</b>: estreitamento. No mapeamento antes da cirurgia, <b>verde</b> são os vasos com calibre bom para a fístula.</li>
+              <li>Toque na fístula e depois em <b>Vaso</b> e <b>Dentro</b> para ver por dentro.</li>
+            </ul>
+            ) : mmss ? (
             <ul>
               <li><b>Gire</b> o braço arrastando com o dedo, ou use os botões <b>A</b>, <b>M</b>, <b>P</b> e <b>L</b>.</li>
               <li><b>Azul</b>: veia pérvia, o sangue volta normalmente para o coração. <b>Cinza</b>: trombose (coágulo) fechando a veia. <b>Azul acinzentado</b>: trombo parcial. <b>Laranja</b>: recanalização parcial.</li>

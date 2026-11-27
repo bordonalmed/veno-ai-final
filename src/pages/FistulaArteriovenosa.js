@@ -27,6 +27,7 @@ import {
   gerarBlocoExame,
 } from "../utils/favLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
+import { qrsDoExameFAV3D, desenharQrsFAVNoLaudo, desenharQr3dNasPaginasDoMapa } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesFAV";
@@ -276,7 +277,10 @@ function FistulaArteriovenosa() {
   // Mapa no PDF (sempre incluído): o mesmo no PDF da tela e no exame salvo.
   async function adicionarMapaNoPdf(doc) {
     try {
-      for (const l of lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado]) await adicionarMapaFAVAoPdf(doc, l, extras[l]);
+      const ladosMapa = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
+      for (const l of ladosMapa) await adicionarMapaFAVAoPdf(doc, l, extras[l]);
+      // QR Code + botão "Abrir em 3D" também na página do desenho 2D
+      desenharQr3dNasPaginasDoMapa(doc, ladosMapa, await qrsDoExameFAV3D({ lado, extras }));
     } catch (e) {
       console.error("Erro ao adicionar o mapa ao PDF:", e);
     }
@@ -398,6 +402,8 @@ function FistulaArteriovenosa() {
       }
     }
 
+    // QR Code do exame em 3D (um por braço) no rodapé da última página do laudo
+    const qrs = await qrsDoExameFAV3D({ lado, extras });
     let pagina = 0;
     lados.forEach((ladoAtual, idx) => {
       if (pagina > 0) doc.addPage();
@@ -530,6 +536,7 @@ function FistulaArteriovenosa() {
         }
       }
       addRodape();
+      desenharQrsFAVNoLaudo(doc, lado, qrs);
       pagina++;
     });
     
