@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 import { desenharCabecalhoLaudo, desenharAssinatura } from "../utils/pdfCabecalho";
 import { carimbarMarcaVenoAI } from "../utils/pdfMarca";
 import { appendImagesToPdf } from "../utils/pdfImages";
-import { qrsDoExame3D, desenharQr3dRodape } from "../utils/qr3dPdf";
+import { qrsDoExame3D, desenharQr3dRodape, desenharQr3dNasPaginasDoMapa } from "../utils/qr3dPdf";
 import { extrasParaSalvar, anexosDoExameEmEdicao } from "../utils/exameExtras";
 import { FiMousePointer, FiPaperclip, FiX } from "react-icons/fi";
 import { FaStethoscope } from "react-icons/fa";
@@ -500,10 +500,13 @@ function MMIIVenoso() {
   // Mapa no PDF (sempre incluído): o mesmo no PDF da tela e no exame salvo.
   async function adicionarMapaNoPdf(doc) {
     try {
+      const ladosMapa = lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado];
       await adicionarEsquemaAoPdf(doc, {
-        ladosParaMostrar: lado === "Ambos" ? ["Direito", "Esquerdo"] : [lado],
+        ladosParaMostrar: ladosMapa,
         superficiais, magna, parva, perfurantes, profundas, varizes, observacoes,
       });
+      // QR Code + botão "Abrir meu exame em 3D" também na página do desenho 2D
+      desenharQr3dNasPaginasDoMapa(doc, ladosMapa, await qrsDoExame3D({ lado, profundas, superficiais, magna, parva, perfurantes, varizes }));
     } catch (e) {
       console.error("Erro ao adicionar o mapa ao PDF:", e);
     }

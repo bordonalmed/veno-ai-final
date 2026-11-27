@@ -161,6 +161,11 @@ function triangulosEstenose(g, v) {
   ];
 }
 
+// trecho do stent: o terço escolhido, todo o vaso, ou o trecho central (exames sem a localização)
+function faixaStent(g, v, sa, sb) {
+  return v.localizacaoStent ? faixaDoTerco(g.spine, v.localizacaoStent) : [sa, sb];
+}
+
 function trechoCentral(g, frac = 0.4) {
   const [y0, y1] = extremos(g.spine);
   const meio = (y0 + y1) / 2, metade = ((y1 - y0) * frac) / 2;
@@ -222,9 +227,9 @@ export function DesenhoMMIIArterial({ lado, arterias, enxerto, onSelecionar, sel
               })()}
               {v.stent && v.stent !== "Ausente" && (
                 <>
-                  {v.stent === "Ocluído" && <path d={fitaVeiaSimples(g.spine, g.half, sa, sb)} fill={COR_ARTERIA.ocluida} />}
+                  {v.stent === "Ocluído" && <path d={fitaVeiaSimples(g.spine, g.half, ...faixaStent(g, v, sa, sb))} fill={COR_ARTERIA.ocluida} />}
                   <path
-                    d={fitaVeiaSimples(g.spine, g.half, sa, sb)}
+                    d={fitaVeiaSimples(g.spine, g.half, ...faixaStent(g, v, sa, sb))}
                     fill={`url(#stent-${v.stent === "Pérvio" ? "pervio" : v.stent === "Ocluído" ? "ocluido" : "reestenose"}-${sufixo})`}
                     stroke="#2b2f33"
                     strokeWidth={0.4}

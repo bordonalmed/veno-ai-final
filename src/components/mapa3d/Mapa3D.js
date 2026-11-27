@@ -11,7 +11,7 @@ import { normalizarVarizesLado } from "../../utils/mmiiVenosoLaudo";
 // modo="arterial" (Doppler arterial): a mesma perna com a árvore arterial (arterias / enxerto do lado).
 // modo="mmssVenoso" (Doppler venoso de membro superior): o braço, com veias (veias / extra do lado).
 function montarExame({ modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes }) {
-  if (modo === "arterial") return { arterias: arterias || {}, enxerto: enxerto || null };
+  if (modo === "arterial" || modo === "mmssArterial") return { arterias: arterias || {}, enxerto: enxerto || null };
   if (modo === "mmssVenoso") return { veias: veias || {}, extra: extra || null };
   return {
     profundas: profundas || {},
@@ -25,7 +25,7 @@ function montarExame({ modo, arterias, enxerto, veias, extra, profundas, superfi
 
 export default function Mapa3D(props) {
   const { lado, nota, modo, arterias, enxerto, veias, extra, profundas, superficiais, magna, parva, perfurantes, varizes, ferramenta } = props;
-  const arterial = modo === "arterial";
+  const arterial = modo === "arterial" || modo === "mmssArterial", braco = modo === "mmssVenoso" || modo === "mmssArterial";
   const raiz = useRef(null);
   const motor = useRef(null);
   const ultimas = useRef(props);
@@ -45,7 +45,8 @@ export default function Mapa3D(props) {
         if (typeof ultimas.current.onTracosChange === "function") ultimas.current.onTracosChange(atual.filter((_, j) => j !== i));
       },
     } : {};
-    opcoes.modo = p.modo === "arterial" || p.modo === "mmssVenoso" ? p.modo : "venoso";
+    opcoes.modo = ["arterial", "mmssVenoso", "mmssArterial"].includes(p.modo) ? p.modo : "venoso";
+    opcoes.paciente = !editavel;
     const parar = iniciarMapa3D(raiz.current, montarExame(p), p.lado, opcoes);
     motor.current = parar;
     return () => { motor.current = null; parar(); };
@@ -69,7 +70,7 @@ export default function Mapa3D(props) {
   return (
     <div className="m3d" ref={raiz} data-m3d="raiz">
       <div className="m3d-palco" id="m3d-palco" data-m3d="v3d">
-        <canvas className="m3d-gl" data-m3d="gl" aria-label={`Membro ${modo === "mmssVenoso" ? "superior" : "inferior"} ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa${arterial ? " arterial" : ""}`} />
+        <canvas className="m3d-gl" data-m3d="gl" aria-label={`Membro ${braco ? "superior" : "inferior"} ${String(lado || "").toLowerCase()} em 3D gerado a partir do mapa${arterial ? " arterial" : ""}`} />
         <div className="m3d-semgl" data-m3d="semgl" hidden>Este navegador não conseguiu abrir o 3D (WebGL). Tente no Chrome ou no Safari atualizados.</div>
         <div className="m3d-fase" data-m3d="fase" data-tom="normal" hidden>
           <div className="k" data-m3d="faseK" />
@@ -110,7 +111,7 @@ export default function Mapa3D(props) {
       </div>
       <div className="m3d-controles">
         <div className="m3d-seg" role="group" aria-label="Nível de zoom">
-          <button type="button" data-m3d="nPerna" aria-pressed="true">{modo === "mmssVenoso" ? "Braço" : "Perna"}</button>
+          <button type="button" data-m3d="nPerna" aria-pressed="true">{braco ? "Braço" : "Perna"}</button>
           <button type="button" data-m3d="nVeia" aria-pressed="false">{arterial ? "Artéria" : "Veia"}</button>
           <button type="button" data-m3d="nDentro" aria-pressed="false">Dentro</button>
         </div>

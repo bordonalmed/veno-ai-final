@@ -14,6 +14,10 @@ export const placaOptions = ["Ausente", "Presente"];
 export const caracteristicaPlacaOptions = ["Calcificada", "Lipídica", "Mista"];
 export const aneurismaFormaOptions = ["Fusiforme", "Sacular"];
 export const stentOptions = ["Ausente", "Pérvio", "Com reestenose", "Ocluído"];
+// onde está o stent no vaso
+export const localizacaoStentOptions = ["Terço proximal", "Terço médio", "Terço distal", "Toda a extensão"];
+// "Terço proximal" -> "no terço proximal"; "Toda a extensão" -> "em toda a extensão"
+export const textoLocalStent = (l) => (l === "Toda a extensão" ? "em toda a extensão" : l ? `no ${l.charAt(0).toLowerCase()}${l.slice(1)}` : "");
 
 export const estruturaArteria = {
   status: "Pérvia",
@@ -28,6 +32,7 @@ export const estruturaArteria = {
   caracteristicaPlaca: "",
   localizacaoPlaca: "",
   stent: "Ausente",
+  localizacaoStent: "",
   aneurisma: false,
   aneurismaDiametro: "",
   // usados na aorta/ilíacas (calibre medido, forma do aneurisma, trombo mural)
@@ -87,7 +92,7 @@ function textoPlaca(v) {
 
 function textoExtras(v) {
   const partes = [];
-  if (v.stent && v.stent !== "Ausente") partes.push(`stent ${v.stent.toLowerCase()}`);
+  if (v.stent && v.stent !== "Ausente") partes.push(`stent ${v.stent.toLowerCase()}${v.localizacaoStent ? ` ${textoLocalStent(v.localizacaoStent)}` : ""}`);
   if (v.aneurisma) {
     partes.push(
       `dilatação aneurismática${preenchido(v.aneurismaForma) ? ` ${v.aneurismaForma.toLowerCase()}` : ""}` +
@@ -216,7 +221,7 @@ export function criarLaudoArterial({ arterias: ARTERIAS, membro, soDireito = [],
     });
 
     valores.forEach(([nome, v]) => {
-      if (v.stent && v.stent !== "Ausente") linhas.push(`Stent ${v.stent.toLowerCase()} em ${nome}`);
+      if (v.stent && v.stent !== "Ausente") linhas.push(`Stent ${v.stent.toLowerCase()} em ${nome}${v.localizacaoStent ? ` (${v.localizacaoStent === "Toda a extensão" ? "toda a extensão" : v.localizacaoStent.toLowerCase()})` : ""}`);
       if (v.aneurisma) {
         linhas.push(
           `Aneurisma ${preenchido(v.aneurismaForma) ? `${v.aneurismaForma.toLowerCase()} ` : ""}de ${nome}` +

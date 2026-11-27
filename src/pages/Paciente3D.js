@@ -12,7 +12,8 @@ export default function Paciente3D() {
   const exame = useMemo(() => {
     try { return decodificarExame3D(decodeURIComponent((window.location.hash || "").slice(1))); } catch (_) { return null; }
   }, []);
-  const arterial = !!exame && exame.modo === "arterial", mmss = !!exame && exame.modo === "mmssVenoso";
+  const mmssArt = !!exame && exame.modo === "mmssArterial";
+  const arterial = !!exame && (exame.modo === "arterial" || mmssArt), mmss = !!exame && exame.modo === "mmssVenoso";
   const nota = "Ilustração educativa gerada a partir dos achados do seu exame. Não substitui o laudo nem a consulta com o seu médico.";
   return (
     <div className="p3d">
@@ -20,7 +21,7 @@ export default function Paciente3D() {
         <img src={`${PUB}/venoai-logo-vitrine.webp`} alt="VENO.AI" />
         <div>
           <h1>Seu exame em 3D</h1>
-          {exame && <p>Membro {mmss ? "superior" : "inferior"} {exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler {arterial ? "arterial" : "venoso"}</p>}
+          {exame && <p>Membro {mmss || mmssArt ? "superior" : "inferior"} {exame.lado === "Direito" ? "direito" : "esquerdo"} · Doppler {arterial ? "arterial" : "venoso"}</p>}
         </div>
       </header>
       {exame ? (
@@ -28,6 +29,8 @@ export default function Paciente3D() {
           <main className="p3d-3d">
             {mmss ? (
               <Mapa3D modo="mmssVenoso" lado={exame.lado} veias={exame.veias} extra={exame.extra} nota={nota} />
+            ) : mmssArt ? (
+              <Mapa3D modo="mmssArterial" lado={exame.lado} arterias={exame.arterias} nota={nota} />
             ) : arterial ? (
               <Mapa3D modo="arterial" lado={exame.lado} arterias={exame.arterias} enxerto={exame.enxerto} nota={nota} />
             ) : (

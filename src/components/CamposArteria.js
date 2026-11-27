@@ -10,6 +10,7 @@ import {
   placaOptions,
   caracteristicaPlacaOptions,
   stentOptions,
+  localizacaoStentOptions,
   aneurismaFormaOptions,
   enxertoTipoOptions,
   enxertoStatusOptions,
@@ -196,7 +197,7 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, co
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(10px, 2.5vw, 18px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
         {!isOcluida && <CampoCheck label="Reabitada por colaterais" checked={valores.reabitada} onChange={v => set('reabitada', v)} />}
-        <CampoCheck label="Stent" checked={(valores.stent || "Ausente") !== "Ausente"} onChange={v => set('stent', v ? "Pérvio" : "Ausente")} />
+        <CampoCheck label="Stent" checked={(valores.stent || "Ausente") !== "Ausente"} onChange={v => { if (v) set('stent', "Pérvio"); else onChange({ ...valores, stent: "Ausente", localizacaoStent: "" }); }} />
         <CampoCheck label="Aneurisma" checked={valores.aneurisma} onChange={v => set('aneurisma', v)} />
         <CampoCheck label="Dissecção" checked={valores.disseccao} onChange={v => set('disseccao', v)} />
       </div>
@@ -209,6 +210,7 @@ export function CamposArteria({ arteria, valores, onChange, lado, semMoldura, co
             options={stentOptions.filter(o => o !== "Ausente")}
             onChange={v => set('stent', v)}
           />
+          <CampoSelect label="Localização do stent:" value={valores.localizacaoStent || ""} options={localizacaoStentOptions} placeholder="Selecione" onChange={v => set('localizacaoStent', v)} />
         </div>
       )}
 

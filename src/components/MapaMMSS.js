@@ -17,6 +17,27 @@ import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
 
 const Mapa3D = lazy(() => import("./mapa3d/Mapa3D"));
 
+// botão 2D/3D em cima do desenho
+function Vista2D3D({ vista3d, setVista3d, children }) {
+  return (
+    <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div role="group" aria-label="Visualização do mapa" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", maxWidth: 260, padding: 3, borderRadius: 10, border: "1.5px solid #0eb8d0", background: "#f7fbff" }}>
+        {[["2D", false], ["3D", true]].map(([rot, v3]) => (
+          <button
+            key={rot}
+            type="button"
+            aria-pressed={vista3d === v3}
+            onClick={() => setVista3d(v3)}
+            style={{ minHeight: 36, border: 0, borderRadius: 7, fontWeight: 800, fontSize: 14, cursor: "pointer", background: vista3d === v3 ? "#0eb8d0" : "transparent", color: vista3d === v3 ? "#04222a" : "#0a7f91" }}
+          >{rot}</button>
+        ))}
+      </div>
+      {children}
+    </div>
+  );
+}
+const Carregando3D = () => <div style={{ width: "100%", minHeight: 380, borderRadius: 14, background: "#0d141f", color: "#0eb8d0", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, letterSpacing: ".1em", fontSize: 12 }}>CARREGANDO 3D</div>;
+
 // Membro superior, vista anterior (palma para a frente), com pescoço e
 // parte do tórax para mostrar jugular, subclávia e tronco braquiocefálico.
 // Desenhado nativamente para o braço DIREITO (lateral = esquerda da tela,
@@ -361,6 +382,7 @@ export function MapaInterativoMMSSArterial({
 }) {
   const [selecionada, setSelecionada] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [vista3d, setVista3d] = useState(false);
   if (!aberto) return null;
   const l = ladoAtivo;
   const valores = arterias?.[l] || {};
@@ -375,7 +397,18 @@ export function MapaInterativoMMSSArterial({
         onFechar={onFechar}
         lado={lado} ladoAtivo={l}
         onTrocarLado={(op) => { onTrocarLado(op); setSelecionada(null); }}
-        desenho={<DesenhoMMSSArterial lado={l} arterias={valores} onSelecionar={setSelecionada} selecionada={selecionada} style={{ display: "block", width: "100%", maxWidth: 380, maxHeight: "72vh" }} />}
+        desenho={
+          <Vista2D3D vista3d={vista3d} setVista3d={setVista3d}>
+            {vista3d ? (
+              <Suspense fallback={<Carregando3D />}>
+                {/* no 3D: tocar numa artéria abre o mesmo painel do 2D */}
+                <Mapa3D key={l} modo="mmssArterial" lado={l} arterias={valores} onSelecionar={(tipo, key) => setSelecionada(tipo === "arteria" ? key : null)} />
+              </Suspense>
+            ) : (
+              <DesenhoMMSSArterial lado={l} arterias={valores} onSelecionar={setSelecionada} selecionada={selecionada} style={{ display: "block", width: "100%", maxWidth: 380, maxHeight: "72vh" }} />
+            )}
+          </Vista2D3D>
+        }
         legenda={<LegendaMMSSArterial />}
         painel={selecionada && valores[selecionada] ? (
           <CamposArteria arteria={selecionada} lado={l} valores={valores[selecionada]} onChange={(v) => onArteriaChange(l, selecionada, v)} semMoldura />
