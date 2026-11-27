@@ -102,7 +102,7 @@ export default function Mapa3D(props) {
         <div className="m3d-leg" data-m3d="leg" />
         <label className="m3d-pele" data-m3d="pele">
           <span>Superficial</span>
-          <input type="range" min="0" max="100" defaultValue={arterial ? 65 : 50} data-m3d="peleR" aria-label={arterial ? "Da pele (superficial) às artérias (profundo)" : "Do superficial (pele e varizes) ao profundo (veias profundas)"} />
+          <input type="range" min="0" max="100" defaultValue={aorta ? 82 : arterial ? 65 : 50} data-m3d="peleR" aria-label={arterial ? "Da pele (superficial) às artérias (profundo)" : "Do superficial (pele e varizes) ao profundo (veias profundas)"} />
           <span>Profundo</span>
         </label>
         <div className="m3d-rolagem" data-m3d="rolagem" role="scrollbar" aria-controls="m3d-palco" aria-orientation="vertical" aria-label="Mover a vista para cima e para baixo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} tabIndex={0}>

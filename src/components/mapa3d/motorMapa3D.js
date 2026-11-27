@@ -542,14 +542,14 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
         const tex = null; // na perna as artérias ficam paradas (o fluxo aparece na Artéria e Por dentro)
         const cor = ehEnx && tr.e !== 'esten' ? new T.Color(tr.e === 'ocl' ? 0x7d8790 : 0x2f6fd6).convertSRGBToLinear() : COR3[tr.e].clone();
         const mat = new T.MeshStandardMaterial({ color: cor.clone(), map: tex, roughness: 0.42, emissive: cor.clone().multiplyScalar(0.3) });
-        const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; malha.userData.semFade = BRACO && /Tronco|Subclávia|Axilar/.test(key); gVeias.add(malha);
+        const malha = new T.Mesh(geoTubo(curva, rFn, Math.max(16, Math.round(comp * 20)), 12), mat); malha.userData.camada = 'safena'; malha.userData.semFade = TRONCO || (BRACO && /Tronco|Subclávia|Axilar/.test(key)); gVeias.add(malha); // pescoço / abdome: os vasos ficam atrás do centro do corpo e não podem apagar na vista anterior
         const rot = tr.e === 'esten' ? (tr.rest ? 'reestenose do stent' : 'estenose ' + Math.round(tr.pct) + '%') : tr.e === 'ocl' && v.stent === 'Ocluído' && tr.a >= faixaStent3D(v)[0] - 1e-6 && tr.b <= faixaStent3D(v)[1] + 1e-6 ? 'stent ocluído' : null;
         TUBOS.push({ nome, chave: { tipo: ehEnx ? 'enxerto' : 'arteria', key }, estado: tr.e, rotulo: rot, curva, tex, mat, sentido, corFixa: ehEnx && tr.e !== 'esten' ? cor : null });
         for (let q = 0; q < 24; q++) AMOSTRAS.push({ p: curva.getPointAt(q / 23), v: TUBOS.length - 1 });
         if (inicio[key] === undefined) inicio[key] = TUBOS.length - 1;
       }
       if (ehEnx) continue;
-      const ajusta = (o) => { o.userData.camada = 'safena'; o.userData.semFade = BRACO && /Tronco|Subclávia|Axilar/.test(key); gVeias.add(o); return o; };
+      const ajusta = (o) => { o.userData.camada = 'safena'; o.userData.semFade = TRONCO || (BRACO && /Tronco|Subclávia|Axilar/.test(key)); gVeias.add(o); return o; };
       // stent: malha metálica em volta do trecho central
       if (v.stent && v.stent !== 'Ausente') {
         extras.stent = true;
@@ -826,7 +826,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   function geraReferenciasAbdome() {
     const cor = (h) => new T.Color(h).convertSRGBToLinear();
     const tuboRef = (pts, r, hex, camada, op) => { const k = cor(hex), m = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), Math.max(24, pts.length * 12), r, 14, false), new T.MeshStandardMaterial({ color: k, roughness: 0.5, emissive: k.clone().multiplyScalar(0.2), transparent: op !== undefined, opacity: op === undefined ? 1 : op })); m.userData.camada = camada; m.userData.semFade = true; gVeias.add(m); return m; };
-    const mOsso = () => new T.MeshStandardMaterial({ color: cor(0xe9dcc4), roughness: 0.7 });
+    // coluna e sacro translúcidos: na vista posterior a aorta aparece através deles
+    const mOsso = () => new T.MeshStandardMaterial({ color: cor(0xe9dcc4), roughness: 0.7, transparent: true, opacity: 0.4, depthWrite: false });
     const poe = (geo, x, y, z, mat, camada = 'profunda') => { const m = new T.Mesh(geo, mat || mOsso()); m.position.set(x, y, z); m.userData.camada = camada; m.userData.semFade = true; gVeias.add(m); return m; };
     const ref = 0xb0333a;
     tuboRef([V3(.07, 1.28, -.25), V3(.07, 1.32, -.05)], .035, ref, 'safena');
