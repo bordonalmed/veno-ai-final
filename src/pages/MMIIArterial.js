@@ -25,7 +25,7 @@ import {
   ladosDoExame,
 } from "../utils/mmiiArterialLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
-import { qrsDoExameArterial3D, desenharQr3dRodape } from "../utils/qr3dPdf";
+import { qrsDoExameArterial3D, desenharQr3dRodape, desenharQr3dNasPaginasDoMapa } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMIIArterial";
@@ -253,6 +253,8 @@ function MMIIArterial() {
   async function adicionarMapaNoPdf(doc) {
     try {
       await adicionarMapaArterialAoPdf(doc, ladosDoExame(lado), { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }, enxertos);
+      // QR Code + botão "Abrir meu exame em 3D" também na página do desenho 2D
+      desenharQr3dNasPaginasDoMapa(doc, ladosDoExame(lado), await qrsDoExameArterial3D({ lado, arterias: { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo }, enxertos }));
     } catch (e) {
       console.error("Erro ao adicionar o mapa ao PDF:", e);
     }

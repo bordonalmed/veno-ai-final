@@ -27,7 +27,7 @@ import {
   ladosDoExame,
 } from "../utils/mmssVenosoLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
-import { qrsDoExameMMSS3D, desenharQr3dRodape } from "../utils/qr3dPdf";
+import { qrsDoExameMMSS3D, desenharQr3dRodape, desenharQr3dNasPaginasDoMapa } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMSSVenoso";
@@ -283,6 +283,8 @@ function MMSSVenoso() {
   async function adicionarMapaNoPdf(doc) {
     try {
       await adicionarMapaMMSSVenosoAoPdf(doc, ladosDoExame(lado), veias, extras);
+      // QR Code + botão "Abrir meu exame em 3D" também na página do desenho 2D
+      desenharQr3dNasPaginasDoMapa(doc, ladosDoExame(lado), await qrsDoExameMMSS3D({ lado, veias, extras }));
     } catch (e) {
       console.error("Erro ao adicionar o mapa ao PDF:", e);
     }

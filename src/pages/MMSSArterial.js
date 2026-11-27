@@ -26,7 +26,7 @@ import {
   ladosDoExame,
 } from "../utils/mmssArterialLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
-import { qrsDoExameMMSSArterial3D, desenharQr3dRodape } from "../utils/qr3dPdf";
+import { qrsDoExameMMSSArterial3D, desenharQr3dRodape, desenharQr3dNasPaginasDoMapa } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesMMSSArterial";
@@ -256,6 +256,8 @@ function MMSSArterial() {
   async function adicionarMapaNoPdf(doc) {
     try {
       await adicionarMapaMMSSArterialAoPdf(doc, ladosDoExame(lado), { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo });
+      // QR Code + botão "Abrir meu exame em 3D" também na página do desenho 2D
+      desenharQr3dNasPaginasDoMapa(doc, ladosDoExame(lado), await qrsDoExameMMSSArterial3D({ lado, arterias: { Direito: arteriasDireito, Esquerdo: arteriasEsquerdo } }));
     } catch (e) {
       console.error("Erro ao adicionar o mapa ao PDF:", e);
     }
