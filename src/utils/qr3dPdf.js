@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { PDFString } from "pdf-lib";
 import { linkExame3D, qr3dLigado } from "./codigo3d";
 import { normalizarVarizesLado } from "./mmiiVenosoLaudo";
+import { carotidasPara3D } from "./carotidasLaudo";
 
 export const QR_LADO_MM = 15;
 export const QR_TOPO_MM = 272; // abaixo do texto (que vai até 265-270) e acima da marca (292)
@@ -98,6 +99,16 @@ export function desenharQrsFAVNoLaudo(doc, lado, qrs) {
   if (lado === "Ambos") { desenharQr3dRodape(doc, qrs.Direito, { x: 15, titulo: "Braço direito em 3D" }); desenharQr3dRodape(doc, qrs.Esquerdo, { x: 72, titulo: "Braço esquerdo em 3D" }); }
   else desenharQr3dRodape(doc, qrs[lado]);
 }
+
+// Carótidas e vertebrais: um QR só (o pescoço inteiro, os dois lados)
+export async function qrDoExameCarotidas3D(vessels, { forcar = false } = {}) {
+  if (!forcar && !qr3dLigado()) return null;
+  try {
+    const link = linkExame3D({ modo: "carotidas", arterias: carotidasPara3D(vessels) });
+    return { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link, vasos: "artérias" };
+  } catch (_) { return null; }
+}
+export const ehCarotidas = (exame) => /car[óo]tidas/i.test(String(exame?.tipoNome || "")) && !!(exame?.carotidasDireitas || exame?.carotidasEsquerdas);
 
 export const ehMMSSVenoso = (exame) => /venoso de membros superiores|^mmss venoso$/i.test(String(exame?.tipoNome || "")) && !!exame?.veias;
 

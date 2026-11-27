@@ -1,13 +1,16 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { svgParaImagemDataUrl } from "../utils/svgParaImagem";
 import { catmullRom } from "../utils/vascularMapping";
 import { criarCurva, fita } from "../utils/curvas";
-import { NOMES_VASOS, normalizarVaso, paraDesenhoArterial } from "../utils/carotidasLaudo";
+import { NOMES_VASOS, normalizarVaso, paraDesenhoArterial, carotidasPara3D } from "../utils/carotidasLaudo";
+import { Vista2D3D, Carregando3D } from "./MapaMMSS";
 import { ArteriaCurva, PadroesStent, COR_ART } from "./ArteriaCurva";
 import CamposCarotida from "./CamposCarotida";
 import MapaLayout, { PreviewImagemPdf } from "./MapaLayout";
 import { novaPaginaComCabecalho, caberNaFaixa } from "../utils/pdfCabecalho";
+
+const Mapa3D = lazy(() => import("./mapa3d/Mapa3D"));
 
 // Nomes completos dos 8 vasos editáveis (iguais aos usados no formulário e no laudo).
 export const CAROTIDAS_VESSEL_NAMES = NOMES_VASOS;
@@ -206,6 +209,7 @@ export default function CarotidasMapaInterativo({
 }) {
   const [selected, setSelected] = useState(null);
   const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [vista3d, setVista3d] = useState(false);
 
   if (!aberto) return null;
 
@@ -227,8 +231,17 @@ export default function CarotidasMapaInterativo({
   }
 
   const desenho = (
-    <DesenhoCarotidas vessels={vessels} onSelecionar={setSelected} selecionada={selected}
-      style={{ display: "block", width: "100%", maxWidth: 560, maxHeight: "72vh" }} />
+    <Vista2D3D vista3d={vista3d} setVista3d={setVista3d}>
+      {vista3d ? (
+        <Suspense fallback={<Carregando3D />}>
+          {/* no 3D: tocar numa artéria abre o mesmo painel do 2D */}
+          <Mapa3D modo="carotidas" arterias={carotidasPara3D(vessels)} onSelecionar={(tipo, key) => setSelected(tipo === "arteria" && NOMES_VASOS[key] ? key : null)} />
+        </Suspense>
+      ) : (
+        <DesenhoCarotidas vessels={vessels} onSelecionar={setSelected} selecionada={selected}
+          style={{ display: "block", width: "100%", maxWidth: 560, maxHeight: "72vh" }} />
+      )}
+    </Vista2D3D>
   );
 
   const legenda = (

@@ -7,7 +7,7 @@ import { saveAs } from "file-saver";
 import { carimbarMarcaVenoAIPdfLib } from "./pdfMarca";
 import { carregarDadosPerfil, perfilAtivo, perfilCombinado } from "./perfilLaudo";
 import { tamanhoProporcional } from "./pdfCabecalho";
-import { qrsDoExame3D, qrsDoExameArterial3D, qrsDoExameMMSS3D, qrsDoExameMMSSArterial3D, qrsDoExameFAV3D, ehFAV, desenharQr3dRodapePdfLib, ehMMIIVenoso, ehMMIIArterial, ehMMSSVenoso, ehMMSSArterial } from "./qr3dPdf";
+import { qrsDoExame3D, qrsDoExameArterial3D, qrsDoExameMMSS3D, qrsDoExameMMSSArterial3D, qrsDoExameFAV3D, ehFAV, qrDoExameCarotidas3D, ehCarotidas, desenharQr3dRodapePdfLib, ehMMIIVenoso, ehMMIIArterial, ehMMSSVenoso, ehMMSSArterial } from "./qr3dPdf";
 
 const MM = 72 / 25.4; // pontos por mm
 const LARGURA = 595;
@@ -147,6 +147,7 @@ export async function montarPDFExame(exame, perfil) {
     : ehMMSSArterial(exame) ? await qrsDoExameMMSSArterial3D({ lado: exame.lado, arterias: { Direito: exame.arteriasDireito, Esquerdo: exame.arteriasEsquerdo } })
     : ehFAV(exame) ? await qrsDoExameFAV3D({ lado: exame.lado, extras: exame.extras })
     : ehMMSSVenoso(exame) ? await qrsDoExameMMSS3D({ lado: exame.lado, veias: exame.veias, extras: exame.extras })
+    : ehCarotidas(exame) ? { carotidas: await qrDoExameCarotidas3D({ ...exame.carotidasDireitas, ...exame.carotidasEsquerdas, ...exame.vertebrais }) }
     : {};
   const ladosQr = exame.lado === "Ambos" ? ["Direito", "Esquerdo"] : [exame.lado];
   const ultimas = [];
@@ -175,7 +176,8 @@ export async function montarPDFExame(exame, perfil) {
     rodape(pagina);
     ultimas.push(pagina);
   });
-  if (ehFAV(exame) && exame.lado === "Ambos" && ultimas.length) { // fístula: os dois braços no mesmo laudo
+  if (qrs.carotidas && ultimas.length) await desenharQr3dRodapePdfLib(doc, ultimas[ultimas.length - 1], qrs.carotidas, negrito, rgb); // carótidas: um QR (o pescoço inteiro)
+  else if (ehFAV(exame) && exame.lado === "Ambos" && ultimas.length) { // fístula: os dois braços no mesmo laudo
     const u = ultimas[ultimas.length - 1];
     await desenharQr3dRodapePdfLib(doc, u, qrs.Direito, negrito, rgb, { x: 15, titulo: "Braço direito em 3D" });
     await desenharQr3dRodapePdfLib(doc, u, qrs.Esquerdo, negrito, rgb, { x: 72, titulo: "Braço esquerdo em 3D" });

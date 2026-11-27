@@ -16,6 +16,7 @@ import CarotidasMapaInterativo, { adicionarMapaCarotidasAoPdf } from "../compone
 import CamposCarotida from "../components/CamposCarotida";
 import { vasoPadrao, normalizarVaso, normalizarSistema, montarLaudo, validarVasos } from "../utils/carotidasLaudo";
 import { confirmarPdfELimpar } from "../utils/limparAposPdf";
+import { qrDoExameCarotidas3D, desenharQr3dRodape, desenharQr3dNasPaginasDoMapa } from "../utils/qr3dPdf";
 
 // Constantes para localStorage
 const STORAGE_KEY = "examesCarotidasVertebrais";
@@ -236,6 +237,8 @@ function CarotidasVertebrais() {
   async function adicionarMapaNoPdf(doc) {
     try {
       await adicionarMapaCarotidasAoPdf(doc, todosOsVasos, { nome, data });
+      // QR Code + botão "Abrir em 3D" também na página do desenho 2D
+      desenharQr3dNasPaginasDoMapa(doc, ["pescoco"], { pescoco: await qrDoExameCarotidas3D(todosOsVasos) });
     } catch (e) {
       console.error("Erro ao adicionar o mapa ao PDF:", e);
     }
@@ -518,6 +521,8 @@ function CarotidasVertebrais() {
       }
     }
     addRodape();
+    // QR Code do exame em 3D (pescoço com as carótidas e vertebrais) no rodapé do laudo
+    desenharQr3dRodape(doc, await qrDoExameCarotidas3D(todosOsVasos));
 
     await adicionarMapaNoPdf(doc);
 
