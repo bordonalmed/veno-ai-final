@@ -8,10 +8,12 @@ import { normalizarVarizesLado } from "./mmiiVenosoLaudo";
 
 export const QR_LADO_MM = 15;
 export const QR_TOPO_MM = 272; // abaixo do texto (que vai até 265-270) e acima da marca (292)
-const TEXTO = "Aponte a câmera do celular";
-const BOTAO = "Abrir meu exame em 3D";
+// convite ao paciente: desperta a curiosidade e diz o que fazer (câmera no papel, toque no PDF)
+const TITULO = "Seu exame ganhou vida em 3D";
+const linhasConvite = (vasos) => ["Aponte a câmera ou toque no QR Code e", `navegue por dentro das suas ${vasos || "veias"}.`];
+const BOTAO = "Ver meu exame em 3D";
 // botão (mm): ao lado do QR, embaixo do texto; no PDF enviado o paciente toca nele (e no QR)
-const BOTAO_X = 15 + QR_LADO_MM + 2.5, BOTAO_Y = QR_TOPO_MM + 8.2, BOTAO_W = 38, BOTAO_H = 6.2;
+const BOTAO_X = 15 + QR_LADO_MM + 2.5, BOTAO_Y = QR_TOPO_MM + 9.9, BOTAO_W = 34, BOTAO_H = 5.1;
 const qrDe = (q) => (!q ? null : typeof q === "string" ? { png: q, link: "" } : q);
 
 export const ehMMIIVenoso = (exame) => /venoso de membros inferiores|^mmii venoso$/i.test(String(exame?.tipoNome || ""))
@@ -28,7 +30,7 @@ export async function qrsDoExame3D({ lado, profundas, superficiais, magna, parva
         lado: l, profundas: profundas?.[l], superficiais: superficiais?.[l], magna: magna?.[l], parva: parva?.[l],
         perfurantes: perfurantes?.[l], varizes: normalizarVarizesLado(varizes?.[l]),
       });
-      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link };
+      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link, vasos: "veias" };
     } catch (_) { /* sem QR: o laudo sai normal */ }
   }
   return out;
@@ -42,7 +44,7 @@ export async function qrsDoExameArterial3D({ lado, arterias, enxertos }, { forca
   for (const l of lados) {
     try {
       const link = linkExame3D({ modo: "arterial", lado: l, arterias: arterias?.[l] || {}, enxerto: enxertos?.[l] || null });
-      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link };
+      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link, vasos: "artérias" };
     } catch (_) { /* sem QR: o laudo sai normal */ }
   }
   return out;
@@ -56,7 +58,7 @@ export async function qrsDoExameMMSS3D({ lado, veias, extras }, { forcar = false
   for (const l of lados) {
     try {
       const link = linkExame3D({ modo: "mmssVenoso", lado: l, veias: veias?.[l] || {}, extra: extras?.[l] || null });
-      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link };
+      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link, vasos: "veias" };
     } catch (_) { /* sem QR: o laudo sai normal */ }
   }
   return out;
@@ -70,7 +72,7 @@ export async function qrsDoExameMMSSArterial3D({ lado, arterias }, { forcar = fa
   for (const l of lados) {
     try {
       const link = linkExame3D({ modo: "mmssArterial", lado: l, arterias: arterias?.[l] || {} });
-      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link };
+      out[l] = { png: await QRCode.toDataURL(link, { errorCorrectionLevel: "M", margin: 1, width: 360 }), link, vasos: "artérias" };
     } catch (_) { /* sem QR: o laudo sai normal */ }
   }
   return out;
@@ -87,21 +89,21 @@ export function desenharQr3dRodape(doc, qr) {
   const q = qrDe(qr);
   if (!q || !q.png) return;
   doc.addImage(q.png, "PNG", 15, QR_TOPO_MM, QR_LADO_MM, QR_LADO_MM);
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.6);
   doc.setFont(undefined, "bold");
-  doc.setTextColor(40, 50, 60);
-  doc.text(TEXTO, BOTAO_X, QR_TOPO_MM + 3.3);
+  doc.setTextColor(10, 127, 145);
+  doc.text(TITULO, BOTAO_X, QR_TOPO_MM + 2.9);
   doc.setFont(undefined, "normal");
-  doc.setFontSize(6.5);
-  doc.setTextColor(95, 105, 115);
-  doc.text("ou toque no botão:", BOTAO_X, QR_TOPO_MM + 6.6);
+  doc.setFontSize(6.8);
+  doc.setTextColor(60, 70, 80);
+  linhasConvite(q.vasos).forEach((t, i) => doc.text(t, BOTAO_X, QR_TOPO_MM + 5.9 + i * 2.75));
   if (q.link) {
     doc.setFillColor(14, 184, 208);
     doc.roundedRect(BOTAO_X, BOTAO_Y, BOTAO_W, BOTAO_H, 1.6, 1.6, "F");
-    doc.setFontSize(7.8);
+    doc.setFontSize(7.4);
     doc.setFont(undefined, "bold");
     doc.setTextColor(255, 255, 255);
-    doc.text(BOTAO, BOTAO_X + BOTAO_W / 2, BOTAO_Y + 4.15, { align: "center" });
+    doc.text(BOTAO, BOTAO_X + BOTAO_W / 2, BOTAO_Y + 3.55, { align: "center" });
     doc.link(BOTAO_X, BOTAO_Y, BOTAO_W, BOTAO_H, { url: q.link });
     doc.link(15, QR_TOPO_MM, QR_LADO_MM, QR_LADO_MM, { url: q.link });
   }
@@ -129,13 +131,13 @@ export async function desenharQr3dRodapePdfLib(pdf, pagina, qr, fonte, rgb) {
   const img = await pdf.embedPng(bytes);
   const lado = QR_LADO_MM * MM, x = 15 * MM, yBase = altura - (QR_TOPO_MM + QR_LADO_MM) * MM;
   pagina.drawImage(img, { x, y: yBase, width: lado, height: lado });
-  pagina.drawText(TEXTO, { x: BOTAO_X * MM, y: altura - (QR_TOPO_MM + 3.3) * MM, size: 7.5, font: fonte, color: rgb(0.16, 0.2, 0.24) });
-  pagina.drawText("ou toque no botão:", { x: BOTAO_X * MM, y: altura - (QR_TOPO_MM + 6.6) * MM, size: 6.5, font: fonte, color: rgb(0.37, 0.41, 0.45) });
+  pagina.drawText(TITULO, { x: BOTAO_X * MM, y: altura - (QR_TOPO_MM + 2.9) * MM, size: 8.6, font: fonte, color: rgb(10 / 255, 127 / 255, 145 / 255) });
+  linhasConvite(q.vasos).forEach((t, i) => pagina.drawText(t, { x: BOTAO_X * MM, y: altura - (QR_TOPO_MM + 5.9 + i * 2.75) * MM, size: 6.8, font: fonte, color: rgb(0.24, 0.27, 0.31) }));
   if (!q.link) return;
   const bx = BOTAO_X * MM, by = altura - (BOTAO_Y + BOTAO_H) * MM, bw = BOTAO_W * MM, bh = BOTAO_H * MM;
   pagina.drawRectangle({ x: bx, y: by, width: bw, height: bh, color: rgb(14 / 255, 184 / 255, 208 / 255) });
-  const tw = fonte.widthOfTextAtSize(BOTAO, 7.8);
-  pagina.drawText(BOTAO, { x: bx + (bw - tw) / 2, y: by + 1.9 * MM, size: 7.8, font: fonte, color: rgb(1, 1, 1) });
+  const tw = fonte.widthOfTextAtSize(BOTAO, 7.4);
+  pagina.drawText(BOTAO, { x: bx + (bw - tw) / 2, y: by + 1.55 * MM, size: 7.4, font: fonte, color: rgb(1, 1, 1) });
   // links clicáveis (botão e QR)
   for (const [x1, y1, w, h] of [[bx, by, bw, bh], [x, yBase, lado, lado]]) {
     const anot = pdf.context.register(pdf.context.obj({ Type: "Annot", Subtype: "Link", Rect: [x1, y1, x1 + w, y1 + h], Border: [0, 0, 0], A: { Type: "Action", S: "URI", URI: PDFString.of(q.link) } }));
