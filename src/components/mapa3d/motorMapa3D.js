@@ -1133,7 +1133,7 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
     const total = !!(oc && oc.a <= 0.08 && oc.b >= 0.92);
     if (total) { partes.push('<b>Oclusão total</b> · sem fluxo'); tom = 'refluxo'; rots.push(['oclusão', 0.5]); }
     else {
-      partes.push((v && v.sentido === 'Retrógrado' ? 'Fluxo <b>retrógrado</b> ' : 'Fluxo ') + String((v && v.tipoOnda) || 'Trifásico').toLowerCase().replace(' (tardus-parvus)', ''));
+      partes.push((v && v.sentido === 'Retrógrado' ? 'Fluxo <b>retrógrado</b> ' : 'Fluxo ') + (CAROT ? 'de ' + ondaCarot(key).toLowerCase() : String((v && v.tipoOnda) || 'Trifásico').toLowerCase().replace(' (tardus-parvus)', ''))); // carótidas: o padrão de resistência de cada vaso
       if (pri) { partes.push('placa ' + (pri.tipo === 'Mista' ? 'mista' : pri.tipo.toLowerCase()) + (pri.pct > 0 ? ' · <b>estenose ' + Math.round(pri.pct) + '%</b>' : '')); if (pri.pct >= 50) tom = 'refluxo'; rots.push([pri.pct > 0 ? 'estenose ' + Math.round(pri.pct) + '%' : 'placa ' + (pri.tipo === 'Mista' ? 'mista' : pri.tipo.toLowerCase()), pri.s0]); }
       if (oc) { partes.push('<b>oclusão</b> no ' + TERCOS[Math.min(2, Math.floor((oc.a + oc.b) / 2 * 3))].toLowerCase()); tom = 'refluxo'; rots.push(['oclusão', (oc.a + oc.b) / 2]); }
     }
