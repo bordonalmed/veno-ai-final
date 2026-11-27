@@ -93,8 +93,8 @@ export default function Mapa3D(props) {
           <button type="button" className="m3d-nomes" data-m3d="bNomes" aria-pressed="false">Nomes</button>
         </div>
         <div className="m3d-faces" data-m3d="faces" role="group" aria-label="Girar a perna para uma vista">
-          {(carot ? [["A", "A", "Vista anterior"], ["M", "D", "Lado direito"], ["P", "P", "Vista posterior"], ["L", "E", "Lado esquerdo"]] : [["A", "A", "Vista anterior"], ["M", "M", "Vista medial"], ["P", "P", "Vista posterior"], ["L", "L", "Vista lateral"]]).map(([k, rot, nome]) => (
-            <button key={k} type="button" data-m3d={`f${k}`} aria-pressed="false" aria-label={nome} title={nome}>{rot}</button>
+          {(carot ? [["A", "A", "Vista anterior"], ["P", "P", "Vista posterior"], ["M", "LD", "Lateral direita"], ["L", "LE", "Lateral esquerda"]] : [["A", "A", "Vista anterior"], ["M", "M", "Vista medial"], ["P", "P", "Vista posterior"], ["L", "L", "Vista lateral"]]).map(([k, rot, nome]) => (
+            <button key={k} type="button" data-m3d={`f${k}`} aria-pressed="false" className={rot.length > 1 ? "dupla" : undefined} aria-label={nome} title={nome}>{rot}</button>
           ))}
         </div>
         <div className="m3d-leg" data-m3d="leg" />

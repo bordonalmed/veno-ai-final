@@ -49,7 +49,7 @@ export default function Paciente3D() {
             <h2>Como ver</h2>
             {carot ? (
             <ul>
-              <li><b>Gire</b> o pescoço arrastando com o dedo, ou use os botões <b>A</b> (frente), <b>D</b> (lado direito), <b>P</b> (costas) e <b>E</b> (lado esquerdo).</li>
+              <li><b>Gire</b> o pescoço arrastando com o dedo, ou use os botões <b>A</b> (anterior), <b>P</b> (posterior), <b>LD</b> (lateral direita) e <b>LE</b> (lateral esquerda).</li>
               <li>As <b>carótidas</b> sobem pelos lados do pescoço e se dividem em <b>interna</b> (leva sangue ao cérebro) e <b>externa</b> (rosto e couro cabeludo). As <b>vertebrais</b> sobem por dentro da coluna do pescoço.</li>
               <li><b className="ruim">Vermelho</b>: sangue passando normalmente. <b>Laranja</b>: estreitamento por placa (estenose). <b>Cinza escuro</b>: artéria fechada (oclusão). Pontinhos claros: placas pequenas (ateromatose).</li>
               <li>Toque numa artéria e depois em <b>Artéria</b> e <b>Dentro</b> para ver a placa e o estreitamento por dentro.</li>
