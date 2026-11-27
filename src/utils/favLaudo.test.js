@@ -104,6 +104,14 @@ describe("FAV: avaliação de fístula existente", () => {
     expect(t).toMatch(/CONCLUSÃO[\s\S]*Fluxo retrógrado na artéria distal à anastomose \(sinal de roubo\)\./);
   });
 
+  it("estenose na anastomose (comunicação artéria-veia)", () => {
+    const t = gerarBlocoExame(avaliacao({ tipo: "Radiocefálica (punho)", estenose: true, estenoseLocal: "Anastomose", estenosePercentual: "65" }), "Direito");
+    expect(t).toContain("Estenose de 65% na anastomose.");
+    expect(localLesaoFavOptions("Radiocefálica (punho)")[0]).toBe("Anastomose");
+    expect(localLesaoFavOptions("Radiocefálica (punho)")).toEqual(["Anastomose", "Justa-anastomótica", "Segmento de punção", "Arco da cefálica", "Veia de saída", "Veia axilar", "Veia subclávia", "Veia braquiocefálica"]);
+    expect(localStentFavOptions("Radiocefálica (punho)")).not.toContain("Anastomose");
+  });
+
   it("stent na veia subclávia e estenose central", () => {
     const t = gerarBlocoExame(avaliacao({
       tipo: "Braquiocefálica (cotovelo)", stent: true, stentLocal: "Veia subclávia", stentStatus: "Com reestenose",

@@ -138,4 +138,11 @@ describe("código 3D da fístula arteriovenosa", () => {
     expect(d.extra.modo).toBe("Avaliação");
     expect(d.extra.avaliacao).toEqual(e.avaliacao);
   });
+  it("avaliação: estenose na anastomose", () => {
+    const e = normalizarExtra(null);
+    e.modo = "Avaliação";
+    Object.assign(e.avaliacao, { tipo: "Radiocefálica (punho)", estenose: true, estenoseLocal: "Anastomose", estenosePercentual: "70" });
+    const d = decodificarExame3D(codificarExameFAV3D({ lado: "Direito", extra: e }));
+    expect(d.extra.avaliacao.estenoseLocal).toBe("Anastomose");
+  });
 });

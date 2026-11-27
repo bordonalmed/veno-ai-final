@@ -90,7 +90,7 @@ function trechoDoLocal(local, cFav) {
 }
 
 const T_LOCAL = {
-  "Justa-anastomótica": 0.06, "Segmento de punção": 0.4, "Arco da cefálica": 0.92, "Veia de saída": 0.99,
+  "Anastomose": 0.02, "Justa-anastomótica": 0.06, "Segmento de punção": 0.4, "Arco da cefálica": 0.92, "Veia de saída": 0.99,
   "Anastomose arterial": 0.03, "Corpo da prótese": 0.5, "Anastomose venosa": 0.97,
 };
 

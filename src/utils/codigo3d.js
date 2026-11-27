@@ -212,7 +212,7 @@ export function decodificarExame3D(codigo) {
 }
 
 // Fístula arteriovenosa (um membro): { lado, extra: { modo, confeccao, avaliacao } }
-const LOCAIS_FAV = ["Justa-anastomótica", "Segmento de punção", "Arco da cefálica", "Veia de saída", "Anastomose arterial", "Corpo da prótese", "Anastomose venosa", "Veia axilar", "Veia subclávia", "Veia braquiocefálica"];
+const LOCAIS_FAV = ["Justa-anastomótica", "Segmento de punção", "Arco da cefálica", "Veia de saída", "Anastomose arterial", "Corpo da prótese", "Anastomose venosa", "Veia axilar", "Veia subclávia", "Veia braquiocefálica", "Anastomose"];
 const FLAGS_FAV = ["estenose", "aneurisma", "pseudoaneurisma", "tromboParcial", "colaterais", "roubo", "hematoma", "stent"];
 export function codificarExameFAV3D(ex) {
   const e = normalizarExtraFav(ex.extra), aval = e.modo === "Avaliação";
