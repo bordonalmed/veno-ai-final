@@ -335,6 +335,15 @@ export function DesenhoMMIIVenoso({
   const mirrored = l === "Direito";
   const mirrorTransform = mirrored ? "translate(300,0) scale(-1,1)" : undefined;
   const mx = (x) => (mirrored ? 300 - x : x);
+  // Vista ANTERIOR: o desenho nativo tem a safena magna (medial) à direita da
+  // tela, que é a perna DIREITA vista de frente. Então a anterior espelha na
+  // perna esquerda (e não na direita), para as duas pernas ficarem como o
+  // paciente visto de frente: medial voltado para a linha média, igual ao 3D
+  // e ao arterial. Os traços continuam salvos no sistema nativo do desenho
+  // (o mesmo do 3D), então nenhum exame salvo muda de lugar em relação às veias.
+  const espelhaAnt = !mirrored;
+  const mirrorAnt = espelhaAnt ? "translate(300,0) scale(-1,1)" : undefined;
+  const mxA = (x) => (espelhaAnt ? 300 - x : x);
 
   // ---- Vista MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda ----
   const magnaResult = construirSegmentosVeia({
@@ -380,7 +389,7 @@ export function DesenhoMMIIVenoso({
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width={width} height={height} style={riscando ? { ...style, touchAction: "none", userSelect: "none" } : style}>
       {/* MEDIAL: JSF + Safena Magna + Femoral Comum/Superficial/Profunda + perfurantes */}
       <g transform={`translate(${colMedial.tx},${VIEW_TY})`}>
-        <g transform={mirrorTransform}>
+        <g transform={mirrorAnt}>
           <path d={MEDIAL_SILHOUETTE} fill="#f3d9bb" stroke="#a97a4e" strokeWidth={1.5} />
           <path d={profundaFemD} fill={corStatusProfundo(p["Veia Femoral Profunda"])} pointerEvents="none" />
           {interativo && hitPath(profundaFemD, () => selecionar("profunda", "Veia Femoral Profunda"), "profunda:Veia Femoral Profunda", chaveAtiva, 8)}
@@ -405,9 +414,9 @@ export function DesenhoMMIIVenoso({
           {desenharTracos(VISTA_DA_COLUNA.medial)}
           {camadaDesenho(VISTA_DA_COLUNA.medial)}
         </g>
-        <text x={mx(212.7)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>JSF</text>
-        <text x={mx(111)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>Femoral</text>
-        <text x={mx(187)} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={mirrored ? "start" : "end"}>VSM</text>
+        <text x={mxA(212.7)} y={40} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={espelhaAnt ? "start" : "end"}>JSF</text>
+        <text x={mxA(111)} y={95} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={espelhaAnt ? "start" : "end"}>Femoral</text>
+        <text x={mxA(187)} y={200} fontFamily="monospace" fontSize="9.5" fill="#1a2530" textAnchor={espelhaAnt ? "start" : "end"}>VSM</text>
         <text x={150} y={VIEW_H - VIEW_TY - 8} fontFamily="monospace" fontSize="13" textAnchor="middle" fill="#5c6b78">anterior</text>
       </g>
 

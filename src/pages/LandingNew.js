@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DesenhoMMIIVenoso } from "../components/MapaInterativo";
 import { MarcaVenoMap } from "../components/MapaLayout";
 import { veiasProfundas, veiasSuperficiais, profOptions, supOptions, montarLaudo } from "../utils/mmiiVenosoLaudo";
 import { DIAS_TESTE, LAUDOS_TESTE } from "../services/planoService";
 import "./landing.css";
+
+// o 3D (three.js) só é baixado quando o visitante chega no laboratório 3D
+const Exame3D = lazy(() => import("../components/mapa3d/Exame3D"));
 
 // Página vitrine: o que o visitante vê em venoai.xyz antes de criar a conta.
 // (Quem já está logado vai direto para o menu dos exames — ver App.js.)
@@ -209,34 +212,78 @@ const EXAMES = [
   { img: "fav.webp", tag: "acesso", nome: "Fístula arteriovenosa", cobre: "Confecção (mapeamento pré-FAV) e avaliação de FAV braquiocefálica, braquiobasílica e outras.", ex: "mapeamento para confecção" },
 ];
 
-// Vídeo curto da tela real do 3D (perna, safena com refluxo e por dentro da
-// veia). Sem som; não toca sozinho para quem pediu menos movimento.
-function Video3D() {
+// Laboratório 3D: o próprio 3D do programa rodando na vitrine, com exames de
+// exemplo (os mesmos códigos do QR Code do laudo). Carrega quando a seção
+// chega perto da tela; cada aba é um exame.
+const DEMOS3D = [
+  { id: "venoso", aba: "Venoso MMII", cod: "AQAAAAURAAA-AAAAAAABAAigAXAIDPoNCQ35DggO-g4FDA", titulo: "Refluxo da JSF ao joelho", itens: ["Safena magna com refluxo em vermelho, o sangue descendo pela perna", "Junção safeno-femoral: a safena desembocando na femoral comum, com a válvula terminal", "Varizes desenhadas no mapa aparecem na pele"], dica: "Toque na safena e depois em Veia e Dentro: veja a válvula que não fecha." },
+  { id: "arterial", aba: "Arterial MMII", cod: "AwGAAAAAAACAAAAAAADAS5IAAACAAAABAASHAAAAAACAAAAAAACAAAAAAAAAAA", titulo: "Estenose de 75% da femoral superficial", itens: ["Placa calcificada estreitando a luz, stent na poplítea e oclusão distal da tibial anterior", "Doppler espectral no nível Artéria: arraste o gate pela estenose e veja a VPS subir", "Por dentro: atravesse a placa e o stent"], dica: "Toque na femoral superficial e depois em Artéria." },
+  { id: "carotidas", aba: "Carótidas", cod: "BwCIAAIIAADIUJEIAACIAAIIAACIAEIIAACIAAIIAACIAAIIAACIAAIIAACoAAIIAAAAAA", titulo: "Estenose >70% da carótida interna", itens: ["Cabeça e pescoço com as 8 artérias, coluna cervical, traqueia e clavículas", "ACI e vertebral com fluxo de baixa resistência, ACE de alta, ACC intermediária", "Vistas anterior, posterior e laterais"], dica: "Ligue Nomes e toque na C. interna D." },
+  { id: "aorta", aba: "Aorta", variantes: [
+    { rot: "Aneurisma", cod: "CACAAAAAAACAAAAAAACAAIAsbgCAAAAAAACAAAAAAACAAAAAAACAAAAAAADAPDIAAACAAAAAAAAAAAAA", titulo: "Aneurisma de aorta infrarrenal (55 mm)", itens: ["Abdome com aorta, ilíacas, renais, rins, coluna e bacia", "Aneurisma com trombo mural no corte do vaso", "Estenose da ilíaca externa esquerda"], dica: "Toque na aorta infrarrenal e depois em Artéria." },
+    { rot: "Pós-EVAR", cod: "CACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAAAJMDwA", titulo: "Endoprótese com vazamento tipo II", itens: ["Endoprótese em malha prateada sobre a aorta e as ilíacas", "Saco aneurismático de 60 mm e o vazamento (endoleak) em amarelo", "No nível Artéria, o stent-graft dentro do saco"], dica: "Use a barra Superficial / Profundo para ver através da pele." },
+  ] },
+  { id: "fav", aba: "Fístula", cod: "BgABAgTiAAAAAAADC0EAAiAAAA", titulo: "FAV braquiocefálica com estenose na anastomose", itens: ["Veia de drenagem arterializada em roxo, anastomose e artéria nutridora", "Estenose de 65% na anastomose e aneurisma no segmento de punção", "Por dentro: comece na anastomose e atravesse a estenose"], dica: "Toque na fístula e depois em Vaso e Dentro." },
+];
+
+function Lab3D() {
+  const [ativo, setAtivo] = useState(0);
+  const [ligado, setLigado] = useState(false);
   const ref = useRef(null);
-  const [calmo, setCalmo] = useState(false);
   useEffect(() => {
-    const m = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (m && m.matches) { setCalmo(true); return; }
-    const v = ref.current;
-    if (v) { const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") { setLigado(true); return undefined; }
+    const io = new IntersectionObserver((itens) => { if (itens.some((it) => it.isIntersecting)) { setLigado(true); io.disconnect(); } }, { rootMargin: "300px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
   }, []);
+  const [variante, setVariante] = useState(0);
+  const aba = DEMOS3D[ativo], d = aba.variantes ? aba.variantes[Math.min(variante, aba.variantes.length - 1)] : aba;
+  const chave = aba.id + (aba.variantes ? "-" + variante : "");
   return (
-    <figure className="lp-3d-video">
-      <video
-        ref={ref}
-        poster={`${PUB}/vitrine/mapa-3d-capa.webp`}
-        muted loop playsInline preload="metadata"
-        autoPlay={!calmo}
-        controls={calmo}
-        aria-label="Tela do VENO.AI: perna em 3D com refluxo na safena magna e a veia vista por dentro"
-      >
-        <source src={`${PUB}/vitrine/mapa-3d.webm`} type="video/webm" />
-        <source src={`${PUB}/vitrine/mapa-3d.mp4`} type="video/mp4" />
-      </video>
-      <figcaption>Tela real do VENO.AI: a perna, a safena com refluxo e a veia por dentro.</figcaption>
-    </figure>
+    <div className="lp-lab" ref={ref}>
+      <div className="lp-lab-abas" role="tablist" aria-label="Exames de exemplo em 3D">
+        {DEMOS3D.map((x, i) => (
+          <button key={x.id} type="button" role="tab" aria-selected={i === ativo} className={i === ativo ? "on" : ""} onClick={() => { setAtivo(i); setVariante(0); }}>{x.aba}</button>
+        ))}
+      </div>
+      {aba.variantes ? (
+        <div className="lp-lab-var" role="group" aria-label="Exemplos do exame de aorta">
+          {aba.variantes.map((v, i) => (
+            <button key={v.rot} type="button" aria-pressed={i === variante} className={i === variante ? "on" : ""} onClick={() => setVariante(i)}>{v.rot}</button>
+          ))}
+        </div>
+      ) : null}
+      <div className="lp-lab-grid">
+        <div className="lp-lab-palco">
+          {ligado ? (
+            <Suspense fallback={<div className="lp-lab-carregando">Carregando 3D…</div>}>
+              <Exame3D key={chave} codigo={d.cod} demo nota="Exemplo com achados fictícios. Ilustração educativa gerada a partir dos achados do mapa." />
+            </Suspense>
+          ) : (
+            <button type="button" className="lp-lab-carregando" onClick={() => setLigado(true)}>Abrir o 3D interativo</button>
+          )}
+        </div>
+        <div className="lp-lab-info" aria-live="polite">
+          <span className="lp-lab-ex">Exemplo</span>
+          <h3>{d.titulo}</h3>
+          <ul>{d.itens.map((t) => <li key={t}>{t}</li>)}</ul>
+          <p className="lp-lab-dica"><b>Experimente:</b> {d.dica}</p>
+        </div>
+      </div>
+    </div>
   );
 }
+
+// Novidades para quem lauda (capturas da tela real do 3D)
+const NOVIDADES = [
+  { img: "novo-doppler.webp", tit: "Doppler espectral dentro do 3D", txt: "Arraste o gate amarelo pelo vaso: a curva muda na estenose (VPS e razão), depois da oclusão (tardus-parvus) e no aneurisma." },
+  { img: "novo-dentro.webp", tit: "Por dentro do vaso", txt: "Aproxime e atravesse a placa, o stent ou a válvula. O sangue anda com a velocidade do achado: normo, hipo ou hipercinético." },
+  { img: "novo-jsf.webp", tit: "Junção safeno-femoral de verdade", txt: "A safena desemboca na femoral comum, com a válvula terminal. Com refluxo, o sangue da femoral volta para a safena." },
+  { img: "novo-evar.webp", tit: "Endoprótese e endoleak", txt: "EVAR, aorto-uni-ilíaca ou ilíaca, com saco aneurismático, vazamento e a estenose no ramo certo. Enxertos em azul." },
+  { img: "novo-fav.webp", tit: "Fístula: estenose na anastomose", txt: "Mapeamento pré-FAV com o calibre de cada veia e avaliação da fístula, começando por dentro na anastomose." },
+  { img: "novo-carotidas.webp", tit: "Carótidas com o padrão de cada vaso", txt: "Baixa resistência na interna e na vertebral, alta na externa. Estenose, oclusão, stent e dissecção vindos do 2D." },
+];
 
 export default function LandingNew() {
   const navigate = useNavigate();
@@ -274,8 +321,8 @@ export default function LandingNew() {
           <nav className="lp-links" aria-label="Seções">
             <a href="#exames" onClick={ir("exames")}>Exames</a>
             <a href="#mapa-3d" onClick={ir("mapa-3d")}>3D <span className="lp-novo">Novo</span></a>
+            <a href="#qr" className="esc" onClick={ir("qr")}>QR no laudo</a>
             <a href="#como" className="esc" onClick={ir("como")}>Como funciona</a>
-            <a href="#pdf" className="esc" onClick={ir("pdf")}>O laudo</a>
             <a href="#planos" onClick={ir("planos")}>Planos</a>
           </nav>
           <div className="lp-acoes">
@@ -292,13 +339,13 @@ export default function LandingNew() {
               <img className="lp-logo-hero" src={LOGO} alt="VENO.AI" />
               <p className="lp-sobre lp-slogan">Inteligência para o laudo vascular</p>
               <a href="#mapa-3d" className="lp-aviso3d" onClick={ir("mapa-3d")}>
-                <span className="lp-novo">Novo</span> Mapa venoso em 3D para mostrar ao paciente <span aria-hidden="true">→</span>
+                <span className="lp-novo">Novo</span> 3D nos 7 exames + QR Code no laudo <span aria-hidden="true">→</span>
               </a>
-              <h1>Laudos de Doppler vascular <em>em minutos</em>, com seu logo e assinatura.</h1>
-              <p className="lp-hero-sub">Clique nos vasos do desenho e o laudo se escreve sozinho, com a conclusão pronta. Salve em PDF ou envie ao paciente pelo WhatsApp.</p>
+              <h1>O laudo de Doppler que o seu paciente <em>vê em 3D</em>.</h1>
+              <p className="lp-hero-sub">Clique nos vasos e o laudo se escreve sozinho, com a conclusão pronta. Os mesmos achados viram um modelo 3D que você gira, aproxima e atravessa por dentro. No PDF, um QR Code leva o paciente direto para ele.</p>
               <div className="lp-hero-ctas">
                 <button type="button" className="lp-btn lp-btn-cheio" onClick={cadastrar}>Começar teste grátis</button>
-                <a href="#pdf" className="lp-btn lp-btn-vazio" onClick={ir("pdf")}>Ver um laudo pronto</a>
+                <a href="#mapa-3d" className="lp-btn lp-btn-vazio" onClick={ir("mapa-3d")}>Ver o 3D funcionando</a>
               </div>
               <div className="lp-hero-garantias">
                 <span>{DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos grátis</span>
@@ -312,10 +359,10 @@ export default function LandingNew() {
 
         <div className="lp-wrap">
           <div className="lp-pontos">
-            <div className="lp-ponto"><b>7 exames</b><span>Venosos, arteriais e fístula</span></div>
+            <div className="lp-ponto"><b>7 exames em 2D e 3D</b><span>Venosos, arteriais, carótidas, aorta e fístula</span></div>
             <div className="lp-ponto"><b>Laudo em tempo real</b><span>Texto e conclusão coerentes</span></div>
+            <div className="lp-ponto"><b>QR Code no PDF</b><span>O paciente abre o exame em 3D</span></div>
             <div className="lp-ponto"><b>PDF com sua marca</b><span>Logo, CRM e assinatura</span></div>
-            <div className="lp-ponto"><b>Envio ao paciente</b><span>WhatsApp ou e-mail</span></div>
           </div>
         </div>
 
@@ -323,8 +370,8 @@ export default function LandingNew() {
           <div className="lp-wrap">
             <div className="lp-cab">
               <p className="lp-sobre">Os exames</p>
-              <h2>Um desenho anatômico para cada exame</h2>
-              <p>Os desenhos abaixo são do próprio VENO.AI, com achados de exemplo. Cada cor e marcação vira texto no laudo.</p>
+              <h2>Um desenho para laudar. Um 3D para mostrar.</h2>
+              <p>Os desenhos abaixo são do próprio VENO.AI, com achados de exemplo. Cada cor e marcação vira texto no laudo, e um toque em <b>3D</b> leva os mesmos achados para o modelo em três dimensões.</p>
             </div>
             <div className="lp-exames">
               <article className="lp-exame destaque">
@@ -332,7 +379,7 @@ export default function LandingNew() {
                   <DesenhoMMIIVenoso lado={LADO} profundas={estadoFinal.profundas} superficiais={estadoFinal.superficiais} magna={estadoFinal.magna} parva={estadoFinal.parva} perfurantes={[]} varizes={estadoFinal.varizes} />
                 </div>
                 <div className="lp-exame-txt">
-                  <span className="lp-tag venoso">Venoso</span>
+                  <div className="lp-tags"><span className="lp-tag venoso">Venoso</span><span className="lp-tag d3">2D + 3D</span></div>
                   <h3>Venoso de membros inferiores</h3>
                   <p>Sistema profundo, junções, safenas magna e parva com diâmetros e extensão do refluxo, perfurantes e varizes em 16 pontos do desenho.</p>
                   <div className="lp-exame-ex">Exemplo: <b>refluxo da safena magna da JSF ao joelho</b></div>
@@ -342,7 +389,7 @@ export default function LandingNew() {
                 <article className="lp-exame" key={ex.img}>
                   <div className="lp-exame-img"><img src={`${PUB}/vitrine/${ex.img}`} alt={`Desenho do exame ${ex.nome} no VENO.AI`} loading="lazy" /></div>
                   <div className="lp-exame-txt">
-                    <span className={`lp-tag ${ex.tag}`}>{ex.tag === "acesso" ? "Acesso" : ex.tag === "venoso" ? "Venoso" : "Arterial"}</span>
+                    <div className="lp-tags"><span className={`lp-tag ${ex.tag}`}>{ex.tag === "acesso" ? "Acesso" : ex.tag === "venoso" ? "Venoso" : "Arterial"}</span><span className="lp-tag d3">2D + 3D</span></div>
                     <h3>{ex.nome}</h3>
                     <p>{ex.cobre}</p>
                     <div className="lp-exame-ex">Exemplo: <b>{ex.ex}</b></div>
@@ -354,25 +401,70 @@ export default function LandingNew() {
         </section>
 
         <section className="lp-faixa lp-3d" id="mapa-3d">
-          <div className="lp-wrap lp-3d-grid">
-            <div>
-              <div className="lp-cab" style={{ marginBottom: 26 }}>
-                <p className="lp-sobre"><span className="lp-novo">Novidade</span> Mapa em 3D</p>
-                <h2>Mostre ao paciente o que <em>acontece na veia</em> dele</h2>
-                <p>No Map do Doppler venoso de MMII, um toque em <b>3D</b> transforma os achados do exame numa perna em três dimensões. O paciente vê o refluxo de forma realista e entende o tratamento.</p>
-              </div>
-              <ul className="lp-lista">
-                <li><span className="ic">1</span><div><b>A perna do paciente, com os achados do exame</b><span>Safenas com refluxo, perfurantes, varizes desenhadas e trombose vêm do próprio mapa. Nada para refazer.</span></div></li>
-                <li><span className="ic">2</span><div><b>O refluxo aparece onde ele acontece</b><span>O trecho insuficiente fica vermelho e o sangue desce pela perna.</span></div></li>
-                <li><span className="ic">3</span><div><b>Por dentro da veia</b><span>Aproxime e veja as válvulas que não fecham e o sangue voltando.</span></div></li>
-                <li><span className="ic">4</span><div><b>Pronto para o consultório</b><span>Gire com o dedo ou o mouse, use a tela cheia e mostre os nomes das veias quando quiser.</span></div></li>
-              </ul>
-              <div className="lp-hero-ctas">
-                <button type="button" className="lp-btn lp-btn-cheio" onClick={cadastrar}>Testar o 3D grátis</button>
-              </div>
-              <p className="lp-nota3d">Ilustração educativa gerada a partir dos achados do exame.</p>
+          <div className="lp-wrap">
+            <div className="lp-cab">
+              <p className="lp-sobre"><span className="lp-novo">Novidade</span> Laboratório 3D</p>
+              <h2>Gire. Aproxime. <em>Entre no vaso.</em></h2>
+              <p>Isto não é um vídeo: é o VENO.AI rodando aqui, com achados de exemplo. Escolha um exame, arraste para girar e use os níveis <b>Artéria</b> (ou <b>Veia</b>) e <b>Dentro</b>.</p>
             </div>
-            <Video3D />
+            <Lab3D />
+            <div className="lp-chips" aria-label="O que o 3D mostra">
+              <span>Doppler espectral com gate arrastável</span>
+              <span>VPS e razão na estenose</span>
+              <span>Por dentro do vaso</span>
+              <span>Placas, stents, aneurismas e endopróteses</span>
+              <span>Vistas A · P · LD · LE</span>
+              <span>Atualiza na hora em que você muda o achado</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="lp-faixa alt" id="qr">
+          <div className="lp-wrap">
+            <div className="lp-cab">
+              <p className="lp-sobre">QR Code no laudo</p>
+              <h2>O paciente aponta o celular para o laudo e <em>vê o próprio exame</em>.</h2>
+              <p>Explicar varizes, uma estenose de carótida ou um aneurisma de aorta fica muito mais fácil quando o paciente vê. E ele leva isso para casa.</p>
+            </div>
+            <div className="lp-qr">
+              <figure className="lp-qr-card">
+                <img src={`${PUB}/vitrine/qr-laudo.webp`} alt="Rodapé do laudo em PDF com o QR Code e o botão Abrir em 3D" loading="lazy" />
+                <figcaption><b>1. No PDF, um QR Code e um botão</b><span>Impresso, o paciente aponta a câmera. Enviado pelo WhatsApp, ele toca em “Abrir em 3D”. Também na página do mapa.</span></figcaption>
+              </figure>
+              <figure className="lp-qr-card lp-qr-cel">
+                <div className="lp-cel"><img src={`${PUB}/vitrine/paciente-3d.webp`} alt="Página do paciente no celular com o exame de carótidas em 3D" loading="lazy" /></div>
+                <figcaption><b>2. Abre na hora, sem app e sem login</b><span>O paciente gira, aproxima e entra no vaso, com um guia simples do que cada cor significa. Sem o Doppler, que é para o médico.</span></figcaption>
+              </figure>
+              <div className="lp-qr-card lp-qr-priv">
+                <div className="lp-cadeado" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" width="48" height="48"><rect x="9" y="21" width="30" height="21" rx="5" fill="none" stroke="currentColor" strokeWidth="3" /><path d="M16 21v-6a8 8 0 0 1 16 0v6" fill="none" stroke="currentColor" strokeWidth="3" /><circle cx="24" cy="31" r="3" fill="currentColor" /></svg>
+                </div>
+                <b>3. Sem dado pessoal no link</b>
+                <span>O QR Code leva só os achados vasculares, codificados no próprio link. Sem nome, data ou documento, e nada fica guardado em servidor.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="lp-faixa" id="novidades">
+          <div className="lp-wrap">
+            <div className="lp-cab">
+              <p className="lp-sobre">Feito por quem lauda</p>
+              <h2>Detalhes que você não encontra em outro programa</h2>
+            </div>
+            <div className="lp-novs">
+              {NOVIDADES.map((n) => (
+                <article className="lp-nov" key={n.img}>
+                  <div className="lp-nov-img"><img src={`${PUB}/vitrine/${n.img}`} alt="" loading="lazy" /></div>
+                  <h3>{n.tit}</h3>
+                  <p>{n.txt}</p>
+                </article>
+              ))}
+            </div>
+            <div className="lp-meio-cta">
+              <button type="button" className="lp-btn lp-btn-cheio" onClick={cadastrar}>Testar o 3D grátis</button>
+              <span>{DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos · sem cartão de crédito</span>
+            </div>
           </div>
         </section>
 
@@ -380,12 +472,13 @@ export default function LandingNew() {
           <div className="lp-wrap">
             <div className="lp-cab">
               <p className="lp-sobre">Como funciona</p>
-              <h2>Do exame ao laudo assinado em 3 passos</h2>
+              <h2>Do exame ao paciente em 4 passos</h2>
             </div>
             <div className="lp-passos">
               <div className="lp-passo"><h3>Preencha nome, idade e data</h3><p>Escolha o exame e o lado. O desenho anatômico aparece na hora.</p></div>
               <div className="lp-passo"><h3>Clique nos vasos alterados</h3><p>Marque refluxo, estenose, oclusão, stent ou trombose. O laudo e a conclusão são escritos enquanto você clica.</p></div>
               <div className="lp-passo"><h3>Salve o PDF ou envie</h3><p>O laudo sai com seu logo, dados da clínica e assinatura. Envie ao paciente pelo WhatsApp ou e-mail.</p></div>
+              <div className="lp-passo"><h3>O paciente abre em 3D</h3><p>Pelo QR Code do laudo ou pelo botão “Abrir em 3D” no PDF. No consultório, mostre direto na tela.</p></div>
             </div>
           </div>
         </section>
@@ -405,7 +498,8 @@ export default function LandingNew() {
                 <li><span className="ic">1</span><div><b>Seu logo e os dados da clínica</b><span>No topo de cada página, como no seu papel timbrado.</span></div></li>
                 <li><span className="ic">2</span><div><b>Assinatura e CRM no rodapé</b><span>Assinatura digitalizada ou desenhada na tela.</span></div></li>
                 <li><span className="ic">3</span><div><b>Até 5 locais de atendimento</b><span>Atende em mais de uma clínica? Escolha o local e o logo do PDF muda.</span></div></li>
-                <li><span className="ic">4</span><div><b>Exames salvos na nuvem</b><span>Reabra, edite e gere o PDF de novo em qualquer computador ou celular.</span></div></li>
+                <li><span className="ic">4</span><div><b>QR Code do exame em 3D</b><span>No rodapé do laudo e do mapa, com o botão “Abrir em 3D” para quem recebe o PDF.</span></div></li>
+                <li><span className="ic">5</span><div><b>Exames salvos na nuvem</b><span>Reabra, edite e gere o PDF de novo em qualquer computador ou celular.</span></div></li>
               </ul>
             </div>
           </div>
@@ -468,8 +562,8 @@ export default function LandingNew() {
                 <h3>Teste grátis</h3>
                 <div className="lp-preco">R$ 0<small>{DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos</small></div>
                 <ul>
-                  <li>Todos os 7 exames</li>
-                  <li>PDF com seu logo e assinatura</li>
+                  <li>Todos os 7 exames, em 2D e 3D</li>
+                  <li>PDF com seu logo, assinatura e QR Code</li>
                   <li>Sem cartão de crédito</li>
                 </ul>
                 <button type="button" className="lp-btn lp-btn-vazio" onClick={cadastrar}>Criar conta grátis</button>
@@ -481,6 +575,7 @@ export default function LandingNew() {
                 <p className="lp-ancora">Cerca de <b>R$ 3,20 por dia</b>, menos que um único exame Doppler por mês.</p>
                 <ul>
                   <li>Laudos ilimitados</li>
+                  <li>3D em todos os exames e QR Code no laudo</li>
                   <li>Até 5 locais de atendimento</li>
                   <li>Envio do laudo por WhatsApp e e-mail</li>
                   <li>Exames e perfil na nuvem</li>
@@ -499,6 +594,8 @@ export default function LandingNew() {
             <div className="lp-faq">
               <details open><summary>Preciso instalar alguma coisa?</summary><p>Não. Funciona no navegador do computador, do tablet ou do celular. Se quiser, dá para instalar como app pelo próprio navegador.</p></details>
               <details><summary>Como funciona o teste grátis?</summary><p>Começa no seu primeiro laudo e vale por {DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos, o que acabar primeiro. Gerar de novo o laudo do mesmo paciente não conta outra vez.</p></details>
+              <details><summary>O paciente precisa instalar algo para ver o 3D?</summary><p>Não. O QR Code abre uma página no navegador do celular, sem login e sem app. No PDF enviado pelo WhatsApp, basta tocar em “Abrir em 3D”.</p></details>
+              <details><summary>O QR Code expõe os dados do paciente?</summary><p>Não. O link leva só os achados vasculares, codificados no próprio endereço. Não há nome, data nem documento, e nada fica guardado em servidor.</p></details>
               <details><summary>Consigo colocar o logo da minha clínica?</summary><p>Sim. Em Configurações você coloca logo, endereço, telefone, CRM e assinatura. Com o Premium, até 5 locais com logos diferentes.</p></details>
               <details><summary>Posso acrescentar observações ao laudo?</summary><p>Sim. Cada exame tem um campo de observações que entra no texto do laudo.</p></details>
               <details><summary>Meus exames ficam salvos?</summary><p>Ficam na sua conta, protegidos por login, e aparecem em Exames Realizados para reabrir, editar, gerar o PDF ou enviar ao paciente.</p></details>
@@ -510,7 +607,7 @@ export default function LandingNew() {
         <section className="lp-final">
           <div className="lp-wrap">
             <img className="lp-logo-final" src={LOGO} alt="VENO.AI" />
-            <h2>Seu próximo laudo de Doppler pode ficar pronto em 2 minutos.</h2>
+            <h2>Seu próximo laudo de Doppler pode ficar pronto em 2 minutos. E em 3D.</h2>
             <p>{DIAS_TESTE} dias ou {LAUDOS_TESTE} laudos grátis, sem cartão de crédito.</p>
             <div className="lp-hero-ctas">
               <button type="button" className="lp-btn lp-btn-cheio" onClick={cadastrar}>Começar teste grátis</button>
