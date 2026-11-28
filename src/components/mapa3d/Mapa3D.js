@@ -51,7 +51,7 @@ export default function Mapa3D(props) {
       },
     } : {};
     opcoes.modo = ["arterial", "mmssVenoso", "mmssArterial", "fav", "carotidas", "aorta"].includes(p.modo) ? p.modo : "venoso";
-    opcoes.paciente = !editavel;
+    opcoes.paciente = !editavel && !p.demo; // demo (vitrine): só olhar, mas com o Doppler
     const parar = iniciarMapa3D(raiz.current, montarExame(p), p.lado, opcoes);
     motor.current = parar;
     return () => { motor.current = null; parar(); };

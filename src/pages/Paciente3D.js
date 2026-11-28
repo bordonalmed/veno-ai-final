@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
-import Mapa3D from "../components/mapa3d/Mapa3D";
-import { decodificarExame3D } from "../utils/codigo3d";
+import Exame3D, { lerExame3D } from "../components/mapa3d/Exame3D";
 import "./paciente3d.css";
 
 const PUB = process.env.PUBLIC_URL || "";
@@ -9,9 +8,7 @@ const PUB = process.env.PUBLIC_URL || "";
 // achados do exame, sem login. Os achados vêm do próprio link (depois do #);
 // não há nome nem dado pessoal, e nada é buscado no servidor.
 export default function Paciente3D() {
-  const exame = useMemo(() => {
-    try { return decodificarExame3D(decodeURIComponent((window.location.hash || "").slice(1))); } catch (_) { return null; }
-  }, []);
+  const exame = useMemo(() => lerExame3D((window.location.hash || "").slice(1)), []);
   const mmssArt = !!exame && exame.modo === "mmssArterial", fav = !!exame && exame.modo === "fav", carot = !!exame && exame.modo === "carotidas", aorta = !!exame && exame.modo === "aorta";
   const arterial = !!exame && (exame.modo === "arterial" || mmssArt), mmss = !!exame && exame.modo === "mmssVenoso";
   const nota = "Ilustração educativa gerada a partir dos achados do seu exame. Não substitui o laudo nem a consulta com o seu médico.";
@@ -27,25 +24,7 @@ export default function Paciente3D() {
       {exame ? (
         <>
           <main className="p3d-3d">
-            {aorta ? (
-              <Mapa3D modo="aorta" arterias={exame.arterias} extra={exame.extra} nota={nota} />
-            ) : carot ? (
-              <Mapa3D modo="carotidas" arterias={exame.arterias} nota={nota} />
-            ) : fav ? (
-              <Mapa3D modo="fav" lado={exame.lado} extra={exame.extra} nota={nota} />
-            ) : mmss ? (
-              <Mapa3D modo="mmssVenoso" lado={exame.lado} veias={exame.veias} extra={exame.extra} nota={nota} />
-            ) : mmssArt ? (
-              <Mapa3D modo="mmssArterial" lado={exame.lado} arterias={exame.arterias} nota={nota} />
-            ) : arterial ? (
-              <Mapa3D modo="arterial" lado={exame.lado} arterias={exame.arterias} enxerto={exame.enxerto} nota={nota} />
-            ) : (
-              <Mapa3D
-                lado={exame.lado} profundas={exame.profundas} superficiais={exame.superficiais}
-                magna={exame.magna} parva={exame.parva} perfurantes={exame.perfurantes} varizes={exame.varizes}
-                nota={nota}
-              />
-            )}
+            <Exame3D exame={exame} nota={nota} />
           </main>
           <section className="p3d-guia">
             <h2>Como ver</h2>
