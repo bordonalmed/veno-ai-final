@@ -237,6 +237,8 @@ export function iniciarMapa3D(raiz, exame, ladoMembro, opcoes = {}) {
   }
   const limA = limites(G.MEDIAL_SILHOUETTE), limP = limites(G.POSTERIOR_SILHOUETTE);
   // Correspondência das faces entre o mapa 2D e a perna 3D (ângulo: 0° lateral, 90° anterior, 180° medial, 270° posterior).
+  // No sistema NATIVO dos desenhos do 2D (onde os traços são salvos) o lado MEDIAL fica à direita.
+  // (Na tela, a vista anterior da perna esquerda e a posterior da direita aparecem espelhadas, como o paciente visto de frente / de costas.)
   // Os dois desenhos do 2D (perna esquerda) têm o lado MEDIAL à direita — no anterior a femoral fica à esquerda
   // da safena magna, e a magna desce pelo lado direito:
   //   anterior  -> centro = face anterior (90°), borda direita = medial (180°), borda esquerda = lateral (0°);
