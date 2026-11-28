@@ -355,3 +355,6 @@
   .lp-chips { justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .lp-nov, .lp-nov:hover { transition: none; transform: none; } }
+.lp-lab-var { display: inline-flex; gap: 4px; padding: 3px; margin-bottom: 14px; border-radius: 10px; border: 1px solid var(--line); background: rgba(13, 20, 31, .7); }
+.lp-lab-var button { border: 0; border-radius: 7px; padding: 7px 14px; font-weight: 700; font-size: 13.5px; background: transparent; color: var(--fg-2); cursor: pointer; }
+.lp-lab-var button.on { background: var(--accent); color: var(--accent-ink); }

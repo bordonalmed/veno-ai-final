@@ -219,8 +219,10 @@ const DEMOS3D = [
   { id: "venoso", aba: "Venoso MMII", cod: "AQAAAAURAAA-AAAAAAABAAigAXAIDPoNCQ35DggO-g4FDA", titulo: "Refluxo da JSF ao joelho", itens: ["Safena magna com refluxo em vermelho, o sangue descendo pela perna", "Junção safeno-femoral: a safena desembocando na femoral comum, com a válvula terminal", "Varizes desenhadas no mapa aparecem na pele"], dica: "Toque na safena e depois em Veia e Dentro: veja a válvula que não fecha." },
   { id: "arterial", aba: "Arterial MMII", cod: "AwGAAAAAAACAAAAAAADAS5IAAACAAAABAASHAAAAAACAAAAAAACAAAAAAAAAAA", titulo: "Estenose de 75% da femoral superficial", itens: ["Placa calcificada estreitando a luz, stent na poplítea e oclusão distal da tibial anterior", "Doppler espectral no nível Artéria: arraste o gate pela estenose e veja a VPS subir", "Por dentro: atravesse a placa e o stent"], dica: "Toque na femoral superficial e depois em Artéria." },
   { id: "carotidas", aba: "Carótidas", cod: "BwCIAAIIAADIUJEIAACIAAIIAACIAEIIAACIAAIIAACIAAIIAACIAAIIAACoAAIIAAAAAA", titulo: "Estenose >70% da carótida interna", itens: ["Cabeça e pescoço com as 8 artérias, coluna cervical, traqueia e clavículas", "ACI e vertebral com fluxo de baixa resistência, ACE de alta, ACC intermediária", "Vistas anterior, posterior e laterais"], dica: "Ligue Nomes e toque na C. interna D." },
-  { id: "aorta", aba: "Aorta", cod: "CACAAAAAAACAAAAAAACAAIAsbgCAAAAAAACAAAAAAACAAAAAAACAAAAAAADAPDIAAACAAAAAAAAAAAAA", titulo: "Aneurisma de aorta infrarrenal (55 mm)", itens: ["Abdome com aorta, ilíacas, renais, rins, coluna e bacia", "Aneurisma com trombo mural no corte do vaso", "Estenose da ilíaca externa esquerda"], dica: "Toque na aorta infrarrenal e depois em Artéria." },
-  { id: "evar", aba: "EVAR", cod: "CACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAAAJMDwA", titulo: "Endoprótese com vazamento tipo II", itens: ["Endoprótese em malha prateada sobre a aorta e as ilíacas", "Saco aneurismático de 60 mm e o vazamento (endoleak) em amarelo", "No nível Artéria, o stent-graft dentro do saco"], dica: "Use a barra Superficial / Profundo para ver através da pele." },
+  { id: "aorta", aba: "Aorta", variantes: [
+    { rot: "Aneurisma", cod: "CACAAAAAAACAAAAAAACAAIAsbgCAAAAAAACAAAAAAACAAAAAAACAAAAAAADAPDIAAACAAAAAAAAAAAAA", titulo: "Aneurisma de aorta infrarrenal (55 mm)", itens: ["Abdome com aorta, ilíacas, renais, rins, coluna e bacia", "Aneurisma com trombo mural no corte do vaso", "Estenose da ilíaca externa esquerda"], dica: "Toque na aorta infrarrenal e depois em Artéria." },
+    { rot: "Pós-EVAR", cod: "CACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAACAAAAAAAAJMDwA", titulo: "Endoprótese com vazamento tipo II", itens: ["Endoprótese em malha prateada sobre a aorta e as ilíacas", "Saco aneurismático de 60 mm e o vazamento (endoleak) em amarelo", "No nível Artéria, o stent-graft dentro do saco"], dica: "Use a barra Superficial / Profundo para ver através da pele." },
+  ] },
   { id: "fav", aba: "Fístula", cod: "BgABAgTiAAAAAAADC0EAAiAAAA", titulo: "FAV braquiocefálica com estenose na anastomose", itens: ["Veia de drenagem arterializada em roxo, anastomose e artéria nutridora", "Estenose de 65% na anastomose e aneurisma no segmento de punção", "Por dentro: comece na anastomose e atravesse a estenose"], dica: "Toque na fístula e depois em Vaso e Dentro." },
 ];
 
@@ -235,19 +237,28 @@ function Lab3D() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  const d = DEMOS3D[ativo];
+  const [variante, setVariante] = useState(0);
+  const aba = DEMOS3D[ativo], d = aba.variantes ? aba.variantes[Math.min(variante, aba.variantes.length - 1)] : aba;
+  const chave = aba.id + (aba.variantes ? "-" + variante : "");
   return (
     <div className="lp-lab" ref={ref}>
       <div className="lp-lab-abas" role="tablist" aria-label="Exames de exemplo em 3D">
         {DEMOS3D.map((x, i) => (
-          <button key={x.id} type="button" role="tab" aria-selected={i === ativo} className={i === ativo ? "on" : ""} onClick={() => setAtivo(i)}>{x.aba}</button>
+          <button key={x.id} type="button" role="tab" aria-selected={i === ativo} className={i === ativo ? "on" : ""} onClick={() => { setAtivo(i); setVariante(0); }}>{x.aba}</button>
         ))}
       </div>
+      {aba.variantes ? (
+        <div className="lp-lab-var" role="group" aria-label="Exemplos do exame de aorta">
+          {aba.variantes.map((v, i) => (
+            <button key={v.rot} type="button" aria-pressed={i === variante} className={i === variante ? "on" : ""} onClick={() => setVariante(i)}>{v.rot}</button>
+          ))}
+        </div>
+      ) : null}
       <div className="lp-lab-grid">
         <div className="lp-lab-palco">
           {ligado ? (
             <Suspense fallback={<div className="lp-lab-carregando">Carregando 3D…</div>}>
-              <Exame3D key={d.id} codigo={d.cod} demo nota="Exemplo com achados fictícios. Ilustração educativa gerada a partir dos achados do mapa." />
+              <Exame3D key={chave} codigo={d.cod} demo nota="Exemplo com achados fictícios. Ilustração educativa gerada a partir dos achados do mapa." />
             </Suspense>
           ) : (
             <button type="button" className="lp-lab-carregando" onClick={() => setLigado(true)}>Abrir o 3D interativo</button>
